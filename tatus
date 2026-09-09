@@ -1,0 +1,118 @@
+warning: in the working copy of 'README.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'backend/pom.xml', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/README.md b/README.md[m
+[1mindex 736b136..2f4b0b3 100644[m
+[1m--- a/README.md[m
+[1m+++ b/README.md[m
+[36m@@ -86,6 +86,14 @@[m [mThe client keeps the bearer token in **sessionStorage**, surviving refresh in th[m
+ [m
+ ## Tests[m
+ [m
+[32m+[m[32mThe backend test suite has two complementary layers. Pure unit tests exercise domain and application-service behavior with small in-memory repository doubles, without starting Quarkus or PostgreSQL. Integration and acceptance tests retain the real framework boundaries: Quarkus REST, JWT handling, Hibernate, Flyway, and PostgreSQL.[m
+[32m+[m
+[32m+[m[32mRun the fast application-service unit tests from the repository root:[m
+[32m+[m
+[32m+[m[32m```sh[m
+[32m+[m[32mmvn -f backend/pom.xml test -Dtest=BuildServiceTest,VoteServiceTest,CommentServiceTest,AuthServiceTest[m
+[32m+[m[32m```[m
+[32m+[m
+ With Docker running:[m
+ [m
+ ```sh[m
+[36m@@ -93,7 +101,7 @@[m [mcd backend[m
+ mvn test[m
+ ```[m
+ [m
+[31m-Quarkus Dev Services starts an isolated PostgreSQL test container. The tests run the real Flyway migrations and make HTTP requests using actual registered accounts and JWTs. They cover accounts, ownership, references, ordered gadgets, votes, comments, filters, paging, and cascades. Pure domain tests cover immutable gadget order and vote/ownership rules.[m
+[32m+[m[32mQuarkus Dev Services starts an isolated PostgreSQL test container. The tests run the real Flyway migrations and make HTTP requests using actual registered accounts and JWTs. They cover accounts, ownership, references, ordered gadgets, votes, comments, filters, paging, and cascades. Pure domain and application tests cover business behavior without infrastructure.[m
+ [m
+ You may instead point tests at a **dedicated disposable PostgreSQL database**. Tests insert users/builds and must not target a database containing important data. Quote Maven properties in PowerShell:[m
+ [m
+[36m@@ -111,6 +119,15 @@[m [mnpm run build[m
+ [m
+ Vitest tests ordered selection and the API client's authorization/error handling. These are not browser end-to-end tests.[m
+ [m
+[32m+[m[32mRun the complete backend verification to generate JaCoCo HTML and XML coverage reports:[m
+[32m+[m
+[32m+[m[32m```sh[m
+[32m+[m[32mcd backend[m
+[32m+[m[32mmvn verify[m
+[32m+[m[32m```[m
+[32m+[m
+[32m+[m[32mOpen `backend/target/site/jacoco/index.html` for the HTML report. The XML report is `backend/target/site/jacoco/jacoco.xml`. The Maven JaCoCo agent covers plain JUnit tests, while Quarkus's JaCoCo test extension records classes loaded by `@QuarkusTest`; both append to the same report data. Coverage is used to locate untested domain and application branches; the project does not enforce an artificial percentage threshold.[m
+[32m+[m
+ ## Production builds and packaged API tests[m
+ [m
+ ```sh[m
+[1mdiff --git a/backend/pom.xml b/backend/pom.xml[m
+[1mindex 0168af4..7c511ea 100644[m
+[1m--- a/backend/pom.xml[m
+[1m+++ b/backend/pom.xml[m
+[36m@@ -9,6 +9,7 @@[m
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>[m
+     <quarkus.version>3.27.2</quarkus.version>[m
+     <mapstruct.version>1.6.3</mapstruct.version>[m
+[32m+[m[32m    <jacoco.version>0.8.13</jacoco.version>[m
+   </properties>[m
+   <dependencyManagement>[m
+     <dependencies>[m
+[36m@@ -72,6 +73,11 @@[m
+       <artifactId>quarkus-junit5</artifactId>[m
+       <scope>test</scope>[m
+     </dependency>[m
+[32m+[m[32m    <dependency>[m
+[32m+[m[32m      <groupId>io.quarkus</groupId>[m
+[32m+[m[32m      <artifactId>quarkus-jacoco</artifactId>[m
+[32m+[m[32m      <scope>test</scope>[m
+[32m+[m[32m    </dependency>[m
+     <dependency>[m
+       <groupId>io.rest-assured</groupId>[m
+       <artifactId>rest-assured</artifactId>[m
+[36m@@ -115,6 +121,9 @@[m
+         <configuration>[m
+           <systemPropertyVariables>[m
+             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>[m
+[32m+[m[32m            <quarkus.jacoco.data-file>${project.build.directory}/jacoco-quarkus.exec</quarkus.jacoco.data-file>[m
+[32m+[m[32m            <quarkus.jacoco.reuse-data-file>true</quarkus.jacoco.reuse-data-file>[m
+[32m+[m[32m            <quarkus.jacoco.report-location>${project.build.directory}/site/jacoco</quarkus.jacoco.report-location>[m
+           </systemPropertyVariables>[m
+         </configuration>[m
+       </plugin>[m
+[36m@@ -138,6 +147,37 @@[m
+           </systemPropertyVariables>[m
+         </configuration>[m
+       </plugin>[m
+[32m+[m[32m      <plugin>[m
+[32m+[m[32m        <groupId>org.jacoco</groupId>[m
+[32m+[m[32m        <artifactId>jacoco-maven-plugin</artifactId>[m
+[32m+[m[32m        <version>${jacoco.version}</version>[m
+[32m+[m[32m        <executions>[m
+[32m+[m[32m          <execution>[m
+[32m+[m[32m            <goals>[m
+[32m+[m[32m              <goal>prepare-agent</goal>[m
+[32m+[m[32m            </goals>[m
+[32m+[m[32m            <configuration>[m
+[32m+[m[32m              <append>true</append>[m
+[32m+[m[32m              <destFile>${project.build.directory}/jacoco-quarkus.exec</destFile>[m
+[32m+[m[32m              <exclClassLoaders>*QuarkusClassLoader</exclClassLoaders>[m
+[32m+[m[32m            </configuration>[m
+[32m+[m[32m          </execution>[m
+[32m+[m[32m          <execution>[m
+[32m+[m[32m            <id>coverage-report</id>[m
+[32m+[m[32m            <phase>verify</phase>[m
+[32m+[m[32m            <goals>[m
+[32m+[m[32m              <goal>report</goal>[m
+[32m+[m[32m            </goals>[m
+[32m+[m[32m            <configuration>[m
+[32m+[m[32m              <dataFile>${project.build.directory}/jacoco-quarkus.exec</dataFile>[m
+[32m+[m[32m              <formats>[m
+[32m+[m[32m                <format>HTML</format>[m
+[32m+[m[32m                <format>XML</format>[m
+[32m+[m[32m              </formats>[m
+[32m+[m[32m            </configuration>[m
+[32m+[m[32m          </execution>[m
+[32m+[m[32m        </executions>[m
+[32m+[m[32m      </plugin>[m
+     </plugins>[m
+   </build>[m
+ </project>[m

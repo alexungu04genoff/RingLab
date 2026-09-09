@@ -86,6 +86,14 @@ The client keeps the bearer token in **sessionStorage**, surviving refresh in th
 
 ## Tests
 
+The backend test suite has two complementary layers. Pure unit tests exercise domain and application-service behavior with small in-memory repository doubles, without starting Quarkus or PostgreSQL. Integration and acceptance tests retain the real framework boundaries: Quarkus REST, JWT handling, Hibernate, Flyway, and PostgreSQL.
+
+Run the fast application-service unit tests from the repository root:
+
+```sh
+mvn -f backend/pom.xml test -Dtest=BuildServiceTest,VoteServiceTest,CommentServiceTest,AuthServiceTest
+```
+
 With Docker running:
 
 ```sh
@@ -93,7 +101,7 @@ cd backend
 mvn test
 ```
 
-Quarkus Dev Services starts an isolated PostgreSQL test container. The tests run the real Flyway migrations and make HTTP requests using actual registered accounts and JWTs. They cover accounts, ownership, references, ordered gadgets, votes, comments, filters, paging, and cascades. Pure domain tests cover immutable gadget order and vote/ownership rules.
+Quarkus Dev Services starts an isolated PostgreSQL test container. The tests run the real Flyway migrations and make HTTP requests using actual registered accounts and JWTs. They cover accounts, ownership, references, ordered gadgets, votes, comments, filters, paging, and cascades. Pure domain and application tests cover business behavior without infrastructure.
 
 You may instead point tests at a **dedicated disposable PostgreSQL database**. Tests insert users/builds and must not target a database containing important data. Quote Maven properties in PowerShell:
 
@@ -110,6 +118,15 @@ npm run build
 ```
 
 Vitest tests ordered selection and the API client's authorization/error handling. These are not browser end-to-end tests.
+
+Run the complete backend verification to generate JaCoCo HTML and XML coverage reports:
+
+```sh
+cd backend
+mvn verify
+```
+
+Open `backend/target/site/jacoco/index.html` for the HTML report. The XML report is `backend/target/site/jacoco/jacoco.xml`. The Maven JaCoCo agent covers plain JUnit tests, while Quarkus's JaCoCo test extension records classes loaded by `@QuarkusTest`; both append to the same report data. Coverage is used to locate untested domain and application branches; the project does not enforce an artificial percentage threshold.
 
 ## Production builds and packaged API tests
 
