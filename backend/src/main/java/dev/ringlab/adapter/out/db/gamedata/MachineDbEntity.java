@@ -1,0 +1,19 @@
+package dev.ringlab.adapter.out.db.gamedata;
+
+import jakarta.persistence.*;
+import java.util.UUID;
+
+@Entity
+@Table(name = "machines")
+public class MachineDbEntity {
+  @Id public UUID id;
+
+  @Column(nullable = false, unique = true, length = 100)
+  public String name;
+
+  @Column(name = "racing_type", nullable = false, length = 20)
+  public String racingType;
+
+  @Column(name = "image_path")
+  public String imagePath;
+}

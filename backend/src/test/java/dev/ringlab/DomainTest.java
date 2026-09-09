@@ -2,9 +2,9 @@ package dev.ringlab;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.ringlab.build.domain.Build;
-import dev.ringlab.shared.application.AppException;
-import dev.ringlab.vote.domain.Vote;
+import dev.ringlab.domain.build.Build;
+import dev.ringlab.application.AppException;
+import dev.ringlab.domain.vote.Vote;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
