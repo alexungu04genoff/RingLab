@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
+import dev.ringlab.domain.gamedata.RacingType;
 import dev.ringlab.port.out.GameDataRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -29,8 +30,8 @@ class GameDataRepositoryIntegrationTest {
     assertEquals(machine, gameData.findMachine(machine.id()).orElseThrow());
     assertEquals(gadget, gameData.findGadget(gadget.id()).orElseThrow());
 
-    assertNotNull(racer.racingType());
-    assertNotNull(machine.racingType());
+    assertEquals(RacingType.HANDLING, racer.racingType());
+    assertEquals(RacingType.SPEED, machine.racingType());
     assertNull(gadget.slotCost());
     assertTrue(gameData.findRacer(UUID.randomUUID()).isEmpty());
     assertTrue(gameData.findMachine(UUID.randomUUID()).isEmpty());

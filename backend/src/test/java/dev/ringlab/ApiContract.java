@@ -146,9 +146,19 @@ public abstract class ApiContract {
             .path("[0]");
 
     assertThat(
-        racer, allOf(hasKey("racingType"), not(hasKey("description")), not(hasKey("slotCost"))));
+        racer,
+        allOf(
+            hasEntry("name", "Amy Rose"),
+            hasEntry("racingType", "HANDLING"),
+            not(hasKey("description")),
+            not(hasKey("slotCost"))));
     assertThat(
-        machine, allOf(hasKey("racingType"), not(hasKey("description")), not(hasKey("slotCost"))));
+        machine,
+        allOf(
+            hasEntry("name", "Dark Reaper"),
+            hasEntry("racingType", "SPEED"),
+            not(hasKey("description")),
+            not(hasKey("slotCost"))));
     assertThat(
         gadget, allOf(hasKey("description"), hasKey("slotCost"), not(hasKey("racingType"))));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);

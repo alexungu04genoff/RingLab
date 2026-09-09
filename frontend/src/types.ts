@@ -4,16 +4,22 @@ export interface User {
   email: string;
   createdAt: string;
 }
+export type RacingType =
+  | "SPEED"
+  | "ACCELERATION"
+  | "HANDLING"
+  | "POWER"
+  | "BOOST";
 export interface Racer {
   id: string;
   name: string;
-  racingType: string;
+  racingType: RacingType;
   imagePath: string | null;
 }
 export interface Machine {
   id: string;
   name: string;
-  racingType: string;
+  racingType: RacingType;
   imagePath: string | null;
 }
 export interface Gadget {
