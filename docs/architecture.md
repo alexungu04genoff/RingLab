@@ -17,7 +17,7 @@ dev.ringlab/
 
 ## Boundaries
 
-- **domain:** immutable Java records (`User`, `GameItem`, `Build`, `Vote`, `Comment`), using only the JDK. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
+- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `Gadget`, `Build`, `Vote`, `Comment`), using only the JDK. `Racer` and `Machine` carry racing type and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services and outbound persistence ports. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **adapter/in/rest:** validated request records, response records, route/role annotations, and conversion into service calls. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildStore` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
@@ -30,7 +30,7 @@ Persistence ports (`UserStore`, `GameDataStore`, `BuildStore`, `VoteStore`, `Com
 
 MapStruct generates entity/domain mappings for users, builds, comments, and the three game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
-`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, machines, and gadgets. The structural refactor retains `GameItem`, existing DTO names, MapStruct configuration, and the dynamic build-filter query. JPQL entity references follow the renamed Java entities; table names and migrations are unchanged.
+`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, machines, and gadgets, but the domain and port are strongly typed: `listRacers`/`findRacer`, `listMachines`/`findMachine`, and `listGadgets`/`findGadget`. Each existing Db entity maps to its corresponding domain record. The REST layer deliberately uses one `ItemResponse` with overloaded conversions to preserve its public JSON shape. MapStruct configuration and the dynamic build-filter query are unchanged. JPQL entity references follow the renamed Java entities; table names and migrations are unchanged.
 
 Create-build flow:
 

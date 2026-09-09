@@ -1,13 +1,15 @@
 package dev.ringlab.adapter.out.db.gamedata;
 
-import dev.ringlab.domain.gamedata.GameItem;
+import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.Racer;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "jakarta-cdi", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface GameDataDbMapper {
-  GameItem toDomain(RacerDbEntity entity);
+  Racer toDomain(RacerDbEntity entity);
 
-  GameItem toDomain(MachineDbEntity entity);
+  Machine toDomain(MachineDbEntity entity);
 
-  GameItem toDomain(GadgetDbEntity entity);
+  Gadget toDomain(GadgetDbEntity entity);
 }

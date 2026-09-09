@@ -1,16 +1,22 @@
 package dev.ringlab.application.gamedata.port.out;
 
-import dev.ringlab.domain.gamedata.GameItem;
-import java.util.*;
+import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.Racer;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
 public interface GameDataStore {
-  enum Kind {
-    RACER,
-    MACHINE,
-    GADGET
-  }
+  List<Racer> listRacers();
 
-  List<GameItem> list(Kind kind);
+  Optional<Racer> findRacer(UUID id);
 
-  Optional<GameItem> find(Kind kind, UUID id);
+  List<Machine> listMachines();
+
+  Optional<Machine> findMachine(UUID id);
+
+  List<Gadget> listGadgets();
+
+  Optional<Gadget> findGadget(UUID id);
 }

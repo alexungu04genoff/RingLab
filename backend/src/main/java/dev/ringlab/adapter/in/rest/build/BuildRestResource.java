@@ -66,10 +66,16 @@ public class BuildRestResource {
     this.actor = actor;
   }
 
-  private ItemResponse item(GameDataStore.Kind kind, UUID id) {
-    var i = game.find(kind, id).orElseThrow();
-    return new ItemResponse(
-        i.id(), i.name(), i.racingType(), i.description(), i.slotCost(), i.imagePath());
+  private ItemResponse racerItem(UUID id) {
+    return ItemResponse.from(game.findRacer(id).orElseThrow());
+  }
+
+  private ItemResponse machineItem(UUID id) {
+    return ItemResponse.from(game.findMachine(id).orElseThrow());
+  }
+
+  private ItemResponse gadgetItem(UUID id) {
+    return ItemResponse.from(game.findGadget(id).orElseThrow());
   }
 
   private BuildResponse response(Build b) {
@@ -79,9 +85,9 @@ public class BuildRestResource {
         b.title(),
         b.description(),
         new AuthorResponse(author.id(), author.username()),
-        item(GameDataStore.Kind.RACER, b.racerId()),
-        item(GameDataStore.Kind.MACHINE, b.machineId()),
-        b.gadgetIds().stream().map(id -> item(GameDataStore.Kind.GADGET, id)).toList(),
+        racerItem(b.racerId()),
+        machineItem(b.machineId()),
+        b.gadgetIds().stream().map(this::gadgetItem).toList(),
         b.createdAt(),
         b.updatedAt(),
         votes.score(b.id()));

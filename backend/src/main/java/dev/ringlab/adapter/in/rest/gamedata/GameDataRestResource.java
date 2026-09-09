@@ -1,7 +1,9 @@
 package dev.ringlab.adapter.in.rest.gamedata;
 
 import dev.ringlab.application.gamedata.port.out.GameDataStore;
-import dev.ringlab.domain.gamedata.GameItem;
+import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.Racer;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.*;
@@ -16,9 +18,19 @@ public class GameDataRestResource {
       String description,
       Integer slotCost,
       String imagePath) {
-    static ItemResponse from(GameItem i) {
+    public static ItemResponse from(Racer racer) {
       return new ItemResponse(
-          i.id(), i.name(), i.racingType(), i.description(), i.slotCost(), i.imagePath());
+          racer.id(), racer.name(), racer.racingType(), null, null, racer.imagePath());
+    }
+
+    public static ItemResponse from(Machine machine) {
+      return new ItemResponse(
+          machine.id(), machine.name(), machine.racingType(), null, null, machine.imagePath());
+    }
+
+    public static ItemResponse from(Gadget gadget) {
+      return new ItemResponse(
+          gadget.id(), gadget.name(), null, gadget.description(), gadget.slotCost(), gadget.imagePath());
     }
   }
 
@@ -28,25 +40,21 @@ public class GameDataRestResource {
     this.store = store;
   }
 
-  private List<ItemResponse> list(GameDataStore.Kind kind) {
-    return store.list(kind).stream().map(ItemResponse::from).toList();
-  }
-
   @GET
   @Path("racers")
   public List<ItemResponse> racers() {
-    return list(GameDataStore.Kind.RACER);
+    return store.listRacers().stream().map(ItemResponse::from).toList();
   }
 
   @GET
   @Path("machines")
   public List<ItemResponse> machines() {
-    return list(GameDataStore.Kind.MACHINE);
+    return store.listMachines().stream().map(ItemResponse::from).toList();
   }
 
   @GET
   @Path("gadgets")
   public List<ItemResponse> gadgets() {
-    return list(GameDataStore.Kind.GADGET);
+    return store.listGadgets().stream().map(ItemResponse::from).toList();
   }
 }

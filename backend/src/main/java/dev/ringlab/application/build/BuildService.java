@@ -7,7 +7,8 @@ import dev.ringlab.application.AppException;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
-import java.util.*;
+import java.util.List;
+import java.util.UUID;
 
 @ApplicationScoped
 public class BuildService {
@@ -31,14 +32,21 @@ public class BuildService {
   }
 
   private void validate(Draft d) {
-    require(GameDataStore.Kind.RACER, d.racerId());
-    require(GameDataStore.Kind.MACHINE, d.machineId());
-    d.gadgetIds().forEach(id -> require(GameDataStore.Kind.GADGET, id));
+    requireRacer(d.racerId());
+    requireMachine(d.machineId());
+    d.gadgetIds().forEach(this::requireGadget);
   }
 
-  private void require(GameDataStore.Kind kind, UUID id) {
-    if (game.find(kind, id).isEmpty())
-      throw new AppException(400, "Unknown " + kind.name().toLowerCase(Locale.ROOT) + " ID");
+  private void requireRacer(UUID id) {
+    if (game.findRacer(id).isEmpty()) throw new AppException(400, "Unknown racer ID");
+  }
+
+  private void requireMachine(UUID id) {
+    if (game.findMachine(id).isEmpty()) throw new AppException(400, "Unknown machine ID");
+  }
+
+  private void requireGadget(UUID id) {
+    if (game.findGadget(id).isEmpty()) throw new AppException(400, "Unknown gadget ID");
   }
 
   @Transactional
