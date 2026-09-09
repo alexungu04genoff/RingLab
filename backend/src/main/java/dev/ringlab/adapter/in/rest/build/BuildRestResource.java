@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.in.rest.build;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
@@ -21,6 +23,7 @@ import java.util.*;
 @Path("/api/builds")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class BuildRestResource {
   public record BuildRequest(
       @NotBlank @Size(max = 120) String title,
@@ -54,19 +57,6 @@ public class BuildRestResource {
   private final GameDataRepository game;
   private final VoteService votes;
   private final CurrentUser actor;
-
-  public BuildRestResource(
-      BuildService builds,
-      AuthService users,
-      GameDataRepository game,
-      VoteService votes,
-      CurrentUser actor) {
-    this.builds = builds;
-    this.users = users;
-    this.game = game;
-    this.votes = votes;
-    this.actor = actor;
-  }
 
   private RacerResponse racerItem(UUID id) {
     return RacerResponse.from(game.findRacer(id).orElseThrow());

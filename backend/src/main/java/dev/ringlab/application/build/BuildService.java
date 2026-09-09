@@ -1,5 +1,7 @@
 package dev.ringlab.application.build;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.application.AppException;
 import dev.ringlab.port.out.BuildRepository;
@@ -11,17 +13,13 @@ import java.util.List;
 import java.util.UUID;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class BuildService {
   public record Draft(
       String title, String description, UUID racerId, UUID machineId, List<UUID> gadgetIds) {}
 
   private final BuildRepository builds;
   private final GameDataRepository game;
-
-  public BuildService(BuildRepository builds, GameDataRepository game) {
-    this.builds = builds;
-    this.game = game;
-  }
 
   public Build get(UUID id) {
     return builds.find(id).orElseThrow(() -> AppException.missing("Build"));

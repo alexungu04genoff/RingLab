@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.out.db.build;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.adapter.out.db.vote.VoteDbEntity;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.port.out.BuildRepository;
@@ -18,14 +20,10 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class BuildDbAdapter implements BuildRepository {
   private final EntityManager em;
   private final BuildDbMapper mapper;
-
-  public BuildDbAdapter(EntityManager em, BuildDbMapper mapper) {
-    this.em = em;
-    this.mapper = mapper;
-  }
 
   public Optional<Build> find(UUID id) {
     return Optional.ofNullable(mapper.toDomain(em.find(BuildDbEntity.class, id)));

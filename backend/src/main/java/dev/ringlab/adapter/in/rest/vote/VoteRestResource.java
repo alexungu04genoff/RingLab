@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.in.rest.vote;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.application.vote.VoteService;
 import jakarta.annotation.security.RolesAllowed;
@@ -13,6 +15,7 @@ import java.util.UUID;
 @RolesAllowed("user")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class VoteRestResource {
   public record VoteRequest(@NotNull Integer value) {}
 
@@ -24,11 +27,6 @@ public class VoteRestResource {
 
   private final VoteService service;
   private final CurrentUser actor;
-
-  public VoteRestResource(VoteService service, CurrentUser actor) {
-    this.service = service;
-    this.actor = actor;
-  }
 
   @GET
   public VoteResponse get(@PathParam("id") UUID id) {

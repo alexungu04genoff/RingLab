@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.in.rest.auth;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
@@ -15,6 +17,7 @@ import java.util.UUID;
 @Path("/api/auth")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class AuthRestResource {
   public record Registration(
       @NotBlank @Pattern(regexp = "[A-Za-z0-9_]{3,30}") String username,
@@ -34,11 +37,6 @@ public class AuthRestResource {
 
   private final AuthService service;
   private final CurrentUser actor;
-
-  public AuthRestResource(AuthService service, CurrentUser actor) {
-    this.service = service;
-    this.actor = actor;
-  }
 
   private Session session(User u) {
     return new Session(

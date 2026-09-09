@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.out.db.gamedata;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
@@ -9,14 +11,10 @@ import jakarta.persistence.EntityManager;
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class GameDataDbAdapter implements GameDataRepository {
   private final EntityManager em;
   private final GameDataDbMapper mapper;
-
-  public GameDataDbAdapter(EntityManager em, GameDataDbMapper mapper) {
-    this.em = em;
-    this.mapper = mapper;
-  }
 
   public List<Racer> listRacers() {
     return em

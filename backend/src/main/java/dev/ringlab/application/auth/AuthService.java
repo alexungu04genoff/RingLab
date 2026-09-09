@@ -1,5 +1,7 @@
 package dev.ringlab.application.auth;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.application.AppException;
 import dev.ringlab.port.out.UserRepository;
@@ -10,14 +12,11 @@ import java.time.Instant;
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class AuthService {
   private final UserRepository users;
   // Equal-cost check for nonexistent accounts avoids a cheap username timing oracle.
   private final String dummyHash = BcryptUtil.bcryptHash("ringlab-dummy-password");
-
-  public AuthService(UserRepository users) {
-    this.users = users;
-  }
 
   @Transactional
   public User register(String username, String email, String password) {

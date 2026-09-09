@@ -1,5 +1,7 @@
 package dev.ringlab.application.comment;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.application.AppException;
@@ -10,14 +12,10 @@ import java.time.Instant;
 import java.util.*;
 
 @ApplicationScoped
+@RequiredArgsConstructor
 public class CommentService {
   private final CommentRepository comments;
   private final BuildService builds;
-
-  public CommentService(CommentRepository comments, BuildService builds) {
-    this.comments = comments;
-    this.builds = builds;
-  }
 
   public List<Comment> list(UUID build, int page, int size) {
     builds.get(build);

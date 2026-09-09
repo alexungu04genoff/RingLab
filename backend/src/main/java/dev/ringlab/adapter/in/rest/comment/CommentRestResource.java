@@ -1,5 +1,7 @@
 package dev.ringlab.adapter.in.rest.comment;
 
+import lombok.RequiredArgsConstructor;
+
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.comment.CommentService;
 import dev.ringlab.domain.comment.Comment;
@@ -15,6 +17,7 @@ import java.util.*;
 @Path("/api/builds/{id}/comments")
 @Produces(MediaType.APPLICATION_JSON)
 @Consumes(MediaType.APPLICATION_JSON)
+@RequiredArgsConstructor
 public class CommentRestResource {
   public record CommentRequest(@NotBlank @Size(max = 2000) String text) {}
 
@@ -24,12 +27,6 @@ public class CommentRestResource {
   private final CommentService service;
   private final AuthService users;
   private final CurrentUser actor;
-
-  public CommentRestResource(CommentService service, AuthService users, CurrentUser actor) {
-    this.service = service;
-    this.users = users;
-    this.actor = actor;
-  }
 
   private CommentResponse response(Comment c) {
     return new CommentResponse(
