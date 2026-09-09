@@ -1,9 +1,9 @@
-package dev.ringlab.application.build.port.out;
+package dev.ringlab.port.out;
 
 import dev.ringlab.domain.build.Build;
 import java.util.*;
 
-public interface BuildStore {
+public interface BuildRepository {
   record Filter(
       String search,
       UUID racerId,

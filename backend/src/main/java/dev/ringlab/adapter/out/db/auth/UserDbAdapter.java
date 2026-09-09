@@ -1,7 +1,7 @@
 package dev.ringlab.adapter.out.db.auth;
 
-import dev.ringlab.application.auth.port.out.UserStore;
 import dev.ringlab.domain.auth.User;
+import dev.ringlab.port.out.UserRepository;
 import dev.ringlab.application.AppException;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -9,7 +9,7 @@ import java.util.*;
 import org.hibernate.exception.ConstraintViolationException;
 
 @ApplicationScoped
-public class UserDbAdapter implements UserStore, PanacheRepositoryBase<UserDbEntity, UUID> {
+public class UserDbAdapter implements UserRepository, PanacheRepositoryBase<UserDbEntity, UUID> {
   private final UserDbMapper mapper;
 
   public UserDbAdapter(UserDbMapper mapper) {

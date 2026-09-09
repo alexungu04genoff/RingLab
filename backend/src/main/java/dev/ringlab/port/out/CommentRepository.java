@@ -1,9 +1,9 @@
-package dev.ringlab.application.comment.port.out;
+package dev.ringlab.port.out;
 
 import dev.ringlab.domain.comment.Comment;
 import java.util.*;
 
-public interface CommentStore {
+public interface CommentRepository {
   List<Comment> list(UUID buildId, int page, int size);
 
   Optional<Comment> find(UUID id);

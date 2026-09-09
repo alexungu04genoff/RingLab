@@ -1,15 +1,15 @@
 package dev.ringlab.adapter.out.db.gamedata;
 
-import dev.ringlab.application.gamedata.port.out.GameDataStore;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
+import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import java.util.*;
 
 @ApplicationScoped
-public class GameDataDbAdapter implements GameDataStore {
+public class GameDataDbAdapter implements GameDataRepository {
   private final EntityManager em;
   private final GameDataDbMapper mapper;
 

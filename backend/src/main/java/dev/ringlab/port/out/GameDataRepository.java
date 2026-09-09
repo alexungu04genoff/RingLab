@@ -1,4 +1,4 @@
-package dev.ringlab.application.gamedata.port.out;
+package dev.ringlab.port.out;
 
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface GameDataStore {
+public interface GameDataRepository {
   List<Racer> listRacers();
 
   Optional<Racer> findRacer(UUID id);

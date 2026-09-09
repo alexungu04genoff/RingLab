@@ -2,12 +2,12 @@ package dev.ringlab.adapter.in.rest.build;
 
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.build.port.out.BuildStore;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.GadgetResponse;
 import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.MachineResponse;
 import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.RacerResponse;
-import dev.ringlab.application.gamedata.port.out.GameDataStore;
+import dev.ringlab.port.out.BuildRepository;
+import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.application.vote.VoteService;
 import jakarta.annotation.security.RolesAllowed;
@@ -51,14 +51,14 @@ public class BuildRestResource {
 
   private final BuildService builds;
   private final AuthService users;
-  private final GameDataStore game;
+  private final GameDataRepository game;
   private final VoteService votes;
   private final CurrentUser actor;
 
   public BuildRestResource(
       BuildService builds,
       AuthService users,
-      GameDataStore game,
+      GameDataRepository game,
       VoteService votes,
       CurrentUser actor) {
     this.builds = builds;
@@ -105,7 +105,7 @@ public class BuildRestResource {
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
     var result =
-        builds.list(new BuildStore.Filter(search, racer, machine, author, sort, page, size));
+        builds.list(new BuildRepository.Filter(search, racer, machine, author, sort, page, size));
     return new PageResponse(
         result.items().stream().map(this::response).toList(), result.total(), page, size);
   }

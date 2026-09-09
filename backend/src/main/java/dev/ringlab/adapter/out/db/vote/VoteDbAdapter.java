@@ -1,13 +1,13 @@
 package dev.ringlab.adapter.out.db.vote;
 
-import dev.ringlab.application.vote.port.out.VoteStore;
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import java.util.UUID;
 
 @ApplicationScoped
-public class VoteDbAdapter implements VoteStore {
+public class VoteDbAdapter implements VoteRepository {
   private final EntityManager em;
 
   public VoteDbAdapter(EntityManager em) {

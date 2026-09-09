@@ -1,8 +1,8 @@
 package dev.ringlab.application.auth;
 
-import dev.ringlab.application.auth.port.out.UserStore;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.application.AppException;
+import dev.ringlab.port.out.UserRepository;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -11,11 +11,11 @@ import java.util.*;
 
 @ApplicationScoped
 public class AuthService {
-  private final UserStore users;
+  private final UserRepository users;
   // Equal-cost check for nonexistent accounts avoids a cheap username timing oracle.
   private final String dummyHash = BcryptUtil.bcryptHash("ringlab-dummy-password");
 
-  public AuthService(UserStore users) {
+  public AuthService(UserRepository users) {
     this.users = users;
   }
 

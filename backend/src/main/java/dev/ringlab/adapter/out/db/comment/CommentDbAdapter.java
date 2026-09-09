@@ -1,13 +1,14 @@
 package dev.ringlab.adapter.out.db.comment;
 
-import dev.ringlab.application.comment.port.out.CommentStore;
 import dev.ringlab.domain.comment.Comment;
+import dev.ringlab.port.out.CommentRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;
 
 @ApplicationScoped
-public class CommentDbAdapter implements CommentStore, PanacheRepositoryBase<CommentDbEntity, UUID> {
+public class CommentDbAdapter
+    implements CommentRepository, PanacheRepositoryBase<CommentDbEntity, UUID> {
   private final CommentDbMapper mapper;
 
   public CommentDbAdapter(CommentDbMapper mapper) {

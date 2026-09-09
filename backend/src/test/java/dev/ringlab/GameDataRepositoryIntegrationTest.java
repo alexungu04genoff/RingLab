@@ -2,18 +2,18 @@ package dev.ringlab;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import dev.ringlab.application.gamedata.port.out.GameDataStore;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
+import dev.ringlab.port.out.GameDataRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 @QuarkusTest
-class GameDataStoreIntegrationTest {
-  @Inject GameDataStore gameData;
+class GameDataRepositoryIntegrationTest {
+  @Inject GameDataRepository gameData;
 
   @Test
   void retrievesRacersMachinesAndGadgetsAsTheirOwnDomainTypes() {

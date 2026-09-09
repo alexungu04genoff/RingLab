@@ -1,9 +1,9 @@
 package dev.ringlab.application.build;
 
-import dev.ringlab.application.build.port.out.BuildStore;
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.application.gamedata.port.out.GameDataStore;
 import dev.ringlab.application.AppException;
+import dev.ringlab.port.out.BuildRepository;
+import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -15,10 +15,10 @@ public class BuildService {
   public record Draft(
       String title, String description, UUID racerId, UUID machineId, List<UUID> gadgetIds) {}
 
-  private final BuildStore builds;
-  private final GameDataStore game;
+  private final BuildRepository builds;
+  private final GameDataRepository game;
 
-  public BuildService(BuildStore builds, GameDataStore game) {
+  public BuildService(BuildRepository builds, GameDataRepository game) {
     this.builds = builds;
     this.game = game;
   }
@@ -27,7 +27,7 @@ public class BuildService {
     return builds.find(id).orElseThrow(() -> AppException.missing("Build"));
   }
 
-  public BuildStore.Page list(BuildStore.Filter filter) {
+  public BuildRepository.Page list(BuildRepository.Filter filter) {
     return builds.list(filter);
   }
 

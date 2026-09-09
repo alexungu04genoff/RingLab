@@ -4,25 +4,27 @@
 
 RingLab has one Quarkus process and one PostgreSQL database. Features are packages within the same deployment, not network services. The React client calls REST. This keeps local startup, transactions, and thesis explanation small while keeping feature responsibilities visible.
 
-Packages are architecture-first under `dev.ringlab`: `adapter`, `application`, and `domain`, with `auth`, `gamedata`, `build`, `vote`, and `comment` grouped within each layer. The application error type is `application.AppException`; its HTTP adapter is `adapter.in.rest.ErrorRestExceptionMapper`. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
+Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `port`, and `adapter`. Feature-specific domain and application code remains grouped by `auth`, `gamedata`, `build`, `vote`, and `comment`; outbound contracts are centralized for immediate visibility. The application error type is `application.AppException`; its HTTP adapter is `adapter.in.rest.ErrorRestExceptionMapper`. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
 
 ```text
 dev.ringlab/
+  domain/{auth,build,comment,gamedata,vote}/
+  application/{auth,build,comment,gamedata,vote}/
+  port/out/
+    {User,Build,Comment,GameData,Vote}Repository.java
   adapter/in/rest/{auth,build,comment,gamedata,vote}/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
-  application/{auth,build,comment,gamedata,vote}/
-    port/out/  (existing persistence ports within each feature)
-  domain/{auth,build,comment,gamedata,vote}/
 ```
 
 ## Boundaries
 
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `Gadget`, `Build`, `Vote`, `Comment`), using only the JDK. `Racer` and `Machine` carry racing type and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
-- **application:** use-case services and outbound persistence ports. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
+- **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
+- **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
 - **adapter/in/rest:** validated request records, response records, route/role annotations, and conversion into service calls. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT.
-- **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildStore` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
+- **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
-Persistence ports (`UserStore`, `GameDataStore`, `BuildStore`, `VoteStore`, `CommentStore`) are real boundaries between application behavior and storage. There is no input interface per service. Read-only game-data routes use their store directly because they have no additional use-case rules.
+The outbound repositories are real boundaries between application behavior and storage. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
 
 `vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details and VoteService for scores. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 
@@ -39,8 +41,8 @@ React form → POST /api/builds with bearer JWT
   → Quarkus verifies signature, issuer, expiry, and role
   → BuildRequest Bean Validation
   → BuildService.create(actor UUID, Draft)
-  → GameDataStore validates IDs independently
-  → Build domain record → BuildStore → MapStruct → JPA
+  → GameDataRepository validates IDs independently
+  → Build domain record → BuildRepository → MapStruct → JPA
   → transaction commit in PostgreSQL
   → response DTO with public author, loadout, timestamps, score
 ```

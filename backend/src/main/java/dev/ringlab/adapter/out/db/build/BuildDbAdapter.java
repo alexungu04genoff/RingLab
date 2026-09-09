@@ -1,8 +1,8 @@
 package dev.ringlab.adapter.out.db.build;
 
-import dev.ringlab.application.build.port.out.BuildStore;
 import dev.ringlab.adapter.out.db.vote.VoteDbEntity;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.port.out.BuildRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -18,7 +18,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
-public class BuildDbAdapter implements BuildStore {
+public class BuildDbAdapter implements BuildRepository {
   private final EntityManager em;
   private final BuildDbMapper mapper;
 

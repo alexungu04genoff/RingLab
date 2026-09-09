@@ -1,9 +1,9 @@
 package dev.ringlab.adapter.in.rest.gamedata;
 
-import dev.ringlab.application.gamedata.port.out.GameDataStore;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
+import dev.ringlab.port.out.GameDataRepository;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.*;
@@ -32,27 +32,27 @@ public class GameDataRestResource {
     }
   }
 
-  private final GameDataStore store;
+  private final GameDataRepository repository;
 
-  public GameDataRestResource(GameDataStore store) {
-    this.store = store;
+  public GameDataRestResource(GameDataRepository repository) {
+    this.repository = repository;
   }
 
   @GET
   @Path("racers")
   public List<RacerResponse> racers() {
-    return store.listRacers().stream().map(RacerResponse::from).toList();
+    return repository.listRacers().stream().map(RacerResponse::from).toList();
   }
 
   @GET
   @Path("machines")
   public List<MachineResponse> machines() {
-    return store.listMachines().stream().map(MachineResponse::from).toList();
+    return repository.listMachines().stream().map(MachineResponse::from).toList();
   }
 
   @GET
   @Path("gadgets")
   public List<GadgetResponse> gadgets() {
-    return store.listGadgets().stream().map(GadgetResponse::from).toList();
+    return repository.listGadgets().stream().map(GadgetResponse::from).toList();
   }
 }

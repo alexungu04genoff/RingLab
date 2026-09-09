@@ -1,9 +1,9 @@
 package dev.ringlab.application.comment;
 
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.comment.port.out.CommentStore;
 import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.application.AppException;
+import dev.ringlab.port.out.CommentRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -11,10 +11,10 @@ import java.util.*;
 
 @ApplicationScoped
 public class CommentService {
-  private final CommentStore comments;
+  private final CommentRepository comments;
   private final BuildService builds;
 
-  public CommentService(CommentStore comments, BuildService builds) {
+  public CommentService(CommentRepository comments, BuildService builds) {
     this.comments = comments;
     this.builds = builds;
   }

@@ -1,9 +1,9 @@
-package dev.ringlab.application.vote.port.out;
+package dev.ringlab.port.out;
 
 import dev.ringlab.domain.vote.Vote;
 import java.util.UUID;
 
-public interface VoteStore {
+public interface VoteRepository {
   void put(Vote vote);
 
   void remove(UUID userId, UUID buildId);

@@ -1,10 +1,10 @@
-package dev.ringlab.application.auth.port.out;
+package dev.ringlab.port.out;
 
 import dev.ringlab.domain.auth.User;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface UserStore {
+public interface UserRepository {
   Optional<User> byId(UUID id);
 
   Optional<User> byUsername(String username);
