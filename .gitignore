@@ -1,0 +1,8 @@
+.tools/
+backend/target/
+frontend/node_modules/
+frontend/dist/
+.env
+*.log
+backend/.keys/
+frontend/*.tsbuildinfo
