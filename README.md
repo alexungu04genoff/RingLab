@@ -10,15 +10,18 @@ A small community build-sharing platform for a bachelor's thesis, using **Sonic 
 
 ```text
 backend/src/main/java/dev/ringlab/
+  domain/{auth,build,comment,gamedata,vote}/
+               framework-independent domain records
+  application/{auth,build,comment,gamedata,vote}/
+               application services
+  port/out/
+               UserRepository, BuildRepository, CommentRepository,
+               GameDataRepository and VoteRepository contracts
   adapter/in/rest/{auth,build,comment,gamedata,vote}/
                REST entry points, DTOs and current JWT identity
   adapter/out/db/{auth,build,comment,gamedata,vote}/
                DbEntity, DbMapper and DbAdapter persistence types
-  application/{auth,build,comment,gamedata,vote}/
-               services and existing port/out persistence interfaces
   application/AppException.java
-  domain/{auth,build,comment,gamedata,vote}/
-               framework-independent domain records
 backend/src/main/resources/db/migration/
 frontend/src/
   pages/       route-level screens
