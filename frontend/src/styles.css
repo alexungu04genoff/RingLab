@@ -386,6 +386,57 @@ main {
   max-width: 440px;
   margin: 0 auto 24px;
 }
+.empty-intro {
+  max-width: 540px !important;
+}
+.empty-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.explore-state {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 24px;
+  background: var(--panel);
+}
+.explore-state h2,
+.explore-state p {
+  margin: 0;
+}
+.explore-state p {
+  font-size: 13px;
+  margin-top: 4px;
+}
+.loading-state {
+  min-height: 118px;
+}
+.loading-ring {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 auto;
+  border: 6px solid #3b4530;
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: loading-spin 0.9s linear infinite;
+}
+.error-state {
+  display: block;
+  background: #20171c;
+  border-color: #75414e;
+}
+.error-state .error {
+  margin: 17px 0 0;
+}
+@keyframes loading-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 .ring {
   width: 45px;
   height: 45px;
@@ -972,6 +1023,10 @@ hr {
   }
   .section-heading h2 {
     font-size: 18px;
+  }
+  .explore-state {
+    align-items: flex-start;
+    padding: 20px;
   }
   .auth-form {
     padding: 25px;

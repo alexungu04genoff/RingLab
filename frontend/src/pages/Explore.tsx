@@ -24,6 +24,14 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   if (machine) params.set("machineId", machine);
   if (mine && user) params.set("authorId", user.id);
   const builds = useLoad<BuildPage>(`/builds?${params}`);
+  const hasActiveFilters = Boolean(query || racer || machine);
+  const clearFilters = () => {
+    setSearch("");
+    setQuery("");
+    setRacer("");
+    setMachine("");
+    setPage(0);
+  };
   return (
     <>
       <div className="page-heading">
@@ -94,12 +102,29 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
       </section>
-      <ErrorNotice message={builds.error || racers.error || machines.error} />
+      <ErrorNotice message={racers.error || machines.error} />
       <div className="section-heading">
         <h2>{mine ? "My builds" : "Community builds"}</h2>
         <span>{builds.data ? `${builds.data.total} builds` : ""}</span>
       </div>
-      {builds.loading && <p role="status">Loading the garage…</p>}
+      {builds.loading && (
+        <div className="explore-state loading-state" role="status">
+          <span className="loading-ring" aria-hidden="true" />
+          <div>
+            <h2>Loading community builds</h2>
+            <p>Getting the latest shared setups ready for you.</p>
+          </div>
+        </div>
+      )}
+      {builds.error && (
+        <div className="explore-state error-state">
+          <div>
+            <h2>We couldn’t load the builds</h2>
+            <p>Your search and filters are still here. Please try again shortly.</p>
+          </div>
+          <ErrorNotice message={builds.error} />
+        </div>
+      )}
       {builds.data &&
         (builds.data.items.length ? (
           <div className="build-grid">
@@ -110,15 +135,45 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         ) : (
           <div className="empty">
             <div className="ring" />
-            <h2>No builds here yet</h2>
-            <p>
-              {query || racer || machine
-                ? "Try another search or filter."
-                : "Put a racer, stock machine and your favorite gadgets on the grid."}
-            </p>
-            <Link className="button primary" to="/builds/new">
-              Create a build
-            </Link>
+            {hasActiveFilters ? (
+              <>
+                <h2>No matching builds</h2>
+                <p>No builds matched your current search or filters.</p>
+                <button type="button" onClick={clearFilters}>
+                  Clear search and filters
+                </button>
+              </>
+            ) : !mine ? (
+              <>
+                <h2>Be the first to share a build</h2>
+                <p className="empty-intro">
+                  A RingLab build combines one racer, one stock machine, and optional
+                  ordered gadgets. Share your setup with the community when it is ready.
+                </p>
+                <div className="empty-actions">
+                  <Link className="button primary" to="/game-data">
+                    Browse game collection
+                  </Link>
+                  {user ? (
+                    <Link className="button" to="/builds/new">
+                      Create the first build
+                    </Link>
+                  ) : (
+                    <Link className="button" to="/register">
+                      Create an account to share
+                    </Link>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <h2>No builds here yet</h2>
+                <p>Create a build to see it in your garage.</p>
+                <Link className="button primary" to="/builds/new">
+                  Create a build
+                </Link>
+              </>
+            )}
           </div>
         ))}
       {builds.data && builds.data.total > 12 && (
