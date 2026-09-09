@@ -173,7 +173,10 @@ export function BuildDetails() {
               </form>
             ) : (
               <p>
-                <Link to="/login">Log in</Link> to join the conversation.
+                <Link to="/login" state={{ from: `/builds/${b.id}` }}>
+                  Log in
+                </Link>{" "}
+                to join the conversation.
               </p>
             )}
             {comments.loading && <p role="status">Loading comments…</p>}
@@ -257,7 +260,10 @@ export function BuildDetails() {
               <p className="muted">Click your active vote to remove it.</p>
             ) : (
               <p>
-                <Link to="/login">Log in</Link> to vote.
+                <Link to="/login" state={{ from: `/builds/${b.id}` }}>
+                  Log in
+                </Link>{" "}
+                to vote.
               </p>
             )}
           </section>

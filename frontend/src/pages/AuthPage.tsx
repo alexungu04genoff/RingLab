@@ -112,7 +112,10 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         </button>
         <p>
           {register ? "Already have an account?" : "New to RingLab?"}{" "}
-          <Link to={register ? "/login" : "/register"}>
+          <Link
+            to={register ? "/login" : "/register"}
+            state={{ from: location.state?.from }}
+          >
             {register ? "Log in" : "Register"}
           </Link>
         </p>
