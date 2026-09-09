@@ -303,6 +303,105 @@ public abstract class ApiContract {
   }
 
   @Test
+  void buildListRetainsEveryFilterOrderingPaginationAndLiteralSearch() {
+    var owner = register();
+    var otherAuthor = register();
+    var racers = ids("racers");
+    var machines = ids("machines");
+
+    var literalBuild = draft();
+    literalBuild.put("title", "Literal %_ build");
+    literalBuild.put("racerId", racers.getFirst());
+    literalBuild.put("machineId", machines.getLast());
+    String first =
+        request(owner.token).body(literalBuild).post("/api/builds").then().statusCode(200).extract().path("id");
+
+    var newerBuild = draft();
+    newerBuild.put("title", "Other owner build");
+    newerBuild.put("racerId", racers.get(1));
+    newerBuild.put("machineId", machines.getFirst());
+    String second =
+        request(owner.token).body(newerBuild).post("/api/builds").then().statusCode(200).extract().path("id");
+
+    var otherAuthorBuild = draft();
+    otherAuthorBuild.put("title", "Other author build");
+    request(otherAuthor.token)
+        .body(otherAuthorBuild)
+        .post("/api/builds")
+        .then()
+        .statusCode(200);
+    vote(owner, first, 1).then().statusCode(200);
+
+    given().queryParam("size", 50).get("/api/builds").then().statusCode(200).body("total", greaterThanOrEqualTo(3));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("search", "%_")
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("items[0].id", equalTo(first));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("racerId", racers.getFirst())
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("items[0].id", equalTo(first));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("machineId", machines.getLast())
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("items[0].id", equalTo(first));
+    given()
+        .queryParam("authorId", owner.id)
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(2))
+        .body("items[0].id", equalTo(second));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("racerId", racers.getFirst())
+        .queryParam("machineId", machines.getLast())
+        .queryParam("search", "literal")
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("items[0].id", equalTo(first));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("sort", "score")
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("items[0].id", equalTo(first));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("size", 1)
+        .queryParam("page", 0)
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(2))
+        .body("items[0].id", equalTo(second));
+    given()
+        .queryParam("authorId", owner.id)
+        .queryParam("size", 1)
+        .queryParam("page", 1)
+        .get("/api/builds")
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(2))
+        .body("items[0].id", equalTo(first));
+  }
+
+  @Test
   void deletingBuildCascadesItsCommentsAndVotes() {
     var owner = register();
     String id = create(owner);
