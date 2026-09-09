@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
-import type { BuildPage, GameItem } from "../types";
+import type { BuildPage, Machine, Racer } from "../types";
 export function Explore({ mine = false }: { mine?: boolean }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -12,8 +12,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const [machine, setMachine] = useState("");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(0);
-  const racers = useLoad<GameItem[]>("/racers");
-  const machines = useLoad<GameItem[]>("/machines");
+  const racers = useLoad<Racer[]>("/racers");
+  const machines = useLoad<Machine[]>("/machines");
   const params = new URLSearchParams({
     search: query,
     sort,

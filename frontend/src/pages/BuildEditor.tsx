@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import { ErrorNotice, ItemSelect } from "../components";
 import { moveGadget, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, GameItem } from "../types";
+import type { Build, BuildDraft, Gadget, Machine, Racer } from "../types";
 export function BuildEditor() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -21,9 +21,9 @@ export function BuildEditor() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [allowed, setAllowed] = useState(!id);
-  const racers = useLoad<GameItem[]>("/racers");
-  const machines = useLoad<GameItem[]>("/machines");
-  const gadgets = useLoad<GameItem[]>("/gadgets");
+  const racers = useLoad<Racer[]>("/racers");
+  const machines = useLoad<Machine[]>("/machines");
+  const gadgets = useLoad<Gadget[]>("/gadgets");
   useEffect(() => {
     if (!id) return;
     const controller = new AbortController();

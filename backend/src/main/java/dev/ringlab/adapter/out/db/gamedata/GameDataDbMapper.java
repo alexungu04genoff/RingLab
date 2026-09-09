@@ -5,7 +5,7 @@ import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.Racer;
 import org.mapstruct.*;
 
-@Mapper(componentModel = "jakarta-cdi", unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = "jakarta-cdi", unmappedTargetPolicy = ReportingPolicy.ERROR)
 public interface GameDataDbMapper {
   Racer toDomain(RacerDbEntity entity);
 

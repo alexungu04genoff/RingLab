@@ -4,10 +4,21 @@ export interface User {
   email: string;
   createdAt: string;
 }
-export interface GameItem {
+export interface Racer {
   id: string;
   name: string;
-  racingType: string | null;
+  racingType: string;
+  imagePath: string | null;
+}
+export interface Machine {
+  id: string;
+  name: string;
+  racingType: string;
+  imagePath: string | null;
+}
+export interface Gadget {
+  id: string;
+  name: string;
   description: string | null;
   slotCost: number | null;
   imagePath: string | null;
@@ -17,9 +28,9 @@ export interface Build {
   title: string;
   description: string;
   author: Pick<User, "id" | "username">;
-  racer: GameItem;
-  machine: GameItem;
-  gadgets: GameItem[];
+  racer: Racer;
+  machine: Machine;
+  gadgets: Gadget[];
   createdAt: string;
   updatedAt: string;
   score: number;

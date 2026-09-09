@@ -1,6 +1,7 @@
 package dev.ringlab;
 
 import static io.restassured.RestAssured.given;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.*;
 
 import io.restassured.response.Response;
@@ -119,15 +120,37 @@ public abstract class ApiContract {
 
   @Test
   void publicCatalogIsExactAndPublicMutationIsRejected() {
-    given().get("/api/racers").then().statusCode(200).body("size()", equalTo(6));
-    given().get("/api/machines").then().statusCode(200).body("size()", equalTo(10));
-    given()
-        .get("/api/gadgets")
-        .then()
-        .statusCode(200)
-        .body("size()", equalTo(20))
-        .body("slotCost", everyItem(nullValue()))
-        .body("description", everyItem(nullValue()));
+    Map<String, Object> racer =
+        given()
+            .get("/api/racers")
+            .then()
+            .statusCode(200)
+            .body("size()", equalTo(6))
+            .extract()
+            .path("[0]");
+    Map<String, Object> machine =
+        given()
+            .get("/api/machines")
+            .then()
+            .statusCode(200)
+            .body("size()", equalTo(10))
+            .extract()
+            .path("[0]");
+    Map<String, Object> gadget =
+        given()
+            .get("/api/gadgets")
+            .then()
+            .statusCode(200)
+            .body("size()", equalTo(20))
+            .extract()
+            .path("[0]");
+
+    assertThat(
+        racer, allOf(hasKey("racingType"), not(hasKey("description")), not(hasKey("slotCost"))));
+    assertThat(
+        machine, allOf(hasKey("racingType"), not(hasKey("description")), not(hasKey("slotCost"))));
+    assertThat(
+        gadget, allOf(hasKey("description"), hasKey("slotCost"), not(hasKey("racingType"))));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);
   }
 

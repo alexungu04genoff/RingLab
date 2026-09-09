@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import type { Build, GameItem } from "./types";
+import type { Build, Gadget, Machine, Racer } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -12,14 +12,15 @@ export function Artwork({
   item,
   compact = false,
 }: {
-  item: GameItem;
+  item: Racer | Machine | Gadget;
   compact?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const local = item.imagePath?.startsWith("/assets/");
+  const racingType = "racingType" in item ? item.racingType : "gadget";
   return (
     <div
-      className={`artwork ${compact ? "compact" : ""} type-${item.racingType?.toLowerCase() || "gadget"}`}
+      className={`artwork ${compact ? "compact" : ""} type-${racingType.toLowerCase()}`}
     >
       {local && !failed ? (
         <img
@@ -80,7 +81,7 @@ export function ItemSelect({
   optional = false,
 }: {
   label: string;
-  items: GameItem[];
+  items: Array<Racer | Machine>;
   value: string;
   onChange: (value: string) => void;
   optional?: boolean;
@@ -101,7 +102,7 @@ export function ItemSelect({
         {items.map((i) => (
           <option key={i.id} value={i.id}>
             {i.name}
-            {i.racingType ? ` · ${i.racingType.toLowerCase()}` : ""}
+            {` · ${i.racingType.toLowerCase()}`}
           </option>
         ))}
       </select>

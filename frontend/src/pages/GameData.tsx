@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Artwork, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
-import type { GameItem } from "../types";
+import type { Gadget, Machine, Racer } from "../types";
 export function GameData() {
   const [tab, setTab] = useState("racers");
-  const items = useLoad<GameItem[]>(`/${tab}`);
+  const items = useLoad<Array<Racer | Machine | Gadget>>(`/${tab}`);
   return (
     <>
       <div className="page-heading">
@@ -34,8 +34,8 @@ export function GameData() {
             <Artwork item={i} compact />
             <div>
               <h2>{i.name}</h2>
-              {i.racingType && <span className="eyebrow">{i.racingType}</span>}
-              {i.description && <p>{i.description}</p>}
+              {"racingType" in i && <span className="eyebrow">{i.racingType}</span>}
+              {"description" in i && i.description && <p>{i.description}</p>}
             </div>
           </article>
         ))}

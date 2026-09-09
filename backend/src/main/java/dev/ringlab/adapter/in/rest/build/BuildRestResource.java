@@ -4,7 +4,9 @@ import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.build.port.out.BuildStore;
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.ItemResponse;
+import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.MachineResponse;
+import dev.ringlab.adapter.in.rest.gamedata.GameDataRestResource.RacerResponse;
 import dev.ringlab.application.gamedata.port.out.GameDataStore;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.application.vote.VoteService;
@@ -38,9 +40,9 @@ public class BuildRestResource {
       String title,
       String description,
       AuthorResponse author,
-      ItemResponse racer,
-      ItemResponse machine,
-      List<ItemResponse> gadgets,
+      RacerResponse racer,
+      MachineResponse machine,
+      List<GadgetResponse> gadgets,
       Instant createdAt,
       Instant updatedAt,
       long score) {}
@@ -66,16 +68,16 @@ public class BuildRestResource {
     this.actor = actor;
   }
 
-  private ItemResponse racerItem(UUID id) {
-    return ItemResponse.from(game.findRacer(id).orElseThrow());
+  private RacerResponse racerItem(UUID id) {
+    return RacerResponse.from(game.findRacer(id).orElseThrow());
   }
 
-  private ItemResponse machineItem(UUID id) {
-    return ItemResponse.from(game.findMachine(id).orElseThrow());
+  private MachineResponse machineItem(UUID id) {
+    return MachineResponse.from(game.findMachine(id).orElseThrow());
   }
 
-  private ItemResponse gadgetItem(UUID id) {
-    return ItemResponse.from(game.findGadget(id).orElseThrow());
+  private GadgetResponse gadgetItem(UUID id) {
+    return GadgetResponse.from(game.findGadget(id).orElseThrow());
   }
 
   private BuildResponse response(Build b) {

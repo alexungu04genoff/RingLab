@@ -28,9 +28,9 @@ Persistence ports (`UserStore`, `GameDataStore`, `BuildStore`, `VoteStore`, `Com
 
 ## Mapping and flow
 
-MapStruct generates entity/domain mappings for users, builds, comments, and the three game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
+MapStruct generates entity/domain mappings for users, builds, comments, and the three game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
-`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, machines, and gadgets, but the domain and port are strongly typed: `listRacers`/`findRacer`, `listMachines`/`findMachine`, and `listGadgets`/`findGadget`. Each existing Db entity maps to its corresponding domain record. The REST layer deliberately uses one `ItemResponse` with overloaded conversions to preserve its public JSON shape. MapStruct configuration and the dynamic build-filter query are unchanged. JPQL entity references follow the renamed Java entities; table names and migrations are unchanged.
+`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, machines, and gadgets, but the domain and port are strongly typed: `listRacers`/`findRacer`, `listMachines`/`findMachine`, and `listGadgets`/`findGadget`. Each existing Db entity maps to its corresponding domain record. The REST layer uses explicit `RacerResponse`, `MachineResponse`, and `GadgetResponse` DTOs, including when build responses assemble a loadout. The dynamic build-filter query uses JPA Criteria. JPQL entity references follow the renamed Java entities; table names and migrations are unchanged.
 
 Create-build flow:
 
