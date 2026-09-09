@@ -17,6 +17,7 @@ export function BuildDetails() {
     revision,
   );
   const [vote, setVote] = useState<Vote>();
+  const [displayedScore, setDisplayedScore] = useState<number>();
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,6 +45,9 @@ export function BuildDetails() {
     }
   }
   const b = build.data;
+  useEffect(() => {
+    if (b) setDisplayedScore(b.score);
+  }, [b?.id, b?.score]);
   if (!b)
     return (
       <>
@@ -229,7 +233,7 @@ export function BuildDetails() {
           <section className="panel vote-panel">
             <div className="eyebrow">COMMUNITY SCORE</div>
             <strong className="big-score" aria-live="polite">
-              {vote?.score ?? b.score}
+              {displayedScore ?? b.score}
             </strong>
             <div className="vote-buttons">
               {[1, -1].map((v) => (
@@ -240,15 +244,17 @@ export function BuildDetails() {
                   disabled={!user || busy || !vote}
                   onClick={() =>
                     act(async () =>
-                      setVote(
-                        await api<Vote>(
+                      {
+                        const updatedVote = await api<Vote>(
                           `/builds/${id}/vote`,
                           json(
                             vote?.myVote === v ? "DELETE" : "PUT",
                             vote?.myVote === v ? undefined : { value: v },
                           ),
-                        ),
-                      ),
+                        );
+                        setVote(updatedVote);
+                        setDisplayedScore(updatedVote.score);
+                      }
                     )
                   }
                 >
