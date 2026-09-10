@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
-import { ErrorNotice, ItemSelect } from "../components";
+import { Artwork, ErrorNotice, ItemSelect } from "../components";
 import { moveGadget, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, Machine, Racer } from "../types";
@@ -53,6 +53,8 @@ export function BuildEditor() {
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
+  const selectedRacer = racers.data?.find((r) => r.id === draft.racerId);
+  const selectedMachine = machines.data?.find((m) => m.id === draft.machineId);
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -171,52 +173,90 @@ export function BuildEditor() {
                 </p>
               </section>
             </div>
-            <aside className="panel selection">
+            <aside className="panel selection build-preview">
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
-              <p>
-                {racers.data?.find((r) => r.id === draft.racerId)?.name ||
-                  "Choose a racer"}
-              </p>
-              <p>
-                {machines.data?.find((m) => m.id === draft.machineId)?.name ||
-                  "Choose a machine"}
-              </p>
-              <hr />
+              <div className="preview-core">
+                <section className="preview-item">
+                  <span className="preview-label">Selected racer</span>
+                  {selectedRacer ? (
+                    <Artwork item={selectedRacer} />
+                  ) : (
+                    <div className="preview-placeholder" aria-hidden="true">
+                      R
+                    </div>
+                  )}
+                  <strong>{selectedRacer?.name || "Choose a racer"}</strong>
+                  <span className="preview-meta">
+                    {selectedRacer
+                      ? selectedRacer.racingType.toLowerCase()
+                      : "Your driver appears here"}
+                  </span>
+                </section>
+                <section className="preview-item">
+                  <span className="preview-label">Stock machine</span>
+                  {selectedMachine ? (
+                    <Artwork item={selectedMachine} />
+                  ) : (
+                    <div className="preview-placeholder" aria-hidden="true">
+                      M
+                    </div>
+                  )}
+                  <strong>{selectedMachine?.name || "Choose a machine"}</strong>
+                  <span className="preview-meta">
+                    {selectedMachine
+                      ? selectedMachine.racingType.toLowerCase()
+                      : "Your machine appears here"}
+                  </span>
+                </section>
+              </div>
               <h3>Gadgets · {draft.gadgetIds.length}</h3>
               {draft.gadgetIds.length === 0 && (
-                <p className="muted">No gadgets selected.</p>
+                <p className="preview-empty">
+                  Select gadgets to add them to the loadout.
+                </p>
               )}
-              <ol className="selected-gadgets">
-                {draft.gadgetIds.map((g, i) => (
-                  <li key={`${g}-${i}`}>
-                    <span>
-                      {gadgets.data?.find((item) => item.id === g)?.name}
-                    </span>
-                    <div>
-                      <button
-                        type="button"
-                        aria-label={`Move gadget ${i + 1} up`}
-                        disabled={i === 0}
-                        onClick={() =>
-                          field("gadgetIds", moveGadget(draft.gadgetIds, i, -1))
-                        }
-                      >
-                        ↑
-                      </button>
-                      <button
-                        type="button"
-                        aria-label={`Move gadget ${i + 1} down`}
-                        disabled={i === draft.gadgetIds.length - 1}
-                        onClick={() =>
-                          field("gadgetIds", moveGadget(draft.gadgetIds, i, 1))
-                        }
-                      >
-                        ↓
-                      </button>
-                    </div>
-                  </li>
-                ))}
+              <ol className="selected-gadgets preview-gadgets">
+                {draft.gadgetIds.map((gadgetId, i) => {
+                  const gadget = gadgets.data?.find((item) => item.id === gadgetId);
+                  return (
+                    <li key={`${gadgetId}-${i}`}>
+                      <span className="gadget-number">{i + 1}</span>
+                      {gadget ? (
+                        <Artwork item={gadget} compact />
+                      ) : (
+                        <span className="gadget-placeholder" aria-hidden="true">
+                          ?
+                        </span>
+                      )}
+                      <span className="gadget-name">
+                        {gadget?.name || "Loading gadget…"}
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          aria-label={`Move gadget ${i + 1} up`}
+                          disabled={i === 0}
+                          onClick={() =>
+                            field("gadgetIds", moveGadget(draft.gadgetIds, i, -1))
+                          }
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          aria-label={`Move gadget ${i + 1} down`}
+                          disabled={i === draft.gadgetIds.length - 1}
+                          onClick={() =>
+                            field("gadgetIds", moveGadget(draft.gadgetIds, i, 1))
+                          }
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ol>
               <button
                 className="primary"
