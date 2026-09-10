@@ -11,7 +11,12 @@
   font-weight: 400;
   color-scheme: dark;
   --muted: #9ba3b4;
-  --accent: #d5f65c;
+  --accent: #38a9ff;
+  --accent-hover: #78c9ff;
+  --accent-ink: #061b2e;
+  --accent-muted: #24557b;
+  --accent-selected: #163d5c;
+  --accent-selected-text: #c8ecff;
   --border: #2b303c;
   --panel: #191d26;
 }
@@ -59,10 +64,10 @@ button:disabled {
 .primary {
   background: var(--accent);
   border-color: var(--accent);
-  color: #172008;
+  color: var(--accent-ink);
 }
 .primary:hover {
-  background: #e2ff85;
+  background: var(--accent-hover);
 }
 .danger {
   color: #ffabb0;
@@ -263,7 +268,7 @@ main {
 }
 .build-card:hover {
   transform: translateY(-3px);
-  border-color: #657b36;
+  border-color: var(--accent-muted);
 }
 .card-art {
   height: 145px;
@@ -419,7 +424,7 @@ main {
   width: 38px;
   height: 38px;
   flex: 0 0 auto;
-  border: 6px solid #3b4530;
+  border: 6px solid #263f55;
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: loading-spin 0.9s linear infinite;
@@ -702,9 +707,9 @@ hr {
   accent-color: var(--accent);
 }
 .selected {
-  border-color: #a0bd42 !important;
-  background: #303b24 !important;
-  color: #e3fc9d !important;
+  border-color: var(--accent) !important;
+  background: var(--accent-selected) !important;
+  color: var(--accent-selected-text) !important;
 }
 .gadget-options + .muted {
   margin-top: 18px;
