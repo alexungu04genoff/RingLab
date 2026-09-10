@@ -51,8 +51,13 @@ In one terminal:
 
 ```sh
 cd backend
+java scripts/GenerateJwtKeys.java .keys
 mvn quarkus:dev
 ```
+
+Generate the development key pair once. It is stored in the ignored `backend/.keys/` directory;
+Quarkus uses it to sign local JWTs. Restarting development does not invalidate sessions while the
+same local keys remain in place.
 
 In a second terminal:
 
@@ -78,7 +83,7 @@ Add a new numbered migration when changing schema or seed data. Do not edit migr
 
 Usernames and emails are normalized to lowercase and independently unique. Usernames contain 3–30 ASCII letters, numbers, or underscores. Passwords use bcrypt with its library default cost (10); registration accepts 8–72 characters and rejects passwords exceeding bcrypt's 72-byte UTF-8 limit. Hashes never appear in REST responses.
 
-Login and registration return an RSA-signed JWT with the user's UUID as its subject and the `user` role. Tokens expire after one hour. Quarkus generates temporary signing keys in development and tests. Restarting development can invalidate existing sessions; log in again.
+Login and registration return an RSA-signed JWT with the user's UUID as its subject and the `user` role. Tokens expire after one hour. Development uses the local ignored key pair generated during setup. Restarting development does not invalidate existing sessions while those keys remain in place.
 
 The client keeps the bearer token in **sessionStorage**, surviving refresh in the same tab. Every authenticated request includes `Authorization: Bearer …`. A 401 clears the client session. Backend role checks protect mutations; application services separately verify resource ownership. Hidden buttons are only a UI convenience.
 
