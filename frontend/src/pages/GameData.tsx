@@ -2,8 +2,15 @@ import { useState } from "react";
 import { Artwork, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
 import type { Gadget, Machine, Racer } from "../types";
+
+const collections = [
+  { key: "racers", label: "Racers" },
+  { key: "machines", label: "Stock Machines" },
+  { key: "gadgets", label: "Gadgets" },
+] as const;
+
 export function GameData() {
-  const [tab, setTab] = useState("racers");
+  const [tab, setTab] = useState<(typeof collections)[number]["key"]>("racers");
   const items = useLoad<Array<Racer | Machine | Gadget>>(`/${tab}`);
   return (
     <>
@@ -11,18 +18,25 @@ export function GameData() {
         <div>
           <div className="eyebrow accent">CROSSWORLDS COLLECTION</div>
           <h1>Know your setup.</h1>
-          <p>Racers, stock machines and gadgets available in RingLab.</p>
+          <p>Browse the pieces available for every RingLab build.</p>
         </div>
       </div>
+      <section className="collection-intro" aria-label="How a RingLab build works">
+        <strong>How a build comes together</strong>
+        <p>
+          Choose one racer, one complete stock machine, and optional gadgets in the order you
+          want them shown.
+        </p>
+      </section>
       <div className="tabs">
-        {["racers", "machines", "gadgets"].map((t) => (
+        {collections.map(({ key, label }) => (
           <button
-            key={t}
-            className={t === tab ? "selected" : ""}
-            aria-pressed={t === tab}
-            onClick={() => setTab(t)}
+            key={key}
+            className={key === tab ? "selected" : ""}
+            aria-pressed={key === tab}
+            onClick={() => setTab(key)}
           >
-            {t}
+            {label}
           </button>
         ))}
       </div>

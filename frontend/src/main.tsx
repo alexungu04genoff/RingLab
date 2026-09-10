@@ -25,6 +25,7 @@ function App() {
             <NavLink to="/" end>
               Explore
             </NavLink>
+            <NavLink to="/game-data">Game Collection</NavLink>
             <NavLink to="/builds/new">Create Build</NavLink>
             <NavLink to="/my-builds">My Builds</NavLink>
           </nav>

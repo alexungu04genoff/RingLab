@@ -908,6 +908,25 @@ hr {
 .tabs button {
   text-transform: capitalize;
 }
+.collection-intro {
+  max-width: 650px;
+  margin: -7px 0 23px;
+  padding: 14px 17px;
+  border-left: 3px solid var(--accent);
+  background: #161d25;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.collection-intro strong {
+  display: block;
+  margin-bottom: 3px;
+  color: var(--text);
+  font-size: 12px;
+}
+.collection-intro p {
+  margin: 0;
+}
 .collection {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1011,7 +1030,7 @@ hr {
     order: 2;
     flex-basis: 100%;
     justify-content: center;
-    gap: 35px;
+    gap: 16px;
     border-top: 1px solid var(--border);
     padding-top: 4px;
   }
