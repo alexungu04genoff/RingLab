@@ -6,6 +6,8 @@ import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.comment.CommentService;
 import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
+import dev.ringlab.adapter.in.rest.comment.request.CommentRequest;
+import dev.ringlab.adapter.in.rest.comment.response.CommentResponse;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -19,10 +21,6 @@ import java.util.*;
 @Consumes(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class CommentRestResource {
-  public record CommentRequest(@NotBlank @Size(max = 2000) String text) {}
-
-  public record CommentResponse(
-      UUID id, UUID buildId, UUID authorId, String author, String text, Instant createdAt) {}
 
   private final CommentService service;
   private final AuthService users;

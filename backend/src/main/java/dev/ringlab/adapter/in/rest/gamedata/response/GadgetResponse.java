@@ -1,4 +1,4 @@
-package dev.ringlab.adapter.in.rest.gamedata;
+package dev.ringlab.adapter.in.rest.gamedata.response;
 
 import dev.ringlab.domain.gamedata.Gadget;
 import java.util.UUID;

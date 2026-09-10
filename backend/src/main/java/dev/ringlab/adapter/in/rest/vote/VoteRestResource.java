@@ -3,6 +3,8 @@ package dev.ringlab.adapter.in.rest.vote;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
+import dev.ringlab.adapter.in.rest.vote.request.VoteRequest;
+import dev.ringlab.adapter.in.rest.vote.response.VoteResponse;
 import dev.ringlab.application.vote.VoteService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -17,13 +19,6 @@ import java.util.UUID;
 @Consumes(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class VoteRestResource {
-  public record VoteRequest(@NotNull Integer value) {}
-
-  public record VoteResponse(long score, int myVote) {
-    static VoteResponse from(VoteService.Result r) {
-      return new VoteResponse(r.score(), r.myVote());
-    }
-  }
 
   private final VoteService service;
   private final CurrentUser actor;

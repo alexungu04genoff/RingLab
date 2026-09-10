@@ -2,6 +2,9 @@ package dev.ringlab.adapter.in.rest.gamedata;
 
 import lombok.RequiredArgsConstructor;
 
+import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;

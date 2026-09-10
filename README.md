@@ -18,7 +18,8 @@ backend/src/main/java/dev/ringlab/
                UserRepository, BuildRepository, CommentRepository,
                GameDataRepository and VoteRepository contracts
   adapter/in/rest/{auth,build,comment,gamedata,vote}/
-               REST entry points, DTOs and current JWT identity
+               REST entry points and current JWT identity
+               feature-local request/ and response/ DTO packages
   adapter/out/db/{auth,build,comment,gamedata,vote}/
                DbEntity, DbMapper and DbAdapter persistence types
   application/AppException.java

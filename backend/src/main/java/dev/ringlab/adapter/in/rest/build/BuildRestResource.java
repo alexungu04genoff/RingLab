@@ -5,9 +5,13 @@ import lombok.RequiredArgsConstructor;
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.adapter.in.rest.gamedata.GadgetResponse;
-import dev.ringlab.adapter.in.rest.gamedata.MachineResponse;
-import dev.ringlab.adapter.in.rest.gamedata.RacerResponse;
+import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
+import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
+import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
+import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
@@ -17,7 +21,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
-import java.time.Instant;
 import java.util.*;
 
 @Path("/api/builds")
@@ -25,32 +28,6 @@ import java.util.*;
 @Consumes(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class BuildRestResource {
-  public record BuildRequest(
-      @NotBlank @Size(max = 120) String title,
-      @NotNull @Size(max = 10000) String description,
-      @NotNull UUID racerId,
-      @NotNull UUID machineId,
-      @NotNull List<@NotNull UUID> gadgetIds) {
-    BuildService.Draft draft() {
-      return new BuildService.Draft(title, description, racerId, machineId, gadgetIds);
-    }
-  }
-
-  public record AuthorResponse(UUID id, String username) {}
-
-  public record BuildResponse(
-      UUID id,
-      String title,
-      String description,
-      AuthorResponse author,
-      RacerResponse racer,
-      MachineResponse machine,
-      List<GadgetResponse> gadgets,
-      Instant createdAt,
-      Instant updatedAt,
-      long score) {}
-
-  public record PageResponse(List<BuildResponse> items, long total, int page, int size) {}
 
   private final BuildService builds;
   private final AuthService users;
@@ -86,7 +63,7 @@ public class BuildRestResource {
   }
 
   @GET
-  public PageResponse list(
+  public BuildPageResponse list(
       @QueryParam("search") @Size(max = 120) String search,
       @QueryParam("racerId") UUID racer,
       @QueryParam("machineId") UUID machine,
@@ -96,7 +73,7 @@ public class BuildRestResource {
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
     var result =
         builds.list(new BuildRepository.Filter(search, racer, machine, author, sort, page, size));
-    return new PageResponse(
+    return new BuildPageResponse(
         result.items().stream().map(this::response).toList(), result.total(), page, size);
   }
 
