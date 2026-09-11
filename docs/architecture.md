@@ -4,17 +4,18 @@
 
 RingLab has one Quarkus process and one PostgreSQL database. Features are packages within the same deployment, not network services. The React client calls REST. This keeps local startup, transactions, and thesis explanation small while keeping feature responsibilities visible.
 
-Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `port`, and `adapter`. Feature-specific domain and application code remains grouped by `auth`, `gamedata`, `build`, `vote`, and `comment`; outbound contracts are centralized for immediate visibility. The application error type is `application.AppException`; its HTTP adapter is `adapter.in.rest.ErrorRestExceptionMapper`. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
+Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `port`, and `adapter`. Feature-specific domain and application code remains grouped by `auth`, `gamedata`, `build`, `vote`, `comment`, and `news`; outbound contracts are centralized for immediate visibility. The application error type is `application.AppException`; its HTTP adapter is `adapter.in.rest.ErrorRestExceptionMapper`. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
 
 ```text
 dev.ringlab/
-  domain/{auth,build,comment,gamedata,vote}/
-  application/{auth,build,comment,gamedata,vote}/
+  domain/{auth,build,comment,gamedata,news,vote}/
+  application/{auth,build,comment,gamedata,news,vote}/
   port/out/
-    {User,Build,Comment,GameData,Vote}Repository.java
-  adapter/in/rest/{auth,build,comment,gamedata,vote}/
+    {User,Build,Comment,GameData,GameNews,Vote}Repository.java
+  adapter/in/rest/{auth,build,comment,gamedata,news,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
+  adapter/out/steam/
 ```
 
 ## Boundaries
@@ -25,7 +26,16 @@ dev.ringlab/
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
-The outbound repositories are real boundaries between application behavior and storage. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
+The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
+
+PostgreSQL adapters implement persistence ports; `SteamNewsAdapter` implements the outbound REST port `GameNewsRepository`. This demonstrates the same application boundary with two different infrastructure types. Steam HTTP details and JSON records stay in `adapter/out/steam`; the application only requests five latest domain news items.
+
+```text
+React -> RingLab REST -> GameNewsService -> GameNewsRepository
+                                       <- SteamNewsAdapter -> Steam Web API
+```
+
+`GET /api/news` returns an array of `{id, title, url, publishedAt}` response DTOs. The typed Quarkus REST Client uses the public Steam News v2 endpoint, with configurable `STEAM_BASE_URL` and `STEAM_APP_ID` (default 2486820), 2-second connection and 3-second read timeouts. Network, HTTP, and malformed-response failures become a safe 503 `News unavailable` response through the existing application error mapper; logs omit external bodies. No retries, caching, persistence, or synchronization are used. Explore loads news independently and shows a secondary panel with titles, dates, and original links, stacking below builds on smaller screens. It omits article contents entirely, so HTML/BBCode is never rendered; empty and unavailable news leave build browsing usable.
 
 `vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details and VoteService for scores. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 

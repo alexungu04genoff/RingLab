@@ -1289,3 +1289,50 @@ hr {
     grid-template-columns: 1fr;
   }
 }
+.explore-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  gap: 24px;
+}
+.explore-content .build-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.latest-news {
+  align-self: start;
+  margin-top: 29px;
+  padding: 20px;
+  overflow-wrap: anywhere;
+}
+.latest-news h2 {
+  font-size: 18px;
+  margin: 0;
+}
+.latest-news ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.latest-news li {
+  padding: 15px 0;
+  border-top: 1px solid var(--border);
+}
+.latest-news a {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.latest-news time {
+  display: block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+@media (max-width: 1000px) {
+  .explore-content {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 420px) {
+  .explore-content .build-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
+import { LatestNews } from "../LatestNews";
 import type { BuildPage, Machine, Racer } from "../types";
 export function Explore({ mine = false }: { mine?: boolean }) {
   const { user } = useAuth();
@@ -118,99 +119,104 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         </label>
       </section>
       <ErrorNotice message={racers.error || machines.error} />
-      <div className="section-heading">
-        <h2>{mine ? "My builds" : "Community builds"}</h2>
-        <span>{builds.data ? `${builds.data.total} builds` : ""}</span>
-      </div>
-      {builds.loading && (
-        <div className="explore-state loading-state" role="status">
-          <span className="loading-ring" aria-hidden="true" />
-          <div>
-            <h2>Loading community builds</h2>
-            <p>Getting the latest shared setups ready for you.</p>
+      <div className={mine ? undefined : "explore-content"}>
+        <div>
+          <div className="section-heading">
+            <h2>{mine ? "My builds" : "Community builds"}</h2>
+            <span>{builds.data ? `${builds.data.total} builds` : ""}</span>
           </div>
-        </div>
-      )}
-      {builds.error && (
-        <div className="explore-state error-state">
-          <div>
-            <h2>We couldn’t load the builds</h2>
-            <p>Your search and filters are still here. Please try again shortly.</p>
-          </div>
-          <ErrorNotice message={builds.error} />
-        </div>
-      )}
-      {builds.data &&
-        (builds.data.items.length ? (
-          <div className="build-grid">
-            {builds.data.items.map((b) => (
-              <BuildCard key={b.id} build={b} />
-            ))}
-          </div>
-        ) : (
-          <div className="empty">
-            <div className="ring" />
-            {hasActiveFilters ? (
-              <>
-                <h2>No matching builds</h2>
-                <p>No builds matched your current search or filters.</p>
-                <button type="button" onClick={clearFilters}>
-                  Clear search and filters
-                </button>
-              </>
-            ) : !mine ? (
-              <>
-                <h2>Be the first to share a build</h2>
-                <p className="empty-intro">
-                  A RingLab build combines one racer, one stock machine, and optional
-                  ordered gadgets. Share your setup with the community when it is ready.
-                </p>
-                <div className="empty-actions">
-                  <Link className="button primary" to="/game-data">
-                    Browse game collection
-                  </Link>
-                  {user ? (
-                    <Link className="button" to="/builds/new">
-                      Create the first build
-                    </Link>
-                  ) : (
-                    <Link className="button" to="/register">
-                      Create an account to share
-                    </Link>
-                  )}
-                </div>
-              </>
+          {builds.loading && (
+            <div className="explore-state loading-state" role="status">
+              <span className="loading-ring" aria-hidden="true" />
+              <div>
+                <h2>Loading community builds</h2>
+                <p>Getting the latest shared setups ready for you.</p>
+              </div>
+            </div>
+          )}
+          {builds.error && (
+            <div className="explore-state error-state">
+              <div>
+                <h2>We couldn’t load the builds</h2>
+                <p>Your search and filters are still here. Please try again shortly.</p>
+              </div>
+              <ErrorNotice message={builds.error} />
+            </div>
+          )}
+          {builds.data &&
+            (builds.data.items.length ? (
+              <div className="build-grid">
+                {builds.data.items.map((b) => (
+                  <BuildCard key={b.id} build={b} />
+                ))}
+              </div>
             ) : (
-              <>
-                <h2>No builds here yet</h2>
-                <p>Create a build to see it in your garage.</p>
-                <Link className="button primary" to="/builds/new">
-                  Create a build
-                </Link>
-              </>
-            )}
-          </div>
-        ))}
-      {builds.data && builds.data.total > 12 && (
-        <div className="pagination">
-          <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-            ← Previous
-          </button>
-          <span>Page {page + 1}</span>
-          <button
-            disabled={(page + 1) * 12 >= builds.data.total}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next →
-          </button>
+              <div className="empty">
+                <div className="ring" />
+                {hasActiveFilters ? (
+                  <>
+                    <h2>No matching builds</h2>
+                    <p>No builds matched your current search or filters.</p>
+                    <button type="button" onClick={clearFilters}>
+                      Clear search and filters
+                    </button>
+                  </>
+                ) : !mine ? (
+                  <>
+                    <h2>Be the first to share a build</h2>
+                    <p className="empty-intro">
+                      A RingLab build combines one racer, one stock machine, and optional
+                      ordered gadgets. Share your setup with the community when it is ready.
+                    </p>
+                    <div className="empty-actions">
+                      <Link className="button primary" to="/game-data">
+                        Browse game collection
+                      </Link>
+                      {user ? (
+                        <Link className="button" to="/builds/new">
+                          Create the first build
+                        </Link>
+                      ) : (
+                        <Link className="button" to="/register">
+                          Create an account to share
+                        </Link>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h2>No builds here yet</h2>
+                    <p>Create a build to see it in your garage.</p>
+                    <Link className="button primary" to="/builds/new">
+                      Create a build
+                    </Link>
+                  </>
+                )}
+              </div>
+            ))}
+          {builds.data && builds.data.total > 12 && (
+            <div className="pagination">
+              <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+                ← Previous
+              </button>
+              <span>Page {page + 1}</span>
+              <button
+                disabled={(page + 1) * 12 >= builds.data.total}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next →
+              </button>
+            </div>
+          )}
+          {!mine && (
+            <p className="catalog-link">
+              Looking for a racer or gadget?{" "}
+              <Link to="/game-data">Browse the game collection →</Link>
+            </p>
+          )}
         </div>
-      )}
-      {!mine && (
-        <p className="catalog-link">
-          Looking for a racer or gadget?{" "}
-          <Link to="/game-data">Browse the game collection →</Link>
-        </p>
-      )}
+        {!mine && <LatestNews />}
+      </div>
     </>
   );
 }

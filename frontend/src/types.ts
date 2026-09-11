@@ -76,3 +76,9 @@ export interface Session {
   token: string;
   user: User;
 }
+export interface GameNewsItem {
+  id: string;
+  title: string;
+  url: string;
+  publishedAt: string;
+}
