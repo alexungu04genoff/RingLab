@@ -51,7 +51,7 @@ export function GameData() {
               <h2>{"version" in i ? `Ver. ${i.version}` : i.name}</h2>
               {"releasedAt" in i && <p>Released {date(`${i.releasedAt}T00:00:00`)}</p>}
               {tab === "machines" && <p>Provides FRONT / REAR / TIRE components.</p>}
-              {"racingType" in i && <span className="eyebrow">{i.racingType}</span>}
+              {"racingType" in i && <span className="eyebrow">{i.racingType ?? "Unknown"}</span>}
               {"description" in i && i.description && <p>{i.description}</p>}
             </div>
           </article>

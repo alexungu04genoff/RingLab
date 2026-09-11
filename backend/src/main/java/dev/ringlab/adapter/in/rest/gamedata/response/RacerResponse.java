@@ -6,6 +6,6 @@ import java.util.UUID;
 public record RacerResponse(UUID id, String name, String racingType, String imagePath) {
   public static RacerResponse from(Racer racer) {
     return new RacerResponse(
-        racer.id(), racer.name(), racer.racingType().name(), racer.imagePath());
+        racer.id(), racer.name(), racer.racingType() == null ? null : racer.racingType().name(), racer.imagePath());
   }
 }

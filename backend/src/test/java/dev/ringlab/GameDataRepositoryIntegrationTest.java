@@ -18,13 +18,13 @@ class GameDataRepositoryIntegrationTest {
 
   @Test
   void retrievesRacersMachinesAndGadgetsAsTheirOwnDomainTypes() {
-    Racer racer = gameData.listRacers().getFirst();
-    Machine machine = gameData.listMachines().getFirst();
+    Racer racer = gameData.listRacers().stream().filter(r -> r.name().equals("Amy Rose")).findFirst().orElseThrow();
+    Machine machine = gameData.listMachines().stream().filter(m -> m.name().equals("Dark Reaper")).findFirst().orElseThrow();
     Gadget gadget = gameData.listGadgets().getFirst();
 
-    assertEquals(6, gameData.listRacers().size());
-    assertEquals(10, gameData.listMachines().size());
-    assertEquals(30, gameData.listMachineParts().size());
+    assertEquals(53, gameData.listRacers().size());
+    assertEquals(27, gameData.listMachines().size());
+    assertEquals(81, gameData.listMachineParts().size());
     for (var source : gameData.listMachines()) {
       var parts = gameData.listMachineParts().stream()
           .filter(p -> p.sourceMachineId().equals(source.id())).toList();
@@ -40,6 +40,8 @@ class GameDataRepositoryIntegrationTest {
 
     assertEquals(RacingType.HANDLING, racer.racingType());
     assertEquals(RacingType.SPEED, machine.racingType());
+    assertNull(gameData.listRacers().stream().filter(r -> r.name().equals("Amigo")).findFirst().orElseThrow().racingType());
+    assertNull(gameData.listMachines().stream().filter(m -> m.name().equals("Locomotive de Amigo")).findFirst().orElseThrow().racingType());
     assertNull(gadget.slotCost());
     assertTrue(gameData.findRacer(UUID.randomUUID()).isEmpty());
     assertTrue(gameData.findMachine(UUID.randomUUID()).isEmpty());

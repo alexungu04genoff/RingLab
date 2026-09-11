@@ -13,13 +13,13 @@ export type RacingType =
 export interface Racer {
   id: string;
   name: string;
-  racingType: RacingType;
+  racingType: RacingType | null;
   imagePath: string | null;
 }
 export interface Machine {
   id: string;
   name: string;
-  racingType: RacingType;
+  racingType: RacingType | null;
   imagePath: string | null;
 }
 export interface Gadget {
@@ -35,7 +35,7 @@ export interface MachinePart {
   type: MachinePartType;
   sourceMachineId: string;
   sourceMachineName: string;
-  racingType: RacingType;
+  racingType: RacingType | null;
 }
 export interface GameVersion {
   id: string;

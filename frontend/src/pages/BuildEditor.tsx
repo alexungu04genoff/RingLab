@@ -218,7 +218,7 @@ export function BuildEditor() {
                   <strong>{selectedRacer?.name || "Choose a racer"}</strong>
                   <span className="preview-meta">
                     {selectedRacer
-                      ? selectedRacer.racingType.toLowerCase()
+                      ? selectedRacer.racingType?.toLowerCase() ?? "Unknown"
                       : "Your driver appears here"}
                   </span>
                 </section>

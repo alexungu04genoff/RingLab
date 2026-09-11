@@ -13,7 +13,7 @@ public class MachineDbEntity {
   public String name;
 
   @Enumerated(EnumType.STRING)
-  @Column(name = "racing_type", nullable = false, length = 20)
+  @Column(name = "racing_type", length = 20)
   public RacingType racingType;
 
   @Column(name = "image_path")

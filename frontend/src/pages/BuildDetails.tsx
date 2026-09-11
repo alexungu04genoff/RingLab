@@ -111,7 +111,7 @@ export function BuildDetails() {
               <div>
                 <div className="eyebrow">RACER</div>
                 <h2>{b.racer.name}</h2>
-                <span className="type-badge inline">{b.racer.racingType}</span>
+                <span className="type-badge inline">{b.racer.racingType ?? "Unknown"}</span>
               </div>
             </section>
             <section className="panel loadout-item">
