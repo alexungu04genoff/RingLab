@@ -82,13 +82,17 @@ With PostgreSQL and the Quarkus development server running, populate an explicit
 .\scripts\SeedDemoData.ps1
 ```
 
-The script calls the existing REST API and resolves racers, machines, and gadgets by their supplied names. It creates three clearly identified accounts, eight varied builds, eighteen votes with different resulting scores, and twelve short comments. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
+The script calls the existing REST API and resolves racers, machines, and gadgets by their supplied names. It creates five clearly identified build-owning accounts plus fifty-five voter-only demo audience accounts. This permits 280 uneven votes across 17 varied builds and 30 short comments while preserving the one-vote-per-user-per-build rule. The larger audience provides reference samples for future confidence-aware ranking demonstrations, including 40 up / 1 down, two 20 up / 40 down, 30 up / 5 down, and 3 up / 0 down. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
 
 All three demo accounts use the local-only password `RingLabDemo!2026`:
 
 - `ringlab_demo_amy` / `ringlab_demo_amy@example.test`
 - `ringlab_demo_tails` / `ringlab_demo_tails@example.test`
 - `ringlab_demo_shadow` / `ringlab_demo_shadow@example.test`
+- `ringlab_demo_sonic` / `ringlab_demo_sonic@example.test`
+- `ringlab_demo_knuckles` / `ringlab_demo_knuckles@example.test`
+- voter-only: `ringlab_demo_rouge`, `ringlab_demo_cream`, `ringlab_demo_blaze`, `ringlab_demo_silver`, `ringlab_demo_vector`
+- additional voter-only accounts: `ringlab_demo_member_01` through `ringlab_demo_member_50`
 
 Repeated runs are safe and do not delete data. The script logs into existing demo accounts, reuses builds with the same demo title and author, idempotently sets the intended votes, and adds a comment only when the same demo author and text are not already present. If an existing demo username uses a different password, the script stops clearly rather than modifying or deleting that account. Pass `-BaseUrl http://localhost:PORT` when the development API uses another port; the script refuses non-loopback URLs so it cannot target a remote production deployment.
 
