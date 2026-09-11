@@ -49,12 +49,28 @@ class GameVersionMigrationIntegrationTest {
           assertEquals(0, rows.getInt(2));
         }
         for (String table : java.util.List.of("builds", "build_gadgets", "votes", "comments")) {
-          String projection = table.equals("builds") ? "to_jsonb(current_row) - 'game_version_id'" : "to_jsonb(current_row)";
-          try (var rows = sql.executeQuery("SELECT count(*) FROM (SELECT " + projection
-              + " FROM " + table + " current_row EXCEPT SELECT to_jsonb(old_row) FROM before_" + table + " old_row) differences")) {
-            assertTrue(rows.next());
-            assertEquals(0, rows.getInt(1), table);
-          }
+          String afterProjection = table.equals("builds")
+              ? "to_jsonb(current_row) - 'game_version_id'"
+              : "to_jsonb(current_row)";
+          String beforeProjection = "to_jsonb(old_row)";
+          assertNoDifferences(
+              sql,
+              afterProjection,
+              table,
+              "current_row",
+              beforeProjection,
+              "before_" + table,
+              "old_row",
+              table);
+          assertNoDifferences(
+              sql,
+              beforeProjection,
+              "before_" + table,
+              "old_row",
+              afterProjection,
+              table,
+              "current_row",
+              table);
         }
         connection.rollback();
       }
@@ -62,6 +78,23 @@ class GameVersionMigrationIntegrationTest {
       try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
         sql.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
       }
+    }
+  }
+
+  private void assertNoDifferences(
+      java.sql.Statement sql,
+      String leftProjection,
+      String leftTable,
+      String leftAlias,
+      String rightProjection,
+      String rightTable,
+      String rightAlias,
+      String table) throws Exception {
+    try (var rows = sql.executeQuery("SELECT count(*) FROM (SELECT " + leftProjection
+        + " FROM " + leftTable + " " + leftAlias + " EXCEPT SELECT " + rightProjection
+        + " FROM " + rightTable + " " + rightAlias + ") differences")) {
+      assertTrue(rows.next());
+      assertEquals(0, rows.getInt(1), table);
     }
   }
 }
