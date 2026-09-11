@@ -70,9 +70,27 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
-The first start migrates the schema and seeds 6 racers, 10 machines, and 20 gadgets. There are deliberately **no seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
+The first start migrates the schema and seeds 6 racers, 10 machines, and 20 gadgets. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
 
 Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173`.
+
+## Optional presentation dataset
+
+With PostgreSQL and the Quarkus development server running, populate an explicitly local demo community from `backend/`:
+
+```powershell
+.\scripts\SeedDemoData.ps1
+```
+
+The script calls the existing REST API and resolves racers, machines, and gadgets by their supplied names. It creates three clearly identified accounts, eight varied builds, eighteen votes with different resulting scores, and twelve short comments. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
+
+All three demo accounts use the local-only password `RingLabDemo!2026`:
+
+- `ringlab_demo_amy` / `ringlab_demo_amy@example.test`
+- `ringlab_demo_tails` / `ringlab_demo_tails@example.test`
+- `ringlab_demo_shadow` / `ringlab_demo_shadow@example.test`
+
+Repeated runs are safe and do not delete data. The script logs into existing demo accounts, reuses builds with the same demo title and author, idempotently sets the intended votes, and adds a comment only when the same demo author and text are not already present. If an existing demo username uses a different password, the script stops clearly rather than modifying or deleting that account. Pass `-BaseUrl http://localhost:PORT` when the development API uses another port; the script refuses non-loopback URLs so it cannot target a remote production deployment.
 
 ## Migrations and persistence
 
