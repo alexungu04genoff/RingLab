@@ -291,9 +291,60 @@ public abstract class ApiContract {
             .extract()
             .path("id");
     request(owner.token).delete("/api/comments/" + comment).then().statusCode(403);
-    given().get(path).then().statusCode(200).body("text", hasItem("Nice setup"));
+    given()
+        .get(path)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(1))
+        .body("page", equalTo(0))
+        .body("size", equalTo(20))
+        .body("items.text", hasItem("Nice setup"));
     request(commenter.token).delete("/api/comments/" + comment).then().statusCode(204);
-    given().get(path).then().statusCode(200).body("size()", equalTo(0));
+    given().get(path).then().statusCode(200).body("total", equalTo(0)).body("items", empty());
+  }
+
+  @Test
+  void commentsExposeTotalsAndDeterministicDatabasePagination() {
+    var owner = register();
+    String id = create(owner);
+    String path = "/api/builds/" + id + "/comments";
+    var commentIds = new ArrayList<String>();
+
+    for (int index = 1; index <= 21; index++) {
+      commentIds.add(
+          request(owner.token)
+              .body(Map.of("text", "Comment " + index))
+              .post(path)
+              .then()
+              .statusCode(200)
+              .extract()
+              .path("id"));
+    }
+
+    given()
+        .queryParam("page", 0)
+        .queryParam("size", 20)
+        .get(path)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(21))
+        .body("page", equalTo(0))
+        .body("size", equalTo(20))
+        .body("items", hasSize(20))
+        .body("items[0].id", equalTo(commentIds.getFirst()))
+        .body("items[19].id", equalTo(commentIds.get(19)));
+
+    given()
+        .queryParam("page", 1)
+        .queryParam("size", 20)
+        .get(path)
+        .then()
+        .statusCode(200)
+        .body("total", equalTo(21))
+        .body("page", equalTo(1))
+        .body("size", equalTo(20))
+        .body("items", hasSize(1))
+        .body("items[0].id", equalTo(commentIds.getLast()));
   }
 
   @Test

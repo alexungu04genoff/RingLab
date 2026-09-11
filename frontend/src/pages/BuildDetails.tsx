@@ -2,9 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
+import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, date, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
-import type { Build, Comment, Vote } from "../types";
+import type { Build, CommentPage, Vote } from "../types";
+
+const COMMENT_PAGE_SIZE = 20;
+
 export function BuildDetails() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -12,8 +16,8 @@ export function BuildDetails() {
   const build = useLoad<Build>(`/builds/${id}`);
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
-  const comments = useLoad<Comment[]>(
-    `/builds/${id}/comments?page=${page}&size=20`,
+  const comments = useLoad<CommentPage>(
+    `/builds/${id}/comments?page=${page}&size=${COMMENT_PAGE_SIZE}`,
     revision,
   );
   const [vote, setVote] = useState<Vote>();
@@ -156,7 +160,15 @@ export function BuildDetails() {
                   act(async () => {
                     await api(`/builds/${id}/comments`, json("POST", { text }));
                     setText("");
-                    setRevision((r) => r + 1);
+                    const updatedComments = await api<CommentPage>(
+                      `/builds/${id}/comments?page=0&size=${COMMENT_PAGE_SIZE}`,
+                    );
+                    const lastPage = lastCommentPage(
+                      updatedComments.total,
+                      updatedComments.size,
+                    );
+                    if (lastPage === page) setRevision((r) => r + 1);
+                    else setPage(lastPage);
                   });
                 }}
               >
@@ -184,10 +196,10 @@ export function BuildDetails() {
               </p>
             )}
             {comments.loading && <p role="status">Loading comments…</p>}
-            {comments.data?.length === 0 && (
+            {comments.data?.items.length === 0 && (
               <p className="muted">No comments on this page yet.</p>
             )}
-            {comments.data?.map((c) => (
+            {comments.data?.items.map((c) => (
               <article className="comment" key={c.id}>
                 <div className="comment-meta">
                   <strong>@{c.author}</strong>
@@ -199,7 +211,12 @@ export function BuildDetails() {
                       onClick={() =>
                         act(async () => {
                           await api(`/comments/${c.id}`, json("DELETE"));
-                          setRevision((r) => r + 1);
+                          const lastPage = lastCommentPage(
+                            Math.max(0, (comments.data?.total ?? 1) - 1),
+                            comments.data?.size ?? COMMENT_PAGE_SIZE,
+                          );
+                          if (lastPage < page) setPage(lastPage);
+                          else setRevision((r) => r + 1);
                         })
                       }
                     >
@@ -210,23 +227,24 @@ export function BuildDetails() {
                 <p className="prose">{c.text}</p>
               </article>
             ))}
-            {(page > 0 || comments.data?.length === 20) && (
+            {comments.data &&
+              (comments.data.page > 0 || hasNextCommentPage(comments.data)) && (
               <div className="pagination">
                 <button
-                  disabled={page === 0}
+                  disabled={comments.data.page === 0}
                   onClick={() => setPage((p) => p - 1)}
                 >
                   Previous
                 </button>
-                <span>Page {page + 1}</span>
+                <span>Page {comments.data.page + 1}</span>
                 <button
-                  disabled={comments.data?.length !== 20}
+                  disabled={!hasNextCommentPage(comments.data)}
                   onClick={() => setPage((p) => p + 1)}
                 >
                   Next
                 </button>
               </div>
-            )}
+              )}
           </section>
         </div>
         <aside>

@@ -58,6 +58,8 @@ Racers and machines are independent foreign keys. `build_gadgets` is mapped as a
 
 Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. PostgreSQL `INSERT … ON CONFLICT … DO UPDATE` makes repeated/concurrent votes update the same row atomically. Scores are always queried as `SUM(value)`; no client-owned or cached score exists.
 
+Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then `id` order. The REST response includes `items`, `total`, `page`, and `size`, allowing the client to navigate page boundaries without inferring them from the number of returned comments.
+
 Browse queries filter in PostgreSQL and paginate before response assembly. `BuildDbAdapter` uses JPA Criteria with one shared predicate helper for item and count queries. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. Score sorting uses a correlated vote-sum subquery; all sorts retain creation time then ID as tie-breakers. The maximum page size is 50. Collection/detail assembly uses straightforward bounded lookups, so query count grows with page size; batching would be a measurable future optimization rather than a custom query framework now. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
 
 Flyway V1 defines schema; V2 defines the supplied game dataset only. Hibernate runs schema validation. Seed descriptions, slot costs and image paths remain null. No fake application users enter migrations.

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ExternalStorageConfigurationManager" enabled="true" />
+  <component name="MavenProjectsManager">
+    <option name="originalFiles">
+      <list>
+        <option value="$PROJECT_DIR$/.tools/m2/commons-io/commons-io/2.6/commons-io-2.6.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-io/commons-io/2.11.0/commons-io-2.11.0.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-io/commons-io/2.16.1/commons-io-2.16.1.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-io/commons-io/2.20.0/commons-io-2.20.0.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/aopalliance/aopalliance/1.0/aopalliance-1.0.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-cli/commons-cli/1.9.0/commons-cli-1.9.0.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-codec/commons-codec/1.16.1/commons-codec-1.16.1.pom" />
+        <option value="$PROJECT_DIR$/.tools/m2/commons-codec/commons-codec/1.19.0/commons-codec-1.19.0.pom" />
+        <option value="$PROJECT_DIR$/backend/pom.xml" />
+      </list>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_17" default="true" project-jdk-name="temurin-17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/out" />
+  </component>
+</project>

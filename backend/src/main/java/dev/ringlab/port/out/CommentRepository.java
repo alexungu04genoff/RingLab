@@ -4,7 +4,9 @@ import dev.ringlab.domain.comment.Comment;
 import java.util.*;
 
 public interface CommentRepository {
-  List<Comment> list(UUID buildId, int page, int size);
+  record Page(List<Comment> items, long total) {}
+
+  Page list(UUID buildId, int page, int size);
 
   Optional<Comment> find(UUID id);
 

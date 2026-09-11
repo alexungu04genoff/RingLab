@@ -17,7 +17,7 @@ public class CommentService {
   private final CommentRepository comments;
   private final BuildService builds;
 
-  public List<Comment> list(UUID build, int page, int size) {
+  public CommentRepository.Page list(UUID build, int page, int size) {
     builds.get(build);
     return comments.list(build, page, size);
   }

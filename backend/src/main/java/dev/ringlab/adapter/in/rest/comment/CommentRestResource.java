@@ -8,6 +8,7 @@ import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.comment.request.CommentRequest;
 import dev.ringlab.adapter.in.rest.comment.response.CommentResponse;
+import dev.ringlab.adapter.in.rest.comment.response.CommentPageResponse;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -37,11 +38,13 @@ public class CommentRestResource {
   }
 
   @GET
-  public List<CommentResponse> list(
+  public CommentPageResponse list(
       @PathParam("id") UUID id,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("20") @Min(1) @Max(50) int size) {
-    return service.list(id, page, size).stream().map(this::response).toList();
+    var result = service.list(id, page, size);
+    return new CommentPageResponse(
+        result.items().stream().map(this::response).toList(), result.total(), page, size);
   }
 
   @POST

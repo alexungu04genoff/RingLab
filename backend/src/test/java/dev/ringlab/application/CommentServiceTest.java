@@ -33,7 +33,7 @@ class CommentServiceTest {
     Comment comment = comment(UUID.randomUUID(), authorId, "Text");
     comments.comments.put(comment.id(), comment);
 
-    assertEquals(List.of(comment), service.list(buildId, 2, 5));
+    assertEquals(new CommentRepository.Page(List.of(comment), 1), service.list(buildId, 2, 5));
     assertEquals(buildId, comments.listedBuildId);
     assertEquals(2, comments.listedPage);
     assertEquals(5, comments.listedSize);
@@ -129,11 +129,12 @@ class CommentServiceTest {
     private UUID deletedId;
 
     @Override
-    public List<Comment> list(UUID buildId, int page, int size) {
+    public Page list(UUID buildId, int page, int size) {
       listedBuildId = buildId;
       listedPage = page;
       listedSize = size;
-      return comments.values().stream().filter(c -> c.buildId().equals(buildId)).toList();
+      var matching = comments.values().stream().filter(c -> c.buildId().equals(buildId)).toList();
+      return new Page(matching, matching.size());
     }
 
     @Override

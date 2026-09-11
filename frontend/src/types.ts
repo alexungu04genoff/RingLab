@@ -62,6 +62,12 @@ export interface Comment {
   text: string;
   createdAt: string;
 }
+export interface CommentPage {
+  items: Comment[];
+  total: number;
+  page: number;
+  size: number;
+}
 export interface Vote {
   score: number;
   myVote: number;

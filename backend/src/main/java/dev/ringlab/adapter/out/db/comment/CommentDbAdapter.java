@@ -15,10 +15,10 @@ public class CommentDbAdapter
     this.mapper = mapper;
   }
 
-  public List<Comment> list(UUID build, int page, int size) {
-    return find("buildId = ?1 order by createdAt,id", build).page(page, size).list().stream()
-        .map(mapper::toDomain)
-        .toList();
+  public Page list(UUID build, int page, int size) {
+    var query = find("buildId = ?1 order by createdAt,id", build);
+    var items = query.page(page, size).list().stream().map(mapper::toDomain).toList();
+    return new Page(items, count("buildId", build));
   }
 
   public Optional<Comment> find(UUID id) {
