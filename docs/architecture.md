@@ -62,7 +62,9 @@ Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then 
 
 Browse queries filter in PostgreSQL and paginate before response assembly. `BuildDbAdapter` uses JPA Criteria with one shared predicate helper for item and count queries. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. Score sorting uses a correlated vote-sum subquery; all sorts retain creation time then ID as tie-breakers. The maximum page size is 50. Collection/detail assembly uses straightforward bounded lookups, so query count grows with page size; batching would be a measurable future optimization rather than a custom query framework now. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
 
-Flyway V1 defines schema; V2 defines the supplied game dataset only. Hibernate runs schema validation. Seed descriptions, slot costs and image paths remain null. No fake application users enter migrations.
+Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. Machine and gadget image paths remain null, as do gadget descriptions and slot costs. No fake application users enter migrations.
+
+Best rated (`sort=rated`) orders by the Wilson lower bound with z = 1.96 (approximately 95% confidence), then raw score descending, creation time descending, and UUID ascending. `BuildDbAdapter` builds the calculation as a correlated Criteria aggregate over votes, so PostgreSQL ranks all matching builds before pagination using the same filters. Zero-vote builds receive zero. Sample size matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes because the larger sample provides stronger evidence. Wilson is internal to ordering; the visible community score remains upvotes minus downvotes. No ranking values are cached or exposed in responses.
 
 ## Frontend
 
@@ -74,4 +76,4 @@ Routes cover Explore, My Builds, details, create/edit, register/login, and the r
 
 `AcceptanceTest` uses Quarkus's test runner, HTTP requests, actual JWT registration/login, Flyway, and PostgreSQL. `PackagedApiIT` repeats it against the production artifact. `DomainTest` checks immutable collection and vote/ownership behavior. Frontend tests check ordering and API errors/session expiration. The test run's external-database option requires a disposable database.
 
-JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Artwork, machine-part customization, gadget rules, advanced ranking and calculated stats remain outside the implemented scope.
+JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, machine-part customization, gadget rules and calculated stats remain outside the implemented scope.

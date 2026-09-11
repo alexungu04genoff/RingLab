@@ -70,7 +70,7 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
-The first start migrates the schema and seeds 6 racers, 10 machines, and 20 gadgets. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
+The first start migrates the schema, seeds 6 racers, 10 machines, and 20 gadgets, and assigns the racers stable local artwork paths. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
 
 Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173`.
 
@@ -221,6 +221,6 @@ Vote body: `{"value":1}` or `{"value":-1}`. Comment body: `{"text":"Nice setup"}
 
 ## Assets and intentional scope
 
-Place future local artwork in `frontend/public/assets/racers/`, `machines/`, or `gadgets/`. Set the corresponding database `image_path` to `/assets/...` in a new migration. The UI displays an initials placeholder when a local image is absent or fails. No artwork was scraped, downloaded, or invented.
+Temporary racer portraits for the private university demo live in `frontend/public/assets/racers/`. Their stable filenames and database paths let curated or custom replacements be swapped in later without application-code changes. Future machine or gadget artwork can use the same `/assets/...` database contract in a new migration. The UI displays an initials placeholder when a local image is absent or fails.
 
 Racer and machine choices are independent. Machines are complete stock presets. Gadget order is persisted with a position column; effects and slot costs remain null. There is no gadget capacity or compatibility validation, no calculated statistics, and no machine-part system. The API preserves the submitted gadget list without guessing combination rules; the UI uses ordinary multi-selection and permits reordering. No additional game systems or community features are included.

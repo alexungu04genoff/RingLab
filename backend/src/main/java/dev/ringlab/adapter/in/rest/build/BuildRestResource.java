@@ -68,7 +68,7 @@ public class BuildRestResource {
       @QueryParam("racerId") UUID racer,
       @QueryParam("machineId") UUID machine,
       @QueryParam("authorId") UUID author,
-      @QueryParam("sort") @DefaultValue("newest") @Pattern(regexp = "newest|score") String sort,
+      @QueryParam("sort") @DefaultValue("newest") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
     var result =

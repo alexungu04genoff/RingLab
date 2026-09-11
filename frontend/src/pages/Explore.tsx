@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
-import { BuildCard, ErrorNotice, ItemSelect } from "../components";
+import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
 import type { BuildPage, Machine, Racer } from "../types";
 export function Explore({ mine = false }: { mine?: boolean }) {
@@ -14,6 +14,9 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const [page, setPage] = useState(0);
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
+  const heroRacers = (racers.data || [])
+    .filter(({ racingType }) => racingType !== "POWER")
+    .slice(0, 4);
   const params = new URLSearchParams({
     search: query,
     sort,
@@ -34,7 +37,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   };
   return (
     <>
-      <div className="page-heading">
+      <div className={`page-heading ${mine ? "" : "explore-hero"}`}>
         <div>
           <div className="eyebrow accent">SONIC RACING: CROSSWORLDS</div>
           <h1>{mine ? "Your garage." : "Find your next build."}</h1>
@@ -44,9 +47,20 @@ export function Explore({ mine = false }: { mine?: boolean }) {
               : "Racers. Machines. Gadgets. Shared by the community."}
           </p>
         </div>
-        <Link className="button primary" to="/builds/new">
-          ＋ Create build
-        </Link>
+        <div className={mine ? undefined : "explore-hero-side"}>
+          {!mine && heroRacers.length > 0 && (
+            <div className="hero-racers" aria-hidden="true">
+              {heroRacers.map((heroRacer) => (
+                <div className="hero-racer" key={heroRacer.id}>
+                  <Artwork item={heroRacer} />
+                </div>
+              ))}
+            </div>
+          )}
+          <Link className="button primary" to="/builds/new">
+            ＋ Create build
+          </Link>
+        </div>
       </div>
       <section className="filters" aria-label="Filter builds">
         <form
@@ -99,6 +113,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           >
             <option value="newest">Newest first</option>
             <option value="score">Highest score</option>
+            <option value="rated">Best rated</option>
           </select>
         </label>
       </section>

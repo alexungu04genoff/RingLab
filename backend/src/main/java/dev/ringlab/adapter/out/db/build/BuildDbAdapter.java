@@ -81,7 +81,10 @@ public class BuildDbAdapter implements BuildRepository {
       Root<BuildDbEntity> build,
       Filter filter) {
     List<Order> ordering = new ArrayList<>();
-    if ("score".equals(filter.sort())) {
+    if ("rated".equals(filter.sort())) {
+      ordering.add(criteriaBuilder.desc(wilsonLowerBound(criteriaBuilder, query, build)));
+    }
+    if ("score".equals(filter.sort()) || "rated".equals(filter.sort())) {
       ordering.add(criteriaBuilder.desc(score(criteriaBuilder, query, build)));
     }
     ordering.add(criteriaBuilder.desc(build.get("createdAt")));
@@ -101,6 +104,34 @@ public class BuildDbAdapter implements BuildRepository {
                 criteriaBuilder.sum(criteriaBuilder.toLong(vote.<Number>get("value"))), 0L))
         .where(criteriaBuilder.equal(vote.get("buildId"), build.get("id")));
     return score;
+  }
+
+  /** SQL expression for the Wilson lower bound at approximately 95% confidence. */
+  private Subquery<Double> wilsonLowerBound(
+      CriteriaBuilder cb, CriteriaQuery<BuildDbEntity> query, Root<BuildDbEntity> build) {
+    Subquery<Double> ranking = query.subquery(Double.class);
+    Root<VoteDbEntity> vote = ranking.from(VoteDbEntity.class);
+    var count = cb.count(vote);
+    var up = cb.coalesce(
+        cb.sum(cb.<Double>selectCase().when(cb.equal(vote.get("value"), 1), 1.0)
+            .otherwise(0.0)), 0.0);
+    // Keep every denominator nonzero, including for an empty aggregate.
+    var n = cb.<Double>selectCase().when(cb.equal(count, 0L), 1.0)
+        .otherwise(cb.toDouble(count));
+    var p = cb.quot(up, n);
+    double z = 1.96;
+    double zSquared = z * z;
+    var variance = cb.sum(
+        cb.quot(cb.prod(p, cb.diff(1.0, p)), n),
+        cb.quot(zSquared, cb.prod(4.0, cb.prod(n, n))));
+    var numerator = cb.diff(
+        cb.sum(p, cb.quot(zSquared, cb.prod(2.0, n))),
+        cb.prod(z, cb.sqrt(variance)));
+    var lowerBound = cb.quot(numerator, cb.sum(1.0, cb.quot(zSquared, n)));
+    ranking.select(cb.<Double>selectCase().when(cb.equal(up, 0.0), 0.0)
+            .otherwise(cb.toDouble(lowerBound)))
+        .where(cb.equal(vote.get("buildId"), build.get("id")));
+    return ranking;
   }
 
   public void save(Build build) {
