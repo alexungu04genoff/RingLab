@@ -297,13 +297,15 @@ foreach ($definition in $buildDefinitions) {
 $votePatterns = @(
   [pscustomobject]@{ Build = "cornering"; Up = @("amy", "tails", "shadow"); Down = @() },
   [pscustomobject]@{ Build = "items"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze", "silver"); Down = @("vector") },
-  [pscustomobject]@{ Build = "route"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze", "silver"); Down = @("vector") },
+  # Same raw score comparison: 15/0 ranks above 25/10 under Wilson confidence.
+  [pscustomobject]@{ Build = "route"; Up = $allDemoVoters[0..14]; Down = @() },
   [pscustomobject]@{ Build = "amy-drift"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze"); Down = @("silver", "vector") },
   [pscustomobject]@{ Build = "acceleration"; Up = $allDemoVoters[0..19]; Down = $allDemoVoters[20..59] },
   [pscustomobject]@{ Build = "recovery"; Up = $allDemoVoters[0..19]; Down = $allDemoVoters[20..59] },
-  [pscustomobject]@{ Build = "boost"; Up = $allDemoVoters[0..29]; Down = $allDemoVoters[30..34] },
+  [pscustomobject]@{ Build = "boost"; Up = $allDemoVoters[0..24]; Down = $allDemoVoters[25..34] },
   [pscustomobject]@{ Build = "tails-grid"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze"); Down = @("silver", "vector") },
-  [pscustomobject]@{ Build = "shadow"; Up = $allDemoVoters[0..39]; Down = $allDemoVoters[40..40] },
+  # Raw score comparison: 40/20 ranks below the 8/0 sonic-speed build under Wilson confidence.
+  [pscustomobject]@{ Build = "shadow"; Up = $allDemoVoters[0..39]; Down = $allDemoVoters[40..59] },
   [pscustomobject]@{ Build = "finish"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze"); Down = @("vector") },
   [pscustomobject]@{ Build = "shadow-laps"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream"); Down = @("silver", "vector") },
   [pscustomobject]@{ Build = "sonic-speed"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze"); Down = @() },
