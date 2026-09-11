@@ -1,6 +1,6 @@
 # RingLab
 
-A small community build-sharing platform for a bachelor's thesis, using **Sonic Racing: CrossWorlds** as its concrete domain. Share a racer, a complete stock machine, and an ordered gadget combination; explore builds, vote, and comment.
+A small community build-sharing platform for a bachelor's thesis, using **Sonic Racing: CrossWorlds** as its concrete domain. Share a racer, one FRONT machine part, one REAR machine part, one TIRE machine part, and an ordered gadget combination; explore builds, vote, and comment.
 
 ## Stack and structure
 
@@ -10,18 +10,19 @@ A small community build-sharing platform for a bachelor's thesis, using **Sonic 
 
 ```text
 backend/src/main/java/dev/ringlab/
-  domain/{auth,build,comment,gamedata,vote}/
+  domain/{auth,build,comment,gamedata,news,vote}/
                framework-independent domain records
-  application/{auth,build,comment,gamedata,vote}/
+  application/{auth,build,comment,news,vote}/
                application services
   port/out/
                UserRepository, BuildRepository, CommentRepository,
-               GameDataRepository and VoteRepository contracts
-  adapter/in/rest/{auth,build,comment,gamedata,vote}/
+               GameDataRepository, GameNewsRepository and VoteRepository contracts
+  adapter/in/rest/{auth,build,comment,gamedata,news,vote}/
                REST entry points and current JWT identity
                feature-local request/ and response/ DTO packages
   adapter/out/db/{auth,build,comment,gamedata,vote}/
                DbEntity, DbMapper and DbAdapter persistence types
+  adapter/out/steam/
   application/AppException.java
 backend/src/main/resources/db/migration/
 frontend/src/
@@ -70,7 +71,7 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
-The first start migrates the schema, seeds 6 racers, 10 machines, and 20 gadgets, and assigns the racers stable local artwork paths. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
+The first start migrates the schema, seeds 6 racers, 10 source machines, 30 machine parts, and 20 gadgets, and assigns the racers stable local artwork paths. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
 
 Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173`.
 
@@ -82,9 +83,9 @@ With PostgreSQL and the Quarkus development server running, populate an explicit
 .\scripts\SeedDemoData.ps1
 ```
 
-The script calls the existing REST API and resolves racers, machines, and gadgets by their supplied names. It creates five clearly identified build-owning accounts plus fifty-five voter-only demo audience accounts. This permits 280 uneven votes across 17 varied builds and 30 short comments while preserving the one-vote-per-user-per-build rule. The larger audience provides reference samples for future confidence-aware ranking demonstrations, including 40 up / 1 down, two 20 up / 40 down, 30 up / 5 down, and 3 up / 0 down. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
+The script calls the existing REST API and resolves racers, source machines, machine parts, and gadgets by their supplied names. It creates five clearly identified build-owning accounts plus fifty-five voter-only demo audience accounts. This permits 280 uneven votes across 17 varied builds and 30 short comments while preserving the one-vote-per-user-per-build rule. The larger audience provides reference samples for future confidence-aware ranking demonstrations, including 40 up / 1 down, two 20 up / 40 down, 30 up / 5 down, and 3 up / 0 down. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
 
-All three demo accounts use the local-only password `RingLabDemo!2026`:
+All five build-owner accounts and the voter-only demo accounts use the local-only password `RingLabDemo!2026`:
 
 - `ringlab_demo_amy` / `ringlab_demo_amy@example.test`
 - `ringlab_demo_tails` / `ringlab_demo_tails@example.test`
@@ -98,7 +99,7 @@ Repeated runs are safe and do not delete data. The script logs into existing dem
 
 ## Migrations and persistence
 
-Flyway is authoritative. `V1__initial_schema.sql` creates the eight tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs. Hibernate validates the migrated schema; it never creates or drops it.
+Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. Hibernate validates the migrated schema; it never creates or drops it.
 
 Add a new numbered migration when changing schema or seed data. Do not edit migrations after they have been applied to a database you intend to keep. Users and builds persist in PostgreSQL, independently of frontend refreshes or application restarts.
 
@@ -194,7 +195,8 @@ All endpoints are under `/api`; request and response bodies are JSON. IDs are UU
 |---|---|---|
 | POST | `/auth/register`, `/auth/login` | Public |
 | GET / POST | `/auth/me` / `/auth/logout` | Signed in |
-| GET | `/racers`, `/machines`, `/gadgets` | Public |
+| GET | `/racers`, `/machines`, `/machine-parts`, `/gadgets` | Public |
+| GET | `/news` | Public |
 | GET | `/builds`, `/builds/{id}` | Public |
 | POST | `/builds` | Signed in |
 | PUT / DELETE | `/builds/{id}` | Build author |
@@ -203,7 +205,11 @@ All endpoints are under `/api`; request and response bodies are JSON. IDs are UU
 | POST | `/builds/{id}/comments` | Signed in |
 | DELETE | `/comments/{id}` | Comment author |
 
-Build listing: `search` (literal case-insensitive title substring), `racerId`, `machineId`, `authorId`, `sort=newest|score`, zero-based `page`, and `size` (1–50, default 12). Response: `{items,total,page,size}`. Ties use creation time then ID. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
+`GET /api/machine-parts` returns FRONT, REAR, and TIRE components with their source-machine metadata. `Machine` remains source/catalog metadata; machine parts and gadgets are separate systems.
+
+Build listing: `search` (literal case-insensitive title substring), `racerId`, `machineId`, `authorId`, `sort=newest|score|rated`, zero-based `page`, and `size` (1–50, default 12). `machineId` means “uses at least one part sourced from this stock machine.” Response: `{items,total,page,size}`. Ties use creation time then ID. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
+
+`GET /api/news` returns the latest Steam news items. Explore loads these independently from build browsing.
 
 Build request:
 
@@ -212,7 +218,9 @@ Build request:
   "title": "My setup",
   "description": "Why I enjoy this combination",
   "racerId": "UUID from GET /api/racers",
-  "machineId": "UUID from GET /api/machines",
+  "frontPartId": "UUID from GET /api/machine-parts with type FRONT",
+  "rearPartId": "UUID from GET /api/machine-parts with type REAR",
+  "tirePartId": "UUID from GET /api/machine-parts with type TIRE",
   "gadgetIds": ["UUID from GET /api/gadgets"]
 }
 ```
@@ -223,4 +231,4 @@ Vote body: `{"value":1}` or `{"value":-1}`. Comment body: `{"text":"Nice setup"}
 
 Temporary racer portraits for the private university demo live in `frontend/public/assets/racers/`. Their stable filenames and database paths let curated or custom replacements be swapped in later without application-code changes. Future machine or gadget artwork can use the same `/assets/...` database contract in a new migration. The UI displays an initials placeholder when a local image is absent or fails.
 
-Racer and machine choices are independent. Machines are complete stock presets. Gadget order is persisted with a position column; effects and slot costs remain null. There is no gadget capacity or compatibility validation, no calculated statistics, and no machine-part system. The API preserves the submitted gadget list without guessing combination rules; the UI uses ordinary multi-selection and permits reordering. No additional game systems or community features are included.
+A build contains one racer, exactly one FRONT machine part, one REAR machine part, one TIRE machine part, and ordered gadgets. Each `MachinePart` originates from a source `Machine`; a machine supplies catalog metadata rather than being the build's single selected loadout. Parts may come from different source machines. Gadgets remain separate from machine parts, and their order is persisted with a position column; effects and slot costs remain null. There is no gadget capacity or compatibility validation and no calculated statistics. The API preserves the submitted gadget list without guessing combination rules; the UI uses ordinary multi-selection and permits reordering. No additional game systems or community features are included.
