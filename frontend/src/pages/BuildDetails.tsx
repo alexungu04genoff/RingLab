@@ -115,13 +115,13 @@ export function BuildDetails() {
               </div>
             </section>
             <section className="panel loadout-item">
-              <Artwork item={b.machine} />
               <div>
-                <div className="eyebrow">STOCK MACHINE</div>
-                <h2>{b.machine.name}</h2>
-                <span className="type-badge inline">
-                  {b.machine.racingType}
-                </span>
+                <h2>Machine setup</h2>
+                <dl>
+                  <dt>Front</dt><dd>{b.frontPart.sourceMachineName}</dd>
+                  <dt>Rear</dt><dd>{b.rearPart.sourceMachineName}</dd>
+                  <dt>Tires</dt><dd>{b.tirePart.sourceMachineName}</dd>
+                </dl>
               </div>
             </section>
           </div>

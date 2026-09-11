@@ -2,6 +2,7 @@ package dev.ringlab.port.out;
 
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.Racer;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,10 @@ public interface GameDataRepository {
   List<Machine> listMachines();
 
   Optional<Machine> findMachine(UUID id);
+
+  List<MachinePart> listMachineParts();
+
+  Optional<MachinePart> findMachinePart(UUID id);
 
   List<Gadget> listGadgets();
 

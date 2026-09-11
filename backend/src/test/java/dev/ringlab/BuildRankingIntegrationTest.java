@@ -97,6 +97,43 @@ class BuildRankingIntegrationTest {
         .items().stream().map(Build::id).toList();
   }
 
+  private UUID part(UUID machine, String type) {
+    return game.listMachineParts().stream()
+        .filter(p -> p.sourceMachineId().equals(machine) && p.type().name().equals(type))
+        .findFirst().orElseThrow().id();
+  }
+
+  @Test
+  @TestTransaction
+  void sourceFilterMatchesEachSlotAndComposesWithAllSortsAndPagination() {
+    UUID author = user();
+    UUID racer = game.listRacers().getFirst().id();
+    UUID source = game.listMachines().getFirst().id();
+    UUID other = game.listMachines().get(1).id();
+    var front = build(author, racer, other, "Mixed %_ front", 3, 0, 1);
+    var rear = build(author, racer, other, "Mixed %_ rear", 40, 1, 2);
+    var tire = build(author, racer, other, "Mixed %_ tire", 8, 0, 3);
+    em.find(BuildDbEntity.class, front).frontPartId = part(source, "FRONT");
+    em.find(BuildDbEntity.class, rear).rearPartId = part(source, "REAR");
+    em.find(BuildDbEntity.class, tire).tirePartId = part(source, "TIRE");
+    build(author, racer, other, "Mixed %_ no source", 50, 0, 4);
+    build(user(), racer, source, "Mixed %_ other author", 50, 0, 5);
+    build(author, game.listRacers().get(1).id(), source, "Mixed %_ other racer", 50, 0, 6);
+    build(author, racer, source, "Mixed XX wildcard decoy", 50, 0, 7);
+    em.flush();
+    em.clear();
+    for (String sort : List.of("newest", "score", "rated")) {
+      var expected = sort.equals("newest") ? List.of(tire, rear, front) : List.of(rear, tire, front);
+      List<UUID> actual = new ArrayList<>();
+      for (int page = 0; page < 3; page++) {
+        var result = builds.list(new BuildRepository.Filter("MIXED %_", racer, source, author, sort, page, 1));
+        assertEquals(3, result.total());
+        actual.addAll(result.items().stream().map(Build::id).toList());
+      }
+      assertEquals(expected, actual);
+    }
+  }
+
   private UUID user() {
     UUID id = UUID.randomUUID();
     String name = id.toString().replace("-", "").substring(0, 24);
@@ -113,7 +150,9 @@ class BuildRankingIntegrationTest {
     entity.id = UUID.randomUUID();
     entity.authorId = author;
     entity.racerId = racer;
-    entity.machineId = machine;
+    entity.frontPartId = part(machine, "FRONT");
+    entity.rearPartId = part(machine, "REAR");
+    entity.tirePartId = part(machine, "TIRE");
     entity.title = title;
     entity.description = "Ranking test";
     entity.createdAt = Instant.parse("2026-01-01T00:00:00Z").plusSeconds(age);

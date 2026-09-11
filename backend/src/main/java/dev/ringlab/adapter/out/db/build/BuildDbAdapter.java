@@ -3,6 +3,7 @@ package dev.ringlab.adapter.out.db.build;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.adapter.out.db.vote.VoteDbEntity;
+import dev.ringlab.adapter.out.db.gamedata.MachinePartDbEntity;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.port.out.BuildRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -34,14 +35,14 @@ public class BuildDbAdapter implements BuildRepository {
 
     CriteriaQuery<BuildDbEntity> itemQuery = criteriaBuilder.createQuery(BuildDbEntity.class);
     Root<BuildDbEntity> itemRoot = itemQuery.from(BuildDbEntity.class);
-    itemQuery.where(filters(criteriaBuilder, itemRoot, filter).toArray(Predicate[]::new));
+    itemQuery.where(filters(criteriaBuilder, itemQuery, itemRoot, filter).toArray(Predicate[]::new));
     itemQuery.orderBy(ordering(criteriaBuilder, itemQuery, itemRoot, filter));
 
     CriteriaQuery<Long> countQuery = criteriaBuilder.createQuery(Long.class);
     Root<BuildDbEntity> countRoot = countQuery.from(BuildDbEntity.class);
     countQuery
         .select(criteriaBuilder.count(countRoot))
-        .where(filters(criteriaBuilder, countRoot, filter).toArray(Predicate[]::new));
+        .where(filters(criteriaBuilder, countQuery, countRoot, filter).toArray(Predicate[]::new));
 
     var items =
         em.createQuery(itemQuery)
@@ -55,7 +56,7 @@ public class BuildDbAdapter implements BuildRepository {
   }
 
   private List<Predicate> filters(
-      CriteriaBuilder criteriaBuilder, Root<BuildDbEntity> build, Filter filter) {
+      CriteriaBuilder criteriaBuilder, CriteriaQuery<?> query, Root<BuildDbEntity> build, Filter filter) {
     List<Predicate> predicates = new ArrayList<>();
     if (filter.search() != null && !filter.search().isBlank()) {
       String search = filter.search().toLowerCase(Locale.ROOT);
@@ -67,7 +68,14 @@ public class BuildDbAdapter implements BuildRepository {
       predicates.add(criteriaBuilder.equal(build.get("racerId"), filter.racerId()));
     }
     if (filter.machineId() != null) {
-      predicates.add(criteriaBuilder.equal(build.get("machineId"), filter.machineId()));
+      Subquery<UUID> sourceParts = query.subquery(UUID.class);
+      Root<MachinePartDbEntity> part = sourceParts.from(MachinePartDbEntity.class);
+      sourceParts.select(part.get("id"))
+          .where(criteriaBuilder.equal(part.get("sourceMachineId"), filter.machineId()));
+      predicates.add(criteriaBuilder.or(
+          build.get("frontPartId").in(sourceParts),
+          build.get("rearPartId").in(sourceParts),
+          build.get("tirePartId").in(sourceParts)));
     }
     if (filter.authorId() != null) {
       predicates.add(criteriaBuilder.equal(build.get("authorId"), filter.authorId()));

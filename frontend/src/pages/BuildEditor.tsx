@@ -5,7 +5,13 @@ import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect } from "../components";
 import { moveGadget, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, Gadget, Machine, Racer } from "../types";
+import type { Build, BuildDraft, Gadget, MachinePart, Racer } from "../types";
+
+const partSlots = [
+  { key: "frontPartId", type: "FRONT", label: "Front" },
+  { key: "rearPartId", type: "REAR", label: "Rear" },
+  { key: "tirePartId", type: "TIRE", label: "Tires" },
+] as const;
 export function BuildEditor() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -14,7 +20,9 @@ export function BuildEditor() {
     title: "",
     description: "",
     racerId: "",
-    machineId: "",
+    frontPartId: "",
+    rearPartId: "",
+    tirePartId: "",
     gadgetIds: [],
   });
   const [loading, setLoading] = useState(!!id);
@@ -22,7 +30,7 @@ export function BuildEditor() {
   const [busy, setBusy] = useState(false);
   const [allowed, setAllowed] = useState(!id);
   const racers = useLoad<Racer[]>("/racers");
-  const machines = useLoad<Machine[]>("/machines");
+  const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
   useEffect(() => {
     if (!id) return;
@@ -38,7 +46,9 @@ export function BuildEditor() {
           title: b.title,
           description: b.description,
           racerId: b.racer.id,
-          machineId: b.machine.id,
+          frontPartId: b.frontPart.id,
+          rearPartId: b.rearPart.id,
+          tirePartId: b.tirePart.id,
           gadgetIds: b.gadgets.map((g) => g.id),
         });
       })
@@ -54,7 +64,6 @@ export function BuildEditor() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const selectedRacer = racers.data?.find((r) => r.id === draft.racerId);
-  const selectedMachine = machines.data?.find((m) => m.id === draft.machineId);
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -64,11 +73,11 @@ export function BuildEditor() {
         <div>
           <div className="eyebrow accent">THE GARAGE</div>
           <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
-          <p>One racer. One stock machine. Your gadget combination.</p>
+          <p>One racer. Front, rear and tires. Your gadget combination.</p>
         </div>
       </div>
       <ErrorNotice
-        message={error || racers.error || machines.error || gadgets.error}
+        message={error || racers.error || parts.error || gadgets.error}
       />
       {loading ? (
         <p role="status">Loading your build…</p>
@@ -130,15 +139,21 @@ export function BuildEditor() {
                     value={draft.racerId}
                     onChange={(v) => field("racerId", v)}
                   />
-                  <ItemSelect
-                    label="Machine"
-                    items={machines.data || []}
-                    value={draft.machineId}
-                    onChange={(v) => field("machineId", v)}
-                  />
+                  {partSlots.map((slot) => (
+                    <label key={slot.key}>
+                      {slot.label}
+                      <select required value={draft[slot.key]}
+                        onChange={(e) => field(slot.key, e.target.value)}>
+                        <option value="">Choose a source machine</option>
+                        {parts.data?.filter((part) => part.type === slot.type).map((part) => (
+                          <option key={part.id} value={part.id}>{part.sourceMachineName}</option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
                 </div>
                 <p className="muted">
-                  Choose any racer with any stock machine.
+                  Choose each component from any stock machine.
                 </p>
               </section>
               <section className="panel">
@@ -194,20 +209,16 @@ export function BuildEditor() {
                   </span>
                 </section>
                 <section className="preview-item">
-                  <span className="preview-label">Stock machine</span>
-                  {selectedMachine ? (
-                    <Artwork item={selectedMachine} />
-                  ) : (
-                    <div className="preview-placeholder" aria-hidden="true">
-                      M
-                    </div>
-                  )}
-                  <strong>{selectedMachine?.name || "Choose a machine"}</strong>
-                  <span className="preview-meta">
-                    {selectedMachine
-                      ? selectedMachine.racingType.toLowerCase()
-                      : "Your machine appears here"}
-                  </span>
+                  <span className="preview-label">Machine setup</span>
+                  <dl>
+                    {partSlots.map((slot) => (
+                      <div key={slot.key}>
+                        <dt>{slot.label}</dt>
+                        <dd>{parts.data?.find((part) => part.id === draft[slot.key])?.sourceMachineName
+                          || "Choose a source machine"}</dd>
+                      </div>
+                    ))}
+                  </dl>
                 </section>
               </div>
               <h3>Gadgets · {draft.gadgetIds.length}</h3>
@@ -261,7 +272,7 @@ export function BuildEditor() {
               <button
                 className="primary"
                 disabled={
-                  busy || !racers.data || !machines.data || !gadgets.data
+                  busy || !racers.data || !parts.data || !gadgets.data
                 }
               >
                 {busy ? "Saving…" : id ? "Save changes" : "Publish build"}

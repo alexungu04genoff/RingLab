@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.Racer;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -40,6 +41,15 @@ public class GameDataDbAdapter implements GameDataRepository {
 
   public Optional<Machine> findMachine(UUID id) {
     return Optional.ofNullable(em.find(MachineDbEntity.class, id)).map(mapper::toDomain);
+  }
+
+  public List<MachinePart> listMachineParts() {
+    return em.createQuery("from MachinePartDbEntity order by sourceMachineId, type", MachinePartDbEntity.class)
+        .getResultList().stream().map(mapper::toDomain).toList();
+  }
+
+  public Optional<MachinePart> findMachinePart(UUID id) {
+    return Optional.ofNullable(em.find(MachinePartDbEntity.class, id)).map(mapper::toDomain);
   }
 
   public List<Gadget> listGadgets() {

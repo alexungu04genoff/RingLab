@@ -81,7 +81,7 @@ class VoteServiceTest {
   private static Build build(UUID id) {
     UUID owner = UUID.randomUUID();
     Instant now = Instant.parse("2026-01-01T00:00:00Z");
-    return new Build(id, "Build", "", owner, owner, owner, List.of(), now, now);
+    return new Build(id, "Build", "", owner, owner, owner, owner, owner, List.of(), now, now);
   }
 
   private static final class InMemoryBuildRepository implements BuildRepository {

@@ -21,8 +21,14 @@ public class BuildDbEntity {
   @Column(name = "racer_id", nullable = false)
   public UUID racerId;
 
-  @Column(name = "machine_id", nullable = false)
-  public UUID machineId;
+  @Column(name = "front_part_id", nullable = false)
+  public UUID frontPartId;
+
+  @Column(name = "rear_part_id", nullable = false)
+  public UUID rearPartId;
+
+  @Column(name = "tire_part_id", nullable = false)
+  public UUID tirePartId;
 
   @ElementCollection
   @CollectionTable(name = "build_gadgets", joinColumns = @JoinColumn(name = "build_id"))

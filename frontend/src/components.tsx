@@ -57,7 +57,12 @@ export function BuildCard({ build }: { build: Build }) {
       <div className="card-body">
         <span className="eyebrow">{build.racer.name}</span>
         <h2>{build.title}</h2>
-        <p className="machine-name">{build.machine.name}</p>
+        <p className="machine-name">
+          {build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
+          build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
+            ? build.frontPart.sourceMachineName
+            : "Mixed machine"}
+        </p>
         <div className="tags">
           {build.gadgets.slice(0, 2).map((g, i) => (
             <span key={`${g.id}-${i}`}>{g.name}</span>
@@ -79,12 +84,14 @@ export function ItemSelect({
   value,
   onChange,
   optional = false,
+  emptyLabel,
 }: {
   label: string;
   items: Array<Racer | Machine>;
   value: string;
   onChange: (value: string) => void;
   optional?: boolean;
+  emptyLabel?: string;
 }) {
   return (
     <label>
@@ -95,9 +102,9 @@ export function ItemSelect({
         required={!optional}
       >
         <option value="">
-          {optional
+          {emptyLabel ?? (optional
             ? `All ${label.toLowerCase()}s`
-            : `Choose a ${label.toLowerCase()}`}
+            : `Choose a ${label.toLowerCase()}`)}
         </option>
         {items.map((i) => (
           <option key={i.id} value={i.id}>

@@ -9,11 +9,16 @@ public record Build(
     String description,
     UUID authorId,
     UUID racerId,
-    UUID machineId,
+    UUID frontPartId,
+    UUID rearPartId,
+    UUID tirePartId,
     List<UUID> gadgetIds,
     Instant createdAt,
     Instant updatedAt) {
   public Build {
+    Objects.requireNonNull(frontPartId);
+    Objects.requireNonNull(rearPartId);
+    Objects.requireNonNull(tirePartId);
     gadgetIds = List.copyOf(gadgetIds);
   }
 }

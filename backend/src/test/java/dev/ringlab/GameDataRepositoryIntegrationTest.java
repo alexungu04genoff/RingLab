@@ -24,6 +24,14 @@ class GameDataRepositoryIntegrationTest {
 
     assertEquals(6, gameData.listRacers().size());
     assertEquals(10, gameData.listMachines().size());
+    assertEquals(30, gameData.listMachineParts().size());
+    for (var source : gameData.listMachines()) {
+      var parts = gameData.listMachineParts().stream()
+          .filter(p -> p.sourceMachineId().equals(source.id())).toList();
+      assertEquals(java.util.Set.of("FRONT", "REAR", "TIRE"),
+          parts.stream().map(p -> p.type().name()).collect(java.util.stream.Collectors.toSet()));
+      for (var part : parts) assertEquals(part, gameData.findMachinePart(part.id()).orElseThrow());
+    }
     assertEquals(20, gameData.listGadgets().size());
 
     assertEquals(racer, gameData.findRacer(racer.id()).orElseThrow());

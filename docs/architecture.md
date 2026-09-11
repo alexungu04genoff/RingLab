@@ -20,7 +20,7 @@ dev.ringlab/
 
 ## Boundaries
 
-- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `Gadget`, `Build`, `Vote`, `Comment`) and the `RacingType` enum, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
+- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `Build`, `Vote`, `Comment`) and the `RacingType` and `MachinePartType` enums, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific.
@@ -41,9 +41,9 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 ## Mapping and flow
 
-MapStruct generates entity/domain mappings for users, builds, comments, and the three game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
+MapStruct generates entity/domain mappings for users, builds, comments, and the four game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
-`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, machines, and gadgets, but the domain and port are strongly typed: `listRacers`/`findRacer`, `listMachines`/`findMachine`, and `listGadgets`/`findGadget`. Each existing Db entity maps to its corresponding domain record. The REST layer uses explicit `RacerResponse`, `MachineResponse`, and `GadgetResponse` DTOs, including when build responses assemble a loadout. The dynamic build-filter query uses JPA Criteria. JPQL entity references follow the renamed Java entities; table names and migrations are unchanged.
+`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, and gadgets, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit `RacerResponse`, `MachineResponse`, `MachinePartResponse`, and `GadgetResponse` DTOs. `GET /api/machine-parts` returns each part's ID, type, source-machine ID/name, and source racing type. Build requests use `frontPartId`, `rearPartId`, and `tirePartId`; responses include the corresponding part DTOs. The dynamic build-filter query uses JPA Criteria.
 
 Create-build flow:
 
@@ -62,9 +62,11 @@ Edit/delete flows load the existing record and compare the authenticated actor t
 
 ## Relational design
 
-`users`, `racers`, `machines`, `gadgets`, `builds`, `votes`, and `comments` use UUID primary keys. `build_gadgets` uses `(build_id, position)` as its primary key: it is an ordered collection entry, not an independently addressable entity. Foreign keys enforce valid references. Build deletion cascades its collection, votes, and comments. User deletion is not implemented.
+`users`, `racers`, `machines`, `machine_parts`, `gadgets`, `builds`, `votes`, and `comments` use UUID primary keys. `build_gadgets` uses `(build_id, position)` as its primary key: it is an ordered collection entry, not an independently addressable entity. Foreign keys enforce valid references. Build deletion cascades its collection, votes, and comments. User deletion is not implemented.
 
-Racers and machines are independent foreign keys. `build_gadgets` is mapped as an ordered element collection of gadget UUIDs. No guessed slot budget, unique-gadget constraint, compatibility rules, or machine-part abstractions are present.
+`Machine` is catalog/source-machine metadata. The framework-independent `MachinePart` record represents a FRONT, REAR, or TIRE component originating from a source machine; `MachinePartType` is an enum persisted as a string. `Build` composes exactly one FRONT + one REAR + one TIRE, alongside one racer. Required part IDs and foreign keys preserve references; BuildService enforces the slot types and rejects unknown IDs with 400 errors. Parts can come from different machines. Gadgets remain an independent ordered configuration mapped through `build_gadgets`. No part stats, individual names, artwork, slot budgets, or compatibility restrictions are invented.
+
+Explore's compact “Uses parts from” filter retains the `machineId` query parameter as a source-machine ID. It matches front OR rear OR tire source using the same predicate for results and counts, composing with racer, literal search, author, all sorts, and pagination.
 
 Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. PostgreSQL `INSERT … ON CONFLICT … DO UPDATE` makes repeated/concurrent votes update the same row atomically. Scores are always queried as `SUM(value)`; no client-owned or cached score exists.
 
@@ -74,9 +76,13 @@ Browse queries filter in PostgreSQL and paginate before response assembly. `Buil
 
 Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. Machine and gadget image paths remain null, as do gadget descriptions and slot costs. No fake application users enter migrations.
 
+V4 creates three explicitly identified parts per seeded machine, backfills old builds to the three parts from their former machine, makes all three columns required, then removes `builds.machine_id`. The transactional migration fails if any old build cannot be mapped. Build IDs, timestamps, ordered gadgets, votes, and comments are preserved; V1–V3 remain unchanged.
+
 Best rated (`sort=rated`) orders by the Wilson lower bound with z = 1.96 (approximately 95% confidence), then raw score descending, creation time descending, and UUID ascending. `BuildDbAdapter` builds the calculation as a correlated Criteria aggregate over votes, so PostgreSQL ranks all matching builds before pagination using the same filters. Zero-vote builds receive zero. Sample size matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes because the larger sample provides stronger evidence. Wilson is internal to ordering; the visible community score remains upvotes minus downvotes. No ranking values are cached or exposed in responses.
 
 ## Frontend
+
+The editor selects Front, Rear, and Tires independently; preview and details show each source name. Cards show the stock-machine name when all sources match, otherwise “Mixed machine”. Game Collection explains that stock machines provide all three components. The demo seeder retains its users, builds, comments, and vote distributions, with three existing examples using mixed sources.
 
 React Router owns page navigation. A small context holds current authentication; forms and page queries own local state. `api.ts` centralizes the bearer header, JSON handling and errors. `useLoad` aborts stale requests on route/filter changes. Build selection helpers preserve and reorder gadget IDs without game-rule calculations. React's normal text escaping is used for user content.
 
@@ -86,4 +92,4 @@ Routes cover Explore, My Builds, details, create/edit, register/login, and the r
 
 `AcceptanceTest` uses Quarkus's test runner, HTTP requests, actual JWT registration/login, Flyway, and PostgreSQL. `PackagedApiIT` repeats it against the production artifact. `DomainTest` checks immutable collection and vote/ownership behavior. Frontend tests check ordering and API errors/session expiration. The test run's external-database option requires a disposable database.
 
-JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, machine-part customization, gadget rules and calculated stats remain outside the implemented scope.
+JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, gadget rules and calculated stats remain outside the implemented scope.

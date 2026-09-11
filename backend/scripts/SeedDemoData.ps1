@@ -112,6 +112,7 @@ Write-Host "Checking RingLab at $BaseUrl..."
 try {
   $racers = @(Invoke-RingLabApi -Method GET -Path "/racers" | ForEach-Object { $_ })
   $machines = @(Invoke-RingLabApi -Method GET -Path "/machines" | ForEach-Object { $_ })
+  $parts = @(Invoke-RingLabApi -Method GET -Path "/machine-parts" | ForEach-Object { $_ })
   $gadgets = @(Invoke-RingLabApi -Method GET -Path "/gadgets" | ForEach-Object { $_ })
 }
 catch {
@@ -122,9 +123,9 @@ $racerIds = @{}
 foreach ($racer in $racers) {
   [void]($racerIds[$racer.name] = $racer.id)
 }
-$machineIds = @{}
-foreach ($machine in $machines) {
-  [void]($machineIds[$machine.name] = $machine.id)
+$partIds = @{}
+foreach ($part in $parts) {
+  [void]($partIds["$($part.sourceMachineName)/$($part.type)"] = $part.id)
 }
 $gadgetIds = @{}
 foreach ($gadget in $gadgets) {
@@ -267,11 +268,24 @@ $buildDefinitions = @(
 )
 
 $builds = @{}
+# Three existing examples demonstrate mixed sources; all other definitions stay stock-style.
+$mixedRearSources = @{
+  "route" = "Dark Reaper"
+  "boost" = "Speedster Lightning"
+  "amy-drift" = "TYPE-S Stream"
+}
 foreach ($definition in $buildDefinitions) {
   $owner = $users[$definition.Owner]
   $authorId = [System.Uri]::EscapeDataString([string]$owner.user.id)
   $existing = Invoke-RingLabApi -Method GET -Path "/builds?authorId=$authorId&size=50"
   $build = @($existing.items) | Where-Object { $_.title -eq $definition.Title } | Select-Object -First 1
+  $rearSource = $definition.Machine
+  if ($mixedRearSources.ContainsKey($definition.Key)) {
+    $rearSource = $mixedRearSources[$definition.Key]
+  }
+  $frontPartId = Require-GameId $partIds "$($definition.Machine)/FRONT" "machine part"
+  $rearPartId = Require-GameId $partIds "$rearSource/REAR" "machine part"
+  $tirePartId = Require-GameId $partIds "$($definition.Machine)/TIRE" "machine part"
 
   if ($null -eq $build) {
     $orderedGadgetIds = @(
@@ -283,12 +297,26 @@ foreach ($definition in $buildDefinitions) {
       title = $definition.Title
       description = $definition.Description
       racerId = Require-GameId $racerIds $definition.Racer "racer"
-      machineId = Require-GameId $machineIds $definition.Machine "machine"
+      frontPartId = $frontPartId
+      rearPartId = $rearPartId
+      tirePartId = $tirePartId
       gadgetIds = $orderedGadgetIds
     }
     Write-Host "Created build $($definition.Title)."
   }
   else {
+    if ($mixedRearSources.ContainsKey($definition.Key) -and
+        $build.rearPart.id -ne $rearPartId) {
+      $build = Invoke-RingLabApi -Method PUT -Path "/builds/$($build.id)" -Token $owner.token -Body @{
+        title = $build.title
+        description = $build.description
+        racerId = $build.racer.id
+        frontPartId = $build.frontPart.id
+        rearPartId = $rearPartId
+        tirePartId = $build.tirePart.id
+        gadgetIds = @($build.gadgets | ForEach-Object { $_.id })
+      }
+    }
     Write-Host "Using existing build $($definition.Title)."
   }
   $builds[$definition.Key] = $build

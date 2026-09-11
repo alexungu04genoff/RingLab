@@ -10,7 +10,7 @@ import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
-import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
@@ -39,8 +39,9 @@ public class BuildRestResource {
     return RacerResponse.from(game.findRacer(id).orElseThrow());
   }
 
-  private MachineResponse machineItem(UUID id) {
-    return MachineResponse.from(game.findMachine(id).orElseThrow());
+  private MachinePartResponse partItem(UUID id) {
+    var part = game.findMachinePart(id).orElseThrow();
+    return MachinePartResponse.from(part, game.findMachine(part.sourceMachineId()).orElseThrow());
   }
 
   private GadgetResponse gadgetItem(UUID id) {
@@ -55,7 +56,9 @@ public class BuildRestResource {
         b.description(),
         new AuthorResponse(author.id(), author.username()),
         racerItem(b.racerId()),
-        machineItem(b.machineId()),
+        partItem(b.frontPartId()),
+        partItem(b.rearPartId()),
+        partItem(b.tirePartId()),
         b.gadgetIds().stream().map(this::gadgetItem).toList(),
         b.createdAt(),
         b.updatedAt(),

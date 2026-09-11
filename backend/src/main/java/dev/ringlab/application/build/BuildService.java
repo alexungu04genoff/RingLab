@@ -3,6 +3,7 @@ package dev.ringlab.application.build;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.application.AppException;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
@@ -16,7 +17,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class BuildService {
   public record Draft(
-      String title, String description, UUID racerId, UUID machineId, List<UUID> gadgetIds) {}
+      String title, String description, UUID racerId, UUID frontPartId,
+      UUID rearPartId, UUID tirePartId, List<UUID> gadgetIds) {}
 
   private final BuildRepository builds;
   private final GameDataRepository game;
@@ -31,7 +33,9 @@ public class BuildService {
 
   private void validate(Draft d) {
     requireRacer(d.racerId());
-    requireMachine(d.machineId());
+    requirePart(d.frontPartId(), MachinePartType.FRONT);
+    requirePart(d.rearPartId(), MachinePartType.REAR);
+    requirePart(d.tirePartId(), MachinePartType.TIRE);
     d.gadgetIds().forEach(this::requireGadget);
   }
 
@@ -39,8 +43,13 @@ public class BuildService {
     if (game.findRacer(id).isEmpty()) throw new AppException(400, "Unknown racer ID");
   }
 
-  private void requireMachine(UUID id) {
-    if (game.findMachine(id).isEmpty()) throw new AppException(400, "Unknown machine ID");
+  private void requirePart(UUID id, MachinePartType expectedType) {
+    if (id == null) throw new AppException(400, "Missing " + expectedType + " part ID");
+    var part = game.findMachinePart(id)
+        .orElseThrow(() -> new AppException(400, "Unknown " + expectedType + " part ID"));
+    if (part.type() != expectedType) {
+      throw new AppException(400, "Expected " + expectedType + " part, got " + part.type());
+    }
   }
 
   private void requireGadget(UUID id) {
@@ -58,7 +67,9 @@ public class BuildService {
             d.description(),
             author,
             d.racerId(),
-            d.machineId(),
+            d.frontPartId(),
+            d.rearPartId(),
+            d.tirePartId(),
             d.gadgetIds(),
             now,
             now);
@@ -78,7 +89,9 @@ public class BuildService {
             d.description(),
             old.authorId(),
             d.racerId(),
-            d.machineId(),
+            d.frontPartId(),
+            d.rearPartId(),
+            d.tirePartId(),
             d.gadgetIds(),
             old.createdAt(),
             Instant.now());

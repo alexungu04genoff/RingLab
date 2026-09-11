@@ -6,6 +6,8 @@ import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachinePart;
+import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.Racer;
 import dev.ringlab.domain.gamedata.RacingType;
 import dev.ringlab.port.out.BuildRepository;
@@ -18,6 +20,9 @@ import org.junit.jupiter.api.Test;
 class BuildServiceTest {
   private final UUID racerId = UUID.randomUUID();
   private final UUID machineId = UUID.randomUUID();
+  private final UUID frontPartId = UUID.randomUUID();
+  private final UUID rearPartId = UUID.randomUUID();
+  private final UUID tirePartId = UUID.randomUUID();
   private final UUID gadgetId = UUID.randomUUID();
   private final UUID authorId = UUID.randomUUID();
   private InMemoryBuildRepository builds;
@@ -28,6 +33,9 @@ class BuildServiceTest {
   void setUp() {
     builds = new InMemoryBuildRepository();
     gameData = new GameDataStub(racerId, machineId, gadgetId);
+    gameData.parts.put(frontPartId, new MachinePart(frontPartId, machineId, MachinePartType.FRONT));
+    gameData.parts.put(rearPartId, new MachinePart(rearPartId, machineId, MachinePartType.REAR));
+    gameData.parts.put(tirePartId, new MachinePart(tirePartId, machineId, MachinePartType.TIRE));
     service = new BuildService(builds, gameData);
   }
 
@@ -51,7 +59,10 @@ class BuildServiceTest {
     assertEquals("Description stays as supplied", created.description());
     assertEquals(authorId, created.authorId());
     assertEquals(racerId, created.racerId());
-    assertEquals(machineId, created.machineId());
+    assertEquals(frontPartId, created.frontPartId());
+    assertEquals(rearPartId, created.rearPartId());
+    assertEquals(tirePartId, created.tirePartId());
+    assertEquals(created, service.get(created.id()));
     assertEquals(List.of(gadgetId), created.gadgetIds());
     assertEquals(created.createdAt(), created.updatedAt());
   }
@@ -68,13 +79,13 @@ class BuildServiceTest {
   }
 
   @Test
-  void rejectsUnknownMachine() {
-    gameData.machines.clear();
+  void rejectsUnknownFrontPart() {
+    gameData.parts.remove(frontPartId);
 
     AppException error = assertThrows(AppException.class, () -> service.create(authorId, draft("Build")));
 
     assertEquals(400, error.status);
-    assertEquals("Unknown machine ID", error.getMessage());
+    assertEquals("Unknown FRONT part ID", error.getMessage());
     assertNull(builds.lastSaved);
   }
 
@@ -139,9 +150,50 @@ class BuildServiceTest {
     assertNull(builds.deletedId);
   }
 
+  @Test
+  void acceptsMixedSourcesAndEditsOnePartIndependently() {
+    var old = service.create(authorId, draft("Stock"));
+    UUID mixedRear = UUID.randomUUID();
+    gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
+    var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
+        tirePartId, List.of(gadgetId, gadgetId));
+    var created = service.create(authorId, mixed);
+    assertEquals(mixedRear, service.get(created.id()).rearPartId());
+    var edited = service.edit(old.id(), authorId, mixed);
+    assertEquals(old.frontPartId(), edited.frontPartId());
+    assertEquals(mixedRear, edited.rearPartId());
+    assertEquals(old.tirePartId(), edited.tirePartId());
+    assertEquals(List.of(gadgetId, gadgetId), edited.gadgetIds());
+  }
+
+  @Test
+  void rejectsWrongTypesInEverySlot() {
+    for (var wrong : List.of(
+        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, List.of()))) {
+      var error = assertThrows(AppException.class, () -> service.create(authorId, wrong));
+      assertEquals(400, error.status);
+      assertTrue(error.getMessage().startsWith("Expected "));
+    }
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void rejectsMissingPartAndPreservesOrderedGadgets() {
+    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, List.of());
+    assertEquals(400, assertThrows(AppException.class, () -> service.create(authorId, invalid)).status);
+    UUID second = UUID.randomUUID();
+    gameData.gadgets.put(second, new Gadget(second, "Second", null, null, null));
+    var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
+        tirePartId, List.of(second, gadgetId, second));
+    var created = service.create(authorId, ordered);
+    assertEquals(List.of(second, gadgetId, second), service.get(created.id()).gadgetIds());
+  }
+
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
-        title, "Description stays as supplied", racerId, machineId, List.of(gadgetId));
+        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, List.of(gadgetId));
   }
 
   private Build existingBuild() {
@@ -152,7 +204,9 @@ class BuildServiceTest {
         "Original description",
         authorId,
         racerId,
-        machineId,
+        frontPartId,
+        rearPartId,
+        tirePartId,
         List.of(gadgetId),
         createdAt,
         createdAt);
@@ -187,6 +241,7 @@ class BuildServiceTest {
   }
 
   private static final class GameDataStub implements GameDataRepository {
+    private final Map<UUID, MachinePart> parts = new HashMap<>();
     private final Map<UUID, Racer> racers = new HashMap<>();
     private final Map<UUID, Machine> machines = new HashMap<>();
     private final Map<UUID, Gadget> gadgets = new HashMap<>();
@@ -215,6 +270,14 @@ class BuildServiceTest {
     @Override
     public Optional<Machine> findMachine(UUID id) {
       return Optional.ofNullable(machines.get(id));
+    }
+
+    public List<MachinePart> listMachineParts() {
+      return List.copyOf(parts.values());
+    }
+
+    public Optional<MachinePart> findMachinePart(UUID id) {
+      return Optional.ofNullable(parts.get(id));
     }
 
     @Override

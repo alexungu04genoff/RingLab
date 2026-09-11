@@ -38,6 +38,20 @@ public abstract class ApiContract {
     return given().get("/api/" + collection).then().statusCode(200).extract().path("id");
   }
 
+  private String partId(String source, String type) {
+    List<Map<String, Object>> parts = given().get("/api/machine-parts").then()
+        .statusCode(200).extract().jsonPath().getList("$");
+    return (String) parts.stream()
+        .filter(p -> source.equals(p.get("sourceMachineId")) && type.equals(p.get("type")))
+        .findFirst().orElseThrow().get("id");
+  }
+
+  private void stockParts(Map<String, Object> body, String source) {
+    body.put("frontPartId", partId(source, "FRONT"));
+    body.put("rearPartId", partId(source, "REAR"));
+    body.put("tirePartId", partId(source, "TIRE"));
+  }
+
   private Map<String, Object> draft() {
     var gadgets = ids("gadgets");
     return new HashMap<>(
@@ -48,8 +62,9 @@ public abstract class ApiContract {
             "A test combination",
             "racerId",
             ids("racers").getFirst(),
-            "machineId",
-            ids("machines").getLast(),
+            "frontPartId", partId(ids("machines").getLast(), "FRONT"),
+            "rearPartId", partId(ids("machines").getLast(), "REAR"),
+            "tirePartId", partId(ids("machines").getLast(), "TIRE"),
             "gadgetIds",
             List.of(gadgets.get(3), gadgets.get(1))));
   }
@@ -181,7 +196,17 @@ public abstract class ApiContract {
         .then()
         .statusCode(200)
         .body("gadgets.id", equalTo(body.get("gadgetIds")))
+        .body("frontPart.id", equalTo(body.get("frontPartId")))
+        .body("rearPart.id", equalTo(body.get("rearPartId")))
+        .body("tirePart.id", equalTo(body.get("tirePartId")))
         .body("author.id", equalTo(author.id));
+    body.put("rearPartId", partId(ids("machines").getFirst(), "REAR"));
+    request(author.token).body(body).put("/api/builds/" + id).then().statusCode(200);
+    given().get("/api/builds/" + id).then().statusCode(200)
+        .body("frontPart.id", equalTo(body.get("frontPartId")))
+        .body("rearPart.id", equalTo(body.get("rearPartId")))
+        .body("tirePart.id", equalTo(body.get("tirePartId")))
+        .body("gadgets.id", equalTo(body.get("gadgetIds")));
     body.put("gadgetIds", ids("gadgets"));
     request(author.token)
         .body(body)
@@ -201,7 +226,7 @@ public abstract class ApiContract {
   @Test
   void rejectsUnknownReferencesAndBlankContent() {
     var author = register();
-    for (String field : List.of("racerId", "machineId", "gadgetIds")) {
+    for (String field : List.of("racerId", "frontPartId", "rearPartId", "tirePartId", "gadgetIds")) {
       var body = draft();
       body.put(
           field,
@@ -376,7 +401,7 @@ public abstract class ApiContract {
         .queryParam("authorId", owner.id)
         .queryParam("search", "nEeDlE")
         .queryParam("racerId", data.get("racerId"))
-        .queryParam("machineId", data.get("machineId"))
+        .queryParam("machineId", ids("machines").getLast())
         .get("/api/builds")
         .then()
         .statusCode(200)
@@ -396,14 +421,14 @@ public abstract class ApiContract {
     var literalBuild = draft();
     literalBuild.put("title", "Literal %_ build");
     literalBuild.put("racerId", racers.getFirst());
-    literalBuild.put("machineId", machines.getLast());
+    stockParts(literalBuild, machines.getLast());
     String first =
         request(owner.token).body(literalBuild).post("/api/builds").then().statusCode(200).extract().path("id");
 
     var newerBuild = draft();
     newerBuild.put("title", "Other owner build");
     newerBuild.put("racerId", racers.get(1));
-    newerBuild.put("machineId", machines.getFirst());
+    stockParts(newerBuild, machines.getFirst());
     String second =
         request(owner.token).body(newerBuild).post("/api/builds").then().statusCode(200).extract().path("id");
 

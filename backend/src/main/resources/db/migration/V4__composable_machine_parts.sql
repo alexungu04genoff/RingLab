@@ -1,0 +1,61 @@
+CREATE TABLE machine_parts (
+    id UUID PRIMARY KEY,
+    source_machine_id UUID NOT NULL REFERENCES machines(id),
+    part_type VARCHAR(5) NOT NULL CHECK (part_type IN ('FRONT', 'REAR', 'TIRE')),
+    UNIQUE (source_machine_id, part_type)
+);
+
+-- Explicit, stable part IDs for the supplied stock-machine catalog.
+INSERT INTO machine_parts (id, source_machine_id, part_type) VALUES
+('10000000-0000-4000-8000-000000000001', '6e6a50e8-cb09-5718-801a-91d6a9c7a5b0', 'FRONT'),
+('20000000-0000-4000-8000-000000000001', '6e6a50e8-cb09-5718-801a-91d6a9c7a5b0', 'REAR'),
+('30000000-0000-4000-8000-000000000001', '6e6a50e8-cb09-5718-801a-91d6a9c7a5b0', 'TIRE'),
+('10000000-0000-4000-8000-000000000002', 'fc5a6823-88b8-5acd-9d9d-0bc2f8b52fb3', 'FRONT'),
+('20000000-0000-4000-8000-000000000002', 'fc5a6823-88b8-5acd-9d9d-0bc2f8b52fb3', 'REAR'),
+('30000000-0000-4000-8000-000000000002', 'fc5a6823-88b8-5acd-9d9d-0bc2f8b52fb3', 'TIRE'),
+('10000000-0000-4000-8000-000000000003', 'bb372c28-5fe9-54f9-9555-bff04f76b187', 'FRONT'),
+('20000000-0000-4000-8000-000000000003', 'bb372c28-5fe9-54f9-9555-bff04f76b187', 'REAR'),
+('30000000-0000-4000-8000-000000000003', 'bb372c28-5fe9-54f9-9555-bff04f76b187', 'TIRE'),
+('10000000-0000-4000-8000-000000000004', '04c4a02d-2dfd-5c60-b55a-752ace638175', 'FRONT'),
+('20000000-0000-4000-8000-000000000004', '04c4a02d-2dfd-5c60-b55a-752ace638175', 'REAR'),
+('30000000-0000-4000-8000-000000000004', '04c4a02d-2dfd-5c60-b55a-752ace638175', 'TIRE'),
+('10000000-0000-4000-8000-000000000005', 'f2898979-c8e9-5638-80f6-2c9b1c3cee96', 'FRONT'),
+('20000000-0000-4000-8000-000000000005', 'f2898979-c8e9-5638-80f6-2c9b1c3cee96', 'REAR'),
+('30000000-0000-4000-8000-000000000005', 'f2898979-c8e9-5638-80f6-2c9b1c3cee96', 'TIRE'),
+('10000000-0000-4000-8000-000000000006', 'c075c292-e6c2-5b7e-bae2-525039a77013', 'FRONT'),
+('20000000-0000-4000-8000-000000000006', 'c075c292-e6c2-5b7e-bae2-525039a77013', 'REAR'),
+('30000000-0000-4000-8000-000000000006', 'c075c292-e6c2-5b7e-bae2-525039a77013', 'TIRE'),
+('10000000-0000-4000-8000-000000000007', '5aa36b0f-9918-5112-9d91-3e847e08e7c2', 'FRONT'),
+('20000000-0000-4000-8000-000000000007', '5aa36b0f-9918-5112-9d91-3e847e08e7c2', 'REAR'),
+('30000000-0000-4000-8000-000000000007', '5aa36b0f-9918-5112-9d91-3e847e08e7c2', 'TIRE'),
+('10000000-0000-4000-8000-000000000008', '098afc29-eb17-5be7-a04e-75ebba27e3e3', 'FRONT'),
+('20000000-0000-4000-8000-000000000008', '098afc29-eb17-5be7-a04e-75ebba27e3e3', 'REAR'),
+('30000000-0000-4000-8000-000000000008', '098afc29-eb17-5be7-a04e-75ebba27e3e3', 'TIRE'),
+('10000000-0000-4000-8000-000000000009', 'a275a279-391f-506f-8fac-46aca6b01ad9', 'FRONT'),
+('20000000-0000-4000-8000-000000000009', 'a275a279-391f-506f-8fac-46aca6b01ad9', 'REAR'),
+('30000000-0000-4000-8000-000000000009', 'a275a279-391f-506f-8fac-46aca6b01ad9', 'TIRE'),
+('10000000-0000-4000-8000-000000000010', 'c60a51f3-9d1f-5ee5-9329-34d92829a4e7', 'FRONT'),
+('20000000-0000-4000-8000-000000000010', 'c60a51f3-9d1f-5ee5-9329-34d92829a4e7', 'REAR'),
+('30000000-0000-4000-8000-000000000010', 'c60a51f3-9d1f-5ee5-9329-34d92829a4e7', 'TIRE');
+
+ALTER TABLE builds
+    ADD COLUMN front_part_id UUID REFERENCES machine_parts(id),
+    ADD COLUMN rear_part_id UUID REFERENCES machine_parts(id),
+    ADD COLUMN tire_part_id UUID REFERENCES machine_parts(id);
+
+UPDATE builds b
+SET front_part_id = f.id, rear_part_id = r.id, tire_part_id = t.id
+FROM machine_parts f, machine_parts r, machine_parts t
+WHERE f.source_machine_id = b.machine_id AND f.part_type = 'FRONT'
+  AND r.source_machine_id = b.machine_id AND r.part_type = 'REAR'
+  AND t.source_machine_id = b.machine_id AND t.part_type = 'TIRE';
+
+-- Fail transactionally if any old build could not be mapped; never discard a build.
+ALTER TABLE builds
+    ALTER COLUMN front_part_id SET NOT NULL,
+    ALTER COLUMN rear_part_id SET NOT NULL,
+    ALTER COLUMN tire_part_id SET NOT NULL;
+ALTER TABLE builds DROP COLUMN machine_id;
+CREATE INDEX builds_front_part ON builds(front_part_id);
+CREATE INDEX builds_rear_part ON builds(rear_part_id);
+CREATE INDEX builds_tire_part ON builds(tire_part_id);

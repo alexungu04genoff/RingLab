@@ -24,7 +24,7 @@ export function GameData() {
       <section className="collection-intro" aria-label="How a RingLab build works">
         <strong>How a build comes together</strong>
         <p>
-          Choose one racer, one complete stock machine, and optional gadgets in the order you
+          Choose one racer, one front, one rear and one tire part, and optional gadgets in the order you
           want them shown.
         </p>
       </section>
@@ -48,6 +48,7 @@ export function GameData() {
             <Artwork item={i} compact />
             <div>
               <h2>{i.name}</h2>
+              {tab === "machines" && <p>Provides FRONT / REAR / TIRE components.</p>}
               {"racingType" in i && <span className="eyebrow">{i.racingType}</span>}
               {"description" in i && i.description && <p>{i.description}</p>}
             </div>

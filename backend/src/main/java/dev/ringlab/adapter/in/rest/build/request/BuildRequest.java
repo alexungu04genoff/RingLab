@@ -11,9 +11,11 @@ public record BuildRequest(
     @NotBlank @Size(max = 120) String title,
     @NotNull @Size(max = 10000) String description,
     @NotNull UUID racerId,
-    @NotNull UUID machineId,
+    @NotNull UUID frontPartId,
+    @NotNull UUID rearPartId,
+    @NotNull UUID tirePartId,
     @NotNull List<@NotNull UUID> gadgetIds) {
   public BuildService.Draft draft() {
-    return new BuildService.Draft(title, description, racerId, machineId, gadgetIds);
+    return new BuildService.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId, gadgetIds);
   }
 }

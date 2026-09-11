@@ -29,13 +29,23 @@ export interface Gadget {
   slotCost: number | null;
   imagePath: string | null;
 }
+export type MachinePartType = "FRONT" | "REAR" | "TIRE";
+export interface MachinePart {
+  id: string;
+  type: MachinePartType;
+  sourceMachineId: string;
+  sourceMachineName: string;
+  racingType: RacingType;
+}
 export interface Build {
   id: string;
   title: string;
   description: string;
   author: Pick<User, "id" | "username">;
   racer: Racer;
-  machine: Machine;
+  frontPart: MachinePart;
+  rearPart: MachinePart;
+  tirePart: MachinePart;
   gadgets: Gadget[];
   createdAt: string;
   updatedAt: string;
@@ -45,7 +55,9 @@ export interface BuildDraft {
   title: string;
   description: string;
   racerId: string;
-  machineId: string;
+  frontPartId: string;
+  rearPartId: string;
+  tirePartId: string;
   gadgetIds: string[];
 }
 export interface BuildPage {

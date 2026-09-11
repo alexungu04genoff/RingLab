@@ -94,7 +94,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           optional
         />
         <ItemSelect
-          label="Machine"
+          label="Uses parts from"
+          emptyLabel="All source machines"
           items={machines.data || []}
           value={machine}
           onChange={(v) => {
@@ -165,7 +166,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
                   <>
                     <h2>Be the first to share a build</h2>
                     <p className="empty-intro">
-                      A RingLab build combines one racer, one stock machine, and optional
+                      A RingLab build combines one racer, front, rear and tire parts, and optional
                       ordered gadgets. Share your setup with the community when it is ready.
                     </p>
                     <div className="empty-actions">

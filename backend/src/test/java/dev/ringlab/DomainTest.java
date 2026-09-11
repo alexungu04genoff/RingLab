@@ -15,7 +15,7 @@ class DomainTest {
     var ids = new ArrayList<>(List.of(UUID.randomUUID(), UUID.randomUUID()));
     var snapshot = List.copyOf(ids);
     var id = UUID.randomUUID();
-    var build = new Build(id, "Title", "", id, id, id, ids, Instant.now(), Instant.now());
+    var build = new Build(id, "Title", "", id, id, id, id, id, ids, Instant.now(), Instant.now());
     ids.clear();
     assertEquals(snapshot, build.gadgetIds());
     assertThrows(UnsupportedOperationException.class, () -> build.gadgetIds().clear());
