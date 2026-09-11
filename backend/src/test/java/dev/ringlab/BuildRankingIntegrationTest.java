@@ -47,7 +47,7 @@ class BuildRankingIntegrationTest {
         ids(author, "score", 0, 50));
     List<UUID> paged = new ArrayList<>();
     for (int page = 0; page < 4; page++) {
-      var result = builds.list(new BuildRepository.Filter(null, null, null, author, "rated", page, 2));
+      var result = builds.list(new BuildRepository.Filter(null, null, null, author, null, "rated", page, 2));
       assertEquals(8, result.total());
       paged.addAll(result.items().stream().map(Build::id).toList());
     }
@@ -67,11 +67,11 @@ class BuildRankingIntegrationTest {
     build(author, game.listRacers().get(1).id(), machine, "Test %_ target", 40, 1, 4);
     build(author, racer, game.listMachines().get(1).id(), "Test %_ target", 40, 1, 5);
     em.flush();
-    var filter = new BuildRepository.Filter("TEST %_", racer, machine, author, "rated", 0, 1);
+    var filter = new BuildRepository.Filter("TEST %_", racer, machine, author, null, "rated", 0, 1);
     var result = builds.list(filter);
     assertEquals(1, result.total());
     assertEquals(List.of(match), result.items().stream().map(Build::id).toList());
-    assertTrue(builds.list(new BuildRepository.Filter("TEST %_", racer, machine, author,
+    assertTrue(builds.list(new BuildRepository.Filter("TEST %_", racer, machine, author, null,
         "rated", 1, 1)).items().isEmpty());
   }
 
@@ -93,7 +93,7 @@ class BuildRankingIntegrationTest {
   }
 
   private List<UUID> ids(UUID author, String sort, int page, int size) {
-    return builds.list(new BuildRepository.Filter(null, null, null, author, sort, page, size))
+    return builds.list(new BuildRepository.Filter(null, null, null, author, null, sort, page, size))
         .items().stream().map(Build::id).toList();
   }
 
@@ -126,11 +126,51 @@ class BuildRankingIntegrationTest {
       var expected = sort.equals("newest") ? List.of(tire, rear, front) : List.of(rear, tire, front);
       List<UUID> actual = new ArrayList<>();
       for (int page = 0; page < 3; page++) {
-        var result = builds.list(new BuildRepository.Filter("MIXED %_", racer, source, author, sort, page, 1));
+        var result = builds.list(new BuildRepository.Filter("MIXED %_", racer, source, author, null, sort, page, 1));
         assertEquals(3, result.total());
         actual.addAll(result.items().stream().map(Build::id).toList());
       }
       assertEquals(expected, actual);
+    }
+  }
+
+  @Test
+  @TestTransaction
+  void versionFilterComposesWithAllFiltersSortsAndPageTotals() {
+    UUID author = user();
+    UUID racer = game.listRacers().getFirst().id();
+    UUID source = game.listMachines().getFirst().id();
+    UUID other = game.listMachines().get(1).id();
+    UUID version = game.listGameVersions().getFirst().id();
+    UUID oldVersion = game.listGameVersions().get(1).id();
+    UUID strong = build(author, racer, other, "Patch %_ strong", 40, 1, 1);
+    UUID tiny = build(author, racer, source, "Patch %_ tiny", 3, 0, 2);
+    em.find(BuildDbEntity.class, strong).rearPartId = part(source, "REAR");
+    UUID wrongVersion = build(author, racer, source, "Patch %_ old", 50, 0, 3);
+    UUID versionless = build(author, racer, source, "Patch %_ unspecified", 50, 0, 4);
+    var selected = List.of(strong, tiny,
+        build(user(), racer, source, "Patch %_ other author", 50, 0, 5),
+        build(author, game.listRacers().get(1).id(), source, "Patch %_ other racer", 50, 0, 6),
+        build(author, racer, other, "Patch %_ other source", 50, 0, 7),
+        build(author, racer, source, "Patch XX wildcard decoy", 50, 0, 8));
+    for (UUID id : selected) em.find(BuildDbEntity.class, id).gameVersionId = version;
+    em.find(BuildDbEntity.class, wrongVersion).gameVersionId = oldVersion;
+    em.flush();
+    em.clear();
+    assertEquals(version, builds.find(strong).orElseThrow().gameVersionId());
+    assertNull(builds.find(versionless).orElseThrow().gameVersionId());
+    for (String sort : List.of("newest", "score", "rated")) {
+      List<UUID> actual = new ArrayList<>();
+      for (int page = 0; page < 3; page++) {
+        var result = builds.list(new BuildRepository.Filter("PATCH %_", racer, source,
+            author, version, sort, page, 1));
+        assertEquals(2, result.total());
+        actual.addAll(result.items().stream().map(Build::id).toList());
+        if (page == 2) assertTrue(result.items().isEmpty());
+      }
+      assertEquals(sort.equals("newest") ? List.of(tiny, strong) : List.of(strong, tiny), actual);
+      assertEquals(4, builds.list(new BuildRepository.Filter("PATCH %_", racer, source,
+          author, null, sort, 0, 50)).total());
     }
   }
 

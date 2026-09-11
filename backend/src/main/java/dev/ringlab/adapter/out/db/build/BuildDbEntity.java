@@ -30,6 +30,9 @@ public class BuildDbEntity {
   @Column(name = "tire_part_id", nullable = false)
   public UUID tirePartId;
 
+  @Column(name = "game_version_id")
+  public UUID gameVersionId;
+
   @ElementCollection
   @CollectionTable(name = "build_gadgets", joinColumns = @JoinColumn(name = "build_id"))
   @Column(name = "gadget_id", nullable = false)

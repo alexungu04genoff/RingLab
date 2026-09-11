@@ -18,6 +18,10 @@ beforeEach(() => {
   news = { data: [newsItem], error: "", loading: false };
   vi.mocked(useLoad).mockImplementation((path: string) => {
     if (path === "/news") return news;
+    if (path === "/game-versions") return {
+      data: [{ id: "v1", version: "1.4.1", releasedAt: "2026-06-23" },
+        { id: "v2", version: "1.3.1", releasedAt: "2026-03-18" }], error: "", loading: false,
+    };
     if (path.startsWith("/builds?")) {
       return { data: { items: [], total: 0, page: 0, size: 12 }, error: "", loading: false };
     }
@@ -50,4 +54,16 @@ it.each(["empty", "unavailable", "loading"])("keeps Explore usable when news is 
 it("does not load or display news in My Builds", () => {
   expect(render(true)).not.toContain("Latest news");
   expect(vi.mocked(useLoad).mock.calls.some(([path]) => path === "/news")).toBe(false);
+});
+
+it("offers all versions by default and newest-first patches alongside existing filters and sorts", () => {
+  const html = render();
+  const selector = html.match(/Patch<select([^>]*)>(.*?)<\/select>/)!;
+  expect(selector[1]).not.toContain("required");
+  expect(selector[2]).toContain('value="" selected="">All versions');
+  expect(selector[2].indexOf("Ver. 1.4.1")).toBeLessThan(selector[2].indexOf("Ver. 1.3.1"));
+  expect(html).toContain("Uses parts from");
+  expect(html).toContain('value="rated">Best rated');
+  expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
+    .not.toContain("gameVersionId");
 });

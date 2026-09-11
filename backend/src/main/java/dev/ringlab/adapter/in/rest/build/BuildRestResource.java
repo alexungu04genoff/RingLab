@@ -10,6 +10,7 @@ import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.BuildRepository;
@@ -59,6 +60,7 @@ public class BuildRestResource {
         partItem(b.frontPartId()),
         partItem(b.rearPartId()),
         partItem(b.tirePartId()),
+        b.gameVersionId() == null ? null : GameVersionResponse.from(game.findGameVersion(b.gameVersionId()).orElseThrow()),
         b.gadgetIds().stream().map(this::gadgetItem).toList(),
         b.createdAt(),
         b.updatedAt(),
@@ -71,11 +73,12 @@ public class BuildRestResource {
       @QueryParam("racerId") UUID racer,
       @QueryParam("machineId") UUID machine,
       @QueryParam("authorId") UUID author,
+      @QueryParam("gameVersionId") UUID gameVersion,
       @QueryParam("sort") @DefaultValue("newest") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
     var result =
-        builds.list(new BuildRepository.Filter(search, racer, machine, author, sort, page, size));
+        builds.list(new BuildRepository.Filter(search, racer, machine, author, gameVersion, sort, page, size));
     return new BuildPageResponse(
         result.items().stream().map(this::response).toList(), result.total(), page, size);
   }

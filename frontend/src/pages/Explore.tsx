@@ -4,17 +4,19 @@ import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
-import type { BuildPage, Machine, Racer } from "../types";
+import type { BuildPage, GameVersion, Machine, Racer } from "../types";
 export function Explore({ mine = false }: { mine?: boolean }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [query, setQuery] = useState("");
   const [racer, setRacer] = useState("");
   const [machine, setMachine] = useState("");
+  const [gameVersion, setGameVersion] = useState("");
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(0);
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
+  const versions = useLoad<GameVersion[]>("/game-versions");
   const heroRacers = (racers.data || [])
     .filter(({ racingType }) => racingType !== "POWER")
     .slice(0, 4);
@@ -26,14 +28,16 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   });
   if (racer) params.set("racerId", racer);
   if (machine) params.set("machineId", machine);
+  if (gameVersion) params.set("gameVersionId", gameVersion);
   if (mine && user) params.set("authorId", user.id);
   const builds = useLoad<BuildPage>(`/builds?${params}`);
-  const hasActiveFilters = Boolean(query || racer || machine);
+  const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
   const clearFilters = () => {
     setSearch("");
     setQuery("");
     setRacer("");
     setMachine("");
+    setGameVersion("");
     setPage(0);
   };
   return (
@@ -105,6 +109,18 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           optional
         />
         <label>
+          Patch
+          <select value={gameVersion} onChange={(e) => {
+            setGameVersion(e.target.value);
+            setPage(0);
+          }}>
+            <option value="">All versions</option>
+            {versions.data?.map((version) => (
+              <option key={version.id} value={version.id}>Ver. {version.version}</option>
+            ))}
+          </select>
+        </label>
+        <label>
           Sort by
           <select
             value={sort}
@@ -119,7 +135,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
       </section>
-      <ErrorNotice message={racers.error || machines.error} />
+      <ErrorNotice message={racers.error || machines.error || versions.error} />
       <div className={mine ? undefined : "explore-content"}>
         <div>
           <div className="section-heading">

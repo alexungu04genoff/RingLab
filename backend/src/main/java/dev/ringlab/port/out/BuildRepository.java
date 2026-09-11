@@ -9,6 +9,7 @@ public interface BuildRepository {
       UUID racerId,
       UUID machineId,
       UUID authorId,
+      UUID gameVersionId,
       String sort,
       int page,
       int size) {}

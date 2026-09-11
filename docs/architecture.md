@@ -20,7 +20,7 @@ dev.ringlab/
 
 ## Boundaries
 
-- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `Build`, `Vote`, `Comment`) and the `RacingType` and `MachinePartType` enums, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
+- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`) and the `RacingType` and `MachinePartType` enums, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific.
@@ -41,9 +41,9 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 ## Mapping and flow
 
-MapStruct generates entity/domain mappings for users, builds, comments, and the four game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
+MapStruct generates entity/domain mappings for users, builds, comments, and the five game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
-`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, and gadgets, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit `RacerResponse`, `MachineResponse`, `MachinePartResponse`, and `GadgetResponse` DTOs. `GET /api/machine-parts` returns each part's ID, type, source-machine ID/name, and source racing type. Build requests use `frontPartId`, `rearPartId`, and `tirePartId`; responses include the corresponding part DTOs. The dynamic build-filter query uses JPA Criteria.
+`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, gadgets, and game versions, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit `RacerResponse`, `MachineResponse`, `MachinePartResponse`, and `GadgetResponse` DTOs. `GET /api/machine-parts` returns each part's ID, type, source-machine ID/name, and source racing type. Build requests use `frontPartId`, `rearPartId`, and `tirePartId`; responses include the corresponding part DTOs. The dynamic build-filter query uses JPA Criteria.
 
 Create-build flow:
 
@@ -81,6 +81,21 @@ V4 creates three explicitly identified parts per seeded machine, backfills old b
 Best rated (`sort=rated`) orders by the Wilson lower bound with z = 1.96 (approximately 95% confidence), then raw score descending, creation time descending, and UUID ascending. `BuildDbAdapter` builds the calculation as a correlated Criteria aggregate over votes, so PostgreSQL ranks all matching builds before pagination using the same filters. Zero-vote builds receive zero. Sample size matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes because the larger sample provides stronger evidence. Wilson is internal to ordering; the visible community score remains upvotes minus downvotes. No ranking values are cached or exposed in responses.
 
 ## Frontend
+
+`GameVersion` is persistent game-data catalog metadata (`id`, plain version string, release date).
+V5 seeds the four supplied official versions and adds a nullable `Build.gameVersionId` foreign key.
+There is no default or backfill: existing builds remain versionless and editing may add, change,
+or clear a version. BuildService rejects unknown non-null IDs with 400. The catalog endpoint
+`GET /api/game-versions` lists release dates newest first; build responses contain a small nested
+`gameVersion` DTO or null. Explore's optional `gameVersionId` predicate is shared by PostgreSQL
+item/count queries before pagination and composes with existing filters and all three sorts.
+Wilson ranking and visible raw scores are unchanged. Steam news remains an independent external
+REST adapter; automatic patch extraction and synchronization are intentionally not implemented.
+
+The editor offers an optional Game version / Patch selector; details and cards display selected
+versions compactly. Explore offers a Patch filter, and Game Collection lists versions and release
+dates. The demo seeder resolves catalog IDs through REST and assigns a deterministic version mix
+only to its named demo builds, preserving their existing parts, gadget order, votes, and comments.
 
 The editor selects Front, Rear, and Tires independently; preview and details show each source name. Cards show the stock-machine name when all sources match, otherwise “Mixed machine”. Game Collection explains that stock machines provide all three components. The demo seeder retains its users, builds, comments, and vote distributions, with three existing examples using mixed sources.
 

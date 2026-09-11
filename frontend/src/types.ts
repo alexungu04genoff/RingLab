@@ -37,6 +37,11 @@ export interface MachinePart {
   sourceMachineName: string;
   racingType: RacingType;
 }
+export interface GameVersion {
+  id: string;
+  version: string;
+  releasedAt: string;
+}
 export interface Build {
   id: string;
   title: string;
@@ -46,6 +51,7 @@ export interface Build {
   frontPart: MachinePart;
   rearPart: MachinePart;
   tirePart: MachinePart;
+  gameVersion: GameVersion | null;
   gadgets: Gadget[];
   createdAt: string;
   updatedAt: string;
@@ -58,6 +64,7 @@ export interface BuildDraft {
   frontPartId: string;
   rearPartId: string;
   tirePartId: string;
+  gameVersionId: string | null;
   gadgetIds: string[];
 }
 export interface BuildPage {

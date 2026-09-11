@@ -18,6 +18,7 @@ const stock: Build = {
   id: "build", title: "My setup", description: "", author: { id: "author", username: "driver" },
   racer: { id: "racer", name: "Shadow", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
+  gameVersion: null,
   gadgets: [{ id: "gadget", name: "Ring Engine", description: null, slotCost: null, imagePath: null }],
   createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39,
 };
@@ -31,6 +32,7 @@ beforeEach(() => {
           part("REAR", "Speedster Lightning"), part("TIRE", "Speedster Lightning")]
       : path === "/racers" ? [stock.racer]
       : path === "/gadgets" ? stock.gadgets
+      : path === "/game-versions" ? [{ id: "version", version: "1.4.1", releasedAt: "2026-06-23" }]
       : path.includes("/comments") ? { items: [], total: 0, page: 0, size: 20 }
       : build;
     return { data, error: "", loading: false };
@@ -65,4 +67,24 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain("<dt>Tires</dt><dd>Dark Reaper</dd>");
   expect(details).toContain("Ring Engine");
   expect(details).toContain('aria-live="polite">39</strong>');
+});
+
+it("offers an optional version selector defaulting to unspecified", () => {
+  const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
+  const selector = html.match(/Game version \/ Patch<select([^>]*)>(.*?)<\/select>/)!;
+  expect(selector[1]).not.toContain("required");
+  expect(selector[2]).toContain('value="" selected="">Unspecified');
+  expect(selector[2]).toContain('value="version">Ver. 1.4.1');
+});
+
+it.each([false, true])("renders version metadata only when specified and preserves raw score (versioned=%s)", (versioned) => {
+  build = { ...stock, gameVersion: versioned
+    ? { id: "version", version: "1.4.1", releasedAt: "2026-06-23" } : null };
+  const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(card.includes("Ver. 1.4.1")).toBe(versioned);
+  expect(details.includes("Ver. 1.4.1")).toBe(versioned);
+  expect(details.includes("Released")).toBe(versioned);
+  expect(details).toContain('aria-live="polite">39</strong>');
+  expect(card).toContain('class="score">↑ 39');
 });

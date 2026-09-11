@@ -3,6 +3,7 @@ package dev.ringlab.adapter.out.db.gamedata;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.Racer;
@@ -16,6 +17,15 @@ import java.util.*;
 public class GameDataDbAdapter implements GameDataRepository {
   private final EntityManager em;
   private final GameDataDbMapper mapper;
+
+  public List<GameVersion> listGameVersions() {
+    return em.createQuery("from GameVersionDbEntity order by releasedAt desc, id", GameVersionDbEntity.class)
+        .getResultList().stream().map(mapper::toDomain).toList();
+  }
+
+  public Optional<GameVersion> findGameVersion(UUID id) {
+    return Optional.ofNullable(em.find(GameVersionDbEntity.class, id)).map(mapper::toDomain);
+  }
 
   public List<Racer> listRacers() {
     return em

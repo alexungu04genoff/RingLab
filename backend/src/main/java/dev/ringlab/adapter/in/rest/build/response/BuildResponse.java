@@ -1,6 +1,7 @@
 package dev.ringlab.adapter.in.rest.build.response;
 
 import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import java.time.Instant;
@@ -16,6 +17,7 @@ public record BuildResponse(
     MachinePartResponse frontPart,
     MachinePartResponse rearPart,
     MachinePartResponse tirePart,
+    GameVersionResponse gameVersion,
     List<GadgetResponse> gadgets,
     Instant createdAt,
     Instant updatedAt,

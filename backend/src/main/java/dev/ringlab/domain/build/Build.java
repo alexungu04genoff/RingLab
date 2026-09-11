@@ -12,6 +12,7 @@ public record Build(
     UUID frontPartId,
     UUID rearPartId,
     UUID tirePartId,
+    UUID gameVersionId,
     List<UUID> gadgetIds,
     Instant createdAt,
     Instant updatedAt) {

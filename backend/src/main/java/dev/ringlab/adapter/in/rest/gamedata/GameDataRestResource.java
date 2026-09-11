@@ -3,6 +3,7 @@ package dev.ringlab.adapter.in.rest.gamedata;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
+import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
@@ -16,6 +17,12 @@ import java.util.*;
 @RequiredArgsConstructor
 public class GameDataRestResource {
   private final GameDataRepository repository;
+
+  @GET
+  @Path("game-versions")
+  public List<GameVersionResponse> gameVersions() {
+    return repository.listGameVersions().stream().map(GameVersionResponse::from).toList();
+  }
 
   @GET
   @Path("racers")

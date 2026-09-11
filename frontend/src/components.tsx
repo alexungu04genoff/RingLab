@@ -64,6 +64,7 @@ export function BuildCard({ build }: { build: Build }) {
             : "Mixed machine"}
         </p>
         <div className="tags">
+          {build.gameVersion && <span>Ver. {build.gameVersion.version}</span>}
           {build.gadgets.slice(0, 2).map((g, i) => (
             <span key={`${g.id}-${i}`}>{g.name}</span>
           ))}

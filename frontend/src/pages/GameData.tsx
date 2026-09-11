@@ -1,17 +1,18 @@
 import { useState } from "react";
-import { Artwork, ErrorNotice } from "../components";
+import { Artwork, ErrorNotice, date } from "../components";
 import { useLoad } from "../useLoad";
-import type { Gadget, Machine, Racer } from "../types";
+import type { Gadget, GameVersion, Machine, Racer } from "../types";
 
 const collections = [
   { key: "racers", label: "Racers" },
   { key: "machines", label: "Stock Machines" },
   { key: "gadgets", label: "Gadgets" },
+  { key: "game-versions", label: "Versions / Patches" },
 ] as const;
 
 export function GameData() {
   const [tab, setTab] = useState<(typeof collections)[number]["key"]>("racers");
-  const items = useLoad<Array<Racer | Machine | Gadget>>(`/${tab}`);
+  const items = useLoad<Array<Racer | Machine | Gadget | GameVersion>>(`/${tab}`);
   return (
     <>
       <div className="page-heading">
@@ -45,9 +46,10 @@ export function GameData() {
       <div className="collection">
         {items.data?.map((i) => (
           <article className="panel collection-item" key={i.id}>
-            <Artwork item={i} compact />
+            {!("version" in i) && <Artwork item={i} compact />}
             <div>
-              <h2>{i.name}</h2>
+              <h2>{"version" in i ? `Ver. ${i.version}` : i.name}</h2>
+              {"releasedAt" in i && <p>Released {date(`${i.releasedAt}T00:00:00`)}</p>}
               {tab === "machines" && <p>Provides FRONT / REAR / TIRE components.</p>}
               {"racingType" in i && <span className="eyebrow">{i.racingType}</span>}
               {"description" in i && i.description && <p>{i.description}</p>}

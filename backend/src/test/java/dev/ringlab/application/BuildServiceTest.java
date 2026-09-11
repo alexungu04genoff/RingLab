@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
@@ -62,6 +63,7 @@ class BuildServiceTest {
     assertEquals(frontPartId, created.frontPartId());
     assertEquals(rearPartId, created.rearPartId());
     assertEquals(tirePartId, created.tirePartId());
+    assertNull(created.gameVersionId());
     assertEquals(created, service.get(created.id()));
     assertEquals(List.of(gadgetId), created.gadgetIds());
     assertEquals(created.createdAt(), created.updatedAt());
@@ -156,7 +158,7 @@ class BuildServiceTest {
     UUID mixedRear = UUID.randomUUID();
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
-        tirePartId, List.of(gadgetId, gadgetId));
+        tirePartId, null, List.of(gadgetId, gadgetId));
     var created = service.create(authorId, mixed);
     assertEquals(mixedRear, service.get(created.id()).rearPartId());
     var edited = service.edit(old.id(), authorId, mixed);
@@ -169,9 +171,9 @@ class BuildServiceTest {
   @Test
   void rejectsWrongTypesInEverySlot() {
     for (var wrong : List.of(
-        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, List.of()))) {
+        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, List.of()))) {
       var error = assertThrows(AppException.class, () -> service.create(authorId, wrong));
       assertEquals(400, error.status);
       assertTrue(error.getMessage().startsWith("Expected "));
@@ -181,19 +183,53 @@ class BuildServiceTest {
 
   @Test
   void rejectsMissingPartAndPreservesOrderedGadgets() {
-    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, List.of());
+    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, List.of());
     assertEquals(400, assertThrows(AppException.class, () -> service.create(authorId, invalid)).status);
     UUID second = UUID.randomUUID();
     gameData.gadgets.put(second, new Gadget(second, "Second", null, null, null));
     var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
-        tirePartId, List.of(second, gadgetId, second));
+        tirePartId, null, List.of(second, gadgetId, second));
     var created = service.create(authorId, ordered);
     assertEquals(List.of(second, gadgetId, second), service.get(created.id()).gadgetIds());
   }
 
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
-        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, List.of(gadgetId));
+        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, List.of(gadgetId));
+  }
+
+  private BuildService.Draft versionDraft(UUID version) {
+    return new BuildService.Draft("Versioned", "", racerId, frontPartId, rearPartId,
+        tirePartId, version, List.of(gadgetId));
+  }
+
+  @Test
+  void createsReadsAddsChangesAndClearsVersion() {
+    UUID first = UUID.randomUUID();
+    UUID second = UUID.randomUUID();
+    gameData.versions.put(first, new GameVersion(first, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
+    gameData.versions.put(second, new GameVersion(second, "1.3.1", java.time.LocalDate.of(2026, 3, 18)));
+    var build = service.create(authorId, versionDraft(first));
+    assertEquals(first, service.get(build.id()).gameVersionId());
+    service.edit(build.id(), authorId, versionDraft(second));
+    assertEquals(second, service.get(build.id()).gameVersionId());
+    service.edit(build.id(), authorId, versionDraft(null));
+    assertNull(service.get(build.id()).gameVersionId());
+    service.edit(build.id(), authorId, versionDraft(first));
+    assertEquals(first, service.get(build.id()).gameVersionId());
+  }
+
+  @Test
+  void rejectsUnknownVersionOnCreateAndEditWithoutSaving() {
+    var invalid = versionDraft(UUID.randomUUID());
+    var error = assertThrows(AppException.class, () -> service.create(authorId, invalid));
+    assertEquals(400, error.status);
+    assertEquals("Unknown game version ID", error.getMessage());
+    assertNull(builds.lastSaved);
+    var existing = service.create(authorId, versionDraft(null));
+    assertEquals(400, assertThrows(AppException.class,
+        () -> service.edit(existing.id(), authorId, invalid)).status);
+    assertEquals(existing, service.get(existing.id()));
   }
 
   private Build existingBuild() {
@@ -207,6 +243,7 @@ class BuildServiceTest {
         frontPartId,
         rearPartId,
         tirePartId,
+        null,
         List.of(gadgetId),
         createdAt,
         createdAt);
@@ -241,6 +278,15 @@ class BuildServiceTest {
   }
 
   private static final class GameDataStub implements GameDataRepository {
+    private final Map<UUID, GameVersion> versions = new HashMap<>();
+
+    public List<GameVersion> listGameVersions() {
+      return List.copyOf(versions.values());
+    }
+
+    public Optional<GameVersion> findGameVersion(UUID id) {
+      return Optional.ofNullable(versions.get(id));
+    }
     private final Map<UUID, MachinePart> parts = new HashMap<>();
     private final Map<UUID, Racer> racers = new HashMap<>();
     private final Map<UUID, Machine> machines = new HashMap<>();

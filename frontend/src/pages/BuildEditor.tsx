@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect } from "../components";
 import { moveGadget, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, Gadget, MachinePart, Racer } from "../types";
+import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
 
 const partSlots = [
   { key: "frontPartId", type: "FRONT", label: "Front" },
@@ -23,6 +23,7 @@ export function BuildEditor() {
     frontPartId: "",
     rearPartId: "",
     tirePartId: "",
+    gameVersionId: null,
     gadgetIds: [],
   });
   const [loading, setLoading] = useState(!!id);
@@ -32,6 +33,7 @@ export function BuildEditor() {
   const racers = useLoad<Racer[]>("/racers");
   const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
+  const versions = useLoad<GameVersion[]>("/game-versions");
   useEffect(() => {
     if (!id) return;
     const controller = new AbortController();
@@ -49,6 +51,7 @@ export function BuildEditor() {
           frontPartId: b.frontPart.id,
           rearPartId: b.rearPart.id,
           tirePartId: b.tirePart.id,
+          gameVersionId: b.gameVersion?.id ?? null,
           gadgetIds: b.gadgets.map((g) => g.id),
         });
       })
@@ -77,7 +80,7 @@ export function BuildEditor() {
         </div>
       </div>
       <ErrorNotice
-        message={error || racers.error || parts.error || gadgets.error}
+        message={error || racers.error || parts.error || gadgets.error || versions.error}
       />
       {loading ? (
         <p role="status">Loading your build…</p>
@@ -107,6 +110,17 @@ export function BuildEditor() {
                 <h2>
                   <span className="step">01</span> The essentials
                 </h2>
+                <label>
+                  Game version / Patch
+                  <select value={draft.gameVersionId ?? ""}
+                    disabled={versions.loading}
+                    onChange={(e) => field("gameVersionId", e.target.value || null)}>
+                    <option value="">Unspecified</option>
+                    {versions.data?.map((version) => (
+                      <option key={version.id} value={version.id}>Ver. {version.version}</option>
+                    ))}
+                  </select>
+                </label>
                 <label>
                   Build title
                   <input

@@ -248,6 +248,13 @@ export function BuildDetails() {
           </section>
         </div>
         <aside>
+          {b.gameVersion && (
+            <section className="panel">
+              <div className="eyebrow">Game version</div>
+              <strong>Ver. {b.gameVersion.version}</strong>
+              <p className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</p>
+            </section>
+          )}
           <section className="panel vote-panel">
             <div className="eyebrow">COMMUNITY SCORE</div>
             <strong className="big-score" aria-live="polite">

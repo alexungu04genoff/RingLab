@@ -18,7 +18,7 @@ import java.util.UUID;
 public class BuildService {
   public record Draft(
       String title, String description, UUID racerId, UUID frontPartId,
-      UUID rearPartId, UUID tirePartId, List<UUID> gadgetIds) {}
+      UUID rearPartId, UUID tirePartId, UUID gameVersionId, List<UUID> gadgetIds) {}
 
   private final BuildRepository builds;
   private final GameDataRepository game;
@@ -36,6 +36,9 @@ public class BuildService {
     requirePart(d.frontPartId(), MachinePartType.FRONT);
     requirePart(d.rearPartId(), MachinePartType.REAR);
     requirePart(d.tirePartId(), MachinePartType.TIRE);
+    if (d.gameVersionId() != null && game.findGameVersion(d.gameVersionId()).isEmpty()) {
+      throw new AppException(400, "Unknown game version ID");
+    }
     d.gadgetIds().forEach(this::requireGadget);
   }
 
@@ -70,6 +73,7 @@ public class BuildService {
             d.frontPartId(),
             d.rearPartId(),
             d.tirePartId(),
+            d.gameVersionId(),
             d.gadgetIds(),
             now,
             now);
@@ -92,6 +96,7 @@ public class BuildService {
             d.frontPartId(),
             d.rearPartId(),
             d.tirePartId(),
+            d.gameVersionId(),
             d.gadgetIds(),
             old.createdAt(),
             Instant.now());

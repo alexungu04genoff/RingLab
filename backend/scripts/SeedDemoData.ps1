@@ -114,12 +114,17 @@ try {
   $machines = @(Invoke-RingLabApi -Method GET -Path "/machines" | ForEach-Object { $_ })
   $parts = @(Invoke-RingLabApi -Method GET -Path "/machine-parts" | ForEach-Object { $_ })
   $gadgets = @(Invoke-RingLabApi -Method GET -Path "/gadgets" | ForEach-Object { $_ })
+  $versions = @(Invoke-RingLabApi -Method GET -Path "/game-versions" | ForEach-Object { $_ })
 }
 catch {
   throw "RingLab is not reachable at $BaseUrl. Start PostgreSQL and the Quarkus development server, then run this script again."
 }
 
 $racerIds = @{}
+$versionIds = @{}
+foreach ($version in $versions) {
+  $versionIds[$version.version] = $version.id
+}
 foreach ($racer in $racers) {
   [void]($racerIds[$racer.name] = $racer.id)
 }
@@ -274,7 +279,14 @@ $mixedRearSources = @{
   "boost" = "Speedster Lightning"
   "amy-drift" = "TYPE-S Stream"
 }
+$versionMix = @("1.4.1", "1.4.1", "1.3.1", "1.4.1", "1.2.2", "1.4.1", "1.3.1", "1.4.1", "1.2.0", $null)
+$buildIndex = 0
 foreach ($definition in $buildDefinitions) {
+  $versionName = $versionMix[$buildIndex % $versionMix.Count]
+  $gameVersionId = if ($null -eq $versionName) { $null } else {
+    Require-GameId $versionIds $versionName "game version"
+  }
+  $buildIndex++
   $owner = $users[$definition.Owner]
   $authorId = [System.Uri]::EscapeDataString([string]$owner.user.id)
   $existing = Invoke-RingLabApi -Method GET -Path "/builds?authorId=$authorId&size=50"
@@ -300,20 +312,21 @@ foreach ($definition in $buildDefinitions) {
       frontPartId = $frontPartId
       rearPartId = $rearPartId
       tirePartId = $tirePartId
+      gameVersionId = $gameVersionId
       gadgetIds = $orderedGadgetIds
     }
     Write-Host "Created build $($definition.Title)."
   }
   else {
-    if ($mixedRearSources.ContainsKey($definition.Key) -and
-        $build.rearPart.id -ne $rearPartId) {
+    if ($build.gameVersion.id -ne $gameVersionId) {
       $build = Invoke-RingLabApi -Method PUT -Path "/builds/$($build.id)" -Token $owner.token -Body @{
         title = $build.title
         description = $build.description
         racerId = $build.racer.id
         frontPartId = $build.frontPart.id
-        rearPartId = $rearPartId
+        rearPartId = $build.rearPart.id
         tirePartId = $build.tirePart.id
+        gameVersionId = $gameVersionId
         gadgetIds = @($build.gadgets | ForEach-Object { $_.id })
       }
     }

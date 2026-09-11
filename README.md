@@ -99,6 +99,12 @@ Repeated runs are safe and do not delete data. The script logs into existing dem
 
 ## Migrations and persistence
 
+`GET /api/game-versions` lists the persistent patch catalog newest first. Build create/edit requests
+accept optional `gameVersionId` (UUID or null); responses include `gameVersion` metadata or null.
+Explore's Patch filter sends `gameVersionId` and filters in PostgreSQL before pagination.
+V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (2025-12-03).
+Existing builds remain versionless; the optional demo seeder assigns a repeatable mix to demo builds.
+
 Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. Hibernate validates the migrated schema; it never creates or drops it.
 
 Add a new numbered migration when changing schema or seed data. Do not edit migrations after they have been applied to a database you intend to keep. Users and builds persist in PostgreSQL, independently of frontend refreshes or application restarts.
