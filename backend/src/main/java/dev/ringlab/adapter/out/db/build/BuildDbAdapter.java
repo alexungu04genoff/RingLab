@@ -93,6 +93,12 @@ public class BuildDbAdapter implements BuildRepository {
       Filter filter) {
     List<Order> ordering = new ArrayList<>();
     if ("rated".equals(filter.sort())) {
+      var rawScore = score(criteriaBuilder, query, build);
+      var signBucket = criteriaBuilder.<Integer>selectCase()
+          .when(criteriaBuilder.greaterThan(rawScore, 0L), 2)
+          .when(criteriaBuilder.equal(rawScore, 0L), 1)
+          .otherwise(0);
+      ordering.add(criteriaBuilder.desc(signBucket));
       ordering.add(criteriaBuilder.desc(wilsonLowerBound(criteriaBuilder, query, build)));
     }
     if ("score".equals(filter.sort()) || "rated".equals(filter.sort())) {

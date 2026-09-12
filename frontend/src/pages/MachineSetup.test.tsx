@@ -20,7 +20,7 @@ const stock: Build = {
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: null,
   gadgets: [{ id: "gadget", name: "Ring Engine", description: null, slotCost: null, imagePath: null }],
-  createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39,
+  createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39, upvotes: 40, downvotes: 1,
 };
 let build = stock;
 
@@ -86,5 +86,15 @@ it.each([false, true])("renders version metadata only when specified and preserv
   expect(details.includes("Ver. 1.4.1")).toBe(versioned);
   expect(details.includes("Released")).toBe(versioned);
   expect(details).toContain('aria-live="polite">39</strong>');
-  expect(card).toContain('class="score">↑ 39');
+  expect(card).toContain('aria-label="40 upvotes, 1 downvotes">↑ 40 · ↓ 1');
+});
+
+it("renders separate vote counts on cards and net score plus counts on details", () => {
+  build = { ...stock, score: -20, upvotes: 20, downvotes: 40 };
+  const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(card).toContain('aria-label="20 upvotes, 40 downvotes">↑ 20 · ↓ 40');
+  expect(details).toContain('aria-live="polite">-20</strong>');
+  expect(details).toContain("20 upvotes · 40 downvotes");
+  expect(card + details).not.toContain("↑ -20");
 });

@@ -56,6 +56,8 @@ export interface Build {
   createdAt: string;
   updatedAt: string;
   score: number;
+  upvotes: number;
+  downvotes: number;
 }
 export interface BuildDraft {
   title: string;
@@ -89,6 +91,8 @@ export interface CommentPage {
 }
 export interface Vote {
   score: number;
+  upvotes: number;
+  downvotes: number;
   myVote: number;
 }
 export interface Session {

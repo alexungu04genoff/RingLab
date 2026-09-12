@@ -6,6 +6,7 @@ import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.vote.VoteService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.VoteRepository;
 import java.time.Instant;
@@ -29,21 +30,23 @@ class VoteServiceTest {
   }
 
   @Test
-  void scoreDelegatesToRepository() {
-    votes.score = 7;
+  void summaryDelegatesToRepository() {
+    votes.summary = new VoteSummary(9, 2);
 
-    assertEquals(7, service.score(buildId));
+    assertEquals(new VoteSummary(9, 2), service.summary(buildId));
+    assertEquals(new VoteService.Result(7, 9, 2, 0), service.get(userId, buildId));
   }
 
   @Test
   void acceptsUpvoteAndDownvote() {
     VoteService.Result upvote = service.put(userId, buildId, 1);
     assertEquals(new Vote(userId, buildId, 1), votes.lastVote);
-    assertEquals(new VoteService.Result(1, 1), upvote);
+    assertEquals(new VoteService.Result(1, 1, 0, 1), upvote);
 
     VoteService.Result downvote = service.put(userId, buildId, -1);
     assertEquals(new Vote(userId, buildId, -1), votes.lastVote);
-    assertEquals(new VoteService.Result(-1, -1), downvote);
+    assertEquals(new VoteService.Result(-1, 0, 1, -1), downvote);
+    assertEquals(new VoteService.Result(1, 1, 0, 1), service.put(userId, buildId, 1));
   }
 
   @Test
@@ -75,7 +78,7 @@ class VoteServiceTest {
 
     assertEquals(userId, votes.removedUserId);
     assertEquals(buildId, votes.removedBuildId);
-    assertEquals(new VoteService.Result(0, 0), result);
+    assertEquals(new VoteService.Result(0, 0, 0, 0), result);
   }
 
   private static Build build(UUID id) {
@@ -112,13 +115,13 @@ class VoteServiceTest {
     private Vote lastVote;
     private UUID removedUserId;
     private UUID removedBuildId;
-    private long score;
+    private VoteSummary summary = new VoteSummary(0, 0);
     private int value;
 
     @Override
     public void put(Vote vote) {
       lastVote = vote;
-      score = vote.value();
+      summary = new VoteSummary(vote.value() == 1 ? 1 : 0, vote.value() == -1 ? 1 : 0);
       value = vote.value();
     }
 
@@ -126,13 +129,13 @@ class VoteServiceTest {
     public void remove(UUID userId, UUID buildId) {
       removedUserId = userId;
       removedBuildId = buildId;
-      score = 0;
+      summary = new VoteSummary(0, 0);
       value = 0;
     }
 
     @Override
-    public long score(UUID buildId) {
-      return score;
+    public VoteSummary summary(UUID buildId) {
+      return summary;
     }
 
     @Override

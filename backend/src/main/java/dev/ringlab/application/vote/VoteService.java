@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.AppException;
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -13,18 +14,19 @@ import java.util.UUID;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class VoteService {
-  public record Result(long score, int myVote) {}
+  public record Result(long score, long upvotes, long downvotes, int myVote) {}
 
   private final VoteRepository votes;
   private final BuildService builds;
 
-  public long score(UUID build) {
-    return votes.score(build);
+  public VoteSummary summary(UUID build) {
+    return votes.summary(build);
   }
 
   public Result get(UUID user, UUID build) {
     builds.get(build);
-    return new Result(votes.score(build), votes.value(user, build));
+    var summary = votes.summary(build);
+    return new Result(summary.score(), summary.upvotes(), summary.downvotes(), votes.value(user, build));
   }
 
   @Transactional

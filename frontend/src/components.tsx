@@ -54,7 +54,9 @@ export function BuildCard({ build }: { build: Build }) {
       <div className="card-art">
         <Artwork item={build.racer} portrait />
         <span className="type-badge">{build.racer.racingType ?? "Unknown"}</span>
-        <span className="score">↑ {build.score}</span>
+        <span className="score" aria-label={`${build.upvotes} upvotes, ${build.downvotes} downvotes`}>
+          ↑ {build.upvotes} · ↓ {build.downvotes}
+        </span>
       </div>
       <div className="card-body">
         <span className="eyebrow">{build.racer.name}</span>

@@ -1,6 +1,7 @@
 package dev.ringlab.adapter.out.db.vote;
 
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -33,11 +34,14 @@ public class VoteDbAdapter implements VoteRepository {
         .executeUpdate();
   }
 
-  public long score(UUID build) {
-    return em.createQuery(
-            "select coalesce(sum(value),0) from VoteDbEntity where buildId=:build", Long.class)
+  public VoteSummary summary(UUID build) {
+    Object[] counts = em.createQuery(
+            "select coalesce(sum(case when value = 1 then 1L else 0L end),0L),"
+                + " coalesce(sum(case when value = -1 then 1L else 0L end),0L)"
+                + " from VoteDbEntity where buildId=:build", Object[].class)
         .setParameter("build", build)
         .getSingleResult();
+    return new VoteSummary((Long) counts[0], (Long) counts[1]);
   }
 
   public int value(UUID user, UUID build) {

@@ -37,7 +37,7 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 `GET /api/news` returns an array of `{id, title, url, publishedAt}` response DTOs. The typed Quarkus REST Client uses the public Steam News v2 endpoint, with configurable `STEAM_BASE_URL` and `STEAM_APP_ID` (default 2486820), 2-second connection and 3-second read timeouts. Network, HTTP, and malformed-response failures become a safe 503 `News unavailable` response through the existing application error mapper; logs omit external bodies. No retries, caching, persistence, or synchronization are used. Explore loads news independently and shows a secondary panel with titles, dates, and original links, stacking below builds on smaller screens. It omits article contents entirely, so HTML/BBCode is never rendered; empty and unavailable news leave build browsing usable.
 
-`vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details and VoteService for scores. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
+`vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details and VoteService for vote summaries. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 
 ## Mapping and flow
 
@@ -68,7 +68,7 @@ Edit/delete flows load the existing record and compare the authenticated actor t
 
 Explore's compact “Uses parts from” filter retains the `machineId` query parameter as a source-machine ID. It matches front OR rear OR tire source using the same predicate for results and counts, composing with racer, literal search, author, all sorts, and pagination.
 
-Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. PostgreSQL `INSERT … ON CONFLICT … DO UPDATE` makes repeated/concurrent votes update the same row atomically. Scores are always queried as `SUM(value)`; no client-owned or cached score exists.
+Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. PostgreSQL `INSERT … ON CONFLICT … DO UPDATE` makes repeated/concurrent votes update the same row atomically. A single aggregate query per requested build counts upvotes and downvotes; `VoteSummary` derives score as upvotes minus downvotes. No client-owned or cached counters exist. Build and vote responses expose `score`, `upvotes`, and `downvotes`; vote responses also retain `myVote`.
 
 Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then `id` order. The REST response includes `items`, `total`, `page`, and `size`, allowing the client to navigate page boundaries without inferring them from the number of returned comments.
 
@@ -105,7 +105,7 @@ V6 makes racer/machine racing types nullable when authoritative data is unavaila
 
 V4 creates three explicitly identified parts per seeded machine, backfills old builds to the three parts from their former machine, makes all three columns required, then removes `builds.machine_id`. The transactional migration fails if any old build cannot be mapped. Build IDs, timestamps, ordered gadgets, votes, and comments are preserved; V1–V3 remain unchanged.
 
-Best rated (`sort=rated`) orders by the Wilson lower bound with z = 1.96 (approximately 95% confidence), then raw score descending, creation time descending, and UUID ascending. `BuildDbAdapter` builds the calculation as a correlated Criteria aggregate over votes, so PostgreSQL ranks all matching builds before pagination using the same filters. Zero-vote builds receive zero. Sample size matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes because the larger sample provides stronger evidence. Wilson is internal to ordering; the visible community score remains upvotes minus downvotes. No ranking values are cached or exposed in responses.
+Best rated (`sort=rated`) first groups builds by raw-score sign: positive, then zero, then negative. Within each group it orders by the Wilson lower bound with z = 1.96 (approximately 95% confidence), then raw score descending, creation time descending, and UUID ascending. Thus any positive-score build outranks every zero-score or negative-score build, and every zero-score build outranks negative-score builds. `BuildDbAdapter` builds the calculation as a correlated Criteria aggregate over votes, so PostgreSQL ranks all matching builds before pagination using the same filters. Zero-vote builds receive zero. Sample size matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes because the larger sample provides stronger evidence. Wilson is internal to ordering; the visible community score remains upvotes minus downvotes. No ranking values are cached or exposed in responses. Cards display separate upvote/downvote counts; details retain the net community score beside the counts. Voting updates all three values from the vote endpoint response.
 
 ## Frontend
 

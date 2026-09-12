@@ -5,6 +5,11 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.adapter.out.db.build.BuildDbEntity;
 import dev.ringlab.adapter.out.db.vote.VoteDbEntity;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.vote.VoteSummary;
+import dev.ringlab.application.vote.VoteService;
+import dev.ringlab.adapter.in.rest.vote.response.VoteResponse;
+import dev.ringlab.adapter.in.rest.build.BuildRestResource;
+import dev.ringlab.port.out.VoteRepository;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import io.quarkus.test.TestTransaction;
@@ -22,6 +27,9 @@ class BuildRankingIntegrationTest {
   @Inject EntityManager em;
   @Inject BuildRepository builds;
   @Inject GameDataRepository game;
+  @Inject VoteRepository votes;
+  @Inject VoteService voteService;
+  @Inject BuildRestResource buildResource;
 
   @Test
   @TestTransaction
@@ -39,7 +47,7 @@ class BuildRankingIntegrationTest {
     var down = build(author, racer, machine, "down", 0, 1, 8);
     em.flush();
 
-    var rated = List.of(strong, perfect, good, eight, tiny, poor, zero, down);
+    var rated = List.of(strong, perfect, good, eight, tiny, zero, poor, down);
     assertEquals(rated, ids(author, "rated", 0, 50));
     assertEquals(List.of(down, zero, poor, tiny, eight, good, perfect, strong),
         ids(author, "newest", 0, 50));
@@ -95,6 +103,52 @@ class BuildRankingIntegrationTest {
   private List<UUID> ids(UUID author, String sort, int page, int size) {
     return builds.list(new BuildRepository.Filter(null, null, null, author, null, sort, page, size))
         .items().stream().map(Build::id).toList();
+  }
+
+  @Test
+  @TestTransaction
+  void signBucketsPrecedeWilsonAndRawScoreBreaksEqualWilsonTies() {
+    UUID author = user();
+    UUID racer = game.listRacers().getFirst().id();
+    UUID machine = game.listMachines().getFirst().id();
+    var positive = build(author, racer, machine, "one up", 1, 0, 1);
+    var negative = build(author, racer, machine, "large negative", 20, 40, 2);
+    var empty = build(author, racer, machine, "unvoted", 0, 0, 3);
+    var balanced = build(author, racer, machine, "balanced", 20, 20, 4);
+    var oneDown = build(author, racer, machine, "one down", 0, 1, 5);
+    var twoDown = build(author, racer, machine, "two down newer", 0, 2, 6);
+    em.flush();
+    // Balanced outranks empty within zero; negative outranks oneDown by Wilson,
+    // despite its lower raw score. All-down Wilson values tie at zero.
+    assertEquals(List.of(positive, balanced, empty, negative, oneDown, twoDown),
+        ids(author, "rated", 0, 50));
+  }
+
+  @Test
+  @TestTransaction
+  void summariesAndResponsesReflectAddingSwitchingAndRemovingVotes() {
+    UUID author = user();
+    UUID id = build(author, game.listRacers().getFirst().id(),
+        game.listMachines().getFirst().id(), "summary", 20, 40, 1);
+    UUID empty = build(author, game.listRacers().getFirst().id(),
+        game.listMachines().getFirst().id(), "empty", 0, 0, 2);
+    em.flush();
+    assertEquals(new VoteSummary(0, 0), votes.summary(empty));
+    assertEquals(new VoteSummary(20, 40), votes.summary(id));
+    var response = buildResource.get(id);
+    assertEquals(-20, response.score());
+    assertEquals(20, response.upvotes());
+    assertEquals(40, response.downvotes());
+    assertEquals(new VoteResponse(-19, 21, 40, 1),
+        VoteResponse.from(voteService.put(author, id, 1)));
+    assertEquals(new VoteResponse(-19, 21, 40, 1),
+        VoteResponse.from(voteService.put(author, id, 1)));
+    assertEquals(new VoteResponse(-21, 20, 41, -1),
+        VoteResponse.from(voteService.put(author, id, -1)));
+    assertEquals(new VoteResponse(-20, 20, 40, 0),
+        VoteResponse.from(voteService.remove(author, id)));
+    assertEquals(new VoteResponse(-20, 20, 40, 0),
+        VoteResponse.from(voteService.get(author, id)));
   }
 
   private UUID part(UUID machine, String type) {

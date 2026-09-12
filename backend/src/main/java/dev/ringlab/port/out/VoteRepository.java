@@ -1,6 +1,7 @@
 package dev.ringlab.port.out;
 
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import java.util.UUID;
 
 public interface VoteRepository {
@@ -8,7 +9,7 @@ public interface VoteRepository {
 
   void remove(UUID userId, UUID buildId);
 
-  long score(UUID buildId);
+  VoteSummary summary(UUID buildId);
 
   int value(UUID userId, UUID buildId);
 }

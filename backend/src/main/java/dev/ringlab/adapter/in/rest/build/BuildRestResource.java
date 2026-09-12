@@ -51,6 +51,7 @@ public class BuildRestResource {
 
   private BuildResponse response(Build b) {
     var author = users.current(b.authorId());
+    var summary = votes.summary(b.id());
     return new BuildResponse(
         b.id(),
         b.title(),
@@ -64,7 +65,7 @@ public class BuildRestResource {
         b.gadgetIds().stream().map(this::gadgetItem).toList(),
         b.createdAt(),
         b.updatedAt(),
-        votes.score(b.id()));
+        summary.score(), summary.upvotes(), summary.downvotes());
   }
 
   @GET

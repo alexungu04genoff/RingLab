@@ -21,4 +21,6 @@ public record BuildResponse(
     List<GadgetResponse> gadgets,
     Instant createdAt,
     Instant updatedAt,
-    long score) {}
+    long score,
+    long upvotes,
+    long downvotes) {}
