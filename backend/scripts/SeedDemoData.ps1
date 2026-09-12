@@ -1,5 +1,7 @@
 param(
-  [string]$BaseUrl = "http://localhost:8080"
+  [string]$BaseUrl = "http://localhost:8080",
+  [switch]$Preview,
+  [switch]$ValidateOnly
 )
 
 $ErrorActionPreference = "Stop"
@@ -11,7 +13,7 @@ try {
 catch {
   throw "BaseUrl must be a valid absolute URL."
 }
-if (-not $demoUri.IsAbsoluteUri -or -not $demoUri.IsLoopback) {
+if (-not $demoUri.IsAbsoluteUri -or -not $demoUri.IsLoopback -or $demoUri.Scheme -notin @("http", "https")) {
   throw "Demo seeding is restricted to a local loopback URL (localhost, 127.0.0.1, or ::1)."
 }
 
@@ -108,34 +110,7 @@ function Get-AllComments {
   return $items
 }
 
-Write-Host "Checking RingLab at $BaseUrl..."
-try {
-  $racers = @(Invoke-RingLabApi -Method GET -Path "/racers" | ForEach-Object { $_ })
-  $machines = @(Invoke-RingLabApi -Method GET -Path "/machines" | ForEach-Object { $_ })
-  $parts = @(Invoke-RingLabApi -Method GET -Path "/machine-parts" | ForEach-Object { $_ })
-  $gadgets = @(Invoke-RingLabApi -Method GET -Path "/gadgets" | ForEach-Object { $_ })
-  $versions = @(Invoke-RingLabApi -Method GET -Path "/game-versions" | ForEach-Object { $_ })
-}
-catch {
-  throw "RingLab is not reachable at $BaseUrl. Start PostgreSQL and the Quarkus development server, then run this script again."
-}
-
-$racerIds = @{}
-$versionIds = @{}
-foreach ($version in $versions) {
-  $versionIds[$version.version] = $version.id
-}
-foreach ($racer in $racers) {
-  [void]($racerIds[$racer.name] = $racer.id)
-}
-$partIds = @{}
-foreach ($part in $parts) {
-  [void]($partIds["$($part.sourceMachineName)/$($part.type)"] = $part.id)
-}
-$gadgetIds = @{}
-foreach ($gadget in $gadgets) {
-  [void]($gadgetIds[$gadget.name] = $gadget.id)
-}
+. "$PSScriptRoot/CommunityDemoPlan.ps1"
 
 $userDefinitions = @(
   [pscustomobject]@{ Key = "amy"; Username = "ringlab_demo_amy"; Email = "ringlab_demo_amy@example.test" },
@@ -158,14 +133,15 @@ foreach ($number in 1..50) {
   }
 }
 
-$users = @{}
-foreach ($definition in $userDefinitions) {
-  $users[$definition.Key] = Get-OrCreateDemoUser $definition
+# Append new identities after the original 60 so legacy vote assignments remain stable.
+foreach ($key in @("blueblur", "ultimatefan", "rosegrid", "metalhead", "chaotix", "eggman", "bigfan", "phantom", "megafan", "crossover")) {
+  $userDefinitions += [pscustomobject]@{ Key = $key; Username = "ringlab_demo_$key"; Email = "ringlab_demo_$key@example.test" }
+}
+foreach ($number in 51..80) {
+  $suffix = $number.ToString("00")
+  $userDefinitions += [pscustomobject]@{ Key = "member$suffix"; Username = "ringlab_demo_member_$suffix"; Email = "ringlab_demo_member_$suffix@example.test" }
 }
 $allDemoVoters = @($userDefinitions | ForEach-Object { $_.Key })
-if ($allDemoVoters.Count -ne 60) {
-  throw "The demo vote dataset requires exactly 60 local accounts."
-}
 
 $buildDefinitions = @(
   [pscustomobject]@{
@@ -272,69 +248,6 @@ $buildDefinitions = @(
   }
 )
 
-$builds = @{}
-# Three existing examples demonstrate mixed sources; all other definitions stay stock-style.
-$mixedRearSources = @{
-  "route" = "Dark Reaper"
-  "boost" = "Speedster Lightning"
-  "amy-drift" = "TYPE-S Stream"
-}
-$versionMix = @("1.4.1", "1.4.1", "1.3.1", "1.4.1", "1.2.2", "1.4.1", "1.3.1", "1.4.1", "1.2.0", $null)
-$buildIndex = 0
-foreach ($definition in $buildDefinitions) {
-  $versionName = $versionMix[$buildIndex % $versionMix.Count]
-  $gameVersionId = if ($null -eq $versionName) { $null } else {
-    Require-GameId $versionIds $versionName "game version"
-  }
-  $buildIndex++
-  $owner = $users[$definition.Owner]
-  $authorId = [System.Uri]::EscapeDataString([string]$owner.user.id)
-  $existing = Invoke-RingLabApi -Method GET -Path "/builds?authorId=$authorId&size=50"
-  $build = @($existing.items) | Where-Object { $_.title -eq $definition.Title } | Select-Object -First 1
-  $rearSource = $definition.Machine
-  if ($mixedRearSources.ContainsKey($definition.Key)) {
-    $rearSource = $mixedRearSources[$definition.Key]
-  }
-  $frontPartId = Require-GameId $partIds "$($definition.Machine)/FRONT" "machine part"
-  $rearPartId = Require-GameId $partIds "$rearSource/REAR" "machine part"
-  $tirePartId = Require-GameId $partIds "$($definition.Machine)/TIRE" "machine part"
-
-  if ($null -eq $build) {
-    $orderedGadgetIds = @(
-      foreach ($gadgetName in $definition.Gadgets) {
-        Require-GameId $gadgetIds $gadgetName "gadget"
-      }
-    )
-    $build = Invoke-RingLabApi -Method POST -Path "/builds" -Token $owner.token -Body @{
-      title = $definition.Title
-      description = $definition.Description
-      racerId = Require-GameId $racerIds $definition.Racer "racer"
-      frontPartId = $frontPartId
-      rearPartId = $rearPartId
-      tirePartId = $tirePartId
-      gameVersionId = $gameVersionId
-      gadgetIds = $orderedGadgetIds
-    }
-    Write-Host "Created build $($definition.Title)."
-  }
-  else {
-    if ($build.gameVersion.id -ne $gameVersionId) {
-      $build = Invoke-RingLabApi -Method PUT -Path "/builds/$($build.id)" -Token $owner.token -Body @{
-        title = $build.title
-        description = $build.description
-        racerId = $build.racer.id
-        frontPartId = $build.frontPart.id
-        rearPartId = $build.rearPart.id
-        tirePartId = $build.tirePart.id
-        gameVersionId = $gameVersionId
-        gadgetIds = @($build.gadgets | ForEach-Object { $_.id })
-      }
-    }
-    Write-Host "Using existing build $($definition.Title)."
-  }
-  $builds[$definition.Key] = $build
-}
-
 $votePatterns = @(
   [pscustomobject]@{ Build = "cornering"; Up = @("amy", "tails", "shadow"); Down = @() },
   [pscustomobject]@{ Build = "items"; Up = @("amy", "tails", "shadow", "sonic", "knuckles", "rouge", "cream", "blaze", "silver"); Down = @("vector") },
@@ -366,15 +279,6 @@ foreach ($pattern in $votePatterns) {
     $voteDefinitions += ,@($user, $pattern.Build, -1)
   }
 }
-
-foreach ($vote in $voteDefinitions) {
-  $user = $users[$vote[0]]
-  $build = $builds[$vote[1]]
-  Invoke-RingLabApi -Method PUT -Path "/builds/$($build.id)/vote" -Token $user.token -Body @{
-    value = $vote[2]
-  } | Out-Null
-}
-Write-Host "Ensured $($voteDefinitions.Count) demo votes."
 
 $commentDefinitions = @(
   @("tails", "cornering", "[DEMO] The ordered gadgets make this loadout easy to follow."),
@@ -409,22 +313,136 @@ $commentDefinitions = @(
   @("cream", "knuckles-power", "[DEMO] A short note is enough for this smaller sample.")
 )
 
-$createdComments = 0
-foreach ($comment in $commentDefinitions) {
-  $user = $users[$comment[0]]
-  $build = $builds[$comment[1]]
-  $existingComments = @(Get-AllComments $build.id)
-  $alreadyExists = $existingComments | Where-Object {
-    $_.authorId -eq $user.user.id -and $_.text -eq $comment[2]
+$expansion = Get-CommunityDemoExpansion -Users $userDefinitions
+$buildDefinitions += $expansion.Builds
+$voteDefinitions += $expansion.Votes
+$commentDefinitions += $expansion.Comments
+
+$mixedRearSources = @{ "route" = "Dark Reaper"; "boost" = "Speedster Lightning"; "amy-drift" = "TYPE-S Stream" }
+$versionMix = @("1.4.1", "1.4.1", "1.3.1", "1.4.1", "1.2.2", "1.4.1", "1.3.1", "1.4.1", "1.2.0", $null)
+for ($index = 0; $index -lt 17; $index++) {
+  $definition = $buildDefinitions[$index]
+  $rear = if ($mixedRearSources.ContainsKey($definition.Key)) { $mixedRearSources[$definition.Key] } else { $definition.Machine }
+  $definition | Add-Member NoteProperty RearMachine $rear
+  $definition | Add-Member NoteProperty Version $versionMix[$index % $versionMix.Count]
+}
+# Creation order mixes authors and characters in Newest, rather than appending all guests last.
+# Existing timestamps are never rewritten; the API remains responsible for creation time.
+$orderRandom = [System.Random]::new(20260913)
+for ($index = $buildDefinitions.Count - 1; $index -gt 0; $index--) {
+  $other = $orderRandom.Next($index + 1)
+  $buildDefinitions[$index], $buildDefinitions[$other] = $buildDefinitions[$other], $buildDefinitions[$index]
+}
+$plan = [pscustomobject]@{
+  Users = $userDefinitions; Builds = $buildDefinitions; Votes = $voteDefinitions; Comments = $commentDefinitions
+}
+if ($Preview) {
+  Write-Host "Offline plan: $($userDefinitions.Count) users, $($buildDefinitions.Count) builds, $($voteDefinitions.Count) votes, $($commentDefinitions.Count) comments."
+  return $plan
+}
+
+Write-Host "Checking RingLab at $BaseUrl..."
+try {
+  $racers = @(Invoke-RingLabApi -Method GET -Path "/racers" | ForEach-Object { $_ })
+  $machines = @(Invoke-RingLabApi -Method GET -Path "/machines" | ForEach-Object { $_ })
+  $parts = @(Invoke-RingLabApi -Method GET -Path "/machine-parts" | ForEach-Object { $_ })
+  $gadgets = @(Invoke-RingLabApi -Method GET -Path "/gadgets" | ForEach-Object { $_ })
+  $versions = @(Invoke-RingLabApi -Method GET -Path "/game-versions" | ForEach-Object { $_ })
+}
+catch {
+  throw "RingLab is not reachable at $BaseUrl. Start PostgreSQL and the Quarkus development server, then run this script again."
+}
+
+$racerIds = @{}
+$versionIds = @{}
+foreach ($version in $versions) {
+  $versionIds[$version.version] = $version.id
+}
+foreach ($racer in $racers) {
+  [void]($racerIds[$racer.name] = $racer.id)
+}
+$partIds = @{}
+foreach ($part in $parts) {
+  [void]($partIds["$($part.sourceMachineName)/$($part.type)"] = $part.id)
+}
+$gadgetIds = @{}
+foreach ($gadget in $gadgets) {
+  [void]($gadgetIds[$gadget.name] = $gadget.id)
+}
+
+
+# Resolve the entire plan before creating accounts or writing any community data.
+$requests = @{}
+foreach ($definition in $buildDefinitions) {
+  $versionId = if ($null -eq $definition.Version) { $null } else {
+    Require-GameId $versionIds $definition.Version "game version"
   }
-  if (-not $alreadyExists) {
-    Invoke-RingLabApi -Method POST -Path "/builds/$($build.id)/comments" -Token $user.token -Body @{
-      text = $comment[2]
-    } | Out-Null
-    $createdComments++
+  $requests[$definition.Key] = @{
+    title = $definition.Title
+    description = $definition.Description
+    racerId = Require-GameId $racerIds $definition.Racer "racer"
+    frontPartId = Require-GameId $partIds "$($definition.Machine)/FRONT" "machine part"
+    rearPartId = Require-GameId $partIds "$($definition.RearMachine)/REAR" "machine part"
+    tirePartId = Require-GameId $partIds "$($definition.Machine)/TIRE" "machine part"
+    gameVersionId = $versionId
+    gadgetIds = @(foreach ($name in $definition.Gadgets) { Require-GameId $gadgetIds $name "gadget" })
   }
 }
-Write-Host "Ensured $($commentDefinitions.Count) demo comments ($createdComments added this run)."
+if ($ValidateOnly) {
+  Write-Host "Validated all $($buildDefinitions.Count) planned builds against the local catalog. No writes made."
+  return
+}
+$users = @{}
+foreach ($definition in $userDefinitions) {
+  $users[$definition.Key] = Get-OrCreateDemoUser $definition
+}
+$builds = @{}
+foreach ($definition in $buildDefinitions) {
+  $owner = $users[$definition.Owner]
+  $authorId = [System.Uri]::EscapeDataString([string]$owner.user.id)
+  $page = 0
+  $build = $null
+  do {
+    $existing = Invoke-RingLabApi -Method GET -Path "/builds?authorId=$authorId&page=$page&size=50"
+    $build = @($existing.items) | Where-Object { $_.title -eq $definition.Title } | Select-Object -First 1
+    $page++
+  } while ($null -eq $build -and $page * 50 -lt $existing.total)
+  if ($null -eq $build) {
+    $build = Invoke-RingLabApi -Method POST -Path "/builds" -Token $owner.token -Body $requests[$definition.Key]
+    Write-Host "Created build $($definition.Title)."
+  } else {
+    Write-Host "Using existing build $($definition.Title) without overwriting edits."
+  }
+  $builds[$definition.Key] = $build
+}
 
-Write-Host "Demo dataset is ready: 60 users (5 build owners and 55 voter-only accounts), 17 builds, $($voteDefinitions.Count) votes, and $($commentDefinitions.Count) comments."
-Write-Host "Demo password for every account: $DemoPassword"
+$createdVotes = 0
+foreach ($vote in $voteDefinitions) {
+  $user = $users[$vote[0]]
+  $build = $builds[$vote[1]]
+  $current = Invoke-RingLabApi -Method GET -Path "/builds/$($build.id)/vote" -Token $user.token
+  if ($current.myVote -eq 0) {
+    Invoke-RingLabApi -Method PUT -Path "/builds/$($build.id)/vote" -Token $user.token -Body @{ value = $vote[2] } | Out-Null
+    $createdVotes++
+  }
+}
+Write-Host "Checked $($voteDefinitions.Count) planned votes ($createdVotes added; existing votes preserved)."
+
+$createdComments = 0
+foreach ($definition in $buildDefinitions) {
+  $build = $builds[$definition.Key]
+  $existingComments = @(Get-AllComments $build.id)
+  foreach ($comment in @($commentDefinitions | Where-Object { $_[1] -eq $definition.Key })) {
+    $user = $users[$comment[0]]
+    $alreadyExists = $existingComments | Where-Object { $_.authorId -eq $user.user.id -and $_.text -eq $comment[2] }
+    if (-not $alreadyExists) {
+      $created = Invoke-RingLabApi -Method POST -Path "/builds/$($build.id)/comments" -Token $user.token -Body @{ text = $comment[2] }
+      $existingComments += $created
+      $createdComments++
+    }
+  }
+}
+Write-Host "Checked $($commentDefinitions.Count) planned comments ($createdComments added)."
+Write-Host "Demo plan ready: 100 users (20 build authors, 80 audience members), 60 builds."
+Write-Host "Existing edits and community activity can make actual counts differ from the fresh plan."
+Write-Host "Demo accounts use the local-only password documented in README.md."

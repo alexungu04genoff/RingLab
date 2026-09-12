@@ -121,10 +121,10 @@ REST adapter; automatic patch extraction and synchronization are intentionally n
 
 The editor offers an optional Game version / Patch selector; details and cards display selected
 versions compactly. Explore offers a Patch filter, and Game Collection lists versions and release
-dates. The demo seeder resolves catalog IDs through REST and assigns a deterministic version mix
-only to its named demo builds, preserving their existing parts, gadget order, votes, and comments.
+dates. The demo seeder resolves and validates catalog IDs through REST before writing, assigning
+a deterministic version mix to new demo builds. Existing build fields, votes, and comments are preserved.
 
-The editor selects Front, Rear, and Tires independently; preview and details show each source name. Cards show the stock-machine name when all sources match, otherwise “Mixed machine”. Game Collection explains that stock machines provide all three components. The demo seeder retains its users, builds, comments, and vote distributions, with three existing examples using mixed sources.
+The editor selects Front, Rear, and Tires independently; preview and details show each source name. Cards show the stock-machine name when all sources match, otherwise “Mixed machine”. Game Collection explains that stock machines provide all three components. The local demo plan retains 17 legacy examples and adds 43 fan-oriented builds, with recurring author preferences, stock/mixed sources and uneven engagement. Its 60/30/10 main-cast/other-Sonic/guest distribution is a fictional presentation choice, not player statistics. Fixed-seed planning is separate from REST execution and can be previewed offline; timestamps remain server-generated. Reruns reuse author/title identities and add missing interactions without resetting existing votes or build edits.
 
 React Router owns page navigation. A small context holds current authentication; forms and page queries own local state. `api.ts` centralizes the bearer header, JSON handling and errors. `useLoad` aborts stale requests on route/filter changes. Build selection helpers preserve and reorder gadget IDs without game-rule calculations. React's normal text escaping is used for user content.
 

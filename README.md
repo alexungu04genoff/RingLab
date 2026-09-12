@@ -83,19 +83,38 @@ With PostgreSQL and the Quarkus development server running, populate an explicit
 .\scripts\SeedDemoData.ps1
 ```
 
-The script calls the existing REST API and resolves racers, source machines, machine parts, and gadgets by their supplied names. It creates five clearly identified build-owning accounts plus fifty-five voter-only demo audience accounts. This permits 280 uneven votes across 17 varied builds and 30 short comments while preserving the one-vote-per-user-per-build rule. The larger audience provides reference samples for future confidence-aware ranking demonstrations, including 40 up / 1 down, two 20 up / 40 down, 30 up / 5 down, and 3 up / 0 down. This is manual development tooling: it is not a Flyway migration, is not called during application startup, and cannot run automatically in production.
+The script plans **100 demo members, 20 build authors, 60 builds, 804 votes and 96 comments** on a fresh database. It retains the original 17 examples and adds 43 fan-written entries with recurring author favorites, different machine combinations, uneven attention, and flat conversations including author replies. Demo usernames remain clearly identified; new titles and comments read as community contributions.
 
-All five build-owner accounts and the voter-only demo accounts use the local-only password `RingLabDemo!2026`:
+The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckles, Amy), **30% other Sonic characters**, and **10% guests**. These are fictional editorial weights, not measured player popularity. Regular authors experiment around their favorites; occasional authors contribute one or two builds. Reader selection favors active members and character fans, but affinity changes attention rather than approval. Popular characters can have poorly received experiments, and guests can have well-received builds. Samples include 40/1, 3/0, 1/0, 20/40, tied scores, and unvoted builds.
+
+The fixed-seed plan lives in `backend/scripts/CommunityDemoPlan.ps1`; the runner resolves all referenced catalog names through REST before writing anything. Creation order interleaves authors and characters. Timestamps remain server-generated: the script does not backdate activity or invent historical play sessions. This is manual local tooling, not a migration or an application startup step.
+
+All demo accounts use the local-only password `RingLabDemo!2026`:
 
 - `ringlab_demo_amy` / `ringlab_demo_amy@example.test`
 - `ringlab_demo_tails` / `ringlab_demo_tails@example.test`
 - `ringlab_demo_shadow` / `ringlab_demo_shadow@example.test`
 - `ringlab_demo_sonic` / `ringlab_demo_sonic@example.test`
 - `ringlab_demo_knuckles` / `ringlab_demo_knuckles@example.test`
-- voter-only: `ringlab_demo_rouge`, `ringlab_demo_cream`, `ringlab_demo_blaze`, `ringlab_demo_silver`, `ringlab_demo_vector`
-- additional voter-only accounts: `ringlab_demo_member_01` through `ringlab_demo_member_50`
+- additional authors: `ringlab_demo_rouge`, `ringlab_demo_cream`, `ringlab_demo_blaze`, `ringlab_demo_silver`, `ringlab_demo_vector`
+- new authors: `ringlab_demo_blueblur`, `ringlab_demo_ultimatefan`, `ringlab_demo_rosegrid`, `ringlab_demo_metalhead`, `ringlab_demo_chaotix`, `ringlab_demo_eggman`, `ringlab_demo_bigfan`, `ringlab_demo_phantom`, `ringlab_demo_megafan`, `ringlab_demo_crossover`
+- audience accounts: `ringlab_demo_member_01` through `ringlab_demo_member_80`
 
-Repeated runs are safe and do not delete data. The script logs into existing demo accounts, reuses builds with the same demo title and author, idempotently sets the intended votes, and adds a comment only when the same demo author and text are not already present. If an existing demo username uses a different password, the script stops clearly rather than modifying or deleting that account. Pass `-BaseUrl http://localhost:PORT` when the development API uses another port; the script refuses non-loopback URLs so it cannot target a remote production deployment.
+Repeated runs reuse demo accounts and builds matched by author and title across all pages. Existing build fields and nonzero votes are preserved, and comments are added only when the same author/text pair is absent. Missing planned votes are added, including votes previously removed manually; changed votes are not reset. Renaming a seeded build makes it a different identity, so a rerun will create the original planned title again. Existing activity can therefore make actual counts differ from the plan. No data is deleted. If a demo account has a different password, the script stops rather than replacing it. Pass `-BaseUrl http://localhost:PORT` for another local API port; only loopback HTTP(S) URLs are accepted.
+
+Preview and narrow verification from the repository root:
+
+```powershell
+# Returns the complete plan without network access or writes.
+$plan = .\backend\scripts\SeedDemoData.ps1 -Preview
+$plan.Builds | Group-Object Racer | Sort-Object Count -Descending
+
+# Reads the running local catalog and validates every planned build; no writes.
+.\backend\scripts\SeedDemoData.ps1 -ValidateOnly
+
+# Standalone tests with an in-memory REST fake; no services or dependencies required.
+.\backend\scripts\SeedDemoData.Tests.ps1
+```
 
 ## Migrations and persistence
 
