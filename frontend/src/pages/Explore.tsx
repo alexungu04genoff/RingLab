@@ -274,7 +274,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
         <label>
-          <span className="sort-label">Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works">ⓘ<span role="tooltip">Best rated groups positive scores above neutral and negative scores, then uses Wilson confidence to rank builds within each group.</span></span></span>
+          <span className="sort-label">Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span></span></span>
           <select
             value={sort}
             onChange={(e) => {

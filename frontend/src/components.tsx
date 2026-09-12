@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import type { Build, Gadget, GameVersion, Machine, Racer } from "./types";
+import type { Build, Gadget, GameVersion, Machine, Racer, RacingType } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -65,6 +65,10 @@ export function patchAge(version: GameVersion | null, versions: GameVersion[]): 
   return catalogIndex > 0 ? "older" : "unknown";
 }
 
+export function racingTypeClass(racingType: RacingType | null): string {
+  return `racing-type-${racingType?.toLowerCase() ?? "unknown"}`;
+}
+
 export function BuildCard({ build, versions = [] }: { build: Build; versions?: GameVersion[] }) {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
@@ -76,9 +80,13 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
     >
       <div className="card-art">
         <Artwork item={build.racer} portrait />
-        <span className="type-badge">{build.racer.racingType ?? "Unknown"}</span>
+        <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
+          {build.racer.racingType ?? "Unknown"}
+        </span>
         <span className="score" aria-label={`${build.upvotes} upvotes, ${build.downvotes} downvotes`}>
-          ↑ {build.upvotes} · ↓ {build.downvotes}
+          <span className="upvote-count">↑ {build.upvotes}</span>
+          <span aria-hidden="true"> · </span>
+          <span className="downvote-count">↓ {build.downvotes}</span>
         </span>
       </div>
       <div className="card-body">

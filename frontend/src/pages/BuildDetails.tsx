@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, date, ErrorNotice, patchAge } from "../components";
+import { Artwork, buildDetailsOrigin, date, ErrorNotice, patchAge, racingTypeClass } from "../components";
 import { gadgetPlateStatus } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
@@ -111,12 +111,26 @@ export function BuildDetails() {
       <div className="detail-grid">
         <div>
           <div className="loadout">
-            <section className="panel loadout-item">
+            <section className="panel loadout-item racer-loadout">
               <Artwork item={b.racer} portrait />
               <div>
                 <div className="eyebrow">RACER</div>
-                <h2>{b.racer.name}</h2>
-                <span className="type-badge inline">{b.racer.racingType ?? "Unknown"}</span>
+                <div className="racer-name">
+                  <h2>{b.racer.name}</h2>
+                  <span className={`type-badge inline racing-type ${racingTypeClass(b.racer.racingType)}`}>
+                    {b.racer.racingType ?? "Unknown"}
+                  </span>
+                </div>
+                {b.gameVersion && (
+                  <div className="racer-game-version">
+                    <div className="eyebrow">GAME VERSION</div>
+                    <strong>Ver. {b.gameVersion.version}</strong>
+                    <span className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
+                    {versionAge === "older" && (
+                      <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+                    )}
+                  </div>
+                )}
               </div>
             </section>
             <section className="panel loadout-item">
@@ -134,11 +148,15 @@ export function BuildDetails() {
                     return <article className="machine-part-card" key={label as string}>
                       <Artwork item={{ id: machinePart.sourceMachineId, name: machinePart.sourceMachineName,
                         imagePath: machinePart.sourceMachineImagePath, racingType: machinePart.racingType }} compact />
-                      <div>
-                        <span className="eyebrow">{label as string}</span>
+                      <div className="machine-part-copy">
                         <strong>{machinePart.sourceMachineName}</strong>
-                        {machinePart.racingType && <span className="part-type">{machinePart.racingType}</span>}
+                        {machinePart.racingType && (
+                          <span className={`part-type racing-type ${racingTypeClass(machinePart.racingType)}`}>
+                            {machinePart.racingType}
+                          </span>
+                        )}
                       </div>
+                      <span className="eyebrow machine-part-slot">{label as string}</span>
                     </article>;
                   })}
               </div>
@@ -161,9 +179,6 @@ export function BuildDetails() {
               <ol className="detail-gadgets">
                 {b.gadgets.map((g, i) => (
                   <li key={`${g.id}-${i}`}>
-                    <span className="gadget-number">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
                     <Artwork item={g} compact />
                     <div className="gadget-copy">
                       <strong>{g.name}</strong>
@@ -277,29 +292,27 @@ export function BuildDetails() {
           </section>
         </div>
         <aside>
-          {b.gameVersion && (
-            <section className="panel">
-              <div className="eyebrow">Game version</div>
-              <strong>Ver. {b.gameVersion.version}</strong>
-              <p className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</p>
-              {versionAge === "older" && (
-                <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
-              )}
-            </section>
-          )}
           <section className="panel vote-panel">
-            <div className="eyebrow">COMMUNITY SCORE</div>
+            <div className="eyebrow score-heading">
+              COMMUNITY SCORE
+              <span className="score-help" tabIndex={0} aria-label="How Best rated works">
+                <span aria-hidden="true">i</span>
+                <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
+              </span>
+            </div>
             <strong className="big-score" aria-live="polite">
               {summary?.score}
             </strong>
-            <p className="muted" aria-live="polite">
-              {summary?.upvotes} upvotes · {summary?.downvotes} downvotes
+            <p className="muted vote-summary" aria-live="polite">
+              <span className="upvote-count">↑ {summary?.upvotes}</span>
+              <span aria-hidden="true"> · </span>
+              <span className="downvote-count">↓ {summary?.downvotes}</span>
             </p>
             <div className="vote-buttons">
               {[1, -1].map((v) => (
                 <button
                   key={v}
-                  className={vote?.myVote === v ? "selected" : ""}
+                  className={`${v === 1 ? "upvote-action" : "downvote-action"}${vote?.myVote === v ? " selected" : ""}`}
                   aria-pressed={vote?.myVote === v}
                   disabled={!user || busy || !vote}
                   onClick={() =>
@@ -335,8 +348,9 @@ export function BuildDetails() {
           <div className="detail-note">
             <span className="eyebrow">BUILT FOR CROSSWORLDS</span>
             <p>
-              Community combinations. No calculated stats or gadget
-              compatibility checks.
+              Community combinations. No calculated stats. Gadget Plate capacity is
+              validated using current catalog costs; other gadget compatibility rules
+              are not modeled.
             </p>
           </div>
         </aside>

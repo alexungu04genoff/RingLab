@@ -73,7 +73,7 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain('/assets/gadgets/ring-engine.png');
   expect(details).toContain("1 slot");
   expect(details).toContain("Gain rings over time.");
-  expect(details).toContain("Current catalog cost: 1 slot");
+  expect(details).toContain("Gadget Plate · valid · 1 / 6 slots");
   expect(details).toContain('aria-live="polite">39</strong>');
 });
 
@@ -94,16 +94,21 @@ it.each([false, true])("renders version metadata only when specified and preserv
   expect(details.includes("Ver. 1.4.1")).toBe(versioned);
   expect(details.includes("Released")).toBe(versioned);
   expect(details).toContain('aria-live="polite">39</strong>');
-  expect(card).toContain('aria-label="40 upvotes, 1 downvotes">↑ 40 · ↓ 1');
+  expect(card).toContain('aria-label="40 upvotes, 1 downvotes"');
+  expect(card).toContain('class="upvote-count">↑ 40</span>');
+  expect(card).toContain('class="downvote-count">↓ 1</span>');
 });
 
 it("renders separate vote counts on cards and net score plus counts on details", () => {
   build = { ...stock, score: -20, upvotes: 20, downvotes: 40 };
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
-  expect(card).toContain('aria-label="20 upvotes, 40 downvotes">↑ 20 · ↓ 40');
+  expect(card).toContain('aria-label="20 upvotes, 40 downvotes"');
+  expect(card).toContain('class="upvote-count">↑ 20</span>');
+  expect(card).toContain('class="downvote-count">↓ 40</span>');
   expect(details).toContain('aria-live="polite">-20</strong>');
-  expect(details).toContain("20 upvotes · 40 downvotes");
+  expect(details).toContain('class="upvote-count">↑ 20</span>');
+  expect(details).toContain('class="downvote-count">↓ 40</span>');
   expect(card + details).not.toContain("↑ -20");
 });
 
