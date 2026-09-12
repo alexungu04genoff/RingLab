@@ -1,10 +1,70 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
 import type { BuildPage, GameVersion, Machine, Racer } from "../types";
+
+const PUBLIC_SORT_PREFERENCE = "ringlab.explore.sort";
+const PUBLIC_PATCH_PREFERENCE = "ringlab.explore.gameVersionId";
+const SORT_VALUES = ["newest", "score", "rated"] as const;
+type BuildSort = (typeof SORT_VALUES)[number];
+
+function readPreference(key: string) {
+  try {
+    return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function isBuildSort(value: string | null): value is BuildSort {
+  return SORT_VALUES.some((sort) => sort === value);
+}
+
+export function resolveSort(urlValue: string | null, savedValue: string | null, mine: boolean): BuildSort {
+  if (isBuildSort(urlValue)) return urlValue;
+  if (!mine && isBuildSort(savedValue)) return savedValue;
+  return mine ? "newest" : "rated";
+}
+
+export function resolvePage(value: string | null) {
+  if (!value || !/^\d+$/.test(value)) return 0;
+  const page = Number(value);
+  return Number.isSafeInteger(page) ? page : 0;
+}
+
+export function resolveGameVersion(
+  urlValue: string | null,
+  savedValue: string | null,
+  knownIds: string[] | undefined,
+  mine: boolean,
+) {
+  if (!knownIds) return "";
+  const preferred = urlValue || (mine ? null : savedValue) || "";
+  return knownIds.includes(preferred) ? preferred : "";
+}
+
+export function updateExploreParams(
+  current: URLSearchParams,
+  changes: Record<string, string>,
+  resetPage = true,
+) {
+  const next = new URLSearchParams(current);
+  Object.entries(changes).forEach(([key, value]) => {
+    if (value) next.set(key, value);
+    else next.delete(key);
+  });
+  if (resetPage) next.delete("page");
+  return next;
+}
+
+export function clearExploreFilters(current: URLSearchParams) {
+  const next = new URLSearchParams(current);
+  ["search", "racerId", "machineId", "gameVersionId", "page"].forEach((key) => next.delete(key));
+  return next;
+}
 
 export function selectRandomHeroRacers(
   racers: Racer[],
@@ -23,16 +83,25 @@ export function selectRandomHeroRacers(
 
 export function Explore({ mine = false }: { mine?: boolean }) {
   const { user } = useAuth();
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [racer, setRacer] = useState("");
-  const [machine, setMachine] = useState("");
-  const [gameVersion, setGameVersion] = useState("");
-  const [sort, setSort] = useState("newest");
-  const [page, setPage] = useState(0);
+  const [urlParams, setUrlParams] = useSearchParams();
+  const query = urlParams.get("search") ?? "";
+  const racer = urlParams.get("racerId") ?? "";
+  const machine = urlParams.get("machineId") ?? "";
+  const requestedGameVersion = urlParams.get("gameVersionId") ?? "";
+  const sort = resolveSort(urlParams.get("sort"), readPreference(PUBLIC_SORT_PREFERENCE), mine);
+  const page = resolvePage(urlParams.get("page"));
+  const [search, setSearch] = useState(query);
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const savedGameVersion = mine ? null : readPreference(PUBLIC_PATCH_PREFERENCE);
+  const preferredGameVersion = requestedGameVersion || savedGameVersion || "";
+  const gameVersion = resolveGameVersion(
+    requestedGameVersion,
+    savedGameVersion,
+    versions.data?.map(({ id }) => id),
+    mine,
+  );
   const heroRacers = useMemo(
     () => selectRandomHeroRacers(racers.data || []),
     [racers.data],
@@ -49,13 +118,45 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   if (mine && user) params.set("authorId", user.id);
   const builds = useLoad<BuildPage>(`/builds?${params}`);
   const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
+  useEffect(() => setSearch(query), [query]);
+  useEffect(() => {
+    const next = new URLSearchParams(urlParams);
+    let changed = false;
+    if (next.get("sort") !== sort) {
+      next.set("sort", sort);
+      changed = true;
+    }
+    if (next.get("page") && resolvePage(next.get("page")) === 0) {
+      next.delete("page");
+      changed = true;
+    }
+    if (versions.data && preferredGameVersion !== gameVersion) {
+      next.delete("gameVersionId");
+      changed = true;
+    } else if (gameVersion && !requestedGameVersion) {
+      next.set("gameVersionId", gameVersion);
+      changed = true;
+    }
+    if (changed) setUrlParams(next, { replace: true });
+  }, [gameVersion, preferredGameVersion, requestedGameVersion, setUrlParams, sort, urlParams, versions.data]);
+
+  function updateUrl(changes: Record<string, string>, resetPage = true) {
+    setUrlParams(updateExploreParams(urlParams, changes, resetPage));
+  }
+
+  function savePublicPreference(key: string, value: string) {
+    if (mine) return;
+    try {
+      if (value) localStorage.setItem(key, value);
+      else localStorage.removeItem(key);
+    } catch {
+      // Browsing still works when storage is unavailable.
+    }
+  }
+
   const clearFilters = () => {
     setSearch("");
-    setQuery("");
-    setRacer("");
-    setMachine("");
-    setGameVersion("");
-    setPage(0);
+    setUrlParams(clearExploreFilters(urlParams));
   };
   return (
     <>
@@ -89,8 +190,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           className="search"
           onSubmit={(e) => {
             e.preventDefault();
-            setQuery(search);
-            setPage(0);
+            updateUrl({ search });
           }}
         >
           <label>
@@ -109,8 +209,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           items={racers.data || []}
           value={racer}
           onChange={(v) => {
-            setRacer(v);
-            setPage(0);
+            updateUrl({ racerId: v });
           }}
           optional
         />
@@ -120,16 +219,16 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           items={machines.data || []}
           value={machine}
           onChange={(v) => {
-            setMachine(v);
-            setPage(0);
+            updateUrl({ machineId: v });
           }}
           optional
         />
         <label>
           Patch
           <select value={gameVersion} onChange={(e) => {
-            setGameVersion(e.target.value);
-            setPage(0);
+            const value = e.target.value;
+            savePublicPreference(PUBLIC_PATCH_PREFERENCE, value);
+            updateUrl({ gameVersionId: value });
           }}>
             <option value="">All versions</option>
             {versions.data?.map((version) => (
@@ -142,8 +241,9 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           <select
             value={sort}
             onChange={(e) => {
-              setSort(e.target.value);
-              setPage(0);
+              const value = e.target.value as BuildSort;
+              savePublicPreference(PUBLIC_SORT_PREFERENCE, value);
+              updateUrl({ sort: value });
             }}
           >
             <option value="newest">Newest first</option>
@@ -230,13 +330,13 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             ))}
           {builds.data && builds.data.total > 12 && (
             <div className="pagination">
-              <button disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+              <button disabled={page === 0} onClick={() => updateUrl({ page: String(page - 1) }, false)}>
                 ← Previous
               </button>
               <span>Page {page + 1}</span>
               <button
                 disabled={(page + 1) * 12 >= builds.data.total}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => updateUrl({ page: String(page + 1) }, false)}
               >
                 Next →
               </button>

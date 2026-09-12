@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import type { Build, Gadget, Machine, Racer } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
@@ -48,9 +48,22 @@ export const date = (value: string) =>
     day: "numeric",
     year: "numeric",
   });
+export const browseOrigin = (pathname: string, search: string) => `${pathname}${search}`;
+export function buildDetailsOrigin(from: unknown) {
+  return typeof from === "string" &&
+    (from === "/" || from.startsWith("/?") ||
+      from === "/my-builds" || from.startsWith("/my-builds?"))
+    ? from
+    : "/";
+}
 export function BuildCard({ build }: { build: Build }) {
+  const location = useLocation();
   return (
-    <Link to={`/builds/${build.id}`} className="build-card">
+    <Link
+      to={`/builds/${build.id}`}
+      state={{ from: browseOrigin(location.pathname, location.search) }}
+      className="build-card"
+    >
       <div className="card-art">
         <Artwork item={build.racer} portrait />
         <span className="type-badge">{build.racer.racingType ?? "Unknown"}</span>

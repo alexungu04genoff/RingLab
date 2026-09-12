@@ -2,7 +2,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
-import { Explore, selectRandomHeroRacers } from "./Explore";
+import { browseOrigin, buildDetailsOrigin } from "../components";
+import {
+  clearExploreFilters,
+  Explore,
+  resolveGameVersion,
+  resolvePage,
+  resolveSort,
+  selectRandomHeroRacers,
+  updateExploreParams,
+} from "./Explore";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
@@ -29,8 +38,8 @@ beforeEach(() => {
   });
 });
 
-function render(mine = false) {
-  return renderToStaticMarkup(<MemoryRouter><Explore mine={mine} /></MemoryRouter>);
+function render(mine = false, entry = "/") {
+  return renderToStaticMarkup(<MemoryRouter initialEntries={[entry]}><Explore mine={mine} /></MemoryRouter>);
 }
 
 it("renders news titles as text with publication dates and original links", () => {
@@ -63,9 +72,66 @@ it("offers all versions by default and newest-first patches alongside existing f
   expect(selector[2]).toContain('value="" selected="">All versions');
   expect(selector[2].indexOf("Ver. 1.4.1")).toBeLessThan(selector[2].indexOf("Ver. 1.3.1"));
   expect(html).toContain("Uses parts from");
-  expect(html).toContain('value="rated">Best rated');
+  expect(html).toContain('value="rated" selected="">Best rated');
   expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
     .not.toContain("gameVersionId");
+});
+
+it("uses rated for public Explore and newest for My Builds", () => {
+  render();
+  expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
+    .toContain("sort=rated");
+  vi.clearAllMocks();
+  render(true, "/my-builds");
+  expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
+    .toContain("sort=newest");
+});
+
+it("applies URL, preference, and default sort precedence safely", () => {
+  expect(resolveSort("score", "rated", false)).toBe("score");
+  expect(resolveSort(null, "score", false)).toBe("score");
+  expect(resolveSort(null, "score", true)).toBe("newest");
+  expect(resolveSort("unknown", "broken", false)).toBe("rated");
+});
+
+it("restores only known saved public patches", () => {
+  expect(resolveGameVersion(null, "v1", ["v1", "v2"], false)).toBe("v1");
+  expect(resolveGameVersion("v2", "v1", ["v1", "v2"], false)).toBe("v2");
+  expect(resolveGameVersion(null, "v1", ["v1", "v2"], true)).toBe("");
+  expect(resolveGameVersion(null, "removed", ["v1", "v2"], false)).toBe("");
+});
+
+it("updates filters and applied search in the URL while resetting page", () => {
+  const initial = new URLSearchParams("sort=rated&page=3");
+  expect(updateExploreParams(initial, { sort: "score" }).toString()).toBe("sort=score");
+  expect(updateExploreParams(initial, { gameVersionId: "v1" }).toString()).toBe("sort=rated&gameVersionId=v1");
+  expect(updateExploreParams(initial, { racerId: "r1", machineId: "m1" }).toString())
+    .toBe("sort=rated&racerId=r1&machineId=m1");
+  expect(updateExploreParams(initial, { search: "speed build" }).toString())
+    .toBe("sort=rated&search=speed+build");
+});
+
+it("keeps pagination in the URL and rejects malformed pages", () => {
+  expect(updateExploreParams(new URLSearchParams("sort=rated"), { page: "2" }, false).get("page"))
+    .toBe("2");
+  expect(resolvePage("2")).toBe(2);
+  expect(resolvePage("-1")).toBe(0);
+  expect(resolvePage("nonsense")).toBe(0);
+});
+
+it("clears applied filters and page while retaining sort", () => {
+  const cleared = clearExploreFilters(new URLSearchParams(
+    "search=sonic&racerId=r1&machineId=m1&gameVersionId=v1&sort=score&page=2",
+  ));
+  expect(cleared.toString()).toBe("sort=score");
+});
+
+it("preserves and restores exact Explore and My Builds origins", () => {
+  const explore = browseOrigin("/", "?sort=rated&gameVersionId=v1&page=2");
+  const mine = browseOrigin("/my-builds", "?sort=newest&page=1");
+  expect(buildDetailsOrigin(explore)).toBe(explore);
+  expect(buildDetailsOrigin(mine)).toBe(mine);
+  expect(buildDetailsOrigin("https://example.com")).toBe("/");
 });
 
 it("randomly selects four unique hero racers without changing the catalog order", () => {

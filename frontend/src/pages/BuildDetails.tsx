@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, date, ErrorNotice } from "../components";
+import { Artwork, buildDetailsOrigin, date, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, Vote } from "../types";
 
@@ -13,6 +13,8 @@ export function BuildDetails() {
   const { id } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const origin = buildDetailsOrigin(location.state?.from);
   const build = useLoad<Build>(`/builds/${id}`);
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
@@ -58,8 +60,8 @@ export function BuildDetails() {
     );
   return (
     <>
-      <Link className="back" to="/">
-        ← Explore builds
+      <Link className="back" to={origin}>
+        ← {origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
       </Link>
       <ErrorNotice message={error} />
       <div className="detail-heading">
