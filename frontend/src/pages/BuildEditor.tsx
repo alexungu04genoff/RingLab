@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect } from "../components";
-import { applyStockMachine, filterGadgets, gadgetCostSummary, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
 
@@ -70,9 +70,8 @@ export function BuildEditor() {
   }
   const selectedRacer = racers.data?.find((r) => r.id === draft.racerId);
   const selectedGadgets = draft.gadgetIds
-    .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId))
-    .filter((gadget): gadget is Gadget => !!gadget);
-  const costSummary = gadgetCostSummary(selectedGadgets);
+    .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId));
+  const plateStatus = gadgetPlateStatus(selectedGadgets);
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -96,6 +95,7 @@ export function BuildEditor() {
             className="editor"
             onSubmit={async (e) => {
               e.preventDefault();
+              if (!plateStatus.valid) return;
               setBusy(true);
               setError("");
               try {
@@ -231,8 +231,7 @@ export function BuildEditor() {
                   ))}
                 </div>
                 <p className="muted">
-                  Combinations are shared as selected. Gadget Plate capacity and
-                  compatibility are not checked.
+                  Display order does not affect Gadget Plate validity.
                 </p>
               </section>
             </div>
@@ -274,7 +273,9 @@ export function BuildEditor() {
                 </section>
               </div>
               <h3>Gadgets · {draft.gadgetIds.length}</h3>
-              {costSummary && <p className="cost-summary">{costSummary}</p>}
+              <p className={`cost-summary ${plateStatus.valid ? "valid" : "invalid"}`}>
+                {plateStatus.summary}
+              </p>
               {draft.gadgetIds.length === 0 && (
                 <p className="preview-empty">
                   Select gadgets to add them to the loadout.
@@ -326,7 +327,7 @@ export function BuildEditor() {
               <button
                 className="primary"
                 disabled={
-                  busy || !racers.data || !parts.data || !gadgets.data
+                  busy || !racers.data || !parts.data || !gadgets.data || !plateStatus.valid
                 }
               >
                 {busy ? "Saving…" : id ? "Save changes" : "Publish build"}

@@ -1414,6 +1414,8 @@ hr {
 .preview-gadgets .gadget-name strong, .preview-gadgets .gadget-name small { display: block; }
 .preview-gadgets .gadget-name small { margin-top: 3px; color: var(--accent); font-size: 9px; }
 .cost-summary { color: var(--muted); font-size: 12px; }
+.cost-summary.valid { color: var(--accent); }
+.cost-summary.invalid { color: #f2a4a4; }
 .loadout > .loadout-item:last-child { grid-column: 1 / -1; }
 .machine-setup-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px 0; }
 .machine-setup-heading h2 { margin-bottom: 0; }

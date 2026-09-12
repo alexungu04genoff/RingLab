@@ -11,12 +11,68 @@ export function filterGadgets(gadgets: Gadget[], search: string): Gadget[] {
     : gadgets;
 }
 
-export function gadgetCostSummary(gadgets: Gadget[]): string | null {
-  if (gadgets.length === 0) return null;
-  const knownCost = gadgets.reduce((total, gadget) => total + (gadget.slotCost ?? 0), 0);
-  const unknownCount = gadgets.filter((gadget) => gadget.slotCost === null).length;
-  if (unknownCount === 0) return `Current catalog cost: ${knownCost} ${knownCost === 1 ? "slot" : "slots"}`;
-  return `Known cost: ${knownCost} ${knownCost === 1 ? "slot" : "slots"} · ${unknownCount} ${unknownCount === 1 ? "gadget" : "gadgets"} with unknown cost`;
+export interface GadgetPlateStatus {
+  valid: boolean;
+  totalCost: number;
+  summary: string;
+}
+
+export function gadgetPlateStatus(gadgets: Array<Gadget | undefined>): GadgetPlateStatus {
+  const resolvedGadgets = gadgets.filter((gadget): gadget is Gadget => gadget !== undefined);
+  const totalCost = resolvedGadgets.reduce(
+    (total, gadget) => total + (gadget.slotCost ?? 0),
+    0,
+  );
+  if (resolvedGadgets.length !== gadgets.length) {
+    return { valid: false, totalCost, summary: "Gadget Plate · unknown gadget" };
+  }
+  if (new Set(resolvedGadgets.map((gadget) => gadget.id)).size !== resolvedGadgets.length) {
+    return { valid: false, totalCost, summary: "Gadget Plate · duplicate gadget" };
+  }
+  const unknownCost = resolvedGadgets.find((gadget) => gadget.slotCost === null);
+  if (unknownCost) {
+    return {
+      valid: false,
+      totalCost,
+      summary: `Gadget Plate · cost unknown: ${unknownCost.name}`,
+    };
+  }
+  const invalidCost = resolvedGadgets.find(
+    (gadget) => gadget.slotCost! < 1 || gadget.slotCost! > 3,
+  );
+  if (invalidCost) {
+    return {
+      valid: false,
+      totalCost,
+      summary: `Gadget Plate · invalid cost: ${invalidCost.name}`,
+    };
+  }
+
+  const costs = resolvedGadgets
+    .map((gadget) => gadget.slotCost as number)
+    .sort((left, right) => right - left);
+  const valid = canFitGadget(costs, 0, 0, 0);
+  return {
+    valid,
+    totalCost,
+    summary: valid
+      ? `Gadget Plate · valid · ${totalCost} / 6 slots`
+      : "Gadget Plate · combination does not fit",
+  };
+}
+
+function canFitGadget(
+  costs: number[],
+  index: number,
+  firstRow: number,
+  secondRow: number,
+): boolean {
+  if (index === costs.length) return true;
+  const cost = costs[index];
+  return (
+    (firstRow + cost <= 3 && canFitGadget(costs, index + 1, firstRow + cost, secondRow))
+    || (secondRow + cost <= 3 && canFitGadget(costs, index + 1, firstRow, secondRow + cost))
+  );
 }
 
 export function stockMachineSources(parts: MachinePart[]): MachinePart[] {

@@ -4,7 +4,7 @@ import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, date, ErrorNotice, patchAge } from "../components";
-import { gadgetCostSummary } from "../buildForm";
+import { gadgetPlateStatus } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
 
@@ -62,7 +62,7 @@ export function BuildDetails() {
     );
   const stockSetup = b.frontPart.sourceMachineId === b.rearPart.sourceMachineId
     && b.frontPart.sourceMachineId === b.tirePart.sourceMachineId;
-  const costSummary = gadgetCostSummary(b.gadgets);
+  const plateStatus = gadgetPlateStatus(b.gadgets);
   const versionAge = patchAge(b.gameVersion, versions.data || []);
   return (
     <>
@@ -154,7 +154,9 @@ export function BuildDetails() {
             <h2>
               Gadgets <span className="muted">· {b.gadgets.length}</span>
             </h2>
-            {costSummary && <p className="cost-summary">{costSummary}</p>}
+            <p className={`cost-summary ${plateStatus.valid ? "valid" : "invalid"}`}>
+              {plateStatus.summary}
+            </p>
             {b.gadgets.length ? (
               <ol className="detail-gadgets">
                 {b.gadgets.map((g, i) => (

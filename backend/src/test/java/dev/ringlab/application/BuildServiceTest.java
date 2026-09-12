@@ -103,6 +103,59 @@ class BuildServiceTest {
   }
 
   @Test
+  void rejectsDuplicateGadgetsBeforeSaving() {
+    var duplicate = draftWithGadgets(List.of(gadgetId, gadgetId));
+
+    AppException error =
+        assertThrows(AppException.class, () -> service.create(authorId, duplicate));
+
+    assertEquals(400, error.status);
+    assertEquals("Duplicate gadget ID", error.getMessage());
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void rejectsUnknownAndInvalidGadgetCosts() {
+    UUID unknownCostId = addGadget("Unknown cost", null);
+    UUID zeroCostId = addGadget("Zero cost", 0);
+    UUID excessiveCostId = addGadget("Excessive cost", 4);
+
+    AppException unknownCost = assertThrows(AppException.class,
+        () -> service.create(authorId, draftWithGadgets(List.of(unknownCostId))));
+    assertEquals(400, unknownCost.status);
+    assertEquals("Gadget slot cost is unknown: Unknown cost", unknownCost.getMessage());
+
+    for (UUID invalidId : List.of(zeroCostId, excessiveCostId)) {
+      AppException invalidCost = assertThrows(AppException.class,
+          () -> service.create(authorId, draftWithGadgets(List.of(invalidId))));
+      assertEquals(400, invalidCost.status);
+      assertTrue(invalidCost.getMessage().startsWith("Gadget slot cost is invalid: "));
+    }
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void rejectsUnplaceablePlateOnCreateAndEdit() {
+    List<UUID> twoSlotGadgets = List.of(
+        addGadget("First", 2), addGadget("Second", 2), addGadget("Third", 2));
+    var invalid = draftWithGadgets(twoSlotGadgets);
+
+    AppException createError =
+        assertThrows(AppException.class, () -> service.create(authorId, invalid));
+    assertEquals(400, createError.status);
+    assertEquals("Selected gadgets do not fit the 2x3 Gadget Plate", createError.getMessage());
+
+    var existing = service.create(authorId, draft("Existing"));
+    builds.lastSaved = null;
+    AppException editError = assertThrows(AppException.class,
+        () -> service.edit(existing.id(), authorId, invalid));
+    assertEquals(400, editError.status);
+    assertEquals("Selected gadgets do not fit the 2x3 Gadget Plate", editError.getMessage());
+    assertNull(builds.lastSaved);
+    assertEquals(List.of(gadgetId), service.get(existing.id()).gadgetIds());
+  }
+
+  @Test
   void ownerCanEditWhileAuthorAndCreationTimeArePreserved() {
     Build old = existingBuild();
     builds.saved.put(old.id(), old);
@@ -158,14 +211,14 @@ class BuildServiceTest {
     UUID mixedRear = UUID.randomUUID();
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
-        tirePartId, null, List.of(gadgetId, gadgetId));
+        tirePartId, null, List.of(gadgetId));
     var created = service.create(authorId, mixed);
     assertEquals(mixedRear, service.get(created.id()).rearPartId());
     var edited = service.edit(old.id(), authorId, mixed);
     assertEquals(old.frontPartId(), edited.frontPartId());
     assertEquals(mixedRear, edited.rearPartId());
     assertEquals(old.tirePartId(), edited.tirePartId());
-    assertEquals(List.of(gadgetId, gadgetId), edited.gadgetIds());
+    assertEquals(List.of(gadgetId), edited.gadgetIds());
   }
 
   @Test
@@ -186,16 +239,27 @@ class BuildServiceTest {
     var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, List.of());
     assertEquals(400, assertThrows(AppException.class, () -> service.create(authorId, invalid)).status);
     UUID second = UUID.randomUUID();
-    gameData.gadgets.put(second, new Gadget(second, "Second", null, null, null));
+    gameData.gadgets.put(second, new Gadget(second, "Second", null, 2, null));
     var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
-        tirePartId, null, List.of(second, gadgetId, second));
+        tirePartId, null, List.of(second, gadgetId));
     var created = service.create(authorId, ordered);
-    assertEquals(List.of(second, gadgetId, second), service.get(created.id()).gadgetIds());
+    assertEquals(List.of(second, gadgetId), service.get(created.id()).gadgetIds());
   }
 
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
         title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, List.of(gadgetId));
+  }
+
+  private BuildService.Draft draftWithGadgets(List<UUID> gadgetIds) {
+    return new BuildService.Draft(
+        "Build", "", racerId, frontPartId, rearPartId, tirePartId, null, gadgetIds);
+  }
+
+  private UUID addGadget(String name, Integer slotCost) {
+    UUID id = UUID.randomUUID();
+    gameData.gadgets.put(id, new Gadget(id, name, null, slotCost, null));
+    return id;
   }
 
   private BuildService.Draft versionDraft(UUID version) {
@@ -295,7 +359,7 @@ class BuildServiceTest {
     private GameDataStub(UUID racerId, UUID machineId, UUID gadgetId) {
       racers.put(racerId, new Racer(racerId, "Racer", RacingType.SPEED, null));
       machines.put(machineId, new Machine(machineId, "Machine", RacingType.BOOST, null));
-      gadgets.put(gadgetId, new Gadget(gadgetId, "Gadget", null, null, null));
+      gadgets.put(gadgetId, new Gadget(gadgetId, "Gadget", null, 1, null));
     }
 
     @Override

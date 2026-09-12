@@ -3,6 +3,8 @@ package dev.ringlab.application.build;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.GadgetPlate;
+import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.application.AppException;
 import dev.ringlab.port.out.BuildRepository;
@@ -10,6 +12,7 @@ import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -39,7 +42,7 @@ public class BuildService {
     if (d.gameVersionId() != null && game.findGameVersion(d.gameVersionId()).isEmpty()) {
       throw new AppException(400, "Unknown game version ID");
     }
-    d.gadgetIds().forEach(this::requireGadget);
+    validateGadgets(d.gadgetIds());
   }
 
   private void requireRacer(UUID id) {
@@ -55,8 +58,33 @@ public class BuildService {
     }
   }
 
-  private void requireGadget(UUID id) {
-    if (game.findGadget(id).isEmpty()) throw new AppException(400, "Unknown gadget ID");
+  private void validateGadgets(List<UUID> gadgetIds) {
+    if (new HashSet<>(gadgetIds).size() != gadgetIds.size()) {
+      throw new AppException(400, "Duplicate gadget ID");
+    }
+
+    List<Integer> slotCosts = gadgetIds.stream()
+        .map(this::requireGadget)
+        .map(this::requireValidSlotCost)
+        .toList();
+    if (!GadgetPlate.canFit(slotCosts)) {
+      throw new AppException(400, "Selected gadgets do not fit the 2x3 Gadget Plate");
+    }
+  }
+
+  private Gadget requireGadget(UUID id) {
+    return game.findGadget(id)
+        .orElseThrow(() -> new AppException(400, "Unknown gadget ID"));
+  }
+
+  private int requireValidSlotCost(Gadget gadget) {
+    if (gadget.slotCost() == null) {
+      throw new AppException(400, "Gadget slot cost is unknown: " + gadget.name());
+    }
+    if (gadget.slotCost() < 1 || gadget.slotCost() > GadgetPlate.ROW_CAPACITY) {
+      throw new AppException(400, "Gadget slot cost is invalid: " + gadget.name());
+    }
+    return gadget.slotCost();
   }
 
   @Transactional
