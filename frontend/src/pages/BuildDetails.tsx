@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, date, ErrorNotice, patchAge, racingTypeClass } from "../components";
+import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, patchAge, racingTypeClass } from "../components";
 import { gadgetPlateStatus } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
@@ -77,7 +77,18 @@ export function BuildDetails() {
           <p>
             by <strong>@{b.author.username}</strong>{" "}
             <span className="muted">· {date(b.createdAt)}</span>
+            {b.gameVersion && (
+              <>
+                <span className={`detail-version patch-${versionAge}`}>
+                  · Ver. {b.gameVersion.version}
+                </span>
+                <span className="muted">· Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
+              </>
+            )}
           </p>
+          {versionAge === "older" && (
+            <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+          )}
         </div>
         {user?.id === b.author.id && (
           <div className="actions">
@@ -121,16 +132,6 @@ export function BuildDetails() {
                     {b.racer.racingType ?? "Unknown"}
                   </span>
                 </div>
-                {b.gameVersion && (
-                  <div className="racer-game-version">
-                    <div className="eyebrow">GAME VERSION</div>
-                    <strong>Ver. {b.gameVersion.version}</strong>
-                    <span className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
-                    {versionAge === "older" && (
-                      <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
-                    )}
-                  </div>
-                )}
               </div>
             </section>
             <section className="panel loadout-item">
@@ -139,7 +140,9 @@ export function BuildDetails() {
                   <div className="eyebrow">MACHINE SETUP</div>
                   <h2>Parts by source machine</h2>
                 </div>
-                <span className="setup-indicator">{stockSetup ? "Stock setup" : "Mixed setup"}</span>
+                <span className={`setup-indicator ${stockSetup ? "stock-setup" : "mixed-setup"}`}>
+                  {stockSetup ? "Stock setup" : "Mixed setup"}
+                </span>
               </div>
               <div className="machine-setup-grid">
                 {[["FRONT", b.frontPart], ["REAR", b.rearPart], ["TIRES", b.tirePart]]
@@ -169,12 +172,19 @@ export function BuildDetails() {
             </p>
           </section>
           <section className="panel">
-            <h2>
-              Gadgets <span className="muted">· {b.gadgets.length}</span>
-            </h2>
-            <p className={`cost-summary ${plateStatus.valid ? "valid" : "invalid"}`}>
-              {plateStatus.summary}
-            </p>
+            <div className="gadget-heading">
+              <h2>
+                Gadgets <span className="muted">· {b.gadgets.length}</span>
+              </h2>
+              <span
+                className={`gadget-plate-status ${plateStatus.valid ? "valid" : "invalid"}`}
+                aria-label={`Gadget Plate status: ${plateStatus.summary}`}
+              >
+                {plateStatus.valid
+                  ? `Valid · ${plateStatus.totalCost} / 6 slots`
+                  : plateStatus.summary.replace("Gadget Plate · ", "")}
+              </span>
+            </div>
             {b.gadgets.length ? (
               <ol className="detail-gadgets">
                 {b.gadgets.map((g, i) => (
@@ -303,7 +313,11 @@ export function BuildDetails() {
             <strong className="big-score" aria-live="polite">
               {summary?.score}
             </strong>
-            <p className="muted vote-summary" aria-live="polite">
+            <p
+              className="muted vote-summary"
+              aria-live="polite"
+              aria-label={`Vote breakdown: ${countLabel(summary?.upvotes ?? 0, "upvote")}, ${countLabel(summary?.downvotes ?? 0, "downvote")}`}
+            >
               <span className="upvote-count">↑ {summary?.upvotes}</span>
               <span aria-hidden="true"> · </span>
               <span className="downvote-count">↓ {summary?.downvotes}</span>
@@ -346,11 +360,9 @@ export function BuildDetails() {
             )}
           </section>
           <div className="detail-note">
-            <span className="eyebrow">BUILT FOR CROSSWORLDS</span>
+            <span className="eyebrow">VALIDATION</span>
             <p>
-              Community combinations. No calculated stats. Gadget Plate capacity is
-              validated using current catalog costs; other gadget compatibility rules
-              are not modeled.
+              Gadget Plate capacity is validated using current catalog costs. Other gadget compatibility rules are not modeled.
             </p>
           </div>
         </aside>

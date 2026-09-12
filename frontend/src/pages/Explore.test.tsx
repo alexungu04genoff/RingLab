@@ -8,6 +8,7 @@ import {
   clearExploreFilters,
   Explore,
   exploreLayoutClass,
+  filterSearchableOptions,
   resolveGameVersion,
   resolvePage,
   resolveSort,
@@ -69,14 +70,25 @@ it("does not load or display news in My Builds", () => {
 
 it("offers all versions by default and newest-first patches alongside existing filters and sorts", () => {
   const html = render();
-  const selector = html.match(/Patch<\/span><select([^>]*)>(.*?)<\/select>/)!;
-  expect(selector[1]).not.toContain("required");
-  expect(selector[2]).toContain('value="" selected="">All versions');
-  expect(selector[2].indexOf("Ver. 1.4.1")).toBeLessThan(selector[2].indexOf("Ver. 1.3.1"));
+  expect(html).toContain('role="combobox" aria-label="Search patch"');
+  expect(html).toContain('value="All versions"');
+  expect(html.indexOf("Ver. 1.4.1")).toBeLessThan(html.indexOf("Ver. 1.3.1"));
   expect(html).toContain("Uses parts from");
   expect(html).toContain('value="rated" selected="">Best rated');
   expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
     .not.toContain("gameVersionId");
+});
+
+it("searches catalog filter options case-insensitively by visible label", () => {
+  const options = [
+    { value: "amy", label: "Amy Rose" },
+    { value: "sonic", label: "Sonic the Hedgehog" },
+    { value: "classic", label: "Classic Sonic" },
+  ];
+  expect(filterSearchableOptions(options, " SONIC ").map(({ value }) => value))
+    .toEqual(["sonic", "classic"]);
+  expect(filterSearchableOptions(options, "rose").map(({ value }) => value)).toEqual(["amy"]);
+  expect(filterSearchableOptions(options, "missing")).toEqual([]);
 });
 
 it("uses rated for public Explore and newest for My Builds", () => {

@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import type { Build, Gadget, GameVersion, Machine, Racer, RacingType } from "./types";
+import { ComponentsIcon } from "./icons";
+import type { Build, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -49,6 +50,9 @@ export const date = (value: string) =>
     day: "numeric",
     year: "numeric",
   });
+
+export const countLabel = (count: number, singular: string, plural = `${singular}s`) =>
+  `${count} ${count === 1 ? singular : plural}`;
 export const browseOrigin = (pathname: string, search: string) => `${pathname}${search}`;
 export function buildDetailsOrigin(from: unknown) {
   return typeof from === "string" &&
@@ -58,6 +62,7 @@ export function buildDetailsOrigin(from: unknown) {
     : "/";
 }
 export type PatchAge = "latest" | "older" | "unspecified" | "unknown";
+const CARD_GADGET_LIMIT = 6;
 
 export function patchAge(version: GameVersion | null, versions: GameVersion[]): PatchAge {
   if (!version) return "unspecified";
@@ -68,6 +73,39 @@ export function patchAge(version: GameVersion | null, versions: GameVersion[]): 
 
 export function racingTypeClass(racingType: RacingType | null): string {
   return `racing-type-${racingType?.toLowerCase() ?? "unknown"}`;
+}
+
+function BuildPartIcon({ part, label, abbreviation }: {
+  part: MachinePart;
+  label: string;
+  abbreviation: string;
+}) {
+  const tooltip = `${label}: ${part.sourceMachineName}`;
+  return (
+    <span className="card-part-icon" tabIndex={0} aria-label={tooltip}>
+      <Artwork item={{
+        id: part.sourceMachineId,
+        name: part.sourceMachineName,
+        imagePath: part.sourceMachineImagePath,
+        racingType: part.racingType,
+      }} compact />
+      <span className="card-part-slot" aria-hidden="true">{abbreviation}</span>
+      <span role="tooltip">{tooltip}</span>
+    </span>
+  );
+}
+
+function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
+  const tooltip = gadget.description ? `${gadget.name}: ${gadget.description}` : gadget.name;
+  return (
+    <span className="card-gadget-icon" tabIndex={0} aria-label={tooltip}>
+      <Artwork item={gadget} compact />
+      <span role="tooltip">
+        <strong>{gadget.name}</strong>
+        {gadget.description && <span>{gadget.description}</span>}
+      </span>
+    </span>
+  );
 }
 
 export function BuildCard({ build, versions = [] }: { build: Build; versions?: GameVersion[] }) {
@@ -84,37 +122,43 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
         <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
           {build.racer.racingType ?? "Unknown"}
         </span>
-        <span className="score" aria-label={`${build.upvotes} upvotes, ${build.downvotes} downvotes`}>
+        <span className="score" aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
           <span className="upvote-count">↑ {build.upvotes}</span>
           <span aria-hidden="true"> · </span>
           <span className="downvote-count">↓ {build.downvotes}</span>
+        </span>
+        <span className="card-parts" aria-label="Machine parts">
+          <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
+          <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
+          <BuildPartIcon part={build.tirePart} label="Tires" abbreviation="T" />
         </span>
       </div>
       <div className="card-body">
         <span className="eyebrow">{build.racer.name}</span>
         <h2>{build.title}</h2>
         <p className="machine-name">
-          {build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
-          build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
-            ? build.frontPart.sourceMachineName
-            : "Mixed machine"}
+          <ComponentsIcon />
+          <span>{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
+            build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
+              ? build.frontPart.sourceMachineName
+              : "Mixed machine"}</span>
         </p>
         <div className="tags">
-          {build.gameVersion ? (
-            <span className={`patch-badge patch-${versionAge}`}>
-              Ver. {build.gameVersion.version}{versionAge === "older" ? " · Older patch" : ""}
-            </span>
-          ) : (
-            <span className="patch-badge patch-unspecified">Patch unspecified</span>
-          )}
-          {build.gadgets.slice(0, 2).map((g, i) => (
-            <span key={`${g.id}-${i}`}>{g.name}</span>
+          {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
+            <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
           ))}
-          {build.gadgets.length > 2 && <span>+{build.gadgets.length - 2}</span>}
+          {build.gadgets.length > CARD_GADGET_LIMIT && <span>+{build.gadgets.length - CARD_GADGET_LIMIT}</span>}
           {build.gadgets.length === 0 && <span>No gadgets</span>}
         </div>
         <div className="card-meta">
           <span>@{build.author.username}</span>
+          {build.gameVersion ? (
+            <span className={`patch-badge patch-${versionAge}`}>
+              Ver. {build.gameVersion.version}
+            </span>
+          ) : (
+            <span className="patch-badge patch-unspecified">Patch unspecified</span>
+          )}
           <time>{date(build.createdAt)}</time>
         </div>
       </div>

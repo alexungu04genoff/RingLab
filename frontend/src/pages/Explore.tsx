@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
-import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
+import { Artwork, BuildCard, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
 import type { BuildPage, GameVersion, Machine, Racer } from "../types";
@@ -20,6 +21,118 @@ const FEATURED_HERO_NAMES = new Set([
 type BuildSort = (typeof SORT_VALUES)[number];
 type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort";
 export interface ActiveFilterChip { key: FilterKey; label: string }
+interface SearchableOption { value: string; label: string }
+
+export function filterSearchableOptions(options: SearchableOption[], query: string) {
+  const normalized = query.trim().toLocaleLowerCase();
+  return normalized
+    ? options.filter(({ label }) => label.toLocaleLowerCase().includes(normalized))
+    : options;
+}
+
+function SearchableFilter({ label, icon, options, value, allLabel, onChange }: {
+  label: string;
+  icon: ReactNode;
+  options: SearchableOption[];
+  value: string;
+  allLabel: string;
+  onChange: (value: string) => void;
+}) {
+  const listboxId = useId();
+  const root = useRef<HTMLDivElement>(null);
+  const selectedLabel = options.find((option) => option.value === value)?.label ?? allLabel;
+  const [text, setText] = useState(selectedLabel);
+  const [open, setOpen] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const query = text === selectedLabel ? "" : text;
+  const matches = filterSearchableOptions(options, query);
+  const choices = query ? matches : [{ value: "", label: allLabel }, ...matches];
+
+  useEffect(() => setText(selectedLabel), [selectedLabel]);
+
+  const choose = (option: SearchableOption) => {
+    onChange(option.value);
+    setText(option.label);
+    setOpen(false);
+    setActiveIndex(0);
+  };
+
+  return (
+    <label className="searchable-filter">
+      <span className="field-label">{icon}{label}</span>
+      <div
+        className="searchable-filter-control"
+        ref={root}
+        onBlur={(event) => {
+          if (!root.current?.contains(event.relatedTarget)) {
+            setText(selectedLabel);
+            setOpen(false);
+          }
+        }}
+      >
+        <input
+          type="search"
+          role="combobox"
+          aria-label={`Search ${label.toLowerCase()}`}
+          aria-autocomplete="list"
+          aria-controls={listboxId}
+          aria-expanded={open}
+          aria-activedescendant={open && choices[activeIndex]
+            ? `${listboxId}-option-${activeIndex}` : undefined}
+          value={text}
+          onFocus={(event) => {
+            setOpen(true);
+            setActiveIndex(0);
+            event.currentTarget.select();
+          }}
+          onChange={(event) => {
+            setText(event.target.value);
+            setOpen(true);
+            setActiveIndex(0);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") {
+              setText(selectedLabel);
+              setOpen(false);
+              return;
+            }
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              setOpen(true);
+              const direction = event.key === "ArrowDown" ? 1 : -1;
+              setActiveIndex((current) => choices.length
+                ? (current + direction + choices.length) % choices.length : 0);
+              return;
+            }
+            if (event.key === "Enter" && open && choices[activeIndex]) {
+              event.preventDefault();
+              choose(choices[activeIndex]);
+            }
+          }}
+        />
+        <span className="filter-chevron" aria-hidden="true">⌄</span>
+        <div id={listboxId} role="listbox" hidden={!open}>
+          {choices.map((option, index) => (
+            <button
+              id={`${listboxId}-option-${index}`}
+              type="button"
+              role="option"
+              aria-selected={option.value === value}
+              className={index === activeIndex ? "active" : undefined}
+              key={option.value}
+              onMouseDown={(event) => event.preventDefault()}
+              onMouseEnter={() => setActiveIndex(index)}
+              onClick={() => choose(option)}
+            >
+              {option.label}
+            </button>
+          ))}
+          {choices.length === 0 && <span className="no-filter-results">No matches</span>}
+        </div>
+      </div>
+    </label>
+  );
+}
 
 function readPreference(key: string) {
   try {
@@ -272,40 +385,40 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </label>
           <button type="submit">Search</button>
         </form>
-        <ItemSelect
+        <SearchableFilter
           label="Racer"
           icon={<RacerIcon />}
-          items={racers.data || []}
+          options={(racers.data || []).map(({ id, name }) => ({ value: id, label: name }))}
           value={racer}
+          allLabel="All racers"
           onChange={(v) => {
             updateUrl({ racerId: v });
           }}
-          optional
         />
-        <ItemSelect
+        <SearchableFilter
           label="Uses parts from"
           icon={<ComponentsIcon />}
-          emptyLabel="All source machines"
-          items={machines.data || []}
+          options={(machines.data || []).map(({ id, name }) => ({ value: id, label: name }))}
           value={machine}
+          allLabel="All source machines"
           onChange={(v) => {
             updateUrl({ machineId: v });
           }}
-          optional
         />
-        <label>
-          <span className="field-label"><TagIcon /> Patch</span>
-          <select value={gameVersion} onChange={(e) => {
-            const value = e.target.value;
+        <SearchableFilter
+          label="Patch"
+          icon={<TagIcon />}
+          options={(versions.data || []).map(({ id, version }) => ({
+            value: id,
+            label: `Ver. ${version}`,
+          }))}
+          value={gameVersion}
+          allLabel="All versions"
+          onChange={(value) => {
             savePublicPreference(PUBLIC_PATCH_PREFERENCE, value);
             updateUrl({ gameVersionId: value });
-          }}>
-            <option value="">All versions</option>
-            {versions.data?.map((version) => (
-              <option key={version.id} value={version.id}>Ver. {version.version}</option>
-            ))}
-          </select>
-        </label>
+          }}
+        />
         <label>
           <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span></span></span>
           <select

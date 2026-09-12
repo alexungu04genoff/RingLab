@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
-import { BuildCard, patchAge } from "../components";
+import { BuildCard, countLabel, patchAge } from "../components";
 import { useLoad } from "../useLoad";
 import type { Build, MachinePart } from "../types";
 import { BuildEditor } from "./BuildEditor";
@@ -62,9 +62,15 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   build = mixed ? { ...stock, rearPart: part("REAR", "Speedster Lightning") } : stock;
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   expect(card).toContain(mixed ? "Mixed machine" : "Dark Reaper");
-  expect(card).not.toContain("Speedster Lightning");
+  expect(card).toContain('aria-label="Front: Dark Reaper"');
+  expect(card).toContain('aria-label="Rear:');
+  expect(card).toContain('aria-label="Tires: Dark Reaper"');
+  expect(card.includes("Speedster Lightning")).toBe(mixed);
+  expect(card).toContain('aria-label="Ring Engine: Gain rings over time."');
+  expect(card).toContain('role="tooltip"><strong>Ring Engine</strong>');
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
   expect(details).toContain(mixed ? "Mixed setup" : "Stock setup");
+  expect(details).toContain(`class="setup-indicator ${mixed ? "mixed-setup" : "stock-setup"}"`);
   expect(details).toContain("FRONT");
   expect(details).toContain("REAR");
   expect(details).toContain("TIRES");
@@ -74,6 +80,8 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain("1 slot");
   expect(details).toContain("Gain rings over time.");
   expect(details).toContain("Gadget Plate · valid · 1 / 6 slots");
+  expect(details).toContain("Valid · 1 / 6 slots");
+  expect(details).toContain("Gadgets <span class=\"muted\">· 1</span>");
   expect(details).toContain('aria-live="polite">39</strong>');
 });
 
@@ -94,7 +102,7 @@ it.each([false, true])("renders version metadata only when specified and preserv
   expect(details.includes("Ver. 1.4.1")).toBe(versioned);
   expect(details.includes("Released")).toBe(versioned);
   expect(details).toContain('aria-live="polite">39</strong>');
-  expect(card).toContain('aria-label="40 upvotes, 1 downvotes"');
+  expect(card).toContain('aria-label="40 upvotes, 1 downvote"');
   expect(card).toContain('class="upvote-count">↑ 40</span>');
   expect(card).toContain('class="downvote-count">↓ 1</span>');
 });
@@ -112,6 +120,28 @@ it("renders separate vote counts on cards and net score plus counts on details",
   expect(card + details).not.toContain("↑ -20");
 });
 
+it("renders a safe invalid Gadget Plate status and keeps the validation caveat visible", () => {
+  build = {
+    ...stock,
+    gadgets: [{ id: "invalid", name: "Invalid", description: null, slotCost: 4, imagePath: null }],
+  };
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(details).toContain('class="gadget-plate-status invalid"');
+  expect(details).toContain("invalid cost: Invalid");
+  expect(details).toContain("Gadget Plate capacity is validated using current catalog costs.");
+  expect(details).toContain("Other gadget compatibility rules are not modeled.");
+});
+
+it("uses singular and plural vote labels in accessible text", () => {
+  expect(countLabel(1, "upvote")).toBe("1 upvote");
+  expect(countLabel(2, "upvote")).toBe("2 upvotes");
+  build = { ...stock, upvotes: 1, downvotes: 1 };
+  const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(card).toContain('aria-label="1 upvote, 1 downvote"');
+  expect(details).toContain('aria-label="Vote breakdown: 1 upvote, 1 downvote"');
+});
+
 it("classifies the first catalog version as latest known and later entries as older", () => {
   const latest = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
   const older = { id: "older", version: "1.3.1", releasedAt: "2026-03-18" };
@@ -126,7 +156,8 @@ it("renders accessible older, latest-known, and unspecified patch card states", 
   const renderCard = (gameVersion: Build["gameVersion"]) => renderToStaticMarkup(
     <MemoryRouter><BuildCard build={{ ...stock, gameVersion }} versions={[latest, older]} /></MemoryRouter>,
   );
-  expect(renderCard(older)).toContain("Ver. 1.3.1 · Older patch");
+  expect(renderCard(older)).toContain('class="patch-badge patch-older">Ver. 1.3.1');
+  expect(renderCard(older)).not.toContain("Older patch");
   expect(renderCard(latest)).toContain('class="patch-badge patch-latest">Ver. 1.4.1');
   expect(renderCard(latest)).not.toContain("Older patch");
   expect(renderCard(null)).toContain('class="patch-badge patch-unspecified">Patch unspecified');
