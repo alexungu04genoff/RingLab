@@ -1,8 +1,8 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
-import { GameData } from "./GameData";
-import type { Gadget } from "../types";
+import { GameData, patchNotesUrl } from "./GameData";
+import type { Gadget, Racer } from "../types";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 
@@ -25,4 +25,22 @@ it("renders verified gadget artwork, effects and singular/plural costs without f
   expect(unknown).not.toContain("null");
   expect(html).not.toContain("0 slots");
   expect(html).toContain('aria-hidden="true">RE</span>');
+});
+
+it("uses the shared racing type colors in racer collection cards", () => {
+  const racers: Racer[] = [
+    { id: "sonic", name: "Sonic the Hedgehog", racingType: "SPEED", imagePath: "/assets/racers/sonic.png" },
+  ];
+  vi.mocked(useLoad).mockReturnValue({ data: racers, loading: false, error: "" });
+  const html = renderToStaticMarkup(<GameData />);
+  expect(html).toContain("racer-collection-item");
+  expect(html).toContain("racing-type-speed");
+  expect(html).toContain(">SPEED</span>");
+});
+
+it("links every catalog version to its Steam patch notes", () => {
+  ["1.4.1", "1.3.1", "1.2.2", "1.2.0"].forEach((version) => {
+    expect(patchNotesUrl(version)).toMatch(/^https:\/\/steam/);
+  });
+  expect(patchNotesUrl("unknown")).toBeNull();
 });

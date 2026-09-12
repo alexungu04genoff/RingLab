@@ -7,6 +7,7 @@ import { BuildEditor } from "./pages/BuildEditor";
 import { BuildDetails } from "./pages/BuildDetails";
 import { AuthPage } from "./pages/AuthPage";
 import { GameData } from "./pages/GameData";
+import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
 import "./styles.css";
 function App() {
   const { user, logout, loading } = useAuth();
@@ -23,13 +24,15 @@ function App() {
           </Link>
           <nav aria-label="Main navigation">
             <NavLink to="/" end>
-              Explore
+              <CompassIcon /> Explore
             </NavLink>
-            <NavLink to="/game-data">Game Collection</NavLink>
-            <NavLink to="/builds/new">Create Build</NavLink>
-            <NavLink to="/my-builds">My Builds</NavLink>
+            <NavLink to="/game-data"><LibraryIcon /> Game Collection</NavLink>
+            <NavLink to="/my-builds"><HammerIcon /> My Builds</NavLink>
           </nav>
           <div className="account">
+            <Link className="button primary" to="/builds/new">
+              ＋ Create build
+            </Link>
             {loading ? (
               <span>Loading…</span>
             ) : user ? (
@@ -101,7 +104,7 @@ function App() {
           RING<span>LAB</span>
         </span>
         <span>A CrossWorlds community build lab · Educational project</span>
-        <Link to="/game-data">Game collection ↗</Link>
+        <Link className="footer-collection-link" to="/game-data"><LibraryIcon /> Game collection ↗</Link>
       </footer>
     </>
   );

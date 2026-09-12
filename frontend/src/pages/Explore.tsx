@@ -5,10 +5,18 @@ import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
 import type { BuildPage, GameVersion, Machine, Racer } from "../types";
+import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../icons";
 
 const PUBLIC_SORT_PREFERENCE = "ringlab.explore.sort";
 const PUBLIC_PATCH_PREFERENCE = "ringlab.explore.gameVersionId";
 const SORT_VALUES = ["newest", "score", "rated"] as const;
+const SONIC_HERO_NAME = "Sonic the Hedgehog";
+const FEATURED_HERO_NAMES = new Set([
+  'Miles "Tails" Prower',
+  "Knuckles the Echidna",
+  "Shadow the Hedgehog",
+  "Dr. Eggman",
+]);
 type BuildSort = (typeof SORT_VALUES)[number];
 type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort";
 export interface ActiveFilterChip { key: FilterKey; label: string }
@@ -100,17 +108,35 @@ export const exploreLayoutClass = (newsVisible: boolean) =>
 
 export function selectRandomHeroRacers(
   racers: Racer[],
-  count = 4,
+  count = 5,
   random: () => number = Math.random,
 ) {
-  if (racers.length <= count) return racers;
+  const selectRandom = (candidates: Racer[], limit: number) => {
+    const shuffled = [...candidates];
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(random() * (index + 1));
+      [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+    return shuffled.slice(0, limit);
+  };
 
-  const shuffled = [...racers];
-  for (let index = shuffled.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  const sonic = racers.find(({ name }) => name === SONIC_HERO_NAME);
+  const selected = sonic ? [sonic] : [];
+  const featured = racers.filter(
+    ({ id, name }) => id !== sonic?.id && FEATURED_HERO_NAMES.has(name),
+  );
+  selected.push(...selectRandom(featured, Math.min(2, count - selected.length)));
+
+  const others = racers.filter(
+    ({ id, name }) => id !== sonic?.id && !FEATURED_HERO_NAMES.has(name),
+  );
+  selected.push(...selectRandom(others, count - selected.length));
+
+  if (selected.length < count) {
+    const remaining = racers.filter(({ id }) => !selected.some((racer) => racer.id === id));
+    selected.push(...selectRandom(remaining, count - selected.length));
   }
-  return shuffled.slice(0, count);
+  return selected;
 }
 
 export function Explore({ mine = false }: { mine?: boolean }) {
@@ -198,29 +224,34 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   return (
     <>
       <div className={`page-heading ${mine ? "" : "explore-hero"}`}>
-        <div>
-          <div className="eyebrow accent">SONIC RACING: CROSSWORLDS</div>
-          <h1>{mine ? "Your garage." : "Find your next build."}</h1>
+        <div className={mine ? "" : "hero-copy"}>
+          {!mine ? (
+            <div className="hero-title-row">
+              <img
+                className="hero-game-logo"
+                src="/assets/branding/sonic-racing-crossworlds-logo.png"
+                alt="Sonic Racing: CrossWorlds"
+              />
+              <h1>Find your next build.</h1>
+            </div>
+          ) : (
+            <h1>Your garage.</h1>
+          )}
           <p>
             {mine
               ? "Your setups, ready for the next race."
               : "Racers. Machines. Gadgets. Shared by the community."}
           </p>
         </div>
-        <div className={mine ? undefined : "explore-hero-side"}>
-          {!mine && heroRacers.length > 0 && (
-            <div className="hero-racers" aria-hidden="true">
-              {heroRacers.map((heroRacer) => (
-                <div className="hero-racer" key={heroRacer.id}>
-                  <Artwork item={heroRacer} portrait />
-                </div>
-              ))}
-            </div>
-          )}
-          <Link className="button primary" to="/builds/new">
-            ＋ Create build
-          </Link>
-        </div>
+        {!mine && heroRacers.length > 0 && (
+          <div className="hero-racers" aria-hidden="true">
+            {heroRacers.map((heroRacer) => (
+              <div className="hero-racer" key={heroRacer.id}>
+                <Artwork item={heroRacer} portrait />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       <section className="filters" aria-label="Filter builds">
         <form
@@ -231,7 +262,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           }}
         >
           <label>
-            Search builds
+            <span className="field-label"><SearchIcon /> Search builds</span>
             <input
               placeholder="Search by build title…"
               maxLength={120}
@@ -243,6 +274,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         </form>
         <ItemSelect
           label="Racer"
+          icon={<RacerIcon />}
           items={racers.data || []}
           value={racer}
           onChange={(v) => {
@@ -252,6 +284,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         />
         <ItemSelect
           label="Uses parts from"
+          icon={<ComponentsIcon />}
           emptyLabel="All source machines"
           items={machines.data || []}
           value={machine}
@@ -261,7 +294,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           optional
         />
         <label>
-          Patch
+          <span className="field-label"><TagIcon /> Patch</span>
           <select value={gameVersion} onChange={(e) => {
             const value = e.target.value;
             savePublicPreference(PUBLIC_PATCH_PREFERENCE, value);
@@ -274,7 +307,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
         <label>
-          <span className="sort-label">Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span></span></span>
+          <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span></span></span>
           <select
             value={sort}
             onChange={(e) => {
@@ -359,7 +392,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
                     </p>
                     <div className="empty-actions">
                       <Link className="button primary" to="/game-data">
-                        Browse game collection
+                        <LibraryIcon /> Browse game collection
                       </Link>
                       {user ? (
                         <Link className="button" to="/builds/new">
@@ -400,7 +433,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           {!mine && (
             <p className="catalog-link">
               Looking for a racer or gadget?{" "}
-              <Link to="/game-data">Browse the game collection →</Link>
+              <Link to="/game-data"><LibraryIcon /> Browse the game collection →</Link>
             </p>
           )}
         </div>

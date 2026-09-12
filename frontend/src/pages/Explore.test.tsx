@@ -69,7 +69,7 @@ it("does not load or display news in My Builds", () => {
 
 it("offers all versions by default and newest-first patches alongside existing filters and sorts", () => {
   const html = render();
-  const selector = html.match(/Patch<select([^>]*)>(.*?)<\/select>/)!;
+  const selector = html.match(/Patch<\/span><select([^>]*)>(.*?)<\/select>/)!;
   expect(selector[1]).not.toContain("required");
   expect(selector[2]).toContain('value="" selected="">All versions');
   expect(selector[2].indexOf("Ver. 1.4.1")).toBeLessThan(selector[2].indexOf("Ver. 1.3.1"));
@@ -166,17 +166,38 @@ it("preserves and restores exact Explore and My Builds origins", () => {
   expect(buildDetailsOrigin("https://example.com")).toBe("/");
 });
 
-it("randomly selects four unique hero racers without changing the catalog order", () => {
-  const racers = Array.from({ length: 10 }, (_, index) => ({
+it("prioritizes Sonic, featured racers, and other racers in the hero", () => {
+  const racers = [
+    "Sonic the Hedgehog",
+    'Miles "Tails" Prower',
+    "Knuckles the Echidna",
+    "Shadow the Hedgehog",
+    "Dr. Eggman",
+    "Amy Rose",
+    "Blaze the Cat",
+  ].map((name, index) => ({
     id: String(index),
-    name: `Racer ${index}`,
+    name,
     racingType: "SPEED" as const,
     imagePath: `/assets/racers/${index}.png`,
   }));
 
-  const selected = selectRandomHeroRacers(racers, 4, () => 0);
+  const selected = selectRandomHeroRacers(racers, 5, () => 0.999);
 
-  expect(selected.map(({ id }) => id)).toEqual(["1", "2", "3", "4"]);
-  expect(new Set(selected.map(({ id }) => id))).toHaveLength(4);
-  expect(racers.map(({ id }) => id)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
+  expect(selected[0].name).toBe("Sonic the Hedgehog");
+  expect(selected.slice(1, 3).map(({ name }) => name)).toEqual([
+    'Miles "Tails" Prower',
+    "Knuckles the Echidna",
+  ]);
+  expect(selected.slice(3).map(({ name }) => name)).toEqual(["Amy Rose", "Blaze the Cat"]);
+  expect(new Set(selected.map(({ id }) => id))).toHaveLength(5);
+  expect(racers.map(({ name }) => name)).toEqual([
+    "Sonic the Hedgehog",
+    'Miles "Tails" Prower',
+    "Knuckles the Echidna",
+    "Shadow the Hedgehog",
+    "Dr. Eggman",
+    "Amy Rose",
+    "Blaze the Cat",
+  ]);
 });

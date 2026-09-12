@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import type { ReactNode } from "react";
 import type { Build, Gadget, GameVersion, Machine, Racer, RacingType } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
@@ -122,6 +123,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
 }
 export function ItemSelect({
   label,
+  icon,
   items,
   value,
   onChange,
@@ -129,6 +131,7 @@ export function ItemSelect({
   emptyLabel,
 }: {
   label: string;
+  icon?: ReactNode;
   items: Array<Racer | Machine>;
   value: string;
   onChange: (value: string) => void;
@@ -137,7 +140,7 @@ export function ItemSelect({
 }) {
   return (
     <label>
-      {label}
+      <span className="field-label">{icon}{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}

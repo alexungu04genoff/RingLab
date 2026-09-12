@@ -173,6 +173,9 @@ nav {
   font-weight: 600;
 }
 nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   color: var(--muted);
   padding: 12px 0;
 }
@@ -209,42 +212,64 @@ main {
 }
 .explore-hero {
   min-height: 132px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 480px;
+  align-items: center;
 }
-.explore-hero-side {
+.hero-copy {
+  min-width: 0;
+}
+.hero-copy > p {
+  margin-top: 16px;
+}
+.hero-title-row {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex: 0 0 440px;
-  gap: 8px;
+  align-items: center;
+  gap: 20px;
+}
+.hero-game-logo {
+  display: block;
+  width: 185px;
+  flex: 0 0 auto;
+  height: auto;
+}
+.hero-title-row h1 {
+  margin: 0;
+  min-width: 0;
+  white-space: nowrap;
 }
 .hero-racers {
   position: relative;
-  width: 430px;
+  width: 480px;
   height: 117px;
   overflow: hidden;
 }
 .hero-racer {
   position: absolute;
   top: 0;
-  width: 166px;
+  width: 150px;
   height: 117px;
   filter: drop-shadow(0 8px 10px #0009);
 }
 .hero-racer:nth-child(1) {
   left: 0;
-  z-index: 1;
+  z-index: 5;
 }
 .hero-racer:nth-child(2) {
-  left: 88px;
-  z-index: 2;
+  left: 90px;
+  z-index: 4;
 }
 .hero-racer:nth-child(3) {
-  left: 176px;
+  left: 180px;
   z-index: 3;
 }
 .hero-racer:nth-child(4) {
-  left: 264px;
-  z-index: 4;
+  left: 270px;
+  z-index: 2;
+}
+.hero-racer:nth-child(5) {
+  left: 360px;
+  z-index: 1;
 }
 .hero-racer .artwork {
   background: transparent;
@@ -268,6 +293,18 @@ main {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
+}
+.ui-icon {
+  width: 1.15em;
+  height: 1.15em;
+  flex: 0 0 auto;
+  overflow: visible;
+}
+.racer-icon { width: 1.25em; }
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 .search {
   display: flex;
@@ -1094,12 +1131,47 @@ hr {
   gap: 9px;
   margin-bottom: 25px;
 }
+.collection-heading {
+  margin-bottom: 26px;
+}
+.collection-heading-content {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: end;
+  gap: 17px;
+}
+.collection-title-copy,
+.collection-intro {
+  grid-column: span 2;
+}
+.collection-title-copy > .eyebrow {
+  margin-bottom: 13px;
+}
+.collection-title-copy h1 {
+  margin: 0 0 15px;
+}
 .tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
   text-transform: capitalize;
 }
+.tabs .ui-icon { font-size: 17px; }
+.button .ui-icon { margin-right: 5px; vertical-align: -0.16em; }
+.catalog-link a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.footer-collection-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
 .collection-intro {
-  max-width: 650px;
-  margin: -7px 0 23px;
+  max-width: none;
+  margin: 0;
   padding: 14px 17px;
   border-left: 3px solid var(--accent);
   background: #161d25;
@@ -1118,15 +1190,26 @@ hr {
 }
 .collection {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  gap: 17px;
+}
+.collection-racers,
+.collection-machines,
+.collection-gadgets {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.collection-game-versions {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .collection-item {
   display: flex;
   align-items: center;
-  gap: 17px;
-  padding: 18px;
+  gap: 20px;
+  min-width: 0;
   margin: 0;
+}
+.collection-copy {
+  min-width: 0;
+  flex: 1;
 }
 .compact {
   width: 60px;
@@ -1138,9 +1221,114 @@ hr {
   font-size: 26px;
   letter-spacing: -2px;
 }
+.collection-item h2,
+.version-collection-item h2 {
+  overflow-wrap: anywhere;
+}
 .collection-item h2 {
-  font-size: 15px;
-  margin: 0 0 6px;
+  margin: 0;
+  font-size: 19px;
+}
+.collection-type {
+  position: static;
+  display: inline-flex;
+  margin-top: 11px;
+  padding: 5px 9px;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.racer-collection-item {
+  min-height: 144px;
+  padding: 12px 20px 12px 12px;
+}
+.racer-collection-item .artwork {
+  width: 120px;
+  height: 120px;
+  flex: 0 0 120px;
+  border-radius: 8px;
+}
+.racer-collection-item .artwork > span {
+  font-size: 38px;
+}
+.machine-collection-item {
+  min-height: 140px;
+  padding: 16px;
+}
+.machine-collection-item .artwork {
+  width: 150px;
+  height: 108px;
+  flex: 0 0 150px;
+  border-radius: 8px;
+}
+.machine-collection-item .artwork img {
+  object-fit: contain;
+}
+.machine-collection-item .artwork > span {
+  font-size: 38px;
+}
+.machine-collection-item .eyebrow {
+  display: block;
+  margin-bottom: 7px;
+}
+.gadget-collection-item {
+  align-items: flex-start;
+  min-height: 168px;
+  padding: 20px;
+}
+.gadget-collection-item .artwork {
+  width: 96px;
+  height: 96px;
+  flex: 0 0 96px;
+  border-radius: 9px;
+}
+.gadget-collection-item .artwork > span {
+  font-size: 32px;
+}
+.gadget-collection-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+.gadget-slot-cost {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  border: 1px solid var(--accent-muted);
+  border-radius: 999px;
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.gadget-collection-item p {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+.version-collection-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-height: 190px;
+  margin: 0;
+  padding: 24px;
+  border-top: 3px solid var(--accent);
+}
+.version-collection-item h2 {
+  margin: 13px 0 6px;
+  font-size: 24px;
+}
+.version-collection-item p {
+  margin: 0;
+  color: var(--muted);
+}
+.version-collection-item a {
+  margin-top: auto;
+  padding-top: 24px;
+  font-size: 13px;
+  font-weight: 700;
 }
 .skip-link {
   position: fixed;
@@ -1168,25 +1356,37 @@ hr {
   .filters {
     grid-template-columns: 1fr 1fr;
   }
-  .explore-hero-side {
-    flex-basis: 350px;
+  .explore-hero {
+    grid-template-columns: minmax(0, 1fr) 350px;
+  }
+  .hero-title-row {
+    gap: 14px;
+  }
+  .hero-game-logo {
+    width: 140px;
+  }
+  .hero-title-row h1 {
+    font-size: 34px;
   }
   .hero-racers {
     width: 350px;
     height: 102px;
   }
   .hero-racer {
-    width: 145px;
+    width: 120px;
     height: 102px;
   }
   .hero-racer:nth-child(2) {
-    left: 68px;
+    left: 70px;
   }
   .hero-racer:nth-child(3) {
-    left: 136px;
+    left: 140px;
   }
   .hero-racer:nth-child(4) {
-    left: 204px;
+    left: 210px;
+  }
+  .hero-racer:nth-child(5) {
+    left: 280px;
   }
   .build-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1208,6 +1408,14 @@ hr {
   }
   .collection {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .collection-heading-content {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 17px;
+  }
+  .collection-title-copy,
+  .collection-intro {
+    grid-column: span 1;
   }
   footer {
     margin: 0 28px;
@@ -1259,12 +1467,27 @@ hr {
   .page-heading p {
     font-size: 13px;
   }
+  .collection-heading-content {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .collection-title-copy,
+  .collection-intro {
+    grid-column: auto;
+  }
+  .hero-game-logo {
+    width: 150px;
+  }
   .explore-hero {
     min-height: 0;
+    display: flex;
   }
-  .explore-hero-side {
-    flex-basis: auto;
-    align-items: flex-start;
+  .hero-title-row {
+    flex-wrap: wrap;
+  }
+  .hero-title-row h1 {
+    flex-basis: calc(100% - 134px);
+    white-space: normal;
   }
   .hero-racers {
     display: none;
