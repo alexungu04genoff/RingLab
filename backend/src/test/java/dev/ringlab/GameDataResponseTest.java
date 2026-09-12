@@ -16,8 +16,8 @@ import org.junit.jupiter.api.Test;
 class GameDataResponseTest {
   @Test
   void unverifiedTypesRemainNullWithoutPreventingCatalogResponses() {
-    var racer = new Racer(UUID.randomUUID(), "Amigo", null, "/assets/racers/amigo.png");
-    var machine = new Machine(UUID.randomUUID(), "Locomotive de Amigo", null, null);
+    var racer = new Racer(UUID.randomUUID(), "Sample Racer", null, "/assets/racers/sample-racer.png");
+    var machine = new Machine(UUID.randomUUID(), "Sample Machine", null, null);
     var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.FRONT);
 
     var racerResponse = RacerResponse.from(racer);

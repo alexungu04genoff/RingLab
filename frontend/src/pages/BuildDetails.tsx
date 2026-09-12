@@ -107,7 +107,7 @@ export function BuildDetails() {
         <div>
           <div className="loadout">
             <section className="panel loadout-item">
-              <Artwork item={b.racer} />
+              <Artwork item={b.racer} portrait />
               <div>
                 <div className="eyebrow">RACER</div>
                 <h2>{b.racer.name}</h2>

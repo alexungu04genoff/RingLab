@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
-import { Explore } from "./Explore";
+import { Explore, selectRandomHeroRacers } from "./Explore";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
@@ -66,4 +66,19 @@ it("offers all versions by default and newest-first patches alongside existing f
   expect(html).toContain('value="rated">Best rated');
   expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
     .not.toContain("gameVersionId");
+});
+
+it("randomly selects four unique hero racers without changing the catalog order", () => {
+  const racers = Array.from({ length: 10 }, (_, index) => ({
+    id: String(index),
+    name: `Racer ${index}`,
+    racingType: "SPEED" as const,
+    imagePath: `/assets/racers/${index}.png`,
+  }));
+
+  const selected = selectRandomHeroRacers(racers, 4, () => 0);
+
+  expect(selected.map(({ id }) => id)).toEqual(["1", "2", "3", "4"]);
+  expect(new Set(selected.map(({ id }) => id))).toHaveLength(4);
+  expect(racers.map(({ id }) => id)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"]);
 });

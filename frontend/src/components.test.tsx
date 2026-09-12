@@ -16,10 +16,10 @@ it("renders initials for a racer with neither verified type nor artwork", () => 
 
 it("shows official local artwork even when the racing type is unknown", () => {
   const html = renderToStaticMarkup(
-    <Artwork item={{ ...racer, name: "Amigo", imagePath: "/assets/racers/amigo.png" }} />,
+    <Artwork item={{ ...racer, name: "Sample Racer", imagePath: "/assets/racers/sample-racer.png" }} />,
   );
   expect(html).toContain('src="/assets/racers/amigo.png"');
-  expect(html).toContain('alt="Amigo"');
+  expect(html).toContain('alt="Sample Racer"');
 });
 
 it("keeps unknown-type entries selectable alongside known racing types", () => {

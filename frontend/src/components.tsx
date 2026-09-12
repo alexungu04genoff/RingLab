@@ -11,16 +11,18 @@ export function ErrorNotice({ message }: { message: string }) {
 export function Artwork({
   item,
   compact = false,
+  portrait = false,
 }: {
   item: Racer | Machine | Gadget;
   compact?: boolean;
+  portrait?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
   const local = item.imagePath?.startsWith("/assets/");
   const racingType = "racingType" in item ? item.racingType ?? "unknown" : "gadget";
   return (
     <div
-      className={`artwork ${compact ? "compact" : ""} type-${racingType.toLowerCase()}`}
+      className={`artwork ${compact ? "compact" : ""} ${portrait ? "portrait" : ""} type-${racingType.toLowerCase()}`}
     >
       {local && !failed ? (
         <img
@@ -50,7 +52,7 @@ export function BuildCard({ build }: { build: Build }) {
   return (
     <Link to={`/builds/${build.id}`} className="build-card">
       <div className="card-art">
-        <Artwork item={build.racer} />
+        <Artwork item={build.racer} portrait />
         <span className="type-badge">{build.racer.racingType ?? "Unknown"}</span>
         <span className="score">↑ {build.score}</span>
       </div>

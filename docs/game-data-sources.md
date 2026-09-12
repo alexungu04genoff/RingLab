@@ -3,36 +3,34 @@
 Cutoff and date checked for **every row below: 2026-09-12** (Europe/Bucharest).
 This ledger accompanies `V6__released_racer_and_machine_catalog.sql` and
 `V7__verified_gadget_catalog.sql`, `V8__community_artwork_for_catalog_gaps.sql`, and
-`V9__wiki_artwork_for_catalog_presentation.sql`. Earlier migrations are unchanged.
+`V9__wiki_artwork_for_catalog_presentation.sql`, and
+`V10__sonic_wiki_catalog_facts.sql`. Earlier migrations are unchanged.
 
 ## Coverage and limits
 
-The resulting catalog contains **53 racers, 27 machines and 81 machine parts**. Racers comprise
-23 MAIN, 13 FREE_UPDATE, 16 DLC (13 collaboration racers plus 3 Sonic Prime racers), and 1 BONUS.
+The resulting catalog contains **52 racers, 62 machines and 186 machine parts**. Racers comprise
+23 MAIN, 12 FREE_UPDATE, 16 DLC (13 collaboration racers plus 3 Sonic Prime racers), and 1 BONUS.
 No skin or announced future racer is inserted. Every machine has exactly one FRONT, REAR and TIRE
 catalog part. These parts implement RingLab's existing composition model; their presence does not
 assert that every crossover vehicle can be mixed freely in the actual game.
 
-**Racer coverage is complete against the official roster and release notices checked. Machine
-coverage is not complete against SEGA's advertised 45 original vehicles.** The official machine
-pages expose five illustrated types and selected crossover vehicles, not an exhaustive named
-launch catalog. V6 adds every separately named, released machine established by the sources below;
-it retains the ten supplied V2 machines. The other launch machines and the unnamed Werehog bonus
-vehicle remain an evidence gap, not an assertion that they are unreleased. Do not use the count of
-27 as the game's total machine count. A complete named first-party launch inventory is still needed.
+**Racer release coverage remains based on the official roster and release notices.** V10 uses the
+owner-approved Sonic Wiki catalogs to fill the current model's missing type facts and 36 released
+machine identities. The resulting 62-machine count includes the released base, bonus, free-update
+and DLC machines known at the cutoff. Super Sonic is also excluded from the general racer picker because the Wiki marks
+him as Grand-Prix-only and RingLab does not yet model race mode.
 
 Research checked the Asian and western official sites, both official news feeds, SEGA's publisher
 Steam announcements, individual Steam DLC listings, SEGA's press newsroom, and the official Steam
 customization trailer. The trailer shows customization and mixed-part names, so those names were
-not treated as proof of additional stock machines. The Sonic Wiki is used only for the separately
-user-approved presentation artwork policy described below, never as evidence for catalog facts.
+not treated as proof of additional stock machines. The Sonic Wiki was initially used only for the
+separately user-approved presentation artwork policy described below. V10 extends that explicit
+policy to racer type, machine identity/type, part naming conventions, and current gadget facts.
 The western SEGA site required a normal browser visit; its Features tab also advertises 45 vehicles
 without listing them individually. No guessed names or types were added to fill that gap.
 
-Existing V2 IDs, names, types, V4 part IDs, and community data are preserved. Existing racing types
-are inherited supplied data, **not newly independently verified** by this research. New racing
-types are null because release/roster pages do not establish them. The user approved this nullable
-contract; the UI shows Unknown. `RacingType` remains an enum with its existing five values.
+Existing V2 IDs, V4 part IDs, build references, and community data are preserved. V10 fills all
+stored racer and machine types. `RacingType` remains an enum with its existing five values.
 
 ## Source conventions
 
@@ -50,8 +48,23 @@ served from `frontend/public`; none are remote hotlinks.
 V9 replaces every local racer, stock-machine and gadget image with the corresponding image from the
 [Sonic Wiki CrossWorlds character][r-fandom], [machine][m-fandom] or [gadget][g-fandom] catalog.
 This is a user-selected presentation policy and applies even where the original evidence column
-names a first-party asset. Images are local PNG downloads, never hotlinks; no AI artwork, redraw or
-restyling was used. The catalog now has 53 racer, 27 machine and 71 gadget image paths.
+names a first-party asset. Images are local PNG or WebP downloads, never hotlinks; no AI artwork, redraw or
+restyling was used. V12 supplies isolated Wiki artwork for the 36 machines added by V10, so every
+remaining released machine has a local image path.
+
+## V10 Sonic Wiki fact audit
+
+The owner explicitly requested the Sonic Wiki as the source for filling current catalog gaps. The
+[character catalog][r-fandom] supplies the five-value type for every stored racer. The [machine
+catalog][m-fandom] supplies the 36 missing released machine names, their types, and the convention
+that a stock machine yields a named front, named rear and tire set. RingLab creates the corresponding
+three typed part identities but does not yet persist part display labels or numerical stats.
+
+The [gadget catalog][g-fandom] supplies current descriptions and plate costs for 68 of RingLab's 70
+stored gadgets. `Perfect Charge Kit` and `Air Trick Action Kit` remain null because the checked
+catalog did not define them. V10 does not add the Wiki's additional gadget
+identities yet; that should be a separate reconciliation so stable IDs, artwork and duplicate/renamed
+entries can be reviewed together. Costs are current snapshot facts, not historical per-patch rules.
 
 ## RACERS
 
@@ -92,7 +105,6 @@ restyling was used. The catalog now has 53 racer, 27 machine and 71 gadget image
 | Arle | FREE_UPDATE | RELEASED 2026-05-27 — [available notice][arle] | A/news/260317update/freechara07.webp | /assets/racers/arle.png | Asian notice uses May 28. |
 | Classic Sonic | FREE_UPDATE | RELEASED by 2026-06-24 — [available notice][classic] | A/racers/pc/classicsonic.webp | /assets/racers/classic-sonic.png | Explicitly added playable racer, not a Sonic skin. |
 | Axel | FREE_UPDATE | RELEASED 2026-08-25 — [Steam released notice][axel] | A/racers/pc/axel.webp | /assets/racers/axel.png | Asian notice uses August 26. |
-| Amigo | FREE_UPDATE | RELEASED 2026-09-08 — [Steam released notice][amigo] | A/racers/pc/amigo.webp | /assets/racers/amigo.png | Asian notice uses September 9. Amigo (Classic) excluded as a skin. |
 | Steve | DLC | RELEASED 2025-10-08 — [Steam pack][minecraft] | A/racers/pc/mnc01.png | /assets/racers/steve.png | Selectable racer, not an Alex skin. |
 | Alex | DLC | RELEASED 2025-10-08 — [Steam pack][minecraft] | A/racers/pc/mnc02.png | /assets/racers/alex.png | Explicit separate racer. |
 | Creeper | DLC | RELEASED 2025-10-08 — [Steam pack][minecraft] | A/racers/pc/mnc03.png | /assets/racers/creeper.png | Explicit separate racer. |
@@ -140,7 +152,6 @@ recorded instead of presenting a generic marketing page as a complete named inve
 | Twinkle Bayoen | FREE_UPDATE | RELEASED 2026-05-27 — [available notice][arle] | A/news/260317update/freemachine07.webp | /assets/machines/twinkle-bayoen.png | Asian notice uses May 28. |
 | Mach Cyclone | FREE_UPDATE | RELEASED by 2026-06-24 — [available notice][classic], [patch details][classic-patch] | E/news/classicsonic/img01.webp | /assets/machines/mach-cyclone.png | Official promotional screenshot includes driver; isolated render not obtained. |
 | Devolada Yellow Jack | FREE_UPDATE | RELEASED 2026-08-25 — [Steam released notice][axel] | [Official release banner](https://sonicracing.sega.com/upload_images/5d6c2bbdee6e4d79d9d0460f637e0a97b80e7033.jpg) | /assets/machines/devolada-yellow-jack.png | Official promotional screenshot includes Axel; isolated render not obtained. |
-| Locomotive de Amigo | FREE_UPDATE | RELEASED 2026-09-08 — [Steam released notice][amigo] | [Official release screenshot](https://sonicracing.sega.com/upload_images/35dae289c210cb065d9a395809ba7822d3804cb9.jpg) | /assets/machines/locomotive-de-amigo.png | Official screenshot includes Amigo; isolated render not obtained. |
 | Minecart | DLC | RELEASED 2025-10-08 — [Steam pack][minecraft] | A/machines/addmachine01.png | /assets/machines/minecart.png | One machine shared by the three Minecraft racers. |
 | Patty Wagon | DLC | RELEASED 2025-11-19 — [Steam pack][sponge] | A/news/250622/spgmachine01.png | /assets/machines/patty-wagon.png | One machine shared by the SpongeBob pack. |
 | PAC-MAN Mobile | DLC | RELEASED 2026-01-07 — [Steam pack][pac-store], [available notice][pac] | A/news/250820pac/pcmmachine01.png | /assets/machines/pac-man-mobile.png | One machine; no skin-specific duplicates. |
@@ -154,9 +165,6 @@ No production rows or machine parts are created for these entries. Checked 2026-
 
 | Entity / content | Category | Status | Official evidence | Artwork / local path | Decision |
 | --- | --- | --- | --- | --- | --- |
-| Aang | DLC | ANNOUNCED, NOT RELEASED | [Season Pass Steam listing][season] explicitly says Avatar Legends releases October 2026; [roster][roster] alone is not release proof | A/racers/pc/aang.webp listed by roster; not downloaded / null | Excluded. |
-| Katara | DLC | ANNOUNCED, NOT RELEASED | [Season Pass Steam listing][season], [roster][roster] | A/racers/pc/katara.webp listed by roster; not downloaded / null | Excluded. |
-| Gliding Air | DLC | ANNOUNCED, NOT RELEASED | [Season Pass Steam listing][season], [purchase guide][guide] | A/guide/avtpack.webp is a future pack composite; not downloaded / null | Excluded. |
 | Season Pass 2: Godzilla and EVANGELION collaborations; four unrevealed packs | DLC | ANNOUNCED for fall 2026; no release confirmation found | [SEGA announcement][season2] | E/news/season2pass/img01.webp; not downloaded / null | No invented racer or machine names. Courses Godzilla Escape and Tokyo-III do not establish selectable racer identities. |
 
 ## SKINS / NOT SEPARATE RACERS
@@ -169,7 +177,6 @@ Checked 2026-09-12. These are deliberately absent from `racers`.
 | Pinky | Released skin of Blinky, not a separate racer | [PAC-MAN release breakdown][pac]. |
 | Clyde | Released skin of Blinky, not a separate racer | [PAC-MAN release breakdown][pac]. |
 | GHOSTS / Team Ghost | Marketing grouping, not an additional racer row | [roster][roster], [Steam pack][pac-store], resolved by [explicit release breakdown][pac]. |
-| Amigo (Classic) | Released skin of Amigo, not a separate racer | [Amigo released notice][amigo], [SEGA Asian breakdown][amigo-asia]. |
 | Hatsune Miku racing outfit | Appearance of the released Hatsune Miku entry, not another row | [Miku released notice][miku]. |
 | CPU/AI teams and online robot icons | Not evidence of new selectable characters | [patch notes][classic-patch] describe CPU icon changes; no new racer is established by an icon. |
 
@@ -178,19 +185,21 @@ as playable racer entries. Similarity to an existing Sonic character is not a re
 
 ## GADGETS
 
-Checked **2026-09-12**, including the active Amigo Festival. V7 expands 20 rows to **71 rows**:
+Checked **2026-09-12**. V7 expands 20 rows to **71 rows**; V11 removes an unreleased Festival reward,
+leaving **70 rows**:
 **51 newly verified released identities**, **16 substantiated existing identities**, and **4 retained
 seed identities requiring review**. V7 provides **49 official local images**; V8 fills the remaining
-**22 local paths from user-approved Sonic Wiki artwork**. There are **10 descriptions**,
-and **9 latest verified slot costs**. The remaining **62 costs are NULL**. These counts describe
+**22 local paths from user-approved Sonic Wiki artwork**. At the V7 boundary there are **10 descriptions**
+and **9 latest verified slot costs**. V10 later fills **68 descriptions and 68 costs** from the
+owner-approved Wiki catalog, leaving two festival kits nullable. These counts describe
 RingLab, **not a complete game roster**. The [official features page][g-features] advertises 70+
-launch gadgets; updates explicitly added 6, 8 and 8, alongside Festival kits. Reaching 71 database
+launch gadgets; updates explicitly added 6, 8 and 8, alongside Festival kits. Reaching 70 database
 rows does not reconcile that launch roster or establish completeness.
 
 Research covered the retail online manual, the archived Closed Network Test (CNT) manual, Asian
 and western official Features pages, both official news feeds, all publisher Steam announcements
 returned by the 100-entry feed through the cutoff, every published update in the Asian feed,
-and named Festival reward graphics from Miku through Amigo. The western Features page lists
+and named released Festival reward graphics. The western Features page lists
 items (race pickups), not an exhaustive gadget inventory; those items were not inserted as gadgets.
 The retail manual gives six sample gadgets, not a complete table. The CNT manual contains a
 pre-release list with old names and costs; it is **not proof of current release or current cost**.
@@ -282,7 +291,6 @@ assertion that all unresearched gadgets fall within it and is not a production v
 | 021 | Item Buster Kit | [1.4.1][g141], [Mega Man Festival][g-mega] | — | UNKNOWN | [reward][g-mega-art] → G/item-buster-kit.png |
 | 022 | Drift Spinner Kit | [1.4.1][g141], [Majima][majima] | — | UNKNOWN | [reward][g-majima-art] → G/drift-spinner-kit.png |
 | 023 | Panel Combo Kit | [1.4.1][g141], [Arle][g-arle] | — | UNKNOWN | [reward][g-arle-art] → G/panel-combo-kit.png |
-| 024 | 4th Stage Charge Kit | [Amigo Festival][amigo], September 10–13 ET; active at cutoff | — | UNKNOWN | [reward][g-amigo-art] → G/4th-stage-charge-kit.png |
 | 025 | Perfect Charge Kit | [Axel Festival][axel], August 27–30 ET | — | UNKNOWN | [reward][g-axel-art] → G/perfect-charge-kit.png |
 | 026 | Air Trick Action Kit | [TMNT Festival][g-tmnt], July 30–August 2 ET | — | UNKNOWN | [reward][g-tmnt-art] → G/air-trick-action-kit.png |
 | 027 | Starting Boost Bounty | [Retail manual][g-manual] | [Manual][g-manual] | UNKNOWN | [Manual icon 1][g-manual1] → G/starting-boost-bounty.png |
@@ -355,8 +363,7 @@ individual tuner names. Full effect bundles, triggering conditions and most cost
 
 No **specifically named announced-but-unreleased gadget** was found in the checked sources through
 the cutoff. Future live-service data and future DLC announcements do not establish gadget identities.
-Festival availability ending is not removal of an already released gadget. Amigo's kit is included
-because its event had already begun, not merely because the announcement existed.
+Festival availability ending is not removal of an already released gadget.
 
 ## GADGET PATCH / BALANCE HISTORY
 

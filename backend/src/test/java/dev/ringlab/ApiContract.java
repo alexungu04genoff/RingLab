@@ -140,7 +140,7 @@ public abstract class ApiContract {
             .get("/api/racers")
             .then()
             .statusCode(200)
-            .body("size()", equalTo(53))
+            .body("size()", equalTo(52))
             .extract()
             .path("find { it.name == 'Amy Rose' }");
     Map<String, Object> machine =
@@ -148,7 +148,7 @@ public abstract class ApiContract {
             .get("/api/machines")
             .then()
             .statusCode(200)
-            .body("size()", equalTo(27))
+            .body("size()", equalTo(62))
             .extract()
             .path("find { it.name == 'Dark Reaper' }");
     Map<String, Object> gadget =

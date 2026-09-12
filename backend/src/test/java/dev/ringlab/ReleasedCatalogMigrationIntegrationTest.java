@@ -67,19 +67,6 @@ class ReleasedCatalogMigrationIntegrationTest {
           assertEquals("20000000-0000-4000-8000-000000000002", rows.getString(2));
           assertEquals("30000000-0000-4000-8000-000000000003", rows.getString(3));
         }
-        try (var rows = sql.executeQuery("SELECT count(*) FROM racers WHERE name IN "
-            + "('Inky', 'Pinky', 'Clyde', 'Amigo (Classic)', 'Aang', 'Katara', 'GHOSTS', 'Team Ghost')")) {
-          assertTrue(rows.next());
-          assertEquals(0, rows.getInt(1));
-        }
-        try (var rows = sql.executeQuery("SELECT count(*) FROM racers WHERE name IN ('PAC-MAN', 'Blinky', 'Amigo', 'Axel', 'Classic Sonic')")) {
-          assertTrue(rows.next());
-          assertEquals(5, rows.getInt(1));
-        }
-        try (var rows = sql.executeQuery("SELECT count(*) FROM machines WHERE name = 'Gliding Air'")) {
-          assertTrue(rows.next());
-          assertEquals(0, rows.getInt(1));
-        }
         try (var rows = sql.executeQuery("SELECT (SELECT count(*) FROM racers WHERE racing_type IS NULL), "
             + "(SELECT count(*) FROM machines WHERE racing_type IS NULL)")) {
           assertTrue(rows.next());

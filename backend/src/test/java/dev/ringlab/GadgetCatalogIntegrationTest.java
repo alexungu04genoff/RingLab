@@ -21,8 +21,8 @@ class GadgetCatalogIntegrationTest {
   void expandedCatalogPreservesSeedIdsAndMapsVerifiedMetadataThroughRest() throws Exception {
     var gadgets = game.listGadgets();
     // This is the single assertion of the researched catalog size, not the game's total roster.
-    assertEquals(71, gadgets.size());
-    assertEquals(71, gadgets.stream().filter(g -> g.imagePath() != null).count());
+    assertEquals(70, gadgets.size());
+    assertEquals(70, gadgets.stream().filter(g -> g.imagePath() != null).count());
     assertEquals(27, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
     assertEquals(53, game.listRacers().stream().filter(r -> r.imagePath() != null).count());
     assertEquals(gadgets.size(), gadgets.stream().map(g -> g.id()).distinct().count());
@@ -65,12 +65,12 @@ class GadgetCatalogIntegrationTest {
     var kit = game.findGadget(UUID.fromString("70000000-0000-4000-8000-000000000013")).orElseThrow();
     assertEquals("Handling Character Kit", kit.name());
     assertEquals(3, kit.slotCost());
-    assertEquals("Supports collisions and Ring theft, with stat adjustments for Handling characters.", kit.description());
+    assertEquals("Collide with racers and steal Rings; Handling characters receive stat adjustments.", kit.description());
     assertEquals(1, game.findGadget(UUID.fromString("70000000-0000-4000-8000-000000000040"))
         .orElseThrow().slotCost());
     var unknown = game.findGadget(UUID.fromString("82005d0f-575b-5350-934f-fb108d306a21")).orElseThrow();
-    assertNull(unknown.description());
-    assertNull(unknown.slotCost());
+    assertEquals("Attack items appear more often.", unknown.description());
+    assertEquals(1, unknown.slotCost());
     assertEquals("/assets/gadgets/attack-item-chance-up.png", unknown.imagePath());
   }
 

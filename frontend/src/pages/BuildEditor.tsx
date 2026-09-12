@@ -209,7 +209,7 @@ export function BuildEditor() {
                 <section className="preview-item">
                   <span className="preview-label">Selected racer</span>
                   {selectedRacer ? (
-                    <Artwork item={selectedRacer} />
+                    <Artwork item={selectedRacer} portrait />
                   ) : (
                     <div className="preview-placeholder" aria-hidden="true">
                       R

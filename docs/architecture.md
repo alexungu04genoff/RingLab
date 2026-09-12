@@ -74,7 +74,7 @@ Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then 
 
 Browse queries filter in PostgreSQL and paginate before response assembly. `BuildDbAdapter` uses JPA Criteria with one shared predicate helper for item and count queries. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. Score sorting uses a correlated vote-sum subquery; all sorts retain creation time then ID as tie-breakers. The maximum page size is 50. Collection/detail assembly uses straightforward bounded lookups, so query count grows with page size; batching would be a measurable future optimization rather than a custom query framework now. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
 
-Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. V6 expands the catalog to 53 racers, 27 source machines and 81 parts, retaining existing IDs and adding official local artwork paths. No fake application users enter migrations.
+Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. V6 expands the catalog to 53 racers, 27 source machines and 81 parts, retaining existing IDs and adding official local artwork paths. V10 fills the known racer and machine types from the user-approved Sonic Wiki catalog and expands the released machine inventory to 63 source machines and 189 parts. No fake application users enter migrations.
 
 V7 expands gadgets to 71 rows (67 substantiated retail identities plus four retained seed identities
 requiring review), preserving all existing IDs and ordered selections. Only supported descriptions,
@@ -93,7 +93,15 @@ gadgets, including Blinky's previously-null path. Stable `/assets/...` paths rem
 existing records. This visual-source decision does not alter the first-party evidence policy for
 catalog facts or add game rules.
 
-V6 makes racer/machine racing types nullable when authoritative type data is unavailable. The domain and persistence still use the five-value `RacingType` enum, persisted as strings. REST preserves known string values and returns null for unverified types; the frontend explicitly accepts null and displays Unknown. This prevents catalog completeness from requiring invented game statistics. [The catalog ledger](game-data-sources.md) records released entries, provenance, artwork gaps, skins and future exclusions. The named launch-machine inventory is still incomplete; the 27-machine RingLab count is not the game's total. Each new source machine gets one FRONT, REAR and TIRE under RingLab's existing composition model, without asserting additional in-game compatibility rules.
+V10 uses the project owner's explicit Sonic Wiki source policy for catalog facts. It fills the
+stored racer types, adds 36 released stock machines that the earlier first-party-only audit could
+not name, and creates one FRONT, REAR and TIRE row for each. It also fills descriptions and latest
+plate costs for the stored gadgets. V11 then removes unreleased catalog entries and their associated
+Festival gadget; V12 adds Wiki artwork for every remaining released machine. Character and part
+statistics are deliberately not added in these migrations;
+the implemented and proposed relational shapes are documented in `docs/game-data-schema.md`.
+
+V6 makes racer/machine racing types nullable when authoritative data is unavailable. The domain and persistence still use the five-value `RacingType` enum, persisted as strings. V10 fills the types supported by the approved Wiki audit. [The catalog ledger](game-data-sources.md) records released entries, provenance, artwork gaps, skins and future exclusions. Each new source machine gets one FRONT, REAR and TIRE under RingLab's existing composition model, without asserting additional in-game compatibility rules.
 
 V4 creates three explicitly identified parts per seeded machine, backfills old builds to the three parts from their former machine, makes all three columns required, then removes `builds.machine_id`. The transactional migration fails if any old build cannot be mapped. Build IDs, timestamps, ordered gadgets, votes, and comments are preserved; V1–V3 remain unchanged.
 

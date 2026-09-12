@@ -46,7 +46,7 @@ export function GameData() {
       <div className="collection">
         {items.data?.map((i) => (
           <article className="panel collection-item" key={i.id}>
-            {!("version" in i) && <Artwork item={i} compact />}
+            {!("version" in i) && <Artwork item={i} compact portrait={tab === "racers"} />}
             <div>
               <h2>{"version" in i ? `Ver. ${i.version}` : i.name}</h2>
               {"releasedAt" in i && <p>Released {date(`${i.releasedAt}T00:00:00`)}</p>}

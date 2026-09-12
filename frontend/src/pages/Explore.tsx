@@ -1,10 +1,26 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice, ItemSelect } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
 import type { BuildPage, GameVersion, Machine, Racer } from "../types";
+
+export function selectRandomHeroRacers(
+  racers: Racer[],
+  count = 4,
+  random: () => number = Math.random,
+) {
+  if (racers.length <= count) return racers;
+
+  const shuffled = [...racers];
+  for (let index = shuffled.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled.slice(0, count);
+}
+
 export function Explore({ mine = false }: { mine?: boolean }) {
   const { user } = useAuth();
   const [search, setSearch] = useState("");
@@ -17,9 +33,10 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
-  const heroRacers = (racers.data || [])
-    .filter(({ racingType }) => racingType !== "POWER")
-    .slice(0, 4);
+  const heroRacers = useMemo(
+    () => selectRandomHeroRacers(racers.data || []),
+    [racers.data],
+  );
   const params = new URLSearchParams({
     search: query,
     sort,
@@ -57,7 +74,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             <div className="hero-racers" aria-hidden="true">
               {heroRacers.map((heroRacer) => (
                 <div className="hero-racer" key={heroRacer.id}>
-                  <Artwork item={heroRacer} />
+                  <Artwork item={heroRacer} portrait />
                 </div>
               ))}
             </div>

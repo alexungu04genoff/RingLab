@@ -220,7 +220,7 @@ main {
 .hero-racers {
   position: relative;
   width: 430px;
-  height: 92px;
+  height: 117px;
   overflow: hidden;
 }
 .hero-racer {
@@ -343,6 +343,12 @@ main {
   height: 100%;
   object-fit: cover;
   object-position: center;
+}
+.artwork.portrait img {
+  align-self: flex-start;
+  height: 166.667%;
+  object-fit: contain;
+  object-position: center top;
 }
 .type-power {
   background-color: #4d2e29;
@@ -1033,6 +1039,7 @@ hr {
   }
   .hero-racers {
     width: 350px;
+    height: 102px;
   }
   .hero-racer {
     width: 145px;
