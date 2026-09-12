@@ -31,6 +31,7 @@ class GameDataResponseTest {
     assertNull(partResponse.racingType());
     assertEquals(machine.id(), partResponse.sourceMachineId());
     assertEquals(machine.name(), partResponse.sourceMachineName());
+    assertNull(partResponse.sourceMachineImagePath());
   }
 
   @Test
@@ -44,5 +45,14 @@ class GameDataResponseTest {
       assertEquals(type.name(), MachineResponse.from(machine).racingType());
       assertEquals(type, MachinePartResponse.from(part, machine).racingType());
     }
+  }
+
+  @Test
+  void machinePartIncludesSourceMachineArtwork() {
+    var machine = new Machine(
+        UUID.randomUUID(), "Dark Reaper", RacingType.SPEED, "/assets/machines/dark-reaper.png");
+    var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.REAR);
+
+    assertEquals(machine.imagePath(), MachinePartResponse.from(part, machine).sourceMachineImagePath());
   }
 }

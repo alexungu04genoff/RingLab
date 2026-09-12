@@ -8,8 +8,9 @@ import java.util.UUID;
 
 public record MachinePartResponse(
     UUID id, MachinePartType type, UUID sourceMachineId, String sourceMachineName,
-    RacingType racingType) {
+    String sourceMachineImagePath, RacingType racingType) {
   public static MachinePartResponse from(MachinePart part, Machine source) {
-    return new MachinePartResponse(part.id(), part.type(), source.id(), source.name(), source.racingType());
+    return new MachinePartResponse(
+        part.id(), part.type(), source.id(), source.name(), source.imagePath(), source.racingType());
   }
 }

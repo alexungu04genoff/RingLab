@@ -4,6 +4,7 @@ import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, date, ErrorNotice } from "../components";
+import { gadgetCostSummary } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, Vote } from "../types";
 
@@ -58,6 +59,9 @@ export function BuildDetails() {
         {build.loading && <p role="status">Loading build…</p>}
       </>
     );
+  const stockSetup = b.frontPart.sourceMachineId === b.rearPart.sourceMachineId
+    && b.frontPart.sourceMachineId === b.tirePart.sourceMachineId;
+  const costSummary = gadgetCostSummary(b.gadgets);
   return (
     <>
       <Link className="back" to={origin}>
@@ -114,13 +118,27 @@ export function BuildDetails() {
               </div>
             </section>
             <section className="panel loadout-item">
-              <div>
-                <h2>Machine setup</h2>
-                <dl>
-                  <dt>Front</dt><dd>{b.frontPart.sourceMachineName}</dd>
-                  <dt>Rear</dt><dd>{b.rearPart.sourceMachineName}</dd>
-                  <dt>Tires</dt><dd>{b.tirePart.sourceMachineName}</dd>
-                </dl>
+              <div className="machine-setup-heading">
+                <div>
+                  <div className="eyebrow">MACHINE SETUP</div>
+                  <h2>Parts by source machine</h2>
+                </div>
+                <span className="setup-indicator">{stockSetup ? "Stock setup" : "Mixed setup"}</span>
+              </div>
+              <div className="machine-setup-grid">
+                {[["FRONT", b.frontPart], ["REAR", b.rearPart], ["TIRES", b.tirePart]]
+                  .map(([label, part]) => {
+                    const machinePart = part as typeof b.frontPart;
+                    return <article className="machine-part-card" key={label as string}>
+                      <Artwork item={{ id: machinePart.sourceMachineId, name: machinePart.sourceMachineName,
+                        imagePath: machinePart.sourceMachineImagePath, racingType: machinePart.racingType }} compact />
+                      <div>
+                        <span className="eyebrow">{label as string}</span>
+                        <strong>{machinePart.sourceMachineName}</strong>
+                        {machinePart.racingType && <span className="part-type">{machinePart.racingType}</span>}
+                      </div>
+                    </article>;
+                  })}
               </div>
             </section>
           </div>
@@ -134,6 +152,7 @@ export function BuildDetails() {
             <h2>
               Gadgets <span className="muted">· {b.gadgets.length}</span>
             </h2>
+            {costSummary && <p className="cost-summary">{costSummary}</p>}
             {b.gadgets.length ? (
               <ol className="detail-gadgets">
                 {b.gadgets.map((g, i) => (
@@ -141,7 +160,14 @@ export function BuildDetails() {
                     <span className="gadget-number">
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <span>{g.name}</span>
+                    <Artwork item={g} compact />
+                    <div className="gadget-copy">
+                      <strong>{g.name}</strong>
+                      <span className="gadget-cost">{g.slotCost === null
+                        ? "Cost unknown"
+                        : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</span>
+                      {g.description && <p>{g.description}</p>}
+                    </div>
                   </li>
                 ))}
               </ol>

@@ -35,6 +35,7 @@ export interface MachinePart {
   type: MachinePartType;
   sourceMachineId: string;
   sourceMachineName: string;
+  sourceMachineImagePath: string | null;
   racingType: RacingType | null;
 }
 export interface GameVersion {

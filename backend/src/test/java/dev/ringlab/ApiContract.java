@@ -159,6 +159,13 @@ public abstract class ApiContract {
             .body("size()", greaterThan(20))
             .extract()
             .path("[0]");
+    Map<String, Object> machinePart =
+        given()
+            .get("/api/machine-parts")
+            .then()
+            .statusCode(200)
+            .extract()
+            .path("find { it.sourceMachineName == 'Dark Reaper' }");
 
     assertThat(
         racer,
@@ -176,6 +183,7 @@ public abstract class ApiContract {
             not(hasKey("slotCost"))));
     assertThat(
         gadget, allOf(hasKey("description"), hasKey("slotCost"), not(hasKey("racingType"))));
+    assertThat(machinePart, hasEntry("sourceMachineImagePath", "/assets/machines/dark-reaper.png"));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);
   }
 
@@ -199,6 +207,9 @@ public abstract class ApiContract {
         .body("frontPart.id", equalTo(body.get("frontPartId")))
         .body("rearPart.id", equalTo(body.get("rearPartId")))
         .body("tirePart.id", equalTo(body.get("tirePartId")))
+        .body("frontPart.sourceMachineImagePath", notNullValue())
+        .body("rearPart.sourceMachineImagePath", notNullValue())
+        .body("tirePart.sourceMachineImagePath", notNullValue())
         .body("author.id", equalTo(author.id));
     body.put("rearPartId", partId(ids("machines").getFirst(), "REAR"));
     request(author.token).body(body).put("/api/builds/" + id).then().statusCode(200);

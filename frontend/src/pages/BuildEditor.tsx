@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect } from "../components";
-import { moveGadget, toggleGadget } from "../buildForm";
+import { applyStockMachine, filterGadgets, gadgetCostSummary, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
 
@@ -29,6 +29,8 @@ export function BuildEditor() {
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [gadgetSearch, setGadgetSearch] = useState("");
+  const [stockSourceId, setStockSourceId] = useState("");
   const [allowed, setAllowed] = useState(!id);
   const racers = useLoad<Racer[]>("/racers");
   const parts = useLoad<MachinePart[]>("/machine-parts");
@@ -67,6 +69,10 @@ export function BuildEditor() {
     setDraft((d) => ({ ...d, [key]: value }));
   }
   const selectedRacer = racers.data?.find((r) => r.id === draft.racerId);
+  const selectedGadgets = draft.gadgetIds
+    .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId))
+    .filter((gadget): gadget is Gadget => !!gadget);
+  const costSummary = gadgetCostSummary(selectedGadgets);
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -146,6 +152,18 @@ export function BuildEditor() {
                 <h2>
                   <span className="step">02</span> Racer & machine
                 </h2>
+                <label className="stock-machine-control">
+                  Use stock machine
+                  <select value={stockSourceId} onChange={(e) => {
+                    setStockSourceId(e.target.value);
+                    if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
+                  }}>
+                    <option value="">Choose a complete stock setup</option>
+                    {stockMachineSources(parts.data ?? []).map((part) => (
+                      <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName}</option>
+                    ))}
+                  </select>
+                </label>
                 <div className="two-columns">
                   <ItemSelect
                     label="Racer"
@@ -153,8 +171,9 @@ export function BuildEditor() {
                     value={draft.racerId}
                     onChange={(v) => field("racerId", v)}
                   />
-                  {partSlots.map((slot) => (
-                    <label key={slot.key}>
+                  {partSlots.map((slot) => {
+                    const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
+                    return <label key={slot.key} className="part-select">
                       {slot.label}
                       <select required value={draft[slot.key]}
                         onChange={(e) => field(slot.key, e.target.value)}>
@@ -163,8 +182,14 @@ export function BuildEditor() {
                           <option key={part.id} value={part.id}>{part.sourceMachineName}</option>
                         ))}
                       </select>
+                      {selectedPart && <span className="selected-part">
+                        <Artwork item={{ id: selectedPart.sourceMachineId, name: selectedPart.sourceMachineName,
+                          imagePath: selectedPart.sourceMachineImagePath, racingType: selectedPart.racingType }} compact />
+                        <span><strong>{selectedPart.sourceMachineName}</strong>
+                          <small>{selectedPart.racingType ?? "Type unknown"}</small></span>
+                      </span>}
                     </label>
-                  ))}
+                  })}
                 </div>
                 <p className="muted">
                   Choose each component from any stock machine.
@@ -176,8 +201,13 @@ export function BuildEditor() {
                   <span className="muted">optional</span>
                 </h2>
                 <p>Select gadgets in the order you want them displayed.</p>
+                <label className="gadget-search">
+                  Search gadgets
+                  <input type="search" value={gadgetSearch} onChange={(e) => setGadgetSearch(e.target.value)}
+                    placeholder="Search gadgets..." />
+                </label>
                 <div className="gadget-options">
-                  {gadgets.data?.map((g) => (
+                  {filterGadgets(gadgets.data ?? [], gadgetSearch).map((g) => (
                     <label
                       key={g.id}
                       className={`gadget-option ${draft.gadgetIds.includes(g.id) ? "selected" : ""}`}
@@ -192,7 +222,11 @@ export function BuildEditor() {
                           )
                         }
                       />
-                      <span>{g.name}</span>
+                      <Artwork item={g} compact />
+                      <span className="gadget-option-copy"><strong>{g.name}</strong>
+                        <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
+                        {g.description && <span>{g.description}</span>}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -224,18 +258,23 @@ export function BuildEditor() {
                 </section>
                 <section className="preview-item">
                   <span className="preview-label">Machine setup</span>
-                  <dl>
+                  <div className="preview-parts">
                     {partSlots.map((slot) => (
                       <div key={slot.key}>
-                        <dt>{slot.label}</dt>
-                        <dd>{parts.data?.find((part) => part.id === draft[slot.key])?.sourceMachineName
-                          || "Choose a source machine"}</dd>
+                        {(() => {
+                          const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
+                          return <><span>{slot.label}</span>
+                            {selectedPart && <Artwork item={{ id: selectedPart.sourceMachineId, name: selectedPart.sourceMachineName,
+                              imagePath: selectedPart.sourceMachineImagePath, racingType: selectedPart.racingType }} compact />}
+                            <strong>{selectedPart?.sourceMachineName || "Choose a source machine"}</strong></>;
+                        })()}
                       </div>
                     ))}
-                  </dl>
+                  </div>
                 </section>
               </div>
               <h3>Gadgets · {draft.gadgetIds.length}</h3>
+              {costSummary && <p className="cost-summary">{costSummary}</p>}
               {draft.gadgetIds.length === 0 && (
                 <p className="preview-empty">
                   Select gadgets to add them to the loadout.
@@ -255,7 +294,8 @@ export function BuildEditor() {
                         </span>
                       )}
                       <span className="gadget-name">
-                        {gadget?.name || "Loading gadget…"}
+                        <strong>{gadget?.name || "Loading gadget…"}</strong>
+                        {gadget && <small>{gadget.slotCost === null ? "Cost unknown" : `${gadget.slotCost} ${gadget.slotCost === 1 ? "slot" : "slots"}`}</small>}
                       </span>
                       <div>
                         <button

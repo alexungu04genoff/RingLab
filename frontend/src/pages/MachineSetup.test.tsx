@@ -12,14 +12,16 @@ vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn() }));
 vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source = "Dark Reaper"): MachinePart => ({
-  id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source, racingType: "SPEED",
+  id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,
+  sourceMachineImagePath: `/assets/machines/${source.toLowerCase().replaceAll(" ", "-")}.png`, racingType: "SPEED",
 });
 const stock: Build = {
   id: "build", title: "My setup", description: "", author: { id: "author", username: "driver" },
   racer: { id: "racer", name: "Shadow", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: null,
-  gadgets: [{ id: "gadget", name: "Ring Engine", description: null, slotCost: null, imagePath: null }],
+  gadgets: [{ id: "gadget", name: "Ring Engine", description: "Gain rings over time.", slotCost: 1,
+    imagePath: "/assets/gadgets/ring-engine.png" }],
   createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39, upvotes: 40, downvotes: 1,
 };
 let build = stock;
@@ -41,7 +43,7 @@ beforeEach(() => {
 
 it("renders three required selectors containing only the correct part type and keeps gadgets separate", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
-  const selectors = [...html.matchAll(/<label>(Front|Rear|Tires)<select([^>]*)>(.*?)<\/select>/g)];
+  const selectors = [...html.matchAll(/<label class="part-select">(Front|Rear|Tires)<select([^>]*)>(.*?)<\/select>/g)];
   expect(selectors.map((match) => match[1])).toEqual(["Front", "Rear", "Tires"]);
   selectors.forEach((match, index) => {
     expect(match[2]).toContain("required");
@@ -62,10 +64,16 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(card).toContain(mixed ? "Mixed machine" : "Dark Reaper");
   expect(card).not.toContain("Speedster Lightning");
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
-  expect(details).toContain("<dt>Front</dt><dd>Dark Reaper</dd>");
-  expect(details).toContain(`<dt>Rear</dt><dd>${mixed ? "Speedster Lightning" : "Dark Reaper"}</dd>`);
-  expect(details).toContain("<dt>Tires</dt><dd>Dark Reaper</dd>");
+  expect(details).toContain(mixed ? "Mixed setup" : "Stock setup");
+  expect(details).toContain("FRONT");
+  expect(details).toContain("REAR");
+  expect(details).toContain("TIRES");
+  expect(details).toContain(`/assets/machines/${mixed ? "speedster-lightning" : "dark-reaper"}.png`);
   expect(details).toContain("Ring Engine");
+  expect(details).toContain('/assets/gadgets/ring-engine.png');
+  expect(details).toContain("1 slot");
+  expect(details).toContain("Gain rings over time.");
+  expect(details).toContain("Current catalog cost: 1 slot");
   expect(details).toContain('aria-live="polite">39</strong>');
 });
 
