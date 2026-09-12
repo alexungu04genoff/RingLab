@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, patchAge, racingTypeClass } from "../components";
 import { gadgetPlateStatus } from "../buildForm";
+import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
 
@@ -29,6 +30,7 @@ export function BuildDetails() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   useEffect(() => {
     setVote(undefined);
     if (!user) return;
@@ -64,6 +66,22 @@ export function BuildDetails() {
     && b.frontPart.sourceMachineId === b.tirePart.sourceMachineId;
   const plateStatus = gadgetPlateStatus(b.gadgets);
   const versionAge = patchAge(b.gameVersion, versions.data || []);
+  const shareBuild = b;
+  const shareVoteSummary = vote ?? shareBuild;
+  async function copySetup() {
+    try {
+      if (!navigator.clipboard) throw new Error("Clipboard is unavailable");
+      await navigator.clipboard.writeText(formatBuildForSharing({
+        ...shareBuild,
+        upvotes: shareVoteSummary.upvotes,
+        downvotes: shareVoteSummary.downvotes,
+      }, window.location.href));
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("error");
+    }
+    window.setTimeout(() => setCopyStatus("idle"), 2500);
+  }
   return (
     <>
       <Link className="back" to={origin}>
@@ -90,16 +108,24 @@ export function BuildDetails() {
             <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
           )}
         </div>
-        {user?.id === b.author.id && (
-          <div className="actions">
+        <div className="actions">
+          <button onClick={copySetup}>
+            {copyStatus === "copied" ? "✓ Copied" : copyStatus === "error" ? "Could not copy setup" : "Copy setup"}
+          </button>
+          {user?.id === b.author.id && (
+            <>
             <Link className="button" to={`/builds/${id}/edit`}>
               Edit build
             </Link>
             <button className="danger" onClick={() => setConfirmDelete(true)}>
               Delete
             </button>
-          </div>
-        )}
+            </>
+          )}
+          <span className="sr-only" aria-live="polite">
+            {copyStatus === "copied" ? "Setup copied to clipboard" : copyStatus === "error" ? "Could not copy setup" : ""}
+          </span>
+        </div>
       </div>
       {confirmDelete && (
         <div className="confirm panel" role="alert">

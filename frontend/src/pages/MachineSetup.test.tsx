@@ -76,6 +76,7 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain("TIRES");
   expect(details).toContain(`/assets/machines/${mixed ? "speedster-lightning" : "dark-reaper"}.png`);
   expect(details).toContain("Ring Engine");
+  expect(details).toContain(">Copy setup</button>");
   expect(details).toContain('/assets/gadgets/ring-engine.png');
   expect(details).toContain("1 slot");
   expect(details).toContain("Gain rings over time.");
