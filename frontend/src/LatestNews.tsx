@@ -1,12 +1,17 @@
 import { useLoad } from "./useLoad";
 import type { GameNewsItem } from "./types";
 
-export function LatestNews() {
+export function LatestNews({ onHide }: { onHide?: () => void }) {
   const news = useLoad<GameNewsItem[]>("/news");
   return (
     <aside className="latest-news panel" aria-labelledby="latest-news-heading">
-      <h2 id="latest-news-heading">Latest news</h2>
-      <p className="muted">From Steam</p>
+      <div className="latest-news-heading">
+        <div>
+          <h2 id="latest-news-heading">Latest news</h2>
+          <p className="muted">From Steam</p>
+        </div>
+        {onHide && <button type="button" className="news-toggle" onClick={onHide}>Hide news</button>}
+      </div>
       {news.loading ? (
         <p role="status">Loading news…</p>
       ) : news.error ? (

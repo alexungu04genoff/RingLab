@@ -138,7 +138,7 @@ header {
   background: #141820;
 }
 .navbar {
-  max-width: 1240px;
+  max-width: 1480px;
   margin: auto;
   min-height: 86px;
   display: flex;
@@ -192,7 +192,7 @@ nav a.active {
   text-overflow: ellipsis;
 }
 main {
-  max-width: 1240px;
+  max-width: 1480px;
   margin: 0 auto;
   min-height: calc(100vh - 177px);
   padding: 46px 28px 60px;
@@ -279,8 +279,36 @@ main {
   min-width: 0;
 }
 .search button {
-  padding: 11px 12px;
+  padding: 0 14px;
 }
+.filters input,
+.filters select,
+.filters .search button {
+  height: 44px;
+  border-radius: 7px;
+}
+.sort-label { display: flex; align-items: center; gap: 6px; }
+.sort-help { position: relative; color: var(--accent); cursor: help; line-height: 1; }
+.sort-help [role="tooltip"] {
+  position: absolute; z-index: 5; right: 0; bottom: calc(100% + 10px);
+  width: min(310px, 75vw); padding: 10px 12px; border: 1px solid var(--accent-muted);
+  border-radius: 7px; background: #101721; color: #eceef3; font-size: 11px;
+  font-weight: 400; line-height: 1.5; box-shadow: 0 8px 24px #0008;
+  opacity: 0; pointer-events: none; transform: translateY(3px);
+  transition: opacity 0.15s, transform 0.15s;
+}
+.sort-help:hover [role="tooltip"], .sort-help:focus [role="tooltip"] { opacity: 1; transform: translateY(0); }
+.active-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.filter-chip {
+  min-height: 30px; padding: 5px 10px; border-color: var(--accent-muted);
+  border-radius: 999px; background: var(--accent-selected); color: var(--accent-selected-text);
+  font-size: 11px;
+}
+.filter-chip span { font-size: 15px; line-height: 1; }
+.clear-filters, .news-toggle {
+  padding: 5px 8px; border: 0; background: transparent; color: var(--accent); font-size: 11px;
+}
+.clear-filters:hover, .news-toggle:hover { background: var(--accent-selected); }
 .section-heading {
   display: flex;
   align-items: center;
@@ -420,6 +448,8 @@ main {
   border-radius: 4px;
   padding: 4px 7px;
 }
+.tags .patch-older { border: 1px solid #856a2f; background: #3a321f; color: #f0d48d; }
+.tags .patch-unspecified { background: #292d35; color: #aeb5c1; }
 .card-meta {
   display: flex;
   justify-content: space-between;
@@ -520,7 +550,7 @@ p > a {
   color: var(--muted);
 }
 footer {
-  max-width: 1184px;
+  max-width: 1424px;
   margin: auto;
   padding: 25px 0;
   border-top: 1px solid var(--border);
@@ -883,6 +913,10 @@ hr {
 .detail-note p {
   font-size: 12px;
   margin-top: 13px;
+}
+.older-patch-notice {
+  margin: 13px 0 0; padding: 10px 11px; border-left: 3px solid #c59a3d;
+  background: #30291b; color: #eed596; font-size: 12px; line-height: 1.5;
 }
 .comments form {
   margin-bottom: 25px;
@@ -1298,14 +1332,22 @@ hr {
 }
 .explore-content {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 260px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: 24px;
 }
 .explore-content .build-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.explore-content.news-hidden { grid-template-columns: minmax(0, 1fr); }
+.explore-content.news-hidden .build-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.section-heading-actions, .latest-news-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.section-heading-actions > span { font-size: 12px; color: var(--muted); }
 .latest-news {
   align-self: start;
+  position: sticky;
+  top: 20px;
   margin-top: 29px;
   padding: 20px;
   overflow-wrap: anywhere;
@@ -1314,6 +1356,7 @@ hr {
   font-size: 18px;
   margin: 0;
 }
+.latest-news-heading .muted { margin: 2px 0 0; }
 .latest-news ul {
   list-style: none;
   padding: 0;
@@ -1333,12 +1376,19 @@ hr {
   font-size: 11px;
   color: var(--muted);
 }
+@media (min-width: 1400px) {
+  .explore-content.with-news .build-grid,
+  .explore-content.news-hidden .build-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
 @media (max-width: 1000px) {
   .explore-content {
     grid-template-columns: minmax(0, 1fr);
   }
+  .explore-content.news-hidden .build-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .latest-news { position: static; margin-top: 0; }
 }
 @media (max-width: 420px) {
+  .explore-content.news-hidden .build-grid { grid-template-columns: minmax(0, 1fr); }
   .explore-content .build-grid {
     grid-template-columns: minmax(0, 1fr);
   }

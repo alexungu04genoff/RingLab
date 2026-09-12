@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
-import { BuildCard } from "../components";
+import { BuildCard, patchAge } from "../components";
 import { useLoad } from "../useLoad";
 import type { Build, MachinePart } from "../types";
 import { BuildEditor } from "./BuildEditor";
@@ -105,4 +105,41 @@ it("renders separate vote counts on cards and net score plus counts on details",
   expect(details).toContain('aria-live="polite">-20</strong>');
   expect(details).toContain("20 upvotes · 40 downvotes");
   expect(card + details).not.toContain("↑ -20");
+});
+
+it("classifies the first catalog version as latest known and later entries as older", () => {
+  const latest = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
+  const older = { id: "older", version: "1.3.1", releasedAt: "2026-03-18" };
+  expect(patchAge(latest, [latest, older])).toBe("latest");
+  expect(patchAge(older, [latest, older])).toBe("older");
+  expect(patchAge(null, [latest, older])).toBe("unspecified");
+});
+
+it("renders accessible older, latest-known, and unspecified patch card states", () => {
+  const latest = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
+  const older = { id: "older", version: "1.3.1", releasedAt: "2026-03-18" };
+  const renderCard = (gameVersion: Build["gameVersion"]) => renderToStaticMarkup(
+    <MemoryRouter><BuildCard build={{ ...stock, gameVersion }} versions={[latest, older]} /></MemoryRouter>,
+  );
+  expect(renderCard(older)).toContain("Ver. 1.3.1 · Older patch");
+  expect(renderCard(latest)).toContain('class="patch-badge patch-latest">Ver. 1.4.1');
+  expect(renderCard(latest)).not.toContain("Older patch");
+  expect(renderCard(null)).toContain('class="patch-badge patch-unspecified">Patch unspecified');
+});
+
+it("warns on older build details but not latest-known or unspecified versions", () => {
+  const latest = { id: "version", version: "1.4.1", releasedAt: "2026-06-23" };
+  const older = { id: "older", version: "1.3.1", releasedAt: "2026-03-18" };
+  vi.mocked(useLoad).mockImplementation((path: string) => {
+    if (path === "/game-versions") return { data: [latest, older], error: "", loading: false };
+    if (path.includes("/comments")) return { data: { items: [], total: 0, page: 0, size: 20 }, error: "", loading: false };
+    return { data: build, error: "", loading: false };
+  });
+  build = { ...stock, gameVersion: older };
+  expect(renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>))
+    .toContain("Built for an older patch. Behavior may differ in newer versions.");
+  build = { ...stock, gameVersion: latest };
+  expect(renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>)).not.toContain("older patch");
+  build = { ...stock, gameVersion: null };
+  expect(renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>)).not.toContain("older patch");
 });

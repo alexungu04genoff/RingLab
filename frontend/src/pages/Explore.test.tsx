@@ -4,8 +4,10 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
 import { browseOrigin, buildDetailsOrigin } from "../components";
 import {
+  activeExploreFilterChips,
   clearExploreFilters,
   Explore,
+  exploreLayoutClass,
   resolveGameVersion,
   resolvePage,
   resolveSort,
@@ -124,6 +126,36 @@ it("clears applied filters and page while retaining sort", () => {
     "search=sonic&racerId=r1&machineId=m1&gameVersionId=v1&sort=score&page=2",
   ));
   expect(cleared.toString()).toBe("sort=score");
+});
+
+it("builds active chips from URL filters and represents a non-default sort", () => {
+  const chips = activeExploreFilterChips(
+    new URLSearchParams("search=sonic&racerId=r1&machineId=m1&gameVersionId=v1&sort=score"),
+    [{ id: "r1", name: "Amy Rose", racingType: "SPEED", imagePath: null }],
+    [{ id: "m1", name: "Dark Reaper", racingType: "SPEED", imagePath: null }],
+    [{ id: "v1", version: "1.4.1", releasedAt: "2026-06-23" }],
+    false,
+  );
+  expect(chips.map(({ label }) => label)).toEqual([
+    "Search: sonic", "Racer: Amy Rose", "Parts from: Dark Reaper",
+    "Patch: Ver. 1.4.1", "Sort: Highest score",
+  ]);
+});
+
+it("removes one chip while preserving unrelated URL filters", () => {
+  const next = updateExploreParams(
+    new URLSearchParams("search=sonic&racerId=r1&machineId=m1&sort=rated&page=2"),
+    { racerId: "" },
+  );
+  expect(next.toString()).toBe("search=sonic&machineId=m1&sort=rated");
+});
+
+it("uses distinct visible and hidden news layout states", () => {
+  expect(exploreLayoutClass(true)).toBe("explore-content with-news");
+  expect(exploreLayoutClass(false)).toBe("explore-content news-hidden");
+  const html = render();
+  expect(html).toContain("Hide news");
+  expect(html).toContain('class="explore-content with-news"');
 });
 
 it("preserves and restores exact Explore and My Builds origins", () => {

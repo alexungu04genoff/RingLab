@@ -10,6 +10,8 @@ const PUBLIC_SORT_PREFERENCE = "ringlab.explore.sort";
 const PUBLIC_PATCH_PREFERENCE = "ringlab.explore.gameVersionId";
 const SORT_VALUES = ["newest", "score", "rated"] as const;
 type BuildSort = (typeof SORT_VALUES)[number];
+type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort";
+export interface ActiveFilterChip { key: FilterKey; label: string }
 
 function readPreference(key: string) {
   try {
@@ -66,6 +68,36 @@ export function clearExploreFilters(current: URLSearchParams) {
   return next;
 }
 
+export function activeExploreFilterChips(
+  params: URLSearchParams,
+  racers: Racer[],
+  machines: Machine[],
+  versions: GameVersion[],
+  mine: boolean,
+): ActiveFilterChip[] {
+  const chips: ActiveFilterChip[] = [];
+  const search = params.get("search");
+  const racer = racers.find(({ id }) => id === params.get("racerId"));
+  const machine = machines.find(({ id }) => id === params.get("machineId"));
+  const version = versions.find(({ id }) => id === params.get("gameVersionId"));
+  const sort = params.get("sort");
+  if (search) chips.push({ key: "search", label: `Search: ${search}` });
+  if (racer) chips.push({ key: "racerId", label: `Racer: ${racer.name}` });
+  if (machine) chips.push({ key: "machineId", label: `Parts from: ${machine.name}` });
+  if (version) chips.push({ key: "gameVersionId", label: `Patch: Ver. ${version.version}` });
+  const defaultSort = mine ? "newest" : "rated";
+  if (sort && sort !== defaultSort && isBuildSort(sort)) {
+    const labels: Record<BuildSort, string> = {
+      newest: "Newest first", score: "Highest score", rated: "Best rated",
+    };
+    chips.push({ key: "sort", label: `Sort: ${labels[sort]}` });
+  }
+  return chips;
+}
+
+export const exploreLayoutClass = (newsVisible: boolean) =>
+  `explore-content ${newsVisible ? "with-news" : "news-hidden"}`;
+
 export function selectRandomHeroRacers(
   racers: Racer[],
   count = 4,
@@ -91,6 +123,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const sort = resolveSort(urlParams.get("sort"), readPreference(PUBLIC_SORT_PREFERENCE), mine);
   const page = resolvePage(urlParams.get("page"));
   const [search, setSearch] = useState(query);
+  const [newsVisible, setNewsVisible] = useState(true);
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
@@ -118,6 +151,9 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   if (mine && user) params.set("authorId", user.id);
   const builds = useLoad<BuildPage>(`/builds?${params}`);
   const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
+  const activeChips = activeExploreFilterChips(
+    urlParams, racers.data || [], machines.data || [], versions.data || [], mine,
+  );
   useEffect(() => setSearch(query), [query]);
   useEffect(() => {
     const next = new URLSearchParams(urlParams);
@@ -156,6 +192,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
 
   const clearFilters = () => {
     setSearch("");
+    savePublicPreference(PUBLIC_PATCH_PREFERENCE, "");
     setUrlParams(clearExploreFilters(urlParams));
   };
   return (
@@ -237,7 +274,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
         <label>
-          Sort by
+          <span className="sort-label">Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works">ⓘ<span role="tooltip">Best rated groups positive scores above neutral and negative scores, then uses Wilson confidence to rank builds within each group.</span></span></span>
           <select
             value={sort}
             onChange={(e) => {
@@ -252,12 +289,30 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </select>
         </label>
       </section>
+      {activeChips.length > 0 && (
+        <div className="active-filters" aria-label="Active filters">
+          {activeChips.map((chip) => (
+            <button key={chip.key} type="button" className="filter-chip"
+              aria-label={`Remove ${chip.label}`} onClick={() => {
+                if (chip.key === "search") setSearch("");
+                if (chip.key === "gameVersionId") savePublicPreference(PUBLIC_PATCH_PREFERENCE, "");
+                updateUrl({ [chip.key]: "" });
+              }}>
+              {chip.label} <span aria-hidden="true">×</span>
+            </button>
+          ))}
+          <button type="button" className="clear-filters" onClick={clearFilters}>Clear filters</button>
+        </div>
+      )}
       <ErrorNotice message={racers.error || machines.error || versions.error} />
-      <div className={mine ? undefined : "explore-content"}>
+      <div className={mine ? undefined : exploreLayoutClass(newsVisible)}>
         <div>
           <div className="section-heading">
             <h2>{mine ? "My builds" : "Community builds"}</h2>
-            <span>{builds.data ? `${builds.data.total} builds` : ""}</span>
+            <div className="section-heading-actions">
+              {!mine && !newsVisible && <button type="button" className="news-toggle" onClick={() => setNewsVisible(true)}>Show news</button>}
+              <span>{builds.data ? `${builds.data.total} builds` : ""}</span>
+            </div>
           </div>
           {builds.loading && (
             <div className="explore-state loading-state" role="status">
@@ -281,7 +336,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             (builds.data.items.length ? (
               <div className="build-grid">
                 {builds.data.items.map((b) => (
-                  <BuildCard key={b.id} build={b} />
+                  <BuildCard key={b.id} build={b} versions={versions.data || []} />
                 ))}
               </div>
             ) : (
@@ -349,7 +404,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             </p>
           )}
         </div>
-        {!mine && <LatestNews />}
+        {!mine && newsVisible && <LatestNews onHide={() => setNewsVisible(false)} />}
       </div>
     </>
   );

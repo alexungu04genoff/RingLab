@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import type { Build, Gadget, Machine, Racer } from "./types";
+import type { Build, Gadget, GameVersion, Machine, Racer } from "./types";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -56,8 +56,18 @@ export function buildDetailsOrigin(from: unknown) {
     ? from
     : "/";
 }
-export function BuildCard({ build }: { build: Build }) {
+export type PatchAge = "latest" | "older" | "unspecified" | "unknown";
+
+export function patchAge(version: GameVersion | null, versions: GameVersion[]): PatchAge {
+  if (!version) return "unspecified";
+  const catalogIndex = versions.findIndex(({ id }) => id === version.id);
+  if (catalogIndex === 0) return "latest";
+  return catalogIndex > 0 ? "older" : "unknown";
+}
+
+export function BuildCard({ build, versions = [] }: { build: Build; versions?: GameVersion[] }) {
   const location = useLocation();
+  const versionAge = patchAge(build.gameVersion, versions);
   return (
     <Link
       to={`/builds/${build.id}`}
@@ -81,7 +91,13 @@ export function BuildCard({ build }: { build: Build }) {
             : "Mixed machine"}
         </p>
         <div className="tags">
-          {build.gameVersion && <span>Ver. {build.gameVersion.version}</span>}
+          {build.gameVersion ? (
+            <span className={`patch-badge patch-${versionAge}`}>
+              Ver. {build.gameVersion.version}{versionAge === "older" ? " · Older patch" : ""}
+            </span>
+          ) : (
+            <span className="patch-badge patch-unspecified">Patch unspecified</span>
+          )}
           {build.gadgets.slice(0, 2).map((g, i) => (
             <span key={`${g.id}-${i}`}>{g.name}</span>
           ))}

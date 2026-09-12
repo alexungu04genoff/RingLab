@@ -3,10 +3,10 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, date, ErrorNotice } from "../components";
+import { Artwork, buildDetailsOrigin, date, ErrorNotice, patchAge } from "../components";
 import { gadgetCostSummary } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, CommentPage, Vote } from "../types";
+import type { Build, CommentPage, GameVersion, Vote } from "../types";
 
 const COMMENT_PAGE_SIZE = 20;
 
@@ -17,6 +17,7 @@ export function BuildDetails() {
   const location = useLocation();
   const origin = buildDetailsOrigin(location.state?.from);
   const build = useLoad<Build>(`/builds/${id}`);
+  const versions = useLoad<GameVersion[]>("/game-versions");
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
   const comments = useLoad<CommentPage>(
@@ -62,6 +63,7 @@ export function BuildDetails() {
   const stockSetup = b.frontPart.sourceMachineId === b.rearPart.sourceMachineId
     && b.frontPart.sourceMachineId === b.tirePart.sourceMachineId;
   const costSummary = gadgetCostSummary(b.gadgets);
+  const versionAge = patchAge(b.gameVersion, versions.data || []);
   return (
     <>
       <Link className="back" to={origin}>
@@ -278,6 +280,9 @@ export function BuildDetails() {
               <div className="eyebrow">Game version</div>
               <strong>Ver. {b.gameVersion.version}</strong>
               <p className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</p>
+              {versionAge === "older" && (
+                <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+              )}
             </section>
           )}
           <section className="panel vote-panel">
