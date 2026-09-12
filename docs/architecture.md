@@ -20,7 +20,7 @@ dev.ringlab/
 
 ## Boundaries
 
-- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`) and the `RacingType` and `MachinePartType` enums, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable future slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
+- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`) and the `RacingType` and `MachinePartType` enums, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable latest verified slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific.
@@ -74,7 +74,24 @@ Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then 
 
 Browse queries filter in PostgreSQL and paginate before response assembly. `BuildDbAdapter` uses JPA Criteria with one shared predicate helper for item and count queries. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. Score sorting uses a correlated vote-sum subquery; all sorts retain creation time then ID as tie-breakers. The maximum page size is 50. Collection/detail assembly uses straightforward bounded lookups, so query count grows with page size; batching would be a measurable future optimization rather than a custom query framework now. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
 
-Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. V6 expands the catalog to 53 racers, 27 source machines and 81 parts, retaining existing IDs and adding official local artwork paths. Gadget image paths, descriptions and slot costs remain null. No fake application users enter migrations.
+Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. V6 expands the catalog to 53 racers, 27 source machines and 81 parts, retaining existing IDs and adding official local artwork paths. No fake application users enter migrations.
+
+V7 expands gadgets to 71 rows (67 substantiated retail identities plus four retained seed identities
+requiring review), preserving all existing IDs and ordered selections. Only supported descriptions,
+latest verified costs and official local images are populated; unknown fields remain null.
+Game Collection displays optional effects and costs without inventing defaults. `Gadget.slotCost`
+is current catalog metadata, not a version-aware rule: historical changes and evidence conflicts
+live in the source ledger. Neither capacity nor mode/patch validation is implemented. The complete
+retail roster and most individual costs remain evidence gaps; the catalog is not a complete rule set.
+
+V8 fills the remaining current machine and gadget image paths with local Sonic Wiki artwork after
+the project owner explicitly approved that community source. It changes presentation artwork only;
+all release-status, name, effect, cost and rule evidence remains governed by the first-party ledger.
+
+V9 adopts the Sonic Wiki as the sole local presentation-artwork source for racers, machines and
+gadgets, including Blinky's previously-null path. Stable `/assets/...` paths remain unchanged for
+existing records. This visual-source decision does not alter the first-party evidence policy for
+catalog facts or add game rules.
 
 V6 makes racer/machine racing types nullable when authoritative type data is unavailable. The domain and persistence still use the five-value `RacingType` enum, persisted as strings. REST preserves known string values and returns null for unverified types; the frontend explicitly accepts null and displays Unknown. This prevents catalog completeness from requiring invented game statistics. [The catalog ledger](game-data-sources.md) records released entries, provenance, artwork gaps, skins and future exclusions. The named launch-machine inventory is still incomplete; the 27-machine RingLab count is not the game's total. Each new source machine gets one FRONT, REAR and TIRE under RingLab's existing composition model, without asserting additional in-game compatibility rules.
 

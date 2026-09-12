@@ -156,7 +156,7 @@ public abstract class ApiContract {
             .get("/api/gadgets")
             .then()
             .statusCode(200)
-            .body("size()", equalTo(20))
+            .body("size()", greaterThan(20))
             .extract()
             .path("[0]");
 
@@ -213,7 +213,7 @@ public abstract class ApiContract {
         .put("/api/builds/" + id)
         .then()
         .statusCode(200)
-        .body("gadgets.size()", equalTo(20));
+        .body("gadgets.id", equalTo(body.get("gadgetIds")));
     body.put("gadgetIds", List.of());
     request(author.token)
         .body(body)

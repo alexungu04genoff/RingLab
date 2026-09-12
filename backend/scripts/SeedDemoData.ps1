@@ -172,13 +172,13 @@ $buildDefinitions = @(
     Key = "cornering"; Owner = "amy"; Title = "[DEMO] Cornering Showcase"
     Description = "A presentation build focused on a clear handling-themed loadout."
     Racer = "Amy Rose"; Machine = "Pink Cabriolet"
-    Gadgets = @("Ultimate Drift Charge", "Ring Engine", "Strong Finish")
+    Gadgets = @("Ultimate Charge", "Ring Engine", "Strong Finish")
   },
   [pscustomobject]@{
     Key = "items"; Owner = "amy"; Title = "[DEMO] Item Control Practice"
     Description = "A demo combination with an ordered set of item-related gadgets."
     Racer = 'Miles "Tails" Prower'; Machine = "Whirlwind Sport"
-    Gadgets = @("Item Stock Swap", "Defense Item Chance UP", "Item Mercy")
+    Gadgets = @("Inventory Swap", "Defense Item Chance UP", "Item Mercy")
   },
   [pscustomobject]@{
     Key = "route"; Owner = "amy"; Title = "[DEMO] Ring Route Session"
@@ -220,7 +220,7 @@ $buildDefinitions = @(
     Key = "amy-drift"; Owner = "amy"; Title = "[DEMO] Drift Line Routine"
     Description = "A compact handling example for a build comparison walkthrough."
     Racer = "Amy Rose"; Machine = "Neo Lightron"
-    Gadgets = @("Ultimate Drift Charge", "Less is More", "Route Planner Bounty")
+    Gadgets = @("Ultimate Charge", "Less is More", "Route Planner Bounty")
   },
   [pscustomobject]@{
     Key = "tails-grid"; Owner = "tails"; Title = "[DEMO] Starting Grid Notes"
@@ -250,7 +250,7 @@ $buildDefinitions = @(
     Key = "sonic-route"; Owner = "sonic"; Title = "[DEMO] Balanced Start"
     Description = "A contrasting build for filter and score-order demonstrations."
     Racer = "Knuckles the Echidna"; Machine = "Jumble Rage"
-    Gadgets = @("Ring Mercy", "Item Stock Swap", "Strong Finish")
+    Gadgets = @("Ring Mercy", "Inventory Swap", "Strong Finish")
   },
   [pscustomobject]@{
     Key = "knuckles-power"; Owner = "knuckles"; Title = "[DEMO] Power Lineup"

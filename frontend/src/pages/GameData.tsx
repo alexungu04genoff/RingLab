@@ -53,6 +53,9 @@ export function GameData() {
               {tab === "machines" && <p>Provides FRONT / REAR / TIRE components.</p>}
               {"racingType" in i && <span className="eyebrow">{i.racingType ?? "Unknown"}</span>}
               {"description" in i && i.description && <p>{i.description}</p>}
+              {"slotCost" in i && i.slotCost !== null && (
+                <span className="eyebrow">{i.slotCost} {i.slotCost === 1 ? "slot" : "slots"}</span>
+              )}
             </div>
           </article>
         ))}
