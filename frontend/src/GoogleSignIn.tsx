@@ -3,7 +3,9 @@ import { useEffect, useRef, useState } from "react";
 interface GoogleIdentityServices {
   initialize(options: { client_id: string; callback: (response: { credential: string }) => void;
     auto_select: boolean }): void;
-  renderButton(element: HTMLElement, options: { type: string; theme: string; size: string; text: string }): void;
+  renderButton(element: HTMLElement, options: {
+    type: string; theme: string; size: string; text: string; width: number;
+  }): void;
 }
 
 declare global {
@@ -53,7 +55,13 @@ export function GoogleSignIn({ onCredential, disabled }: {
       gis.initialize({ client_id: clientId, auto_select: false, callback: ({ credential }) => {
         if (active && !isDisabled.current) callback.current(credential);
       } });
-      gis.renderButton(container.current, { type: "standard", theme: "outline", size: "large", text: "continue_with" });
+      gis.renderButton(container.current, {
+        type: "standard",
+        theme: "filled_blue",
+        size: "large",
+        text: "continue_with",
+        width: Math.min(container.current.clientWidth, 400),
+      });
     }).catch((e: Error) => { if (active) setError(e.message); });
     return () => { active = false; };
   }, [clientId]);
