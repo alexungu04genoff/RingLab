@@ -33,6 +33,9 @@ public class BuildDbEntity {
   @Column(name = "game_version_id")
   public UUID gameVersionId;
 
+  @Column(name = "remixed_from_build_id")
+  public UUID remixedFromBuildId;
+
   @ElementCollection
   @CollectionTable(name = "build_gadgets", joinColumns = @JoinColumn(name = "build_id"))
   @Column(name = "gadget_id", nullable = false)

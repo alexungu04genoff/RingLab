@@ -64,9 +64,52 @@ class BuildServiceTest {
     assertEquals(rearPartId, created.rearPartId());
     assertEquals(tirePartId, created.tirePartId());
     assertNull(created.gameVersionId());
+    assertNull(created.remixedFromBuildId());
     assertEquals(created, service.get(created.id()));
     assertEquals(List.of(gadgetId), created.gadgetIds());
     assertEquals(created.createdAt(), created.updatedAt());
+  }
+
+  @Test
+  void createsRemixWithDirectSourceAndNormalValidation() {
+    Build source = existingBuild();
+    builds.saved.put(source.id(), source);
+
+    var remixDraft = new BuildService.Draft("Remix", "Independent copy", racerId, frontPartId,
+        rearPartId, tirePartId, null, source.id(), List.of(gadgetId));
+    Build remix = service.create(UUID.randomUUID(), remixDraft);
+
+    assertEquals(source.id(), remix.remixedFromBuildId());
+    assertNotEquals(source.authorId(), remix.authorId());
+    assertEquals(List.of(gadgetId), remix.gadgetIds());
+
+    gameData.parts.remove(frontPartId);
+    assertThrows(ValidationException.class, () -> service.create(authorId, remixDraft));
+  }
+
+  @Test
+  void rejectsUnknownRemixSource() {
+    var draft = new BuildService.Draft("Remix", "", racerId, frontPartId, rearPartId,
+        tirePartId, null, UUID.randomUUID(), List.of(gadgetId));
+
+    ValidationException error =
+        assertThrows(ValidationException.class, () -> service.create(authorId, draft));
+
+    assertEquals("Unknown remix source build ID", error.getMessage());
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void editingRemixCannotReplaceItsSource() {
+    Build source = existingBuild();
+    builds.saved.put(source.id(), source);
+    Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
+        frontPartId, rearPartId, tirePartId, null, source.id(), List.of(gadgetId)));
+
+    Build edited = service.edit(remix.id(), authorId, new BuildService.Draft("Edited", "", racerId,
+        frontPartId, rearPartId, tirePartId, null, UUID.randomUUID(), List.of(gadgetId)));
+
+    assertEquals(source.id(), edited.remixedFromBuildId());
   }
 
   @Test
@@ -207,7 +250,7 @@ class BuildServiceTest {
     UUID mixedRear = UUID.randomUUID();
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
-        tirePartId, null, List.of(gadgetId));
+        tirePartId, null, null, List.of(gadgetId));
     var created = service.create(authorId, mixed);
     assertEquals(mixedRear, service.get(created.id()).rearPartId());
     var edited = service.edit(old.id(), authorId, mixed);
@@ -220,9 +263,9 @@ class BuildServiceTest {
   @Test
   void rejectsWrongTypesInEverySlot() {
     for (var wrong : List.of(
-        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, List.of()))) {
+        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, null, List.of()),
+        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, null, List.of()))) {
       var error = assertThrows(ValidationException.class, () -> service.create(authorId, wrong));
       assertTrue(error.getMessage().startsWith("Expected "));
     }
@@ -231,24 +274,24 @@ class BuildServiceTest {
 
   @Test
   void rejectsMissingPartAndPreservesOrderedGadgets() {
-    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, List.of());
+    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, null, List.of());
     assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     UUID second = UUID.randomUUID();
     gameData.gadgets.put(second, new Gadget(second, "Second", null, 2, null));
     var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
-        tirePartId, null, List.of(second, gadgetId));
+        tirePartId, null, null, List.of(second, gadgetId));
     var created = service.create(authorId, ordered);
     assertEquals(List.of(second, gadgetId), service.get(created.id()).gadgetIds());
   }
 
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
-        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, List.of(gadgetId));
+        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));
   }
 
   private BuildService.Draft draftWithGadgets(List<UUID> gadgetIds) {
     return new BuildService.Draft(
-        "Build", "", racerId, frontPartId, rearPartId, tirePartId, null, gadgetIds);
+        "Build", "", racerId, frontPartId, rearPartId, tirePartId, null, null, gadgetIds);
   }
 
   private UUID addGadget(String name, Integer slotCost) {
@@ -259,7 +302,7 @@ class BuildServiceTest {
 
   private BuildService.Draft versionDraft(UUID version) {
     return new BuildService.Draft("Versioned", "", racerId, frontPartId, rearPartId,
-        tirePartId, version, List.of(gadgetId));
+        tirePartId, version, null, List.of(gadgetId));
   }
 
   @Test
@@ -301,6 +344,7 @@ class BuildServiceTest {
         frontPartId,
         rearPartId,
         tirePartId,
+        null,
         null,
         List.of(gadgetId),
         createdAt,

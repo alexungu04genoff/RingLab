@@ -18,6 +18,7 @@ public record BuildResponse(
     MachinePartResponse rearPart,
     MachinePartResponse tirePart,
     GameVersionResponse gameVersion,
+    RemixSourceResponse remixedFrom,
     List<GadgetResponse> gadgets,
     Instant createdAt,
     Instant updatedAt,

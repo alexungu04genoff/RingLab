@@ -13,6 +13,7 @@ public record Build(
     UUID rearPartId,
     UUID tirePartId,
     UUID gameVersionId,
+    UUID remixedFromBuildId,
     List<UUID> gadgetIds,
     Instant createdAt,
     Instant updatedAt) {

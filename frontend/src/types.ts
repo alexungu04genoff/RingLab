@@ -43,6 +43,10 @@ export interface GameVersion {
   version: string;
   releasedAt: string;
 }
+export interface RemixSource {
+  id: string;
+  title: string;
+}
 export interface Build {
   id: string;
   title: string;
@@ -53,6 +57,7 @@ export interface Build {
   rearPart: MachinePart;
   tirePart: MachinePart;
   gameVersion: GameVersion | null;
+  remixedFrom: RemixSource | null;
   gadgets: Gadget[];
   createdAt: string;
   updatedAt: string;
@@ -68,6 +73,7 @@ export interface BuildDraft {
   rearPartId: string;
   tirePartId: string;
   gameVersionId: string | null;
+  remixedFromBuildId: string | null;
   gadgetIds: string[];
 }
 export interface BuildPage {

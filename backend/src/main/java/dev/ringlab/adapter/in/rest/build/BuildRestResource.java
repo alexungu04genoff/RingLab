@@ -9,6 +9,7 @@ import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
 import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
+import dev.ringlab.adapter.in.rest.build.response.RemixSourceResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
@@ -52,6 +53,7 @@ public class BuildRestResource {
   private BuildResponse response(Build b) {
     var author = users.current(b.authorId());
     var summary = votes.summary(b.id());
+    var remixSource = b.remixedFromBuildId() == null ? null : builds.get(b.remixedFromBuildId());
     return new BuildResponse(
         b.id(),
         b.title(),
@@ -62,6 +64,7 @@ public class BuildRestResource {
         partItem(b.rearPartId()),
         partItem(b.tirePartId()),
         b.gameVersionId() == null ? null : GameVersionResponse.from(game.findGameVersion(b.gameVersionId()).orElseThrow()),
+        remixSource == null ? null : new RemixSourceResponse(remixSource.id(), remixSource.title()),
         b.gadgetIds().stream().map(this::gadgetItem).toList(),
         b.createdAt(),
         b.updatedAt(),

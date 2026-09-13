@@ -25,6 +25,7 @@ const left: Build = {
   racer: { id: "sonic", name: "Sonic", racingType: "SPEED", imagePath: "/assets/racers/sonic.png" },
   frontPart: part("FRONT", "blue-star"), rearPart: part("REAR", "blue-star"),
   tirePart: part("TIRE", "blue-star"), gameVersion: { id: "v1", version: "1.4.1", releasedAt: "2026-06-23" },
+  remixedFrom: null,
   gadgets: [gadget("ring", 1), gadget("boost", 2)], createdAt: "2026-01-01T00:00:00Z",
   updatedAt: "2026-01-02T00:00:00Z", score: 5, upvotes: 7, downvotes: 2,
 };

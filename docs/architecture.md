@@ -58,6 +58,11 @@ React form → POST /api/builds with bearer JWT
   → response DTO with public author, loadout, timestamps, score
 ```
 
+A build may hold one nullable `remixedFromBuildId`: a lightweight parent reference recording
+which existing configuration it was derived from. Remix creation copies configuration into a new,
+independent build and validates it through the normal create path. The self-referencing foreign key
+uses `ON DELETE SET NULL`, so deleting the source never deletes its remixes.
+
 Edit/delete flows load the existing record and compare the authenticated actor to the stored author before any write. The client cannot set author IDs. Comment deletion uses the comment author, including when the build belongs to somebody else. Service transactions enclose each mutation; database foreign keys and unique/check constraints remain the final consistency boundary.
 
 ## Relational design

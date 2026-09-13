@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
-import { Artwork, ErrorNotice, ItemSelect } from "../components";
+import { Artwork, ErrorNotice, ItemSelect, racingTypeClass } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
@@ -12,8 +12,23 @@ const partSlots = [
   { key: "rearPartId", type: "REAR", label: "Rear" },
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
+export function draftFromRemix(build: Build): BuildDraft {
+  return {
+    title: `Remix of ${build.title}`,
+    description: build.description,
+    racerId: build.racer.id,
+    frontPartId: build.frontPart.id,
+    rearPartId: build.rearPart.id,
+    tirePartId: build.tirePart.id,
+    gameVersionId: build.gameVersion?.id ?? null,
+    remixedFromBuildId: build.id,
+    gadgetIds: build.gadgets.map((gadget) => gadget.id),
+  };
+}
 export function BuildEditor() {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
+  const remixSourceId = id ? null : searchParams.get("remixFrom");
   const { user } = useAuth();
   const navigate = useNavigate();
   const [draft, setDraft] = useState<BuildDraft>({
@@ -24,6 +39,7 @@ export function BuildEditor() {
     rearPartId: "",
     tirePartId: "",
     gameVersionId: null,
+    remixedFromBuildId: null,
     gadgetIds: [],
   });
   const [loading, setLoading] = useState(!!id);
@@ -54,6 +70,7 @@ export function BuildEditor() {
           rearPartId: b.rearPart.id,
           tirePartId: b.tirePart.id,
           gameVersionId: b.gameVersion?.id ?? null,
+          remixedFromBuildId: b.remixedFrom?.id ?? null,
           gadgetIds: b.gadgets.map((g) => g.id),
         });
       })
@@ -65,6 +82,20 @@ export function BuildEditor() {
       });
     return () => controller.abort();
   }, [id, user?.id]);
+  useEffect(() => {
+    if (!remixSourceId) return;
+    const controller = new AbortController();
+    setLoading(true);
+    api<Build>(`/builds/${remixSourceId}`, { signal: controller.signal })
+      .then((b) => setDraft(draftFromRemix(b)))
+      .catch((e) => {
+        if (!controller.signal.aborted) setError(e.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [remixSourceId]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
   }
@@ -165,12 +196,25 @@ export function BuildEditor() {
                   </select>
                 </label>
                 <div className="two-columns">
-                  <ItemSelect
-                    label="Racer"
-                    items={racers.data || []}
-                    value={draft.racerId}
-                    onChange={(v) => field("racerId", v)}
-                  />
+                  <div className="racer-select">
+                    <ItemSelect
+                      label="Racer"
+                      items={racers.data || []}
+                      value={draft.racerId}
+                      onChange={(v) => field("racerId", v)}
+                    />
+                    {selectedRacer && (
+                      <span className="selected-part selected-racer">
+                        <Artwork item={selectedRacer} portrait />
+                        <span>
+                          <strong>{selectedRacer.name}</strong>
+                          <small className={`racing-type-text ${racingTypeClass(selectedRacer.racingType)}`}>
+                            {selectedRacer.racingType ?? "Type unknown"}
+                          </small>
+                        </span>
+                      </span>
+                    )}
+                  </div>
                   {partSlots.map((slot) => {
                     const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
                     return <label key={slot.key} className="part-select">
@@ -186,7 +230,9 @@ export function BuildEditor() {
                         <Artwork item={{ id: selectedPart.sourceMachineId, name: selectedPart.sourceMachineName,
                           imagePath: selectedPart.sourceMachineImagePath, racingType: selectedPart.racingType }} compact />
                         <span><strong>{selectedPart.sourceMachineName}</strong>
-                          <small>{selectedPart.racingType ?? "Type unknown"}</small></span>
+                          <small className={`racing-type-text ${racingTypeClass(selectedPart.racingType)}`}>
+                            {selectedPart.racingType ?? "Type unknown"}
+                          </small></span>
                       </span>}
                     </label>
                   })}
@@ -207,7 +253,7 @@ export function BuildEditor() {
                     placeholder="Search gadgets..." />
                 </label>
                 <div className="gadget-options">
-                  {filterGadgets(gadgets.data ?? [], gadgetSearch).map((g) => (
+                  {filterGadgets(gadgets.data ?? [], gadgetSearch, draft.gadgetIds).map((g) => (
                     <label
                       key={g.id}
                       className={`gadget-option ${draft.gadgetIds.includes(g.id) ? "selected" : ""}`}
@@ -249,7 +295,7 @@ export function BuildEditor() {
                     </div>
                   )}
                   <strong>{selectedRacer?.name || "Choose a racer"}</strong>
-                  <span className="preview-meta">
+                  <span className={`preview-meta racing-type-text ${racingTypeClass(selectedRacer?.racingType ?? null)}`}>
                     {selectedRacer
                       ? selectedRacer.racingType?.toLowerCase() ?? "Unknown"
                       : "Your driver appears here"}

@@ -20,6 +20,7 @@ const stock: Build = {
   racer: { id: "racer", name: "Shadow", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: null,
+  remixedFrom: null,
   gadgets: [{ id: "gadget", name: "Ring Engine", description: "Gain rings over time.", slotCost: 1,
     imagePath: "/assets/gadgets/ring-engine.png" }],
   createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39, upvotes: 40, downvotes: 1,
@@ -94,7 +95,7 @@ it("offers an optional version selector defaulting to unspecified", () => {
   expect(selector[2]).toContain('value="version">Ver. 1.4.1');
 });
 
-it.each([false, true])("renders version metadata only when specified and preserves raw score (versioned=%s)", (versioned) => {
+it.each([false, true])("renders Build Info inside the hero card and preserves raw score (versioned=%s)", (versioned) => {
   build = { ...stock, gameVersion: versioned
     ? { id: "version", version: "1.4.1", releasedAt: "2026-06-23" } : null };
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
@@ -102,6 +103,11 @@ it.each([false, true])("renders version metadata only when specified and preserv
   expect(card.includes("Ver. 1.4.1")).toBe(versioned);
   expect(details.includes("Ver. 1.4.1")).toBe(versioned);
   expect(details.includes("Released")).toBe(versioned);
+  expect(details).toContain('class="hero-build-info"');
+  expect(details).toContain("BUILD INFO");
+  expect(details.includes("Latest known patch")).toBe(versioned);
+  expect(details.includes("Patch unspecified")).toBe(!versioned);
+  expect(details).not.toContain('class="detail-heading"><div><div class="eyebrow accent">COMMUNITY BUILD</div><h1>My setup</h1><p>by <strong>@driver</strong> <span class="muted">· Jan 1, 2026</span><span');
   expect(details).toContain('aria-live="polite">39</strong>');
   expect(card).toContain('aria-label="40 upvotes, 1 downvote"');
   expect(card).toContain('class="upvote-count">↑ 40</span>');
@@ -121,7 +127,7 @@ it("renders separate vote counts on cards and net score plus counts on details",
   expect(card + details).not.toContain("↑ -20");
 });
 
-it("renders a safe invalid Gadget Plate status and keeps the validation caveat visible", () => {
+it("renders a safe invalid Gadget Plate status with an accessible validation info control", () => {
   build = {
     ...stock,
     gadgets: [{ id: "invalid", name: "Invalid", description: null, slotCost: 4, imagePath: null }],
@@ -129,8 +135,30 @@ it("renders a safe invalid Gadget Plate status and keeps the validation caveat v
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
   expect(details).toContain('class="gadget-plate-status invalid"');
   expect(details).toContain("invalid cost: Invalid");
+  expect(details).toContain('class="gadget-info"');
+  expect(details).toContain('aria-label="About Gadget Plate validation"');
   expect(details).toContain("Gadget Plate capacity is validated using current catalog costs.");
   expect(details).toContain("Other gadget compatibility rules are not modeled.");
+  expect(details).not.toContain("VALIDATION");
+  expect(details).not.toContain('class="detail-note"');
+});
+
+it("uses a cohesive hero card with Build Info and a Machine Setup-only right column", () => {
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(details).toContain('class="loadout detail-loadout"');
+  expect(details).toContain('class="panel loadout-item racer-loadout"');
+  expect(details).toContain('class="racer-banner"');
+  expect(details).toContain('class="hero-gadgets"');
+  expect(details).toContain('aria-label="Ring Engine: Gain rings over time."');
+  expect(details).toContain('role="tooltip"><strong>Ring Engine</strong><span>Gain rings over time.</span>');
+  expect(details).toContain('class="hero-details"');
+  expect(details).toContain('class="hero-build-info"');
+  expect(details).not.toContain('class="detail-secondary"');
+  expect(details).not.toContain('class="panel build-info-card"');
+  expect(details).toContain('aria-label="Community score and voting"');
+  expect(details).toContain('aria-live="polite">39</strong>');
+  expect(details).toContain('class="vote-buttons"');
+  expect(details).not.toContain("<aside>");
 });
 
 it("uses singular and plural vote labels in accessible text", () => {

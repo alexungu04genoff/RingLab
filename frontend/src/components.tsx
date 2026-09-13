@@ -95,7 +95,7 @@ function BuildPartIcon({ part, label, abbreviation }: {
   );
 }
 
-function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
+export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
   const tooltip = gadget.description ? `${gadget.name}: ${gadget.description}` : gadget.name;
   return (
     <span className="card-gadget-icon" tabIndex={0} aria-label={tooltip}>

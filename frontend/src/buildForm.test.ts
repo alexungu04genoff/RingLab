@@ -26,6 +26,19 @@ it("filters available gadgets without changing selected gadget IDs", () => {
   expect(selected).toEqual(["a", "b"]);
 });
 
+it("places selected gadgets first in their chosen order and preserves catalog order for the rest", () => {
+  const gadgets = [
+    gadget("a", "Alpha", 1),
+    gadget("b", "Beta", 1),
+    gadget("c", "Gamma", 1),
+    gadget("d", "Delta", 1),
+  ];
+  expect(filterGadgets(gadgets, "", ["c", "a"]).map(({ id }) => id))
+    .toEqual(["c", "a", "b", "d"]);
+  expect(filterGadgets(gadgets, "a", ["d", "c"]).map(({ id }) => id))
+    .toEqual(["d", "c", "a", "b"]);
+});
+
 it("validates Gadget Plate partitions independently of display order", () => {
   for (const costs of [[], [1], [3], [1, 1, 1], [2, 1], [3, 3], [3, 2, 1],
     [3, 1, 1, 1], [2, 2, 1, 1], [1, 1, 1, 1, 1, 1]]) {
@@ -65,7 +78,7 @@ it("applies all stock parts while preserving other fields and permits a later in
   }));
   const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "racer",
     frontPartId: "old-front", rearPartId: "old-rear", tirePartId: "old-tire",
-    gameVersionId: "version", gadgetIds: ["gadget"] };
+    gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
   const stocked = applyStockMachine(draft, parts, "stock");
   expect(stocked).toEqual({ ...draft, frontPartId: "stock-FRONT", rearPartId: "stock-REAR", tirePartId: "stock-TIRE" });
   expect({ ...stocked, rearPartId: "custom-rear" }).toMatchObject({ frontPartId: "stock-FRONT", rearPartId: "custom-rear", tirePartId: "stock-TIRE" });

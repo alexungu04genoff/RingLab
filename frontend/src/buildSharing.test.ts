@@ -10,6 +10,7 @@ const build: Build = {
   rearPart: { id: "rear-id", type: "REAR", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
   tirePart: { id: "tire-id", type: "TIRE", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
   gameVersion: { id: "version-id", version: "1.4.1", releasedAt: "2026-06-23" },
+  remixedFrom: null,
   gadgets: [
     { id: "first-gadget", name: "Route Planner Bounty", description: null, slotCost: 1, imagePath: null },
     { id: "second-gadget", name: "Ring Doubler", description: null, slotCost: 3, imagePath: null },

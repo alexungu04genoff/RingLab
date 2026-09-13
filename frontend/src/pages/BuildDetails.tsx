@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
+import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
 import { gadgetPlateStatus } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
@@ -82,31 +82,37 @@ export function BuildDetails() {
   }
   return (
     <>
-      <Link className="back" to={origin}>
-        ← {origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
-      </Link>
-      <ErrorNotice message={error} />
-      <div className="detail-heading">
+      <div className="build-details">
+        <ErrorNotice message={error} />
+        <div className="detail-heading">
         <div>
-          <div className="eyebrow accent">COMMUNITY BUILD</div>
+          <div className="detail-context">
+            <div className="eyebrow accent">COMMUNITY BUILD</div>
+            <Link className="detail-back" to={origin}>
+              ← {origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
+            </Link>
+          </div>
           <h1>{b.title}</h1>
           <p>
             by <strong>@{b.author.username}</strong>{" "}
             <span className="muted">· {date(b.createdAt)}</span>
-            {b.gameVersion && (
-              <>
-                <span className={`detail-version patch-${versionAge}`}>
-                  · Ver. {b.gameVersion.version}
-                </span>
-                <span className="muted">· Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
-              </>
-            )}
           </p>
-          {versionAge === "older" && (
-            <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+          {b.remixedFrom && (
+            <p className="muted">
+              Remixed from <Link to={`/builds/${b.remixedFrom.id}`}>{b.remixedFrom.title}</Link>
+            </p>
           )}
         </div>
         <div className="actions">
+          {user ? (
+            <Link className="button" to={`/builds/new?remixFrom=${encodeURIComponent(b.id)}`}>
+              Remix this build
+            </Link>
+          ) : (
+            <Link className="button" to="/login" state={{ from: `/builds/${b.id}` }}>
+              Log in to remix
+            </Link>
+          )}
           <Link className="button" to={`/compare?left=${encodeURIComponent(b.id)}`}>
             Compare
           </Link>
@@ -127,8 +133,8 @@ export function BuildDetails() {
             {copyStatus === "copied" ? "Setup copied to clipboard" : copyStatus === "error" ? "Could not copy setup" : ""}
           </span>
         </div>
-      </div>
-      {confirmDelete && (
+        </div>
+        {confirmDelete && (
         <div className="confirm panel" role="alert">
           <p>Delete this build and all its votes and comments?</p>
           <button
@@ -145,19 +151,110 @@ export function BuildDetails() {
           </button>{" "}
           <button onClick={() => setConfirmDelete(false)}>Cancel</button>
         </div>
-      )}
-      <div className="detail-grid">
+        )}
+        <div className="detail-grid">
         <div>
-          <div className="loadout">
+          <div className="loadout detail-loadout">
             <section className="panel loadout-item racer-loadout">
-              <Artwork item={b.racer} portrait />
-              <div>
-                <div className="eyebrow">RACER</div>
-                <div className="racer-name">
-                  <h2>{b.racer.name}</h2>
+              <div className="racer-banner">
+                <Artwork item={b.racer} portrait />
+                <div className="racer-identity">
+                  <div className="racer-nameplate">
+                    <div className="eyebrow">RACER</div>
+                    <h2>{b.racer.name}</h2>
+                  </div>
                   <span className={`type-badge inline racing-type ${racingTypeClass(b.racer.racingType)}`}>
                     {b.racer.racingType ?? "Unknown"}
                   </span>
+                </div>
+              </div>
+              <div className="racer-build-summary">
+                <div className="hero-details">
+                  <section className="vote-panel" aria-label="Community score and voting">
+                    <div className="eyebrow score-heading">
+                      COMMUNITY SCORE
+                      <span className="score-help" tabIndex={0} aria-label="How Best rated works">
+                        <span aria-hidden="true">i</span>
+                        <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
+                      </span>
+                    </div>
+                    <strong className="big-score" aria-live="polite">
+                      {summary?.score}
+                    </strong>
+                    <p
+                      className="muted vote-summary"
+                      aria-live="polite"
+                      aria-label={`Vote breakdown: ${countLabel(summary?.upvotes ?? 0, "upvote")}, ${countLabel(summary?.downvotes ?? 0, "downvote")}`}
+                    >
+                      <span className="upvote-count">↑ {summary?.upvotes}</span>
+                      <span aria-hidden="true"> · </span>
+                      <span className="downvote-count">↓ {summary?.downvotes}</span>
+                    </p>
+                    <div className="vote-buttons">
+                      {[1, -1].map((v) => (
+                        <button
+                          key={v}
+                          className={`${v === 1 ? "upvote-action" : "downvote-action"}${vote?.myVote === v ? " selected" : ""}`}
+                          aria-pressed={vote?.myVote === v}
+                          disabled={!user || busy || !vote}
+                          onClick={() =>
+                            act(async () =>
+                              {
+                                const updatedVote = await api<Vote>(
+                                  `/builds/${id}/vote`,
+                                  json(
+                                    vote?.myVote === v ? "DELETE" : "PUT",
+                                    vote?.myVote === v ? undefined : { value: v },
+                                  ),
+                                );
+                                setVote(updatedVote);
+                              }
+                            )
+                          }
+                        >
+                          {v === 1 ? "↑ Upvote" : "↓ Downvote"}
+                        </button>
+                      ))}
+                    </div>
+                    {user ? (
+                      <p className="muted">Click your active vote to remove it.</p>
+                    ) : (
+                      <p>
+                        <Link to="/login" state={{ from: `/builds/${b.id}` }}>
+                          Log in
+                        </Link>{" "}
+                        to vote.
+                      </p>
+                    )}
+                  </section>
+                  <div className="hero-context">
+                    <section className="hero-gadgets" aria-label="Selected gadgets">
+                      <div className="eyebrow">GADGETS</div>
+                      <div className="tags">
+                        {b.gadgets.map((g, i) => (
+                          <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
+                        ))}
+                        {b.gadgets.length === 0 && <span>No gadgets</span>}
+                      </div>
+                    </section>
+                    <section className="hero-build-info" aria-label="Build information">
+                      <div className="eyebrow">BUILD INFO</div>
+                      {b.gameVersion ? (
+                        <>
+                          <p className="build-version-row">
+                            <span className={`detail-version patch-${versionAge}`}>Ver. {b.gameVersion.version}</span>
+                            <span className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
+                          </p>
+                          {versionAge === "latest" && <p className="patch-status">Latest known patch</p>}
+                          {versionAge === "older" && (
+                            <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="muted">Patch unspecified</p>
+                      )}
+                    </section>
+                  </div>
                 </div>
               </div>
             </section>
@@ -176,14 +273,20 @@ export function BuildDetails() {
               <h2>
                 Gadgets <span className="muted">· {b.gadgets.length}</span>
               </h2>
-              <span
-                className={`gadget-plate-status ${plateStatus.valid ? "valid" : "invalid"}`}
-                aria-label={`Gadget Plate status: ${plateStatus.summary}`}
-              >
-                {plateStatus.valid
-                  ? `Valid · ${plateStatus.totalCost} / 6 slots`
-                  : plateStatus.summary.replace("Gadget Plate · ", "")}
-              </span>
+              <div className="gadget-status">
+                <span
+                  className={`gadget-plate-status ${plateStatus.valid ? "valid" : "invalid"}`}
+                  aria-label={`Gadget Plate status: ${plateStatus.summary}`}
+                >
+                  {plateStatus.valid
+                    ? `Valid · ${plateStatus.totalCost} / 6 slots`
+                    : plateStatus.summary.replace("Gadget Plate · ", "")}
+                </span>
+                <button className="gadget-info" type="button" aria-label="About Gadget Plate validation">
+                  <span aria-hidden="true">i</span>
+                  <span role="tooltip">Gadget Plate capacity is validated using current catalog costs. Other gadget compatibility rules are not modeled.</span>
+                </button>
+              </div>
             </div>
             {b.gadgets.length ? (
               <ol className="detail-gadgets">
@@ -301,71 +404,7 @@ export function BuildDetails() {
               )}
           </section>
         </div>
-        <aside>
-          <section className="panel vote-panel">
-            <div className="eyebrow score-heading">
-              COMMUNITY SCORE
-              <span className="score-help" tabIndex={0} aria-label="How Best rated works">
-                <span aria-hidden="true">i</span>
-                <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
-              </span>
-            </div>
-            <strong className="big-score" aria-live="polite">
-              {summary?.score}
-            </strong>
-            <p
-              className="muted vote-summary"
-              aria-live="polite"
-              aria-label={`Vote breakdown: ${countLabel(summary?.upvotes ?? 0, "upvote")}, ${countLabel(summary?.downvotes ?? 0, "downvote")}`}
-            >
-              <span className="upvote-count">↑ {summary?.upvotes}</span>
-              <span aria-hidden="true"> · </span>
-              <span className="downvote-count">↓ {summary?.downvotes}</span>
-            </p>
-            <div className="vote-buttons">
-              {[1, -1].map((v) => (
-                <button
-                  key={v}
-                  className={`${v === 1 ? "upvote-action" : "downvote-action"}${vote?.myVote === v ? " selected" : ""}`}
-                  aria-pressed={vote?.myVote === v}
-                  disabled={!user || busy || !vote}
-                  onClick={() =>
-                    act(async () =>
-                      {
-                        const updatedVote = await api<Vote>(
-                          `/builds/${id}/vote`,
-                          json(
-                            vote?.myVote === v ? "DELETE" : "PUT",
-                            vote?.myVote === v ? undefined : { value: v },
-                          ),
-                        );
-                        setVote(updatedVote);
-                      }
-                    )
-                  }
-                >
-                  {v === 1 ? "↑ Upvote" : "↓ Downvote"}
-                </button>
-              ))}
-            </div>
-            {user ? (
-              <p className="muted">Click your active vote to remove it.</p>
-            ) : (
-              <p>
-                <Link to="/login" state={{ from: `/builds/${b.id}` }}>
-                  Log in
-                </Link>{" "}
-                to vote.
-              </p>
-            )}
-          </section>
-          <div className="detail-note">
-            <span className="eyebrow">VALIDATION</span>
-            <p>
-              Gadget Plate capacity is validated using current catalog costs. Other gadget compatibility rules are not modeled.
-            </p>
-          </div>
-        </aside>
+        </div>
       </div>
     </>
   );

@@ -4,11 +4,25 @@ export function toggleGadget(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
 }
 
-export function filterGadgets(gadgets: Gadget[], search: string): Gadget[] {
+export function filterGadgets(gadgets: Gadget[], search: string, selectedIds: string[] = []): Gadget[] {
   const query = search.trim().toLocaleLowerCase();
-  return query
+  const filtered = query
     ? gadgets.filter((gadget) => gadget.name.toLocaleLowerCase().includes(query))
     : gadgets;
+  const selectedPositions = new Map(selectedIds.map((id, index) => [id, index]));
+  return filtered
+    .map((gadget, catalogIndex) => ({ gadget, catalogIndex }))
+    .sort((left, right) => {
+      const leftSelectedIndex = selectedPositions.get(left.gadget.id);
+      const rightSelectedIndex = selectedPositions.get(right.gadget.id);
+      if (leftSelectedIndex !== undefined && rightSelectedIndex !== undefined) {
+        return leftSelectedIndex - rightSelectedIndex;
+      }
+      if (leftSelectedIndex !== undefined) return -1;
+      if (rightSelectedIndex !== undefined) return 1;
+      return left.catalogIndex - right.catalogIndex;
+    })
+    .map(({ gadget }) => gadget);
 }
 
 export interface GadgetPlateStatus {

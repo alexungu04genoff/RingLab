@@ -15,8 +15,10 @@ public record BuildRequest(
     @NotNull UUID rearPartId,
     @NotNull UUID tirePartId,
     UUID gameVersionId,
+    UUID remixedFromBuildId,
     @NotNull List<@NotNull UUID> gadgetIds) {
   public BuildService.Draft draft() {
-    return new BuildService.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId, gameVersionId, gadgetIds);
+    return new BuildService.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId,
+        gameVersionId, remixedFromBuildId, gadgetIds);
   }
 }

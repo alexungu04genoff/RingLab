@@ -23,7 +23,8 @@ import java.util.UUID;
 public class BuildService {
   public record Draft(
       String title, String description, UUID racerId, UUID frontPartId,
-      UUID rearPartId, UUID tirePartId, UUID gameVersionId, List<UUID> gadgetIds) {}
+      UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
+      List<UUID> gadgetIds) {}
 
   private final BuildRepository builds;
   private final GameDataRepository game;
@@ -92,6 +93,9 @@ public class BuildService {
   @Transactional
   public Build create(UUID author, Draft d) {
     validate(d);
+    if (d.remixedFromBuildId() != null && builds.find(d.remixedFromBuildId()).isEmpty()) {
+      throw new ValidationException("Unknown remix source build ID");
+    }
     var now = Instant.now();
     var b =
         new Build(
@@ -104,6 +108,7 @@ public class BuildService {
             d.rearPartId(),
             d.tirePartId(),
             d.gameVersionId(),
+            d.remixedFromBuildId(),
             d.gadgetIds(),
             now,
             now);
@@ -127,6 +132,7 @@ public class BuildService {
             d.rearPartId(),
             d.tirePartId(),
             d.gameVersionId(),
+            old.remixedFromBuildId(),
             d.gadgetIds(),
             old.createdAt(),
             Instant.now());
