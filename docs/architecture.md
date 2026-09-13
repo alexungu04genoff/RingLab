@@ -9,7 +9,7 @@ Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `p
 ```text
 dev.ringlab/
   domain/{auth,build,comment,gamedata,news,vote}/
-  application/{auth,build,comment,news,vote}/
+  application/{auth,build,comment,news,validation,vote}/
   port/out/
     {User,Build,Comment,GameData,GameNews,Vote}Repository.java
   adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
@@ -23,10 +23,16 @@ dev.ringlab/
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable latest verified slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions for validation, authentication, existing resources, forbidden operations, missing resources, and unavailable external services; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
-- **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
+- **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser parses the verified JWT subject as a UUID, verifies that the RingLab user still exists, and treats a missing account as unavailable authentication. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
 The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
+
+Usernames, build titles and descriptions, and comment text pass through a basic local profanity
+policy before application services persist them. The policy loads a small classpath word list,
+applies Unicode normalization and case folding, and recognizes simple punctuation- or
+space-separated spellings with word boundaries. Application services are authoritative; this
+intentionally limited check is not a comprehensive moderation system.
 
 ## HTTP rate limiting
 

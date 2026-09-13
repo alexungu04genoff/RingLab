@@ -12,6 +12,7 @@ import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.port.out.VoteRepository;
@@ -53,6 +54,7 @@ public class BuildService {
   private final BuildRepository builds;
   private final GameDataRepository game;
   private final VoteRepository votes;
+  private final ProfanityPolicy profanity;
 
   public Build get(UUID id) {
     if (id == null) throw new ValidationException("Missing build ID");
@@ -100,6 +102,8 @@ public class BuildService {
       throw new ValidationException("Title must be nonblank and at most 120 characters");
     if (d.description() == null || d.description().length() > 10000)
       throw new ValidationException("Description is required and must be at most 10000 characters");
+    profanity.requireClean(d.title());
+    profanity.requireClean(d.description());
     requireRacer(d.racerId());
     requirePart(d.frontPartId(), MachinePartType.FRONT);
     requirePart(d.rearPartId(), MachinePartType.REAR);

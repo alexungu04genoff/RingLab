@@ -7,6 +7,7 @@ import dev.ringlab.application.AuthenticationException;
 import dev.ringlab.application.AlreadyExistsException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.port.out.UserRepository;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -25,6 +26,7 @@ import java.util.*;
 public class AuthService {
   private final UserRepository users;
   private final Validator validator;
+  private final ProfanityPolicy profanity;
 
   private record RegistrationInput(
       @NotBlank @Pattern(regexp = "[A-Za-z0-9_]{3,30}") String username,
@@ -49,6 +51,7 @@ public class AuthService {
     validateInput(new RegistrationInput(username, email, password));
     username = username.toLowerCase(Locale.ROOT);
     email = email.toLowerCase(Locale.ROOT);
+    profanity.requireClean(username);
     if (password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
       throw new ValidationException("Password must be at most 72 UTF-8 bytes");
     if (users.exists(username, email))

@@ -1,6 +1,7 @@
 package dev.ringlab.application;
 
 import dev.ringlab.application.auth.ExternalAuthService;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.auth.*;
 import dev.ringlab.port.out.*;
 import java.time.Instant;
@@ -14,7 +15,8 @@ class ExternalAuthServiceTest {
 
   private ExternalAuthService service(String subject, String email) {
     return new ExternalAuthService(credential ->
-        new VerifiedExternalIdentity("GOOGLE", subject, email, "Display name"), identities, users);
+        new VerifiedExternalIdentity("GOOGLE", subject, email, "Display name"), identities, users,
+        new ProfanityPolicy());
   }
 
   @Test
@@ -53,10 +55,18 @@ class ExternalAuthServiceTest {
   }
 
   @Test
+  void profaneGoogleLocalPartUsesSafeGeneratedUsername() {
+    var created = service("safe-subject", "fuck@example.test").login("credential");
+
+    assertEquals("user", created.username());
+    assertEquals("fuck@example.test", created.email());
+  }
+
+  @Test
   void failedVerificationNeverWritesAccounts() {
     var service = new ExternalAuthService(credential -> {
       throw new AuthenticationException("Invalid Google credential");
-    }, identities, users);
+    }, identities, users, new ProfanityPolicy());
     for (String credential : Arrays.asList(null, "", "bad-token", "x".repeat(16385)))
       assertThrows(AuthenticationException.class, () -> service.login(credential));
     assertTrue(users.values.isEmpty());

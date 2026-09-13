@@ -3,6 +3,7 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.application.vote.VoteService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.vote.Vote;
@@ -26,7 +27,7 @@ class VoteServiceTest {
     builds = new InMemoryBuildRepository();
     builds.builds.put(buildId, build(buildId));
     votes = new VoteRepositoryStub();
-    service = new VoteService(votes, new BuildService(builds, null, votes));
+    service = new VoteService(votes, new BuildService(builds, null, votes, new ProfanityPolicy()));
   }
 
   @Test

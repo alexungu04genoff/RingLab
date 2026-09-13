@@ -7,6 +7,7 @@ import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.port.out.CommentRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -18,6 +19,7 @@ import java.util.*;
 public class CommentService {
   private final CommentRepository comments;
   private final BuildService builds;
+  private final ProfanityPolicy profanity;
 
   public CommentRepository.Page list(UUID build, int page, int size) {
     if (page < 0 || size < 1 || size > 50)
@@ -31,6 +33,7 @@ public class CommentService {
     if (author == null) throw new ValidationException("Missing author ID");
     if (text == null || text.isBlank() || text.length() > 2000)
       throw new ValidationException("Comment must be nonblank and at most 2000 characters");
+    profanity.requireClean(text);
     builds.get(build);
     var comment = new Comment(UUID.randomUUID(), build, author, text.trim(), Instant.now());
     comments.create(comment);

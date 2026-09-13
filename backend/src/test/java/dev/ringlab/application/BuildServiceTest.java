@@ -3,6 +3,7 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.Vote;
@@ -43,7 +44,7 @@ class BuildServiceTest {
     gameData.parts.put(rearPartId, new MachinePart(rearPartId, machineId, MachinePartType.REAR));
     gameData.parts.put(tirePartId, new MachinePart(tirePartId, machineId, MachinePartType.TIRE));
     votes = new EmptyVoteRepository();
-    service = new BuildService(builds, gameData, votes);
+    service = new BuildService(builds, gameData, votes, new ProfanityPolicy());
   }
 
   @Test
@@ -142,6 +143,20 @@ class BuildServiceTest {
     assertEquals(created, service.get(created.id()));
     assertEquals(List.of(gadgetId), created.gadgetIds());
     assertEquals(created.createdAt(), created.updatedAt());
+  }
+
+  @Test
+  void rejectsProfanityInBuildTitleAndDescriptionBeforePersistence() {
+    var badTitle = new BuildService.Draft("FUCK", "Clean description", racerId, frontPartId,
+        rearPartId, tirePartId, null, null, List.of(gadgetId));
+    var badDescription = new BuildService.Draft("Clean title", "This is f.u.c.k", racerId,
+        frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));
+
+    for (var draft : List.of(badTitle, badDescription)) {
+      var error = assertThrows(ValidationException.class, () -> service.create(authorId, draft));
+      assertEquals("Text contains inappropriate language", error.getMessage());
+    }
+    assertNull(builds.lastSaved);
   }
 
   @Test

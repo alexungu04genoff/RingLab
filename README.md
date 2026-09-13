@@ -73,7 +73,7 @@ Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost
 
 The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
 
-Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173`.
+Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173,http://127.0.0.1:5173,https://ringlabgarage.com`. Setting it replaces this comma-separated CORS allowlist; include every frontend origin you intend to allow.
 
 ## API rate limiting
 

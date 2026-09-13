@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.vote.VoteService;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.*;
@@ -43,11 +44,11 @@ class BuildRestResourceTest {
       public void delete(UUID build) { throw new UnsupportedOperationException(); }
     };
     VoteSummary listSummary = new VoteSummary(4, 1);
-    var builds = new BuildService(repository, null, null) {
+    var builds = new BuildService(repository, null, null, new ProfanityPolicy()) {
       @Override
       public Page list(Query query) { return new Page(List.of(remix), 1, Map.of(id, listSummary)); }
     };
-    var users = new AuthService(null, null) {
+    var users = new AuthService(null, null, null) {
       @Override
       public User current(UUID user) { return new User(user, "author", "private", "private", Instant.EPOCH); }
     };

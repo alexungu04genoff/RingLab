@@ -3,6 +3,7 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.auth.AuthService;
+import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
 import io.quarkus.elytron.security.common.BcryptUtil;
@@ -27,7 +28,7 @@ class AuthServiceTest {
   @BeforeEach
   void setUp() {
     users = new InMemoryUserRepository();
-    service = new AuthService(users, VALIDATORS.getValidator());
+    service = new AuthService(users, VALIDATORS.getValidator(), new ProfanityPolicy());
   }
 
   @Test
@@ -42,6 +43,16 @@ class AuthServiceTest {
     assertTrue(BcryptUtil.matches("password-123", registered.passwordHash()));
     assertNotNull(registered.id());
     assertNotNull(registered.createdAt());
+  }
+
+  @Test
+  void registrationRejectsProfaneUsernameBeforePersistence() {
+    var error = assertThrows(ValidationException.class,
+        () -> service.register("FUCK", "person@example.com", "password-123"));
+
+    assertEquals("Text contains inappropriate language", error.getMessage());
+    assertNull(users.lastCreated);
+    assertNull(users.checkedUsername);
   }
 
   @Test
