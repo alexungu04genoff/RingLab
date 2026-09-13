@@ -132,6 +132,8 @@ React Router owns page navigation. A small context holds current authentication;
 
 Routes cover Explore, My Builds, details, create/edit, register/login, and the requested public catalog browsing. Controls have labels, focus states, pending/error states and responsive layouts. Artwork uses only local `/assets/` paths, with a placeholder on failure. No global-state library or UI framework is used.
 
+Compare Builds is a URL-driven frontend view for exactly two existing builds. It composes the current detail and paginated browse APIs to compare semantic racer, patch, Front/Rear/Tire, ordered gadget, Gadget Plate, and vote fields rather than free-form text; it stores no comparison state on the backend.
+
 ## Verification and limits
 
 `AcceptanceTest` uses Quarkus's test runner, HTTP requests, actual JWT registration/login, Flyway, and PostgreSQL. `PackagedApiIT` repeats it against the production artifact. `DomainTest` checks immutable collection and vote/ownership behavior. Frontend tests check ordering and API errors/session expiration. The test run's external-database option requires a disposable database.

@@ -5,6 +5,12 @@ export function useLoad<T>(path: string, refresh = 0) {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    if (!path) {
+      setData(undefined);
+      setError("");
+      setLoading(false);
+      return;
+    }
     const controller = new AbortController();
     setLoading(true);
     setError("");

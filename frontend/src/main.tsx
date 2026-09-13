@@ -7,6 +7,7 @@ import { BuildEditor } from "./pages/BuildEditor";
 import { BuildDetails } from "./pages/BuildDetails";
 import { AuthPage } from "./pages/AuthPage";
 import { GameData } from "./pages/GameData";
+import { CompareBuilds } from "./pages/CompareBuilds";
 import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
 import "./styles.css";
 function App() {
@@ -81,6 +82,7 @@ function App() {
             }
           />
           <Route path="/builds/:id" element={<BuildDetails />} />
+          <Route path="/compare" element={<CompareBuilds />} />
           <Route path="/login" element={<AuthPage key="login" />} />
           <Route
             path="/register"

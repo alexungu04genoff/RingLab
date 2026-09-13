@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, patchAge, racingTypeClass } from "../components";
+import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
 import { gadgetPlateStatus } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
@@ -62,8 +62,6 @@ export function BuildDetails() {
         {build.loading && <p role="status">Loading build…</p>}
       </>
     );
-  const stockSetup = b.frontPart.sourceMachineId === b.rearPart.sourceMachineId
-    && b.frontPart.sourceMachineId === b.tirePart.sourceMachineId;
   const plateStatus = gadgetPlateStatus(b.gadgets);
   const versionAge = patchAge(b.gameVersion, versions.data || []);
   const shareBuild = b;
@@ -109,6 +107,9 @@ export function BuildDetails() {
           )}
         </div>
         <div className="actions">
+          <Link className="button" to={`/compare?left=${encodeURIComponent(b.id)}`}>
+            Compare
+          </Link>
           <button onClick={copySetup}>
             {copyStatus === "copied" ? "✓ Copied" : copyStatus === "error" ? "Could not copy setup" : "Copy setup"}
           </button>
@@ -161,34 +162,7 @@ export function BuildDetails() {
               </div>
             </section>
             <section className="panel loadout-item">
-              <div className="machine-setup-heading">
-                <div>
-                  <div className="eyebrow">MACHINE SETUP</div>
-                  <h2>Parts by source machine</h2>
-                </div>
-                <span className={`setup-indicator ${stockSetup ? "stock-setup" : "mixed-setup"}`}>
-                  {stockSetup ? "Stock setup" : "Mixed setup"}
-                </span>
-              </div>
-              <div className="machine-setup-grid">
-                {[["FRONT", b.frontPart], ["REAR", b.rearPart], ["TIRES", b.tirePart]]
-                  .map(([label, part]) => {
-                    const machinePart = part as typeof b.frontPart;
-                    return <article className="machine-part-card" key={label as string}>
-                      <Artwork item={{ id: machinePart.sourceMachineId, name: machinePart.sourceMachineName,
-                        imagePath: machinePart.sourceMachineImagePath, racingType: machinePart.racingType }} compact />
-                      <div className="machine-part-copy">
-                        <strong>{machinePart.sourceMachineName}</strong>
-                        {machinePart.racingType && (
-                          <span className={`part-type racing-type ${racingTypeClass(machinePart.racingType)}`}>
-                            {machinePart.racingType}
-                          </span>
-                        )}
-                      </div>
-                      <span className="eyebrow machine-part-slot">{label as string}</span>
-                    </article>;
-                  })}
-              </div>
+              <MachineSetup build={b} />
             </section>
           </div>
           <section className="panel">
