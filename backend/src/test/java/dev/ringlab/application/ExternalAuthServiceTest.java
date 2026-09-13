@@ -1,7 +1,6 @@
 package dev.ringlab.application;
 
 import dev.ringlab.application.auth.ExternalAuthService;
-import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.auth.*;
 import dev.ringlab.port.out.*;
 import java.time.Instant;
@@ -12,11 +11,12 @@ import static org.junit.jupiter.api.Assertions.*;
 class ExternalAuthServiceTest {
   private final Users users = new Users();
   private final Identities identities = new Identities();
+  private final StubProfanityPolicy profanity = new StubProfanityPolicy();
 
   private ExternalAuthService service(String subject, String email) {
     return new ExternalAuthService(credential ->
         new VerifiedExternalIdentity("GOOGLE", subject, email, "Display name"), identities, users,
-        new ProfanityPolicy());
+        profanity);
   }
 
   @Test
@@ -56,17 +56,22 @@ class ExternalAuthServiceTest {
 
   @Test
   void profaneGoogleLocalPartUsesSafeGeneratedUsername() {
-    var created = service("safe-subject", "fuck@example.test").login("credential");
+    profanity.blocked.add("crap");
+
+    var created = service("safe-subject", "crap@example.test").login("credential");
 
     assertEquals("user", created.username());
-    assertEquals("fuck@example.test", created.email());
+    assertEquals("crap@example.test", created.email());
+    assertEquals(List.of(
+        new StubProfanityPolicy.Check("crap", null),
+        new StubProfanityPolicy.Check("user", null)), profanity.checks);
   }
 
   @Test
   void failedVerificationNeverWritesAccounts() {
     var service = new ExternalAuthService(credential -> {
       throw new AuthenticationException("Invalid Google credential");
-    }, identities, users, new ProfanityPolicy());
+    }, identities, users, profanity);
     for (String credential : Arrays.asList(null, "", "bad-token", "x".repeat(16385)))
       assertThrows(AuthenticationException.class, () -> service.login(credential));
     assertTrue(users.values.isEmpty());
@@ -79,12 +84,19 @@ class ExternalAuthServiceTest {
     public Optional<User> byUsername(String username) {
       return values.values().stream().filter(u -> u.username().equals(username)).findFirst();
     }
+    public Optional<User> byEmail(String email) {
+      return values.values().stream().filter(u -> u.email().equals(email)).findFirst();
+    }
     public boolean exists(String username, String email) {
       return values.values().stream().anyMatch(u -> u.username().equals(username) || u.email().equals(email));
     }
     public void create(User user) {
       if (exists(user.username(), user.email())) throw new AlreadyExistsException("Duplicate account");
       values.put(user.id(), user);
+    }
+    public void markEmailVerified(UUID userId, Instant verifiedAt) {
+      User user = values.get(userId);
+      values.put(userId, new User(user.id(), user.username(), user.email(), user.passwordHash(), verifiedAt, user.createdAt()));
     }
   }
 

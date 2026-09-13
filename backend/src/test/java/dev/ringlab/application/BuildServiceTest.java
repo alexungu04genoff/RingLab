@@ -3,7 +3,6 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.Vote;
@@ -35,6 +34,7 @@ class BuildServiceTest {
   private GameDataStub gameData;
   private EmptyVoteRepository votes;
   private BuildService service;
+  private StubProfanityPolicy profanity;
 
   @BeforeEach
   void setUp() {
@@ -44,7 +44,8 @@ class BuildServiceTest {
     gameData.parts.put(rearPartId, new MachinePart(rearPartId, machineId, MachinePartType.REAR));
     gameData.parts.put(tirePartId, new MachinePart(tirePartId, machineId, MachinePartType.TIRE));
     votes = new EmptyVoteRepository();
-    service = new BuildService(builds, gameData, votes, new ProfanityPolicy());
+    profanity = new StubProfanityPolicy();
+    service = new BuildService(builds, gameData, votes, profanity);
   }
 
   @Test
@@ -147,9 +148,10 @@ class BuildServiceTest {
 
   @Test
   void rejectsProfanityInBuildTitleAndDescriptionBeforePersistence() {
-    var badTitle = new BuildService.Draft("FUCK", "Clean description", racerId, frontPartId,
+    profanity.blocked.addAll(List.of("Blocked title", "Blocked description"));
+    var badTitle = new BuildService.Draft("Blocked title", "Clean description", racerId, frontPartId,
         rearPartId, tirePartId, null, null, List.of(gadgetId));
-    var badDescription = new BuildService.Draft("Clean title", "This is f.u.c.k", racerId,
+    var badDescription = new BuildService.Draft("Clean title", "Blocked description", racerId,
         frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));
 
     for (var draft : List.of(badTitle, badDescription)) {
@@ -158,6 +160,8 @@ class BuildServiceTest {
       assertEquals(draft == badTitle ? "title" : "description", error.field());
     }
     assertNull(builds.lastSaved);
+    assertTrue(profanity.checks.contains(new StubProfanityPolicy.Check("Blocked title", "title")));
+    assertTrue(profanity.checks.contains(new StubProfanityPolicy.Check("Blocked description", "description")));
   }
 
   @Test

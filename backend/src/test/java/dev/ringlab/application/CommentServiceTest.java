@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.comment.CommentService;
-import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.domain.vote.Vote;
@@ -23,13 +22,14 @@ class CommentServiceTest {
   private InMemoryBuildRepository builds;
   private InMemoryCommentRepository comments;
   private CommentService service;
+  private StubProfanityPolicy profanity;
 
   @BeforeEach
   void setUp() {
     builds = new InMemoryBuildRepository();
     builds.builds.put(buildId, build(buildId));
     comments = new InMemoryCommentRepository();
-    var profanity = new ProfanityPolicy();
+    profanity = new StubProfanityPolicy();
     service = new CommentService(
         comments, new BuildService(builds, null, new EmptyVoteRepository(), profanity), profanity);
   }
@@ -61,11 +61,14 @@ class CommentServiceTest {
 
   @Test
   void rejectsProfaneCommentBeforePersistence() {
+    profanity.blocked.add("Blocked comment");
+
     var error = assertThrows(ValidationException.class,
-        () -> service.create(buildId, authorId, "f u c k"));
+        () -> service.create(buildId, authorId, "Blocked comment"));
 
     assertEquals("Text contains inappropriate language", error.getMessage());
     assertNull(comments.lastCreated);
+    assertEquals(List.of(new StubProfanityPolicy.Check("Blocked comment", null)), profanity.checks);
   }
 
   @Test

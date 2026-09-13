@@ -6,20 +6,25 @@ import dev.ringlab.application.ValidationException;
 import org.junit.jupiter.api.Test;
 
 class ProfanityPolicyTest {
-  private final ProfanityPolicy policy = new ProfanityPolicy();
-
   @Test
-  void acceptsCleanTextAndInnocentLargerWords() {
-    assertFalse(policy.containsProfanity("A helpful racing setup"));
-    assertFalse(policy.containsProfanity("Scunthorpe and shitake mushrooms"));
-    assertDoesNotThrow(() -> policy.requireClean("A clean comment"));
+  void delegatesEnglishTextToTheConfiguredFilter() {
+    var calls = new java.util.ArrayList<String>();
+    var policy = new ProfanityPolicy((language, text) -> {
+      calls.add(language + ":" + text);
+      return text.equals("blocked");
+    });
+
+    assertTrue(policy.containsProfanity("blocked"));
+    assertFalse(policy.containsProfanity("clean"));
+    assertEquals(java.util.List.of("en:blocked", "en:clean"), calls);
   }
 
   @Test
-  void rejectsCaseAndSimpleSeparatorVariations() {
-    for (String text : new String[] {"fuck", "FUCK", "f.u.c.k", "f u c k"}) {
-      var error = assertThrows(ValidationException.class, () -> policy.requireClean(text));
-      assertEquals("Text contains inappropriate language", error.getMessage());
-    }
+  void returnsCleanAndBlockedResultsForRepresentativeInputs() {
+    var policy = new ProfanityPolicy();
+
+    assertFalse(policy.containsProfanity("A helpful racing setup"));
+    var error = assertThrows(ValidationException.class, () -> policy.requireClean("This is crap"));
+    assertEquals("Text contains inappropriate language", error.getMessage());
   }
 }

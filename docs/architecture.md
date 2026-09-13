@@ -28,11 +28,12 @@ dev.ringlab/
 
 The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
 
-Usernames, build titles and descriptions, and comment text pass through a basic local profanity
-policy before application services persist them. The policy loads a small classpath word list,
-applies Unicode normalization and case folding, and recognizes simple punctuation- or
-space-separated spellings with word boundaries. Application services are authoritative; this
-intentionally limited check is not a comprehensive moderation system.
+Usernames, build titles and descriptions, and comment text pass through the local application-layer
+`ProfanityPolicy`, backed by ModernMT's `com.modernmt.text:profanity-filter:1.0.1` English dictionary.
+The dependency is distributed under the Apache License 2.0; RingLab does not maintain or ship its
+own explicit profanity/slur dictionary. This remains an in-process safeguard rather than a network
+moderation service. Application services remain authoritative at every protected write boundary;
+the dictionary filter is a safeguard, not a comprehensive moderation system.
 Build title and description validation failures include an optional field identifier in the REST
 error response. The shared create/edit/remix editor displays these errors beside the corresponding
 input; failures without a field remain at form level.
@@ -82,6 +83,17 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 `vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details. Build detail responses obtain their vote summary through VoteService; list responses reuse page vote summaries supplied by BuildService after ranking. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 
 ## Mapping and flow
+
+Local registration creates a user with a nullable `emailVerifiedAt`, persists a SHA-256 digest of a
+256-bit URL-safe verification secret, and asks the outbound Quarkus Mailer adapter to deliver the
+public `/verify-email?token=...` link. The plaintext secret is never persisted. Verification locks
+the token row, checks its 24-hour expiry, marks the user verified, and deletes the token in one
+transaction. Resend replaces the previous digest and is rate limited per client IP; its REST
+response is intentionally identical for unknown, verified, and unverified addresses. Delivery
+failure does not roll back the already-created account, so resend remains recoverable. Flyway V15
+backfills existing users as verified. Google-created users set `emailVerifiedAt` at creation because
+the Google identity verifier already requires a verified email claim; Google login sends no RingLab
+verification mail.
 
 Google sign-in uses the same RingLab session boundary as local login:
 

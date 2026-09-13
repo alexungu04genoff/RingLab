@@ -5,6 +5,7 @@ A small community build-sharing platform for a bachelor's thesis, using **Sonic 
 ## Stack and structure
 
 - Backend: Java 21, Maven, Quarkus 3.27.2, REST/Jackson, Hibernate ORM/Panache, PostgreSQL, Flyway, MapStruct, Bean Validation, SmallRye JWT, bcrypt, JUnit 5.
+- Content filtering: ModernMT `com.modernmt.text:profanity-filter:1.0.1` (Apache License 2.0), used locally through RingLab's `ProfanityPolicy`; no moderation network service or repository-owned word list is used.
 - Frontend: React 19, TypeScript, Vite, React Router, plain CSS, Vitest.
 - Local infrastructure: PostgreSQL 17 in Docker Compose. Applications run directly on your computer.
 
@@ -71,7 +72,13 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
-The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
+The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
+
+### Email verification and SMTP
+
+Local-account verification links contain a URL-safe 256-bit random secret. RingLab stores only its SHA-256 digest; it is single-use, expires after 24 hours, and a resend replaces the old token. Existing accounts are backfilled as verified by Flyway V15, so deployment does not lock them out. Resending always returns the same success message and is limited to 5 attempts per hour per client IP.
+
+Set `PUBLIC_BASE_URL` to the public frontend origin and `MAIL_FROM` to the sender address. Configure SMTP with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_TLS`; do not commit credentials. Production also needs the sender domain/DNS configuration required by the chosen SMTP provider. If delivery fails after account creation, the account remains unverified and the user can use resend verification.
 
 Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173,http://127.0.0.1:5173,https://ringlabgarage.com`. Setting it replaces this comma-separated CORS allowlist; include every frontend origin you intend to allow.
 
@@ -85,6 +92,7 @@ services. The initial full bucket allows a normal UI page to make a short burst.
 - `GET /api/news`: 30/minute per client IP
 - login and Google login: 10/minute per client IP, in separate buckets
 - registration: 5/hour per client IP
+- resend verification: 5/hour per client IP
 - build creation: 10/minute per authenticated user
 - comment creation: 10/minute per authenticated user
 - vote changes/removal: 60/minute per authenticated user

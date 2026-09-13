@@ -48,7 +48,7 @@ class BuildRestResourceTest {
       @Override
       public Page list(Query query) { return new Page(List.of(remix), 1, Map.of(id, listSummary)); }
     };
-    var users = new AuthService(null, null, null) {
+    var users = new AuthService(null, null, null, null) {
       @Override
       public User current(UUID user) { return new User(user, "author", "private", "private", Instant.EPOCH); }
     };

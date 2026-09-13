@@ -3,9 +3,10 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.auth.AuthService;
-import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
+import dev.ringlab.port.out.EmailVerificationTokenRepository;
+import dev.ringlab.domain.auth.EmailVerificationToken;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import java.time.Instant;
 import java.util.*;
@@ -24,17 +25,22 @@ class AuthServiceTest {
   }
   private InMemoryUserRepository users;
   private AuthService service;
+  private InMemoryVerificationTokens verificationTokens;
+  private StubProfanityPolicy profanity;
 
   @BeforeEach
   void setUp() {
     users = new InMemoryUserRepository();
-    service = new AuthService(users, VALIDATORS.getValidator(), new ProfanityPolicy());
+    verificationTokens = new InMemoryVerificationTokens();
+    profanity = new StubProfanityPolicy();
+    service = new AuthService(users, verificationTokens, VALIDATORS.getValidator(), profanity);
   }
 
   @Test
   void registrationNormalizesAccountAndHashesPassword() {
-    User registered =
+    var verification =
         service.register("Mixed_CASE", "Person@Example.COM", "password-123");
+    User registered = users.lastCreated;
 
     assertSame(registered, users.lastCreated);
     assertEquals("mixed_case", registered.username());
@@ -43,16 +49,21 @@ class AuthServiceTest {
     assertTrue(BcryptUtil.matches("password-123", registered.passwordHash()));
     assertNotNull(registered.id());
     assertNotNull(registered.createdAt());
+    assertNull(registered.emailVerifiedAt());
+    assertNotEquals(verification.token(), verificationTokens.lastStored.tokenHash());
   }
 
   @Test
   void registrationRejectsProfaneUsernameBeforePersistence() {
+    profanity.blocked.add("crap");
+
     var error = assertThrows(ValidationException.class,
-        () -> service.register("FUCK", "person@example.com", "password-123"));
+        () -> service.register("CRAP", "person@example.com", "password-123"));
 
     assertEquals("Text contains inappropriate language", error.getMessage());
     assertNull(users.lastCreated);
     assertNull(users.checkedUsername);
+    assertEquals(List.of(new StubProfanityPolicy.Check("crap", null)), profanity.checks);
   }
 
   @Test
@@ -90,6 +101,34 @@ class AuthServiceTest {
   }
 
   @Test
+  void unverifiedAccountWithCorrectPasswordCannotLogInUntilItsTokenIsUsed() {
+    var delivery = service.register("account", "account@example.com", "correct-password");
+
+    var rejected = assertThrows(ForbiddenException.class, () -> service.login("account", "correct-password"));
+    assertEquals("Please verify your email before signing in.", rejected.getMessage());
+
+    service.verifyEmail(delivery.token());
+    assertNotNull(users.byUsername("account").orElseThrow().emailVerifiedAt());
+    assertEquals(users.byUsername("account").orElseThrow(), service.login("account", "correct-password"));
+    assertThrows(ValidationException.class, () -> service.verifyEmail(delivery.token()));
+  }
+
+  @Test
+  void wrongPasswordDoesNotRevealUnverifiedStatus() {
+    service.register("account", "account@example.com", "correct-password");
+    var error = assertThrows(AuthenticationException.class, () -> service.login("account", "wrong-password"));
+    assertEquals("Invalid username or password", error.getMessage());
+  }
+
+  @Test
+  void resendReplacesTheOldToken() {
+    var first = service.register("account", "account@example.com", "correct-password");
+    var second = service.resendVerification("account@example.com").orElseThrow();
+    assertThrows(ValidationException.class, () -> service.verifyEmail(first.token()));
+    service.verifyEmail(second.token());
+  }
+
+  @Test
   void missingUserLoginIsRejected() {
     AuthenticationException error =
         assertThrows(AuthenticationException.class, () -> service.login("missing", "password-123"));
@@ -114,8 +153,10 @@ class AuthServiceTest {
   @Test
   void acceptedPasswordsCanLogInWithoutTrimming() {
     for (String password : List.of("        ", " password ", "x".repeat(72), "€".repeat(24))) {
-      User registered = service.register("account", "account@example.com", password);
-      assertEquals(registered, service.login("ACCOUNT", password));
+      var verification = service.register("account", "account@example.com", password);
+      service.verifyEmail(verification.token());
+      User registered = users.lastCreated;
+      assertEquals(registered.id(), service.login("ACCOUNT", password).id());
       assertTrue(BcryptUtil.matches(password, registered.passwordHash()));
     }
   }
@@ -188,6 +229,11 @@ class AuthServiceTest {
     }
 
     @Override
+    public Optional<User> byEmail(String email) {
+      return usersByUsername.values().stream().filter(user -> user.email().equals(email)).findFirst();
+    }
+
+    @Override
     public boolean exists(String username, String email) {
       checkedUsername = username;
       checkedEmail = email;
@@ -199,6 +245,31 @@ class AuthServiceTest {
       lastCreated = user;
       usersById.put(user.id(), user);
       usersByUsername.put(user.username(), user);
+    }
+
+    @Override
+    public void markEmailVerified(UUID userId, Instant verifiedAt) {
+      User old = usersById.get(userId);
+      User updated = new User(old.id(), old.username(), old.email(), old.passwordHash(), verifiedAt, old.createdAt());
+      usersById.put(userId, updated);
+      usersByUsername.put(updated.username(), updated);
+    }
+  }
+
+  private static final class InMemoryVerificationTokens implements EmailVerificationTokenRepository {
+    private final Map<String, EmailVerificationToken> byHash = new HashMap<>();
+    private EmailVerificationToken lastStored;
+
+    @Override public void replace(EmailVerificationToken token) {
+      byHash.values().removeIf(existing -> existing.userId().equals(token.userId()));
+      byHash.put(token.tokenHash(), token);
+      lastStored = token;
+    }
+    @Override public Optional<EmailVerificationToken> byTokenHashForUpdate(String hash) {
+      return Optional.ofNullable(byHash.get(hash));
+    }
+    @Override public void delete(UUID userId) {
+      byHash.values().removeIf(token -> token.userId().equals(userId));
     }
   }
 }
