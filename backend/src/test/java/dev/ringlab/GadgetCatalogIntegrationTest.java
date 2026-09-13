@@ -20,7 +20,6 @@ class GadgetCatalogIntegrationTest {
   @Test
   void expandedCatalogPreservesSeedIdsAndMapsVerifiedMetadataThroughRest() throws Exception {
     var gadgets = game.listGadgets();
-    // This is the single assertion of the researched catalog size, not the game's total roster.
     assertEquals(70, gadgets.size());
     assertEquals(70, gadgets.stream().filter(g -> g.imagePath() != null).count());
     assertEquals(62, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
@@ -54,7 +53,6 @@ class GadgetCatalogIntegrationTest {
       assertEquals(gadget.slotCost(), response.get("slotCost"));
       assertEquals(gadget.imagePath(), response.get("imagePath"));
       if (gadget.slotCost() != null) {
-        // Observed first-party range: 1 (current Crash Pads), 2 (old Crash Pads), 3 (kit screenshot).
         assertTrue(gadget.slotCost() >= 1 && gadget.slotCost() <= 3, gadget.name());
       }
       if (gadget.imagePath() != null) {
@@ -90,7 +88,6 @@ class GadgetCatalogIntegrationTest {
       draft.put(slot.toLowerCase() + "PartId", game.listMachineParts().stream()
           .filter(p -> p.type().name().equals(slot)).findFirst().orElseThrow().id());
     }
-    // A three-slot kit and a one-slot gadget fit independently of presentation order.
     draft.put("gadgetIds", order);
     String id = given().auth().oauth2(token).contentType("application/json").body(draft)
         .post("/api/builds").then().statusCode(200).body("gadgets.id", equalTo(order))

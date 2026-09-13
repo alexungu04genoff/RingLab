@@ -9,7 +9,6 @@ import io.restassured.specification.RequestSpecification;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
-/** Full HTTP requests, real JWTs, Flyway schema, and a real PostgreSQL database. */
 public abstract class ApiContract {
   record Account(String token, String id, String username, String email) {}
 

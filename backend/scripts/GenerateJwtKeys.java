@@ -2,7 +2,6 @@ import java.nio.file.*;
 import java.security.KeyPairGenerator;
 import java.util.Base64;
 
-/** Run with Java 21: java scripts/GenerateJwtKeys.java .keys */
 class GenerateJwtKeys {
   public static void main(String[] args) throws Exception {
     Path directory = Path.of(args.length == 0 ? ".keys" : args[0]);

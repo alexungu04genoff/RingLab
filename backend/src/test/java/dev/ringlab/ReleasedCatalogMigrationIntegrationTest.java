@@ -9,7 +9,6 @@ import javax.sql.DataSource;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 
-/** Manual PostgreSQL boundary check: never run against a production database. */
 @QuarkusTest
 class ReleasedCatalogMigrationIntegrationTest {
   @Inject DataSource dataSource;

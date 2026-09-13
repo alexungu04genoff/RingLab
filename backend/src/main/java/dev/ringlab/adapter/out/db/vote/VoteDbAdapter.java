@@ -1,6 +1,8 @@
 package dev.ringlab.adapter.out.db.vote;
 
 import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.application.NotFoundException;
+import org.hibernate.exception.ConstraintViolationException;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -19,15 +21,22 @@ public class VoteDbAdapter implements VoteRepository {
   }
 
   public void put(Vote v) {
-    // PostgreSQL upsert preserves uniqueness even for simultaneous requests.
-    em.createNativeQuery(
-            "insert into votes(id,user_id,build_id,value) values (:id,:user,:build,:value) on"
-                + " conflict(user_id,build_id) do update set value=excluded.value")
-        .setParameter("id", UUID.randomUUID())
-        .setParameter("user", v.userId())
-        .setParameter("build", v.buildId())
-        .setParameter("value", v.value())
-        .executeUpdate();
+    try {
+      em.createNativeQuery(
+              "insert into votes(id,user_id,build_id,value) values (:id,:user,:build,:value) on"
+                  + " conflict(user_id,build_id) do update set value=excluded.value")
+          .setParameter("id", UUID.randomUUID())
+          .setParameter("user", v.userId())
+          .setParameter("build", v.buildId())
+          .setParameter("value", v.value())
+          .executeUpdate();
+    } catch (ConstraintViolationException exception) {
+      if ("23503".equals(exception.getSQLState())
+          && "votes_build_id_fkey".equals(exception.getConstraintName())) {
+        throw NotFoundException.missing("Build");
+      }
+      throw exception;
+    }
   }
 
   public void remove(UUID user, UUID build) {

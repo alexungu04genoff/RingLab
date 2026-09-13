@@ -98,7 +98,6 @@ class BuildRankingIntegrationTest {
     var first = build(author, racer, machine, "first", 3, 0, 2);
     var second = build(author, racer, machine, "second", 3, 0, 2);
     em.flush();
-    // PostgreSQL UUID ordering is unsigned byte order, equivalent to canonical text order.
     var tied = new ArrayList<>(List.of(first, second));
     tied.sort(java.util.Comparator.comparing(UUID::toString));
     tied.add(old);
@@ -134,8 +133,6 @@ class BuildRankingIntegrationTest {
     var oneDown = build(author, racer, machine, "one down", 0, 1, 5);
     var twoDown = build(author, racer, machine, "two down newer", 0, 2, 6);
     em.flush();
-    // Balanced outranks empty within zero; negative outranks oneDown by Wilson,
-    // despite its lower raw score. All-down Wilson values tie at zero.
     assertEquals(List.of(positive, balanced, empty, negative, oneDown, twoDown),
         ids(author, "rated", 0, 50));
   }

@@ -55,6 +55,45 @@ Generated build and coverage output remains untracked: `backend/target/`,
 
 ## Current run status
 
+### Robustness fixes — 2026-09-13
+
+Targeted backend verification ran HttpRestExceptionMapperTest,
+UnexpectedExceptionRestExceptionMapperTest, ParentConstraintTranslationTest,
+HttpRobustnessIntegrationTest and ParentDeletionIntegrationTest. The first run
+found a missing JSON Content-Type in the logout test request; after correcting
+that fixture, all these classes passed in the full run. The coordinated deletion
+test covers vote/comment/remix missing-parent failures and rollback of an earlier
+write in the same transaction. Unit tests reject translation of unrelated constraints.
+
+Full backend `test`: 145 tests, 144 passed, one ArchitectureTest failure. The
+existing BuildDbAdapter candidate projection depends on BuildRanking.Candidate,
+which the persistence ranking rule prohibits. That pre-existing conflict is not
+changed by the robustness fixes. Acceptance, HTTP robustness, missing-account,
+deletion-race, repository and migration tests passed. Packaged `verify` and fresh
+coverage analysis were not run; this is not a clean full-verification claim.
+
+Reproduce from the repository root against the disposable test database (never
+point these tests at the normal application database):
+
+```powershell
+mvn -f backend/pom.xml "-Dquarkus.datasource.jdbc.url=jdbc:postgresql://localhost:5432/ringlab_robustness_test" "-Dquarkus.datasource.username=ringlab" "-Dquarkus.datasource.password=ringlab" "-Dquarkus.datasource.devservices.enabled=false" test
+```
+
+The named test classes can also be run directly in IntelliJ with the same test
+datasource configuration. For a targeted Maven run add
+`-Dtest=HttpRestExceptionMapperTest,UnexpectedExceptionRestExceptionMapperTest,ParentConstraintTranslationTest,HttpRobustnessIntegrationTest,ParentDeletionIntegrationTest`.
+
+Frontend targeted API/auth/editor tests passed after correcting a jsdom router
+harness incompatibility. Full `npm test` passed 77 tests; `npm run build` passed.
+Run both from `frontend/`. Tests cover A-to-B edit load failure/forbidden/delay,
+401 expiration, retained tokens on network/429/503/500 errors, successful retry,
+and Retry-After preservation/display.
+
+The existing local stack was reused and refreshed. Frontend and proxied racers
+API returned 200 at http://localhost:5173. Live malformed path UUID, query UUID,
+overflowing page and malformed JSON returned sanitized JSON 400; wrong media
+type returned sanitized JSON 415. No normal application data was reset.
+
 The 2026-09-13 backend `verify` run failed during Surefire: four assertions failed
 across `AcceptanceTest`, `GadgetCatalogIntegrationTest`, and
 `GameDataRepositoryIntegrationTest`. Packaged tests did not run; their report on

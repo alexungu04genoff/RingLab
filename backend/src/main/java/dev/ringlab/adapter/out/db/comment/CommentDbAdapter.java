@@ -1,6 +1,8 @@
 package dev.ringlab.adapter.out.db.comment;
 
 import dev.ringlab.domain.comment.Comment;
+import dev.ringlab.application.NotFoundException;
+import org.hibernate.exception.ConstraintViolationException;
 import dev.ringlab.port.out.CommentRepository;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -26,7 +28,15 @@ public class CommentDbAdapter
   }
 
   public void create(Comment c) {
-    persist(mapper.toEntity(c));
+    try {
+      persistAndFlush(mapper.toEntity(c));
+    } catch (ConstraintViolationException exception) {
+      if ("23503".equals(exception.getSQLState())
+          && "comments_build_id_fkey".equals(exception.getConstraintName())) {
+        throw NotFoundException.missing("Build");
+      }
+      throw exception;
+    }
   }
 
   public void delete(UUID id) {

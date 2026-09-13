@@ -32,7 +32,6 @@ public class ExternalAuthService {
           .orElseThrow(() -> new AuthenticationException("Account unavailable"));
 
     String email = verified.email().toLowerCase(Locale.ROOT);
-    // Empty usernames cannot exist; this checks only the independently unique email.
     if (users.exists("", email))
       throw new AlreadyExistsException(
           "An account already exists with this email. Sign in with your existing account first.");

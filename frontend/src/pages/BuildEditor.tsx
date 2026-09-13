@@ -12,6 +12,10 @@ const partSlots = [
   { key: "rearPartId", type: "REAR", label: "Rear" },
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
+const emptyDraft = (): BuildDraft => ({
+  title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: "",
+  gameVersionId: null, remixedFromBuildId: null, gadgetIds: [],
+});
 export function draftFromRemix(build: Build): BuildDraft {
   return {
     title: `Remix of ${build.title}`,
@@ -31,17 +35,8 @@ export function BuildEditor() {
   const remixSourceId = id ? null : searchParams.get("remixFrom");
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState<BuildDraft>({
-    title: "",
-    description: "",
-    racerId: "",
-    frontPartId: "",
-    rearPartId: "",
-    tirePartId: "",
-    gameVersionId: null,
-    remixedFromBuildId: null,
-    gadgetIds: [],
-  });
+  const [draft, setDraft] = useState<BuildDraft>(emptyDraft);
+  const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -53,15 +48,23 @@ export function BuildEditor() {
   const gadgets = useLoad<Gadget[]>("/gadgets");
   const versions = useLoad<GameVersion[]>("/game-versions");
   useEffect(() => {
+    setDraft(emptyDraft());
+    setLoadedBuild(undefined);
+    setAllowed(!id);
+    setLoading(!!id);
+    setError("");
+    setStockSourceId("");
     if (!id) return;
     const controller = new AbortController();
     api<Build>(`/builds/${id}`, { signal: controller.signal })
       .then((b) => {
+        if (controller.signal.aborted) return;
         if (b.author.id !== user?.id) {
           setError("Only the author may edit this build.");
           return;
         }
         setAllowed(true);
+        setLoadedBuild({ id: b.id, authorId: b.author.id });
         setDraft({
           title: b.title,
           description: b.description,
@@ -103,6 +106,7 @@ export function BuildEditor() {
   const selectedGadgets = draft.gadgetIds
     .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId));
   const plateStatus = gadgetPlateStatus(selectedGadgets);
+  const canSubmit = allowed && (!id || (loadedBuild?.id === id && loadedBuild.authorId === user?.id));
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -121,12 +125,12 @@ export function BuildEditor() {
       {loading ? (
         <p role="status">Loading your build…</p>
       ) : (
-        allowed && (
+        canSubmit && (
           <form
             className="editor"
             onSubmit={async (e) => {
               e.preventDefault();
-              if (!plateStatus.valid) return;
+              if (busy || !canSubmit || loading || !plateStatus.valid) return;
               setBusy(true);
               setError("");
               try {

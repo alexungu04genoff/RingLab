@@ -5,8 +5,6 @@ import { AuthProvider } from "../src/auth";
 import { setToken } from "../src/api";
 import { BuildDetails } from "../src/pages/BuildDetails";
 
-// A real-browser interaction test using the existing Vite/React dependencies.
-// Fixed server responses deliberately avoid reproducing vote arithmetic in the test.
 const part = (type: string) => ({ id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine" });
 const build = {
   id: "build", title: "Voting fixture", description: "", author: { id: "author", username: "driver" },

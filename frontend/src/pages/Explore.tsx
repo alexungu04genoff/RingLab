@@ -325,7 +325,6 @@ export function Explore({ mine = false }: { mine?: boolean }) {
       if (value) localStorage.setItem(key, value);
       else localStorage.removeItem(key);
     } catch {
-      // Browsing still works when storage is unavailable.
     }
   }
 

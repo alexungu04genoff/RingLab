@@ -9,7 +9,6 @@ import java.util.UUID;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.Test;
 
-/** Runs V1–V3 and V4 in an isolated schema within the disposable test database. */
 @QuarkusTest
 class MachinePartsMigrationIntegrationTest {
   @Inject DataSource dataSource;

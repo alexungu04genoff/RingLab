@@ -59,7 +59,6 @@ public class BuildService {
     return builds.find(id).orElseThrow(() -> NotFoundException.missing("Build"));
   }
 
-  /** Provenance is optional: its source may have been deleted since the build was read. */
   public Optional<Build> remixSource(Build build) {
     return build.remixedFromBuildId() == null
         ? Optional.empty() : builds.find(build.remixedFromBuildId());

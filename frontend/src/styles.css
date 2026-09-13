@@ -2212,7 +2212,6 @@ hr {
   }
 }
 
-/* Visual loadouts */
 .stock-machine-control { max-width: 420px; margin-bottom: 20px; }
 .part-select .selected-part,
 .racer-select .selected-part { display: flex; align-items: center; gap: 12px; margin-top: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 6px; background: #12171f; }
@@ -2267,7 +2266,6 @@ hr {
   .gadget-heading { align-items: flex-start; flex-wrap: wrap; }
 }
 
-/* Build comparison */
 .compare-selector { max-width: 760px; }
 .compare-selector h2 { margin: 6px 0 20px; }
 .compare-selector > .muted { margin-top: 12px; }

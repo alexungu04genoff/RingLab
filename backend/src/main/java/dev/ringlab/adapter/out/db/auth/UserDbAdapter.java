@@ -32,7 +32,6 @@ public class UserDbAdapter implements UserRepository, PanacheRepositoryBase<User
     try {
       persistAndFlush(mapper.toEntity(user));
     } catch (ConstraintViolationException e) {
-      // Names are defined by the username/email UNIQUE constraints in Flyway V1.
       if ("23505".equals(e.getSQLState())
           && ("users_username_key".equals(e.getConstraintName())
               || "users_email_key".equals(e.getConstraintName()))) {

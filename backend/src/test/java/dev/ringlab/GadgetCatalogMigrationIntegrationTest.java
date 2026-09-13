@@ -73,7 +73,6 @@ class GadgetCatalogMigrationIntegrationTest {
   }
 
   private void assertSameRows(Statement sql, String first, String second) throws Exception {
-    // Both directions detect inserted/deleted/changed values; EXCEPT ALL also preserves multiplicity.
     assertZero(sql, "SELECT count(*) FROM ((SELECT * FROM " + first + " EXCEPT ALL SELECT * FROM " + second
         + ") UNION ALL (SELECT * FROM " + second + " EXCEPT ALL SELECT * FROM " + first + ")) differences");
   }

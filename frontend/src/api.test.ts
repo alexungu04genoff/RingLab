@@ -55,4 +55,23 @@ describe("HTTP client contract", () => {
       message: "Title must not be blank",
     });
   });
+  it("retains Retry-After and authentication on throttling", async () => {
+    setToken("valid-token");
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ message: "Too many requests" }),
+      { status: 429, headers: { "Retry-After": "6" } },
+    )));
+    await expect(api("/auth/me")).rejects.toMatchObject({
+      status: 429, retryAfterSeconds: 6,
+      message: "Too many requests Try again in 6 seconds.",
+    });
+    expect(storage.get("ringlab-token")).toBe("valid-token");
+    expect(window.dispatchEvent).not.toHaveBeenCalled();
+  });
+  it.each(["invalid", "-1"])("ignores an unusable Retry-After value: %s", async (value) => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(
+      JSON.stringify({ message: "Too many requests" }), { status: 429, headers: { "Retry-After": value } },
+    )));
+    await expect(api("/builds")).rejects.toMatchObject({ retryAfterSeconds: undefined, message: "Too many requests" });
+  });
 });

@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.adapter.out.db.gamedata.MachinePartDbEntity;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.application.NotFoundException;
+import org.hibernate.exception.ConstraintViolationException;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.port.out.BuildRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -81,7 +83,16 @@ public class BuildDbAdapter implements BuildRepository {
   }
 
   public void save(Build build) {
-    em.merge(mapper.toEntity(build));
+    try {
+      em.merge(mapper.toEntity(build));
+      em.flush();
+    } catch (ConstraintViolationException exception) {
+      if ("23503".equals(exception.getSQLState())
+          && "builds_remixed_from_build_id_fkey".equals(exception.getConstraintName())) {
+        throw NotFoundException.missing("Remix source build");
+      }
+      throw exception;
+    }
   }
 
   public void delete(UUID id) {

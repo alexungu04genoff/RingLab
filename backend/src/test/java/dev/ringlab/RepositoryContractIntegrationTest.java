@@ -234,7 +234,6 @@ class RepositoryContractIntegrationTest {
   }
 
   private long rows(String table, UUID build) {
-    // Table names are fixed test literals, never user input.
     return ((Number) em.createNativeQuery("select count(*) from " + table + " where build_id = :build")
         .setParameter("build", build).getSingleResult()).longValue();
   }

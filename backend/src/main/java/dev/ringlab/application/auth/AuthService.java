@@ -42,7 +42,6 @@ public class AuthService {
           throw new ValidationException(violation.getPropertyPath() + ": " + violation.getMessage());
         });
   }
-  // Equal-cost check for nonexistent accounts avoids a cheap username timing oracle.
   private final String dummyHash = BcryptUtil.bcryptHash("ringlab-dummy-password");
 
   @Transactional
@@ -62,7 +61,6 @@ public class AuthService {
   }
 
   public User login(String username, String password) {
-    // Login retains the broader legacy input range and never trims passwords.
     validateInput(new LoginInput(username, password));
     var user = users.byUsername(username.toLowerCase(Locale.ROOT));
     boolean valid = BcryptUtil.matches(password, user.map(User::passwordHash).orElse(dummyHash));

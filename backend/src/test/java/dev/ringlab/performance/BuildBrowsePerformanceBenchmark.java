@@ -42,11 +42,6 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 
-/**
- * Manual development benchmark for GET /api/builds. It is deliberately not named *Test, so the
- * normal test suite does not execute it. Run it explicitly against a disposable PostgreSQL
- * database with -Dtest=BuildBrowsePerformanceBenchmark.
- */
 @QuarkusTest
 @TestProfile(BuildBrowsePerformanceBenchmark.Profile.class)
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)

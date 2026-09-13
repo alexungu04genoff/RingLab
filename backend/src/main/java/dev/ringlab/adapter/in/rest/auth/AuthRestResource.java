@@ -62,6 +62,6 @@ public class AuthRestResource {
   @Path("logout")
   @RolesAllowed("user")
   public void logout() {
-    /* Client discards its short-lived bearer token. */
+    actor.id();
   }
 }
