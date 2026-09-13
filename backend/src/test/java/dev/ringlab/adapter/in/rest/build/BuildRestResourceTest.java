@@ -39,24 +39,36 @@ class BuildRestResourceTest {
       public void save(Build build) { throw new UnsupportedOperationException(); }
       public void delete(UUID build) { throw new UnsupportedOperationException(); }
     };
+    VoteSummary listSummary = new VoteSummary(4, 1);
     var builds = new BuildService(repository, null, null) {
       @Override
-      public Page list(Query query) { return new Page(List.of(remix), 1); }
+      public Page list(Query query) { return new Page(List.of(remix), 1, Map.of(id, listSummary)); }
     };
     var users = new AuthService(null, null) {
       @Override
       public User current(UUID user) { return new User(user, "author", "private", "private", Instant.EPOCH); }
     };
-    var votes = new VoteService(null, builds) {
-      @Override
-      public VoteSummary summary(UUID build) { return new VoteSummary(0, 0); }
+    class CountingVoteService extends VoteService {
+      int calls;
+      CountingVoteService() { super(null, builds); }
+      @Override public VoteSummary summary(UUID build) {
+        calls++;
+        return new VoteSummary(2, 3);
+      }
     };
+    var votes = new CountingVoteService();
     var resource = new BuildRestResource(builds, users, new Catalog(id), votes, null);
-    assertNull(resource.get(id).remixedFrom());
     var page = resource.list(null, null, null, null, null, "newest", 0, 12);
     assertEquals(1, page.total());
     assertEquals(id, page.items().getFirst().id());
+    assertEquals(3, page.items().getFirst().score());
+    assertEquals(0, votes.calls);
     assertNull(page.items().getFirst().remixedFrom());
+
+    var detail = resource.get(id);
+    assertNull(detail.remixedFrom());
+    assertEquals(-1, detail.score());
+    assertEquals(1, votes.calls);
     assertThrows(dev.ringlab.application.NotFoundException.class, () -> resource.get(source));
   }
 

@@ -6,6 +6,7 @@ import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
 import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
@@ -52,8 +53,11 @@ public class BuildRestResource {
   }
 
   private BuildResponse response(Build b) {
+    return response(b, votes.summary(b.id()));
+  }
+
+  private BuildResponse response(Build b, VoteSummary summary) {
     var author = users.current(b.authorId());
-    var summary = votes.summary(b.id());
     var remixSource = builds.remixSource(b).orElse(null);
     return new BuildResponse(
         b.id(),
@@ -91,7 +95,8 @@ public class BuildRestResource {
         new BuildRepository.Filter(search, racer, machine, author, gameVersion),
         buildSort, page, size));
     return new BuildPageResponse(
-        result.items().stream().map(this::response).toList(), result.total(), page, size);
+        result.items().stream().map(build -> response(build, result.summary(build.id()))).toList(),
+        result.total(), page, size);
   }
 
   @GET

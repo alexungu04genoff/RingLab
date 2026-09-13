@@ -134,9 +134,67 @@ The 60-row HTTP medians contain a large fixed REST/serialization/instrumentation
 not be compared as if sub-millisecond differences were meaningful. At 5,000 rows the candidate phase
 is dominant enough for the scaling direction to be clear.
 
+## Optimization Pass 1
+
+Measured on 2026-09-13 with the same `BuildBrowsePerformanceBenchmark`, disposable database,
+datasets, scenarios, two warm-ups, seven recorded iterations, and development environment described
+above. The original baseline tables remain unchanged.
+
+This pass made two application-level changes:
+
+1. NEWEST now ranks candidates with the canonical NEWEST comparator without retrieving candidate-wide
+   vote summaries. After pagination it bulk-fetches summaries only for the returned page IDs so the
+   response still displays votes.
+2. SCORE and BEST_RATED retain their candidate-wide bulk summaries for exact ranking, but BuildService
+   now returns the relevant page summaries with the page. BuildRestResource uses those facts instead
+   of issuing one vote-summary query per returned build.
+
+### Pass 1 rerun
+
+All latencies are milliseconds. These are the three unfiltered page-0 scenarios from the complete
+60, 500, and 5,000-build rerun.
+
+| Builds | Scenario | Service median | HTTP median | Service SQL | HTTP SQL |
+|---:|---|---:|---:|---:|---:|
+| 60 | newest | 30.317 | 137.059 | 6 | 52 |
+| 60 | score | 23.868 | 106.105 | 6 | 47 |
+| 60 | rated | 18.408 | 112.744 | 6 | 47 |
+| 500 | newest | 74.237 | 129.326 | 34 | 80 |
+| 500 | score | 63.322 | 115.492 | 34 | 70 |
+| 500 | rated | 58.171 | 110.716 | 34 | 70 |
+| 5,000 | newest | 508.365 | 649.014 | 315 | 361 |
+| 5,000 | score | 855.950 | 560.504 | 315 | 351 |
+| 5,000 | rated | 444.796 | 482.667 | 315 | 351 |
+
+### Baseline comparison at 5,000 builds
+
+Positive percentages mean a lower median; negative percentages mean the rerun was slower. The
+development benchmark measures the service and HTTP paths separately, so their medians can vary
+independently. In particular, the SCORE service rerun was an outlier in the slower direction while
+its HTTP median improved. SQL counts and query scope are the more deterministic evidence for this
+pass.
+
+| Scenario | Service before | Service after | Service improvement | HTTP before | HTTP after | HTTP improvement | Service SQL before / after | HTTP SQL before / after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| NEWEST | 579.781 | 508.365 | 12.3% | 604.965 | 649.014 | -7.3% | 315 / 315 | 373 / 361 |
+| SCORE | 502.267 | 855.950 | -70.4% | 642.074 | 560.504 | 12.7% | 315 / 315 | 363 / 351 |
+| BEST_RATED | 520.096 | 444.796 | 14.5% | 594.656 | 482.667 | 18.8% | 315 / 315 | 363 / 351 |
+
+Every full 12-item HTTP response used 12 fewer SQL statements. SCORE and BEST_RATED still use one
+candidate-wide grouped summary query because exact ranking requires those facts. NEWEST now uses one
+page-wide grouped summary query for 12 IDs instead of one candidate-wide grouped query for 5,000 IDs;
+therefore its service SQL count remains 315 even though the work performed by that statement is much
+smaller. Its 5,000-build service median improved by 71.416 ms in this rerun, but the HTTP median
+regressed by 44.049 ms, which illustrates the noise limits of this single-workstation benchmark.
+
+Performance is not solved. Candidate mapping still initializes gadget collections for every matching
+build. At 5,000 unfiltered candidates those batched collection fetches remain 313 of the 315 service
+statements and are expected to remain the dominant large-set cost. The browse candidate
+projection/page-only gadget hydration optimization remains deliberately unimplemented.
+
 ### NEWEST vote-summary impact
 
-Production NEWEST executed the same all-candidate bulk vote query as SCORE and BEST_RATED even though
+At baseline, production NEWEST executed the same all-candidate bulk vote query as SCORE and BEST_RATED even though
 its comparator never reads a vote. The counterfactual below was implemented only inside the benchmark
 harness by calling the same repository search and canonical NEWEST comparator with an empty summary
 map. Production code was not changed.
@@ -219,7 +277,8 @@ a measured heap-capacity limit.
 
 ## Evidence-backed optimization candidates
 
-These are proposals for a separate implementation task. None is implemented here.
+These were the proposals recorded with the baseline. Optimization Pass 1 above implements the first
+two; the remaining candidates are unchanged and require separate evidence and review.
 
 | Rank | Candidate | Expected benefit | Complexity | Architectural risk | Evidence |
 |---:|---|---|---|---|---|

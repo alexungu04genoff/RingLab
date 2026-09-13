@@ -59,13 +59,38 @@ class BuildServiceTest {
     var filter = new BuildRepository.Filter(null, null, null, null, null);
     assertEquals(List.of(strong, tiny),
         service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 0, 2)).items());
+    assertEquals(List.of(newest.id(), tiny.id(), strong.id()), votes.requestedIds);
     assertEquals(List.of(strong, tiny, newest),
         service.list(new BuildService.Query(filter, BuildSort.SCORE, 0, 3)).items());
+    assertEquals(List.of(newest.id(), tiny.id(), strong.id()), votes.requestedIds);
     var newestPage = service.list(new BuildService.Query(filter, BuildSort.NEWEST, 1, 2));
     assertEquals(List.of(tiny), newestPage.items());
+    assertEquals(List.of(tiny.id()), votes.requestedIds);
+    assertEquals(new VoteSummary(3, 0), newestPage.summary(tiny.id()));
     assertEquals(3, newestPage.total());
     assertTrue(service.list(new BuildService.Query(filter, BuildSort.NEWEST,
         Integer.MAX_VALUE, 50)).items().isEmpty());
+    assertEquals(List.of(tiny.id()), votes.requestedIds);
+  }
+
+  @Test
+  void scoreAndBestRatedReturnPageSummariesFromTheirRankingQuery() {
+    Instant base = Instant.parse("2026-01-01T00:00:00Z");
+    Build first = rankedBuild("first", base.plusSeconds(1));
+    Build second = rankedBuild("second", base.plusSeconds(2));
+    builds.searchResults = List.of(first, second);
+    votes.summaries.put(first.id(), new VoteSummary(7, 2));
+    votes.summaries.put(second.id(), new VoteSummary(1, 4));
+    var filter = new BuildRepository.Filter(null, null, null, null, null);
+
+    for (BuildSort sort : List.of(BuildSort.SCORE, BuildSort.BEST_RATED)) {
+      votes.summaryCalls = 0;
+      var page = service.list(new BuildService.Query(filter, sort, 0, 1));
+
+      assertEquals(List.of(first.id(), second.id()), votes.requestedIds);
+      assertEquals(new VoteSummary(7, 2), page.summary(first.id()));
+      assertEquals(0, votes.summaryCalls);
+    }
   }
 
   private Build rankedBuild(String title, Instant createdAt) {
@@ -472,12 +497,16 @@ class BuildServiceTest {
 
   private static final class EmptyVoteRepository implements VoteRepository {
     private final Map<UUID, VoteSummary> summaries = new HashMap<>();
+    private List<UUID> requestedIds = List.of();
+    private int summaryCalls;
     public void put(Vote vote) {}
     public void remove(UUID userId, UUID buildId) {}
     public VoteSummary summary(UUID buildId) {
+      summaryCalls++;
       return summaries.getOrDefault(buildId, new VoteSummary(0, 0));
     }
     public Map<UUID, VoteSummary> summaries(Collection<UUID> buildIds) {
+      requestedIds = List.copyOf(buildIds);
       return buildIds.stream().filter(summaries::containsKey)
           .collect(java.util.stream.Collectors.toMap(id -> id, summaries::get));
     }

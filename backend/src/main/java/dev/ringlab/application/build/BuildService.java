@@ -8,6 +8,7 @@ import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.MachinePartType;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
@@ -19,6 +20,7 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -27,7 +29,20 @@ import java.util.UUID;
 public class BuildService {
   public record Query(BuildRepository.Filter filter, BuildSort sort, int page, int size) {}
 
-  public record Page(List<Build> items, long total) {}
+  public record Page(List<Build> items, long total, Map<UUID, VoteSummary> summaries) {
+    public Page {
+      items = List.copyOf(items);
+      summaries = Map.copyOf(summaries);
+    }
+
+    public Page(List<Build> items, long total) {
+      this(items, total, Map.of());
+    }
+
+    public VoteSummary summary(UUID buildId) {
+      return summaries.getOrDefault(buildId, new VoteSummary(0, 0));
+    }
+  }
 
   public record Draft(
       String title, String description, UUID racerId, UUID frontPartId,
@@ -57,15 +72,22 @@ public class BuildService {
     if (query.filter().search() != null && query.filter().search().length() > 120)
       throw new ValidationException("Search must be at most 120 characters");
     List<Build> candidates = builds.search(query.filter());
-    var summaries = votes.summaries(candidates.stream().map(Build::id).toList());
+    var summaries = query.sort() == BuildSort.NEWEST
+        ? Map.<UUID, VoteSummary>of()
+        : votes.summaries(candidates.stream().map(Build::id).toList());
     List<Build> ranked = candidates.stream()
         .sorted(BuildRanking.comparator(query.sort(), summaries))
         .toList();
     long offset = (long) query.page() * query.size();
-    if (offset >= ranked.size()) return new Page(List.of(), ranked.size());
+    if (offset >= ranked.size()) return new Page(List.of(), ranked.size(), Map.of());
     int from = (int) offset;
     int to = (int) Math.min(offset + query.size(), ranked.size());
-    return new Page(ranked.subList(from, to), ranked.size());
+    List<Build> items = ranked.subList(from, to);
+    Map<UUID, VoteSummary> pageSummaries = query.sort() == BuildSort.NEWEST
+        ? votes.summaries(items.stream().map(Build::id).toList())
+        : items.stream().filter(build -> summaries.containsKey(build.id()))
+            .collect(java.util.stream.Collectors.toMap(Build::id, build -> summaries.get(build.id())));
+    return new Page(items, ranked.size(), pageSummaries);
   }
 
   private void validate(Draft d) {
