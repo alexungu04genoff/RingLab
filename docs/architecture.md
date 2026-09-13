@@ -242,7 +242,10 @@ Production packaging is defined separately in `compose.production.yaml`: Caddy
 serves the compiled React SPA and proxies unchanged `/api/*` paths to the Java 21
 Quarkus container; PostgreSQL 17 persists in a production-only volume on an internal
 network. Only Caddy publishes 80/443. Images are built on CI after both test jobs
-pass, not on the VPS. This configuration is prepared, not yet deployed.
+pass, not on the VPS. Production releases require a separate workflow_dispatch
+action selecting a full commit SHA; the workflow resolves both images to immutable
+digests and uses the protected production environment. Pushes never deploy.
+Runtime secrets stay on the VPS. This configuration is prepared, not yet deployed.
 
 The rate-limit adapter can additionally trust one explicitly configured proxy IP.
 Production pins Caddy's Docker address and makes it replace the visitor-IP header

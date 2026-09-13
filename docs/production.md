@@ -10,7 +10,8 @@ After a push to main, the existing backend and frontend CI jobs must both pass.
 The new publish-images job builds linux/amd64 images on GitHub runners and publishes
 `ghcr.io/alexungu04genoff/ringlab-backend:FULL_COMMIT_SHA` and
 `ghcr.io/alexungu04genoff/ringlab-frontend:FULL_COMMIT_SHA`. No VPS compilation or
-automatic SSH deployment is configured. A failed second image publication means
+automatic SSH deployment is configured. The separate manual workflow below is the
+only GitHub deployment entry point. A failed second image publication means
 that revision is not ready: deploy only after the entire publish job succeeds.
 Record both image digests for reproducible rollbacks; do not deploy `latest`.
 
@@ -70,7 +71,100 @@ overwrite mode off and avoid Workers that alter visitor-IP headers on this route
 Direct origin traffic still bypasses Cloudflare edge protections; a later origin
 firewall restriction must account for certificate validation and SSH access.
 
-## Configuration, keys and data
+## Manual GitHub deployment
+
+Local `git commit` has no deployment/network effect from this configuration (no
+Git hooks are added). A push runs CI. Successful main CI may publish SHA-tagged
+images, but neither CI nor image publication invokes production deployment.
+`deploy-production.yml` has **only workflow_dispatch**, with no push, workflow_run,
+schedule, or reusable-workflow trigger. It accepts dispatches from main only.
+
+Local verification of this addition: deployment script and all five multiline
+workflow shell blocks passed `bash -n`; mocked success, image-pull failure, and
+origin-health failure scenarios passed, preserving runtime files and ensuring
+pull failure never starts containers. Static checks confirmed manual-only triggers,
+strict SSH host checking, and non-cancelling concurrency. `git diff --check` passed.
+These checks did not contact GitHub/GHCR/Hetzner or run a deployment. The workflow
+itself still needs its first authorized GitHub run after access and production
+prerequisites are configured; no application suites were rerun for this addition.
+
+After these files are reviewed and manually pushed to the default branch:
+
+1. Open GitHub -> Actions -> **Deploy production manually** -> **Run workflow**.
+2. Select branch **main** for the workflow code.
+3. Enter the full lowercase 40-character commit SHA in **revision**. This may be an
+   older SHA; the branch selector does not choose the application revision.
+4. Click Run workflow and complete any production-environment approval.
+
+The workflow checks for a successful main push run of ci.yml for that exact SHA,
+then requires both GHCR images. Missing images or denied package access fail before
+SSH. SHA tags identify the revision, but registry tags can technically be moved:
+the workflow resolves them to content digests and deploys `image@sha256:...`, never
+main/latest. Keep old images and successful CI run records available for rollback;
+do not delete or deliberately republish old release tags.
+
+Create GitHub Environment **production** manually. Restrict deployment branches to
+main and optionally enable required reviewers/prevent self-review where supported
+by your GitHub plan. Workflow dispatch is required even without approval rules.
+See [GitHub workflow syntax](https://docs.github.com/en/actions/reference/workflows-and-actions/workflow-syntax)
+for manual triggers and environment configuration.
+
+Create these **production environment secrets** manually:
+
+| Secret | Value |
+| --- | --- |
+| PRODUCTION_HOST | VPS IPv4 or hostname, currently 204.168.215.4; SSH port 22 |
+| PRODUCTION_SSH_USER | deploy, or a dedicated deployment user |
+| PRODUCTION_SSH_PRIVATE_KEY | Dedicated Actions SSH key; add its public key to that user's authorized_keys on the VPS |
+| PRODUCTION_SSH_KNOWN_HOSTS | Verified OpenSSH known_hosts line for the exact host above; obtain/verify the host key through a trusted channel |
+
+The workflow does not run unverified ssh-keyscan or disable host-key verification.
+No secrets or environment settings are created by this repository change. The SSH
+user must be able to use noninteractive `sudo -n bash` to run the deployment script;
+this is privileged server access, so protect the key and production environment.
+The job writes the key only to the ephemeral runner and removes it afterward.
+
+No extra GHCR **GitHub secret** is needed: the job's short-lived GITHUB_TOKEN has
+packages:read. Give this repository Actions read access to both GHCR packages if
+they do not inherit it. For **private** packages, the VPS additionally needs a
+read:packages credential entered once directly via `sudo docker login ghcr.io`;
+public images need no VPS registry credential. The workflow does not transmit
+GITHUB_TOKEN to the VPS. DB passwords, SMTP credentials, JWT keys and other runtime
+settings remain solely in /opt/ringlab/production.env and secrets/jwt.
+
+Prerequisites: initial server/Compose/secrets setup is already complete, PostgreSQL
+is healthy, both images can be pulled, and origin HTTPS already works. This manual
+release workflow does not provision a server, install Compose, upload a Compose
+file, set up certificates or move DNS. The reviewed Compose file stays on the VPS;
+future infrastructure changes require a separate reviewed update there.
+
+The workflow streams scripts/deploy-production.sh over verified SSH. The script
+locks deployments, validates configuration, pulls **both** selected digests before
+changing containers, then updates only backend/Caddy without recreating PostgreSQL.
+It leaves production.env/JWT files intact and writes image references to
+deployment.env, retaining previous-deployment.env. It checks HTTPS homepage/API
+directly on 127.0.0.1 with the production hostname, bypassing Cloudflare/the tunnel.
+Success records last-successful-deployment.env and the commit/digests in the Actions
+summary. These are smoke checks, not full functional acceptance tests.
+
+If an update/check fails after containers change, the workflow fails visibly;
+production may be running the requested revision. Inspect the VPS before deciding
+on rollback. No automatic rollback is attempted because migrations may have run.
+
+Rollback: run the **same manual workflow** with a previous known-good SHA. It pulls
+existing images, never builds source on the VPS. Confirm schema compatibility and
+take a backup first; Flyway does not downgrade schema. Use recorded previous digest
+references for manual recovery if tags or CI records were removed. For later
+server-side Compose maintenance after a workflow deployment, include the release
+file so the old image values in production.env cannot select an outdated release:
+
+```sh
+sudo docker compose --env-file production.env --env-file deployment.env -f compose.production.yaml ps
+# An explicit later maintenance/recovery action, not a command run by this task:
+sudo docker compose --env-file production.env --env-file deployment.env -f compose.production.yaml up -d --no-deps backend caddy
+```
+
+## Runtime configuration, keys and data
 
 Copy production.env.example to production.env on the VPS. No real production
 values belong in GitHub secrets or the repository. Compose requires DB_USER,
@@ -214,7 +308,8 @@ sudo docker compose --env-file production.env -f compose.production.yaml exec -T
 
 Schedule daily encrypted off-server backups and test restoration into an isolated
 database before relying on them. Back up JWT keys and production.env securely too.
-No backup service, paid add-on, or deployment automation is enabled by these files.
+No backup service or paid add-on is enabled by these files. The manual deployment
+workflow becomes available only after the user commits/pushes and configures access.
 
 Still required: review/commit/push manually; set the public Google repository
 variable; complete CI/image publication; enter VPS credentials; check existing
@@ -223,6 +318,5 @@ deploy preview; plan certificate/DNS transition preserving dev; verify homepage,
 catalog, registration, delivered verification link, verified local login, Google
 login, build browsing/CRUD, voting, comments, per-client 429 responses and spoofed
 header rejection, and Steam failure fallback. No live result is claimed here.
-After production is stable, the next CI step is a restricted deploy job depending
-on publish-images, pulling the successful revision on the VPS and performing
-health checks. SSH deployment credentials are not needed for this preparation.
+After production is stable, configure the production environment/SSH secrets and
+use the manual workflow above. Image publication never starts that workflow.
