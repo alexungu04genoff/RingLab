@@ -233,8 +233,7 @@ public abstract class ApiContract {
         .body(body)
         .put("/api/builds/" + id)
         .then()
-        .statusCode(200)
-        .body("gadgets.id", equalTo(body.get("gadgetIds")));
+        .statusCode(400);
     body.put("gadgetIds", List.of());
     request(author.token)
         .body(body)

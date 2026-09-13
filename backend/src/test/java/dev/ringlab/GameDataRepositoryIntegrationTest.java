@@ -40,7 +40,8 @@ class GameDataRepositoryIntegrationTest {
 
     assertEquals(RacingType.HANDLING, racer.racingType());
     assertEquals(RacingType.SPEED, machine.racingType());
-    assertNull(gadget.slotCost());
+    assertNotNull(gadget.slotCost());
+    assertTrue(gadget.slotCost() >= 1 && gadget.slotCost() <= 3);
     assertTrue(gameData.findRacer(UUID.randomUUID()).isEmpty());
     assertTrue(gameData.findMachine(UUID.randomUUID()).isEmpty());
     assertTrue(gameData.findGadget(UUID.randomUUID()).isEmpty());

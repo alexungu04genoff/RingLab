@@ -23,8 +23,8 @@ class GadgetCatalogIntegrationTest {
     // This is the single assertion of the researched catalog size, not the game's total roster.
     assertEquals(70, gadgets.size());
     assertEquals(70, gadgets.stream().filter(g -> g.imagePath() != null).count());
-    assertEquals(27, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
-    assertEquals(53, game.listRacers().stream().filter(r -> r.imagePath() != null).count());
+    assertEquals(62, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
+    assertEquals(52, game.listRacers().stream().filter(r -> r.imagePath() != null).count());
     assertEquals(gadgets.size(), gadgets.stream().map(g -> g.id()).distinct().count());
     assertEquals(gadgets.size(), gadgets.stream().map(g -> g.name()).distinct().count());
 
@@ -75,13 +75,12 @@ class GadgetCatalogIntegrationTest {
   }
 
   @Test
-  void createReadAndEditPreserveMixedOldAndNewGadgetOrderWithoutCapacityRules() {
+  void createReadAndEditPreserveMixedOldAndNewGadgetOrderWithinPlateCapacity() {
     String name = "gadgets_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     String token = given().contentType("application/json")
         .body(Map.of("username", name, "email", name + "@example.test", "password", "test-password"))
         .post("/api/auth/register").then().statusCode(200).extract().path("token");
-    var order = List.of("70000000-0000-4000-8000-000000000013", "174ea0a3-43bb-5001-bbd4-8b598482fe59",
-        "70000000-0000-4000-8000-000000000011", "70000000-0000-4000-8000-000000000012");
+    var order = List.of("70000000-0000-4000-8000-000000000013", "82005d0f-575b-5350-934f-fb108d306a21");
     Map<String, Object> draft = new HashMap<>();
     draft.put("title", "Ordered gadgets");
     draft.put("description", "");
@@ -91,7 +90,7 @@ class GadgetCatalogIntegrationTest {
       draft.put(slot.toLowerCase() + "PartId", game.listMachineParts().stream()
           .filter(p -> p.type().name().equals(slot)).findFirst().orElseThrow().id());
     }
-    // Nine known slots plus an unknown cost must remain saveable in this catalog-only task.
+    // A three-slot kit and a one-slot gadget fit independently of presentation order.
     draft.put("gadgetIds", order);
     String id = given().auth().oauth2(token).contentType("application/json").body(draft)
         .post("/api/builds").then().statusCode(200).body("gadgets.id", equalTo(order))
