@@ -193,7 +193,7 @@
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
             <maven.home>${maven.home}</maven.home>
-            <quarkus.test.integration-test-profile>test</quarkus.test.integration-test-profile>
+            <quarkus.test.integration-test-profile>prod</quarkus.test.integration-test-profile>
             <quarkus.test.arg-line>-Dringlab.rate-limit.general=100000/PT1M -Dringlab.rate-limit.build-list=100000/PT1M -Dringlab.rate-limit.news=100000/PT1M -Dringlab.rate-limit.login=100000/PT1M -Dringlab.rate-limit.google-login=100000/PT1M -Dringlab.rate-limit.registration=100000/PT1M -Dringlab.rate-limit.build-creation=100000/PT1M -Dringlab.rate-limit.comment-creation=100000/PT1M -Dringlab.rate-limit.voting=100000/PT1M -Dringlab.rate-limit.authenticated-mutation=100000/PT1M</quarkus.test.arg-line>
           </systemPropertyVariables>
         </configuration>
