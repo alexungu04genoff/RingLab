@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
 import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
@@ -81,8 +82,14 @@ public class BuildRestResource {
       @QueryParam("sort") @DefaultValue("newest") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
-    var result =
-        builds.list(new BuildRepository.Filter(search, racer, machine, author, gameVersion, sort, page, size));
+    BuildSort buildSort = switch (sort) {
+      case "score" -> BuildSort.SCORE;
+      case "rated" -> BuildSort.BEST_RATED;
+      default -> BuildSort.NEWEST;
+    };
+    var result = builds.list(new BuildService.Query(
+        new BuildRepository.Filter(search, racer, machine, author, gameVersion),
+        buildSort, page, size));
     return new BuildPageResponse(
         result.items().stream().map(this::response).toList(), result.total(), page, size);
   }

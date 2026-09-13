@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.GadgetPlate;
+import dev.ringlab.domain.build.ranking.BuildRanking;
+import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.application.ForbiddenException;
@@ -11,6 +13,7 @@ import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
+import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
@@ -21,6 +24,10 @@ import java.util.UUID;
 @ApplicationScoped
 @RequiredArgsConstructor
 public class BuildService {
+  public record Query(BuildRepository.Filter filter, BuildSort sort, int page, int size) {}
+
+  public record Page(List<Build> items, long total) {}
+
   public record Draft(
       String title, String description, UUID racerId, UUID frontPartId,
       UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
@@ -28,13 +35,23 @@ public class BuildService {
 
   private final BuildRepository builds;
   private final GameDataRepository game;
+  private final VoteRepository votes;
 
   public Build get(UUID id) {
     return builds.find(id).orElseThrow(() -> NotFoundException.missing("Build"));
   }
 
-  public BuildRepository.Page list(BuildRepository.Filter filter) {
-    return builds.list(filter);
+  public Page list(Query query) {
+    List<Build> candidates = builds.search(query.filter());
+    var summaries = votes.summaries(candidates.stream().map(Build::id).toList());
+    List<Build> ranked = candidates.stream()
+        .sorted(BuildRanking.comparator(query.sort(), summaries))
+        .toList();
+    long offset = (long) query.page() * query.size();
+    if (offset >= ranked.size()) return new Page(List.of(), ranked.size());
+    int from = (int) offset;
+    int to = (int) Math.min(offset + query.size(), ranked.size());
+    return new Page(ranked.subList(from, to), ranked.size());
   }
 
   private void validate(Draft d) {

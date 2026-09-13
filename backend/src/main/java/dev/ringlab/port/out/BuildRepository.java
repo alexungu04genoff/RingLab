@@ -9,16 +9,11 @@ public interface BuildRepository {
       UUID racerId,
       UUID machineId,
       UUID authorId,
-      UUID gameVersionId,
-      String sort,
-      int page,
-      int size) {}
-
-  record Page(List<Build> items, long total) {}
+      UUID gameVersionId) {}
 
   Optional<Build> find(UUID id);
 
-  Page list(Filter filter);
+  List<Build> search(Filter filter);
 
   void save(Build build);
 

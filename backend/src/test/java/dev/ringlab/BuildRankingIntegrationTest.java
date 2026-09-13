@@ -5,7 +5,9 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.adapter.out.db.build.BuildDbEntity;
 import dev.ringlab.adapter.out.db.vote.VoteDbEntity;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.VoteSummary;
+import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.vote.VoteService;
 import dev.ringlab.adapter.in.rest.vote.response.VoteResponse;
 import dev.ringlab.adapter.in.rest.build.BuildRestResource;
@@ -19,6 +21,7 @@ import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +29,7 @@ import org.junit.jupiter.api.Test;
 class BuildRankingIntegrationTest {
   @Inject EntityManager em;
   @Inject BuildRepository builds;
+  @Inject BuildService buildService;
   @Inject GameDataRepository game;
   @Inject VoteRepository votes;
   @Inject VoteService voteService;
@@ -49,13 +53,15 @@ class BuildRankingIntegrationTest {
 
     var rated = List.of(strong, perfect, good, eight, tiny, zero, poor, down);
     assertEquals(rated, ids(author, "rated", 0, 50));
+    assertEquals(rated, buildResource.list(null, null, null, author, null, "rated", 0, 50)
+        .items().stream().map(response -> response.id()).toList());
     assertEquals(List.of(down, zero, poor, tiny, eight, good, perfect, strong),
         ids(author, "newest", 0, 50));
     assertEquals(List.of(strong, good, perfect, eight, tiny, zero, down, poor),
         ids(author, "score", 0, 50));
     List<UUID> paged = new ArrayList<>();
     for (int page = 0; page < 4; page++) {
-      var result = builds.list(new BuildRepository.Filter(null, null, null, author, null, "rated", page, 2));
+      var result = list(null, null, null, author, null, BuildSort.BEST_RATED, page, 2);
       assertEquals(8, result.total());
       paged.addAll(result.items().stream().map(Build::id).toList());
     }
@@ -75,12 +81,11 @@ class BuildRankingIntegrationTest {
     build(author, game.listRacers().get(1).id(), machine, "Test %_ target", 40, 1, 4);
     build(author, racer, game.listMachines().get(1).id(), "Test %_ target", 40, 1, 5);
     em.flush();
-    var filter = new BuildRepository.Filter("TEST %_", racer, machine, author, null, "rated", 0, 1);
-    var result = builds.list(filter);
+    var result = list("TEST %_", racer, machine, author, null, BuildSort.BEST_RATED, 0, 1);
     assertEquals(1, result.total());
     assertEquals(List.of(match), result.items().stream().map(Build::id).toList());
-    assertTrue(builds.list(new BuildRepository.Filter("TEST %_", racer, machine, author, null,
-        "rated", 1, 1)).items().isEmpty());
+    assertTrue(list("TEST %_", racer, machine, author, null,
+        BuildSort.BEST_RATED, 1, 1).items().isEmpty());
   }
 
   @Test
@@ -101,8 +106,19 @@ class BuildRankingIntegrationTest {
   }
 
   private List<UUID> ids(UUID author, String sort, int page, int size) {
-    return builds.list(new BuildRepository.Filter(null, null, null, author, null, sort, page, size))
+    BuildSort buildSort = switch (sort) {
+      case "score" -> BuildSort.SCORE;
+      case "rated" -> BuildSort.BEST_RATED;
+      default -> BuildSort.NEWEST;
+    };
+    return list(null, null, null, author, null, buildSort, page, size)
         .items().stream().map(Build::id).toList();
+  }
+
+  private BuildService.Page list(String search, UUID racer, UUID machine, UUID author,
+      UUID gameVersion, BuildSort sort, int page, int size) {
+    return buildService.list(new BuildService.Query(
+        new BuildRepository.Filter(search, racer, machine, author, gameVersion), sort, page, size));
   }
 
   @Test
@@ -135,6 +151,7 @@ class BuildRankingIntegrationTest {
     em.flush();
     assertEquals(new VoteSummary(0, 0), votes.summary(empty));
     assertEquals(new VoteSummary(20, 40), votes.summary(id));
+    assertEquals(Map.of(id, new VoteSummary(20, 40)), votes.summaries(List.of(id, empty)));
     var response = buildResource.get(id);
     assertEquals(-20, response.score());
     assertEquals(20, response.upvotes());
@@ -180,7 +197,10 @@ class BuildRankingIntegrationTest {
       var expected = sort.equals("newest") ? List.of(tire, rear, front) : List.of(rear, tire, front);
       List<UUID> actual = new ArrayList<>();
       for (int page = 0; page < 3; page++) {
-        var result = builds.list(new BuildRepository.Filter("MIXED %_", racer, source, author, null, sort, page, 1));
+        var result = list("MIXED %_", racer, source, author, null,
+            sort.equals("newest") ? BuildSort.NEWEST
+                : sort.equals("score") ? BuildSort.SCORE : BuildSort.BEST_RATED,
+            page, 1);
         assertEquals(3, result.total());
         actual.addAll(result.items().stream().map(Build::id).toList());
       }
@@ -216,15 +236,18 @@ class BuildRankingIntegrationTest {
     for (String sort : List.of("newest", "score", "rated")) {
       List<UUID> actual = new ArrayList<>();
       for (int page = 0; page < 3; page++) {
-        var result = builds.list(new BuildRepository.Filter("PATCH %_", racer, source,
-            author, version, sort, page, 1));
+        BuildSort buildSort = sort.equals("newest") ? BuildSort.NEWEST
+            : sort.equals("score") ? BuildSort.SCORE : BuildSort.BEST_RATED;
+        var result = list("PATCH %_", racer, source, author, version, buildSort, page, 1);
         assertEquals(2, result.total());
         actual.addAll(result.items().stream().map(Build::id).toList());
         if (page == 2) assertTrue(result.items().isEmpty());
       }
       assertEquals(sort.equals("newest") ? List.of(tiny, strong) : List.of(strong, tiny), actual);
-      assertEquals(4, builds.list(new BuildRepository.Filter("PATCH %_", racer, source,
-          author, null, sort, 0, 50)).total());
+      BuildSort buildSort = sort.equals("newest") ? BuildSort.NEWEST
+          : sort.equals("score") ? BuildSort.SCORE : BuildSort.BEST_RATED;
+      assertEquals(4, list("PATCH %_", racer, source, author, null,
+          buildSort, 0, 50).total());
     }
   }
 

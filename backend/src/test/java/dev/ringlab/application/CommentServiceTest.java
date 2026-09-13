@@ -6,8 +6,11 @@ import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.comment.CommentService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.comment.Comment;
+import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.CommentRepository;
+import dev.ringlab.port.out.VoteRepository;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,7 +28,7 @@ class CommentServiceTest {
     builds = new InMemoryBuildRepository();
     builds.builds.put(buildId, build(buildId));
     comments = new InMemoryCommentRepository();
-    service = new CommentService(comments, new BuildService(builds, null));
+    service = new CommentService(comments, new BuildService(builds, null, new EmptyVoteRepository()));
   }
 
   @Test
@@ -102,8 +105,8 @@ class CommentServiceTest {
     }
 
     @Override
-    public Page list(Filter filter) {
-      return new Page(List.copyOf(builds.values()), builds.size());
+    public List<Build> search(Filter filter) {
+      return List.copyOf(builds.values());
     }
 
     @Override
@@ -115,6 +118,14 @@ class CommentServiceTest {
     public void delete(UUID id) {
       builds.remove(id);
     }
+  }
+
+  private static final class EmptyVoteRepository implements VoteRepository {
+    public void put(Vote vote) {}
+    public void remove(UUID userId, UUID buildId) {}
+    public VoteSummary summary(UUID buildId) { return new VoteSummary(0, 0); }
+    public Map<UUID, VoteSummary> summaries(Collection<UUID> buildIds) { return Map.of(); }
+    public int value(UUID userId, UUID buildId) { return 0; }
   }
 
   private static final class InMemoryCommentRepository implements CommentRepository {

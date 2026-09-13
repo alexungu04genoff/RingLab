@@ -5,6 +5,9 @@ import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -42,6 +45,21 @@ public class VoteDbAdapter implements VoteRepository {
         .setParameter("build", build)
         .getSingleResult();
     return new VoteSummary((Long) counts[0], (Long) counts[1]);
+  }
+
+  public Map<UUID, VoteSummary> summaries(Collection<UUID> buildIds) {
+    if (buildIds.isEmpty()) return Map.of();
+    Map<UUID, VoteSummary> summaries = new HashMap<>();
+    for (Object[] row : em.createQuery(
+            "select buildId, sum(case when value = 1 then 1L else 0L end),"
+                + " sum(case when value = -1 then 1L else 0L end)"
+                + " from VoteDbEntity where buildId in :buildIds group by buildId",
+            Object[].class)
+        .setParameter("buildIds", buildIds)
+        .getResultList()) {
+      summaries.put((UUID) row[0], new VoteSummary((Long) row[1], (Long) row[2]));
+    }
+    return Map.copyOf(summaries);
   }
 
   public int value(UUID user, UUID build) {

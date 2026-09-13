@@ -26,7 +26,7 @@ class VoteServiceTest {
     builds = new InMemoryBuildRepository();
     builds.builds.put(buildId, build(buildId));
     votes = new VoteRepositoryStub();
-    service = new VoteService(votes, new BuildService(builds, null));
+    service = new VoteService(votes, new BuildService(builds, null, votes));
   }
 
   @Test
@@ -96,8 +96,8 @@ class VoteServiceTest {
     }
 
     @Override
-    public Page list(Filter filter) {
-      return new Page(List.copyOf(builds.values()), builds.size());
+    public List<Build> search(Filter filter) {
+      return List.copyOf(builds.values());
     }
 
     @Override
@@ -136,6 +136,11 @@ class VoteServiceTest {
     @Override
     public VoteSummary summary(UUID buildId) {
       return summary;
+    }
+
+    @Override
+    public Map<UUID, VoteSummary> summaries(Collection<UUID> buildIds) {
+      return buildIds.stream().collect(java.util.stream.Collectors.toMap(id -> id, id -> summary));
     }
 
     @Override

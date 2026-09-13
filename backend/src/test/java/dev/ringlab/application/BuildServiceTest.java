@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.ranking.BuildSort;
+import dev.ringlab.domain.vote.Vote;
+import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.Machine;
@@ -13,6 +16,7 @@ import dev.ringlab.domain.gamedata.Racer;
 import dev.ringlab.domain.gamedata.RacingType;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
+import dev.ringlab.port.out.VoteRepository;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +32,7 @@ class BuildServiceTest {
   private final UUID authorId = UUID.randomUUID();
   private InMemoryBuildRepository builds;
   private GameDataStub gameData;
+  private EmptyVoteRepository votes;
   private BuildService service;
 
   @BeforeEach
@@ -37,7 +42,35 @@ class BuildServiceTest {
     gameData.parts.put(frontPartId, new MachinePart(frontPartId, machineId, MachinePartType.FRONT));
     gameData.parts.put(rearPartId, new MachinePart(rearPartId, machineId, MachinePartType.REAR));
     gameData.parts.put(tirePartId, new MachinePart(tirePartId, machineId, MachinePartType.TIRE));
-    service = new BuildService(builds, gameData);
+    votes = new EmptyVoteRepository();
+    service = new BuildService(builds, gameData, votes);
+  }
+
+  @Test
+  void listingRanksRepositoryFactsBeforePaginatingAndReportsTotal() {
+    Instant base = Instant.parse("2026-01-01T00:00:00Z");
+    Build tiny = rankedBuild("tiny", base.plusSeconds(1));
+    Build strong = rankedBuild("strong", base.plusSeconds(2));
+    Build newest = rankedBuild("newest", base.plusSeconds(3));
+    builds.searchResults = List.of(newest, tiny, strong);
+    votes.summaries.put(tiny.id(), new VoteSummary(3, 0));
+    votes.summaries.put(strong.id(), new VoteSummary(40, 1));
+
+    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    assertEquals(List.of(strong, tiny),
+        service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 0, 2)).items());
+    assertEquals(List.of(strong, tiny, newest),
+        service.list(new BuildService.Query(filter, BuildSort.SCORE, 0, 3)).items());
+    var newestPage = service.list(new BuildService.Query(filter, BuildSort.NEWEST, 1, 2));
+    assertEquals(List.of(tiny), newestPage.items());
+    assertEquals(3, newestPage.total());
+    assertTrue(service.list(new BuildService.Query(filter, BuildSort.NEWEST,
+        Integer.MAX_VALUE, 50)).items().isEmpty());
+  }
+
+  private Build rankedBuild(String title, Instant createdAt) {
+    return new Build(UUID.randomUUID(), title, "", authorId, racerId, frontPartId,
+        rearPartId, tirePartId, null, null, List.of(), createdAt, createdAt);
   }
 
   @Test
@@ -353,6 +386,7 @@ class BuildServiceTest {
 
   private static final class InMemoryBuildRepository implements BuildRepository {
     private final Map<UUID, Build> saved = new HashMap<>();
+    private List<Build> searchResults;
     private Build lastSaved;
     private UUID deletedId;
 
@@ -362,8 +396,8 @@ class BuildServiceTest {
     }
 
     @Override
-    public Page list(Filter filter) {
-      return new Page(List.copyOf(saved.values()), saved.size());
+    public List<Build> search(Filter filter) {
+      return searchResults == null ? List.copyOf(saved.values()) : searchResults;
     }
 
     @Override
@@ -377,6 +411,20 @@ class BuildServiceTest {
       deletedId = id;
       saved.remove(id);
     }
+  }
+
+  private static final class EmptyVoteRepository implements VoteRepository {
+    private final Map<UUID, VoteSummary> summaries = new HashMap<>();
+    public void put(Vote vote) {}
+    public void remove(UUID userId, UUID buildId) {}
+    public VoteSummary summary(UUID buildId) {
+      return summaries.getOrDefault(buildId, new VoteSummary(0, 0));
+    }
+    public Map<UUID, VoteSummary> summaries(Collection<UUID> buildIds) {
+      return buildIds.stream().filter(summaries::containsKey)
+          .collect(java.util.stream.Collectors.toMap(id -> id, summaries::get));
+    }
+    public int value(UUID userId, UUID buildId) { return 0; }
   }
 
   private static final class GameDataStub implements GameDataRepository {
