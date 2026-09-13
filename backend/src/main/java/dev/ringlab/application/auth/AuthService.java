@@ -66,7 +66,7 @@ public class AuthService {
     validateInput(new LoginInput(username, password));
     var user = users.byUsername(username.toLowerCase(Locale.ROOT));
     boolean valid = BcryptUtil.matches(password, user.map(User::passwordHash).orElse(dummyHash));
-    if (user.isEmpty() || !valid)
+    if (user.isEmpty() || user.get().passwordHash() == null || !valid)
       throw new AuthenticationException("Invalid username or password");
     return user.get();
   }

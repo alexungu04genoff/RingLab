@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { GoogleSignIn } from "../GoogleSignIn";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
@@ -10,6 +11,26 @@ export function AuthPage({ register = false }: { register?: boolean }) {
   const { accept } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const submitting = useRef(false);
+  function complete(session: Session) {
+    accept(session);
+    const from = location.state?.from;
+    navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//") ? from : "/");
+  }
+  async function googleLogin(credential: string) {
+    if (submitting.current) return;
+    submitting.current = true;
+    setBusy(true);
+    setError("");
+    try {
+      complete(await api<Session>("/auth/google", json("POST", { credential })));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      submitting.current = false;
+      setBusy(false);
+    }
+  }
   return (
     <div className="auth-layout">
       <div className="auth-intro">
@@ -34,6 +55,8 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         className="panel auth-form"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (submitting.current) return;
+          submitting.current = true;
           setBusy(true);
           setError("");
           const data = new FormData(e.currentTarget);
@@ -42,18 +65,11 @@ export function AuthPage({ register = false }: { register?: boolean }) {
               `/auth/${register ? "register" : "login"}`,
               json("POST", Object.fromEntries(data)),
             );
-            accept(session);
-            const from = location.state?.from;
-            navigate(
-              typeof from === "string" &&
-                from.startsWith("/") &&
-                !from.startsWith("//")
-                ? from
-                : "/",
-            );
+            complete(session);
           } catch (e) {
             setError((e as Error).message);
           } finally {
+            submitting.current = false;
             setBusy(false);
           }
         }}
@@ -65,6 +81,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             : "Log in to your garage."}
         </p>
         <ErrorNotice message={error} />
+        <GoogleSignIn onCredential={googleLogin} disabled={busy} />
         <label>
           Username
           <input

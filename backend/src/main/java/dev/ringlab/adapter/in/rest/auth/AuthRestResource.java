@@ -7,6 +7,8 @@ import dev.ringlab.adapter.in.rest.auth.request.RegistrationRequest;
 import dev.ringlab.adapter.in.rest.auth.response.SessionResponse;
 import dev.ringlab.adapter.in.rest.auth.response.UserResponse;
 import dev.ringlab.application.auth.AuthService;
+import dev.ringlab.application.auth.ExternalAuthService;
+import dev.ringlab.adapter.in.rest.auth.request.GoogleSignInRequest;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import io.smallrye.jwt.build.Jwt;
@@ -23,6 +25,13 @@ import jakarta.ws.rs.core.MediaType;
 public class AuthRestResource {
   private final AuthService service;
   private final CurrentUser actor;
+  private final ExternalAuthService externalAuth;
+
+  @POST
+  @Path("google")
+  public SessionResponse google(@Valid @NotNull GoogleSignInRequest r) {
+    return session(externalAuth.login(r.credential()));
+  }
 
   private SessionResponse session(User u) {
     return new SessionResponse(

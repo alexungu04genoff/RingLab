@@ -140,6 +140,15 @@ class AuthServiceTest {
     assertEquals(legacy, service.login("account", "short"));
   }
 
+  @Test
+  void externalAccountCannotLoginWithAnyPasswordIncludingDummyPassword() {
+    users.create(new User(UUID.randomUUID(), "external", "external@example.test", null, Instant.now()));
+    for (String password : List.of("password-123", "ringlab-dummy-password")) {
+      var error = assertThrows(AuthenticationException.class, () -> service.login("external", password));
+      assertEquals("Invalid username or password", error.getMessage());
+    }
+  }
+
   private static User user(String username, String password) {
     return new User(
         UUID.randomUUID(),

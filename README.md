@@ -130,6 +130,50 @@ Add a new numbered migration when changing schema or seed data. Do not edit migr
 
 ## Authentication
 
+### Google sign-in setup
+
+Local username/password authentication remains available. The optional official
+Google Identity Services button exchanges a Google ID token at `POST /api/auth/google`
+for the same RingLab JWT/session returned by local login. RingLab never receives
+your Google password and never stores Google ID/access/refresh tokens.
+
+1. In Google Cloud / Google Auth Platform, configure the consent/branding screen
+   and create an OAuth client of type **Web application**. Configure test users if
+   your consent configuration is in testing mode.
+2. Add `http://localhost:5173` as an authorized JavaScript origin. If you use
+   `http://127.0.0.1:5173`, add that origin separately. This popup/callback flow
+   does not require a RingLab redirect URI or Google API scopes.
+3. Set backend environment variable `GOOGLE_CLIENT_ID` to that Web client ID.
+   Set `VITE_GOOGLE_CLIENT_ID` to the **same value** before starting/building Vite
+   (for example, in your shell environment). No client secret is needed.
+4. Restart the backend and frontend after setting configuration. Use the configured
+   origin to open the login or registration page. Without configuration, local
+   authentication remains available and Google sign-in is disabled.
+
+The server uses Google's Java `GoogleIdTokenVerifier` with rotating public keys,
+the configured audience, accepted Google issuers and expiration checks. It requires
+a subject and verified email. It identifies returning users by `(GOOGLE, sub)`,
+even if their Google email changes. New users receive a normalized email-derived
+username, with a random suffix on collision, and no local password. An existing
+email is a conflict: sign in through the existing account; automatic linking and
+password creation are not implemented. Concurrent first-login uniqueness conflicts
+roll back both inserts and may require retrying sign-in.
+
+Google sign-in requires browser access to `https://accounts.google.com/gsi/client`
+and backend access to Google's public certificate endpoint. Use HTTPS outside
+localhost and register the actual deployment origins in Google Cloud.
+
+Offline unit tests: `mvn -f backend/pom.xml "-Dtest=AuthServiceTest,ExternalAuthServiceTest,GoogleIdentityVerificationAdapterTest" test`.
+Frontend interaction tests: from `frontend`, `npm test -- src/pages/AuthPage.test.tsx`.
+Run `GoogleAuthIntegrationTest` manually in IntelliJ, or use
+`mvn -f backend/pom.xml -Dtest=GoogleAuthIntegrationTest test` with Docker available.
+That test substitutes a verifier and exercises real REST/JWT, migration constraints,
+passwordless account persistence and cascade deletion without contacting Google.
+The `google-test-*.pem` resources are deliberately public, disposable test fixtures,
+never application JWT keys. A final real Google popup smoke test requires your client ID.
+
+See [Google's verification guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
+
 Usernames and emails are normalized to lowercase and independently unique. Usernames contain 3–30 ASCII letters, numbers, or underscores. Passwords use bcrypt with its library default cost (10); registration accepts 8–72 characters and rejects passwords exceeding bcrypt's 72-byte UTF-8 limit. Hashes never appear in REST responses.
 
 Application services enforce account and content validity even when called without REST. REST Bean Validation remains for early HTTP feedback. Passwords are never trimmed; login accepts whitespace passwords previously allowed at registration and retains its broader legacy length range. Only username/email uniqueness violations become duplicate-account errors.

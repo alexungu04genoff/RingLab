@@ -45,6 +45,42 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 ## Mapping and flow
 
+Google sign-in uses the same RingLab session boundary as local login:
+
+```text
+Google Identity Services -> Google ID token -> POST /api/auth/google
+  -> ExternalAuthService -> ExternalIdentityVerifier
+                         <- GoogleIdentityVerificationAdapter (Google Java verifier)
+  -> UserRepository + ExternalIdentityRepository -> RingLab JWT -> existing sessionStorage flow
+```
+
+The Google adapter verifies signature, issuer, configured audience, expiry and
+required identity claims, then supplies `VerifiedExternalIdentity` to application
+logic. Google token details remain outside the account model. The application
+resolves returning users by provider and subject; email is used only for initial
+account creation and conflict detection, never implicit linking. First-time users
+receive an ASCII username derived from the email local-part, capped at 21 characters
+to leave room for an underscore and eight random hexadecimal characters on collision.
+Short or non-ASCII local-parts receive a `user_` prefix. Both account and identity
+inserts share one transaction; uniqueness races roll back and return a conflict.
+
+Flyway V14 makes `users.password_hash` nullable and creates `external_identities`
+with a composite primary key `(provider, provider_subject)`, a user foreign key with
+`ON DELETE CASCADE`, and creation time. Provider is a string so additional providers
+do not need a schema enum migration. External-only users have no usable password;
+local login still performs the dummy bcrypt check and rejects a null hash. The
+ordinary `SessionResponse` and JWT issuer, role, lifetime and ownership semantics
+are shared. RingLab never receives Google's password and stores no Google tokens.
+Linking accounts, adding passwords and Google API authorization are outside scope.
+
+`GOOGLE_CLIENT_ID` and frontend `VITE_GOOGLE_CLIENT_ID` must identify the same Web
+client. Missing configuration disables Google sign-in without disabling local auth.
+The frontend uses GIS's official button and JavaScript callback, then submits JSON
+through the existing API layer; this is not Google's form/redirect login flow.
+The endpoint accepts JSON, and cross-origin requests remain governed by the existing
+CORS allowlist. Successful login explicitly accepts a RingLab token in the browser;
+there is no authentication cookie established by a cross-site form submission.
+
 MapStruct generates entity/domain mappings for users, builds, comments, and the five game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
 `GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, gadgets, and game versions, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit `RacerResponse`, `MachineResponse`, `MachinePartResponse`, and `GadgetResponse` DTOs. `GET /api/machine-parts` returns each part's ID, type, source-machine ID/name, nullable source-machine image path, and source racing type. The image path comes from `Machine`; artwork is not duplicated into `machine_parts`. Build requests use `frontPartId`, `rearPartId`, and `tirePartId`; responses include the corresponding part DTOs. The dynamic build-filter query uses JPA Criteria.
