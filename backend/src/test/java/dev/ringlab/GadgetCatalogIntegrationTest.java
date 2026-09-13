@@ -16,6 +16,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class GadgetCatalogIntegrationTest {
   @Inject GameDataRepository game;
+  @Inject jakarta.persistence.EntityManager em;
 
   @Test
   void expandedCatalogPreservesSeedIdsAndMapsVerifiedMetadataThroughRest() throws Exception {
@@ -74,10 +75,7 @@ class GadgetCatalogIntegrationTest {
 
   @Test
   void createReadAndEditPreserveMixedOldAndNewGadgetOrderWithinPlateCapacity() {
-    String name = "gadgets_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    String token = given().contentType("application/json")
-        .body(Map.of("username", name, "email", name + "@example.test", "password", "test-password"))
-        .post("/api/auth/register").then().statusCode(200).extract().path("token");
+    String token = VerifiedUserFixture.createToken(em);
     var order = List.of("70000000-0000-4000-8000-000000000013", "82005d0f-575b-5350-934f-fb108d306a21");
     Map<String, Object> draft = new HashMap<>();
     draft.put("title", "Ordered gadgets");

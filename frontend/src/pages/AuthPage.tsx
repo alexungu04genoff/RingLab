@@ -36,7 +36,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
     <div className="auth-layout"><div className="auth-intro"><div className="eyebrow accent">ONE MORE LAP</div><h1>Check your<br /><em>email.</em></h1></div>
       <section className="panel auth-form"><h2>Verify your account</h2><p>We sent a verification link to {registeredEmail}. Open it, then return here to log in.</p>
         <button className="primary" onClick={() => navigate("/login")}>Go to log in</button>
-        <button disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await api("/auth/resend-verification", json("POST", { email: registeredEmail })); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>{busy ? "Please wait…" : "Resend verification email"}</button>
+        <p><Link to="/resend-verification">Resend verification email</Link></p>
         <ErrorNotice message={error} />
       </section></div>
   );
@@ -92,6 +92,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
         </p>
         <ErrorNotice message={error} />
         <GoogleSignIn onCredential={googleLogin} disabled={busy} />
+        <p>Waiting for verification? <Link to="/resend-verification">Resend verification email</Link></p>
         <label>
           Username
           <input

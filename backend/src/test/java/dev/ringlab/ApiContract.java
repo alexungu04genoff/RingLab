@@ -20,17 +20,29 @@ public abstract class ApiContract {
   private Account register() {
     String name = "r" + UUID.randomUUID().toString().replace("-", "").substring(0, 20);
     String email = name + "@example.com";
-    var r =
+    registerAndVerify(name, email, "password-123");
+    var r = request(null).body(Map.of("username", name, "password", "password-123"))
+        .post("/api/auth/login").then().statusCode(200)
+        .body("user.username", equalTo(name)).body("token", not(emptyOrNullString()))
+        .body("user.passwordHash", nullValue()).extract().response();
+    return new Account(r.path("token"), r.path("user.id"), name, email);
+  }
+
+  // Authentication setup uses the real HTTP/mail/verification boundary, also in the packaged app.
+  private void registerAndVerify(String name, String email, String password) {
         request(null)
-            .body(Map.of("username", name, "email", email, "password", "password-123"))
+            .body(Map.of("username", name, "email", email, "password", password))
             .post("/api/auth/register")
             .then()
             .statusCode(200)
-            .body("user.username", equalTo(name))
-            .body("user.passwordHash", nullValue())
-            .extract()
-            .response();
-    return new Account(r.path("token"), r.path("user.id"), name, email);
+            .body("keySet()", contains("message"));
+    request(null).body(Map.of("username", name, "password", password))
+        .post("/api/auth/login").then().statusCode(403);
+    String token = VerificationMailResource.tokenFor(email);
+    request(null).body(Map.of("token", token)).post("/api/auth/verify-email")
+        .then().statusCode(200);
+    request(null).body(Map.of("token", token)).post("/api/auth/verify-email")
+        .then().statusCode(400);
   }
 
   private List<String> ids(String collection) {
@@ -97,10 +109,16 @@ public abstract class ApiContract {
   void registrationAndLoginBothAcceptUnmodifiedSpacePasswords() {
     String name = "spaces_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     var credentials = Map.of("username", name, "email", name + "@example.test", "password", "        ");
-    String id = request(null).body(credentials).post("/api/auth/register")
-        .then().statusCode(200).extract().path("user.id");
+    registerAndVerify(name, credentials.get("email"), credentials.get("password"));
     request(null).body(Map.of("username", name, "password", "        "))
-        .post("/api/auth/login").then().statusCode(200).body("user.id", equalTo(id));
+        .post("/api/auth/login").then().statusCode(200).body("user.username", equalTo(name))
+        .body("token", not(emptyOrNullString()));
+  }
+
+  @Test
+  void rejectsInvalidVerificationTokens() {
+    request(null).body(Map.of("token", "not-a-valid-token")).post("/api/auth/verify-email")
+        .then().statusCode(400).body("message", equalTo("Verification link is invalid or expired"));
   }
 
   @Test

@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 @QuarkusTest
 class GameVersionIntegrationTest {
   @Inject GameDataRepository game;
+  @Inject jakarta.persistence.EntityManager em;
 
   @Test
   void catalogReturnsExactlyTheOfficialVersionsNewestFirst() {
@@ -29,10 +30,7 @@ class GameVersionIntegrationTest {
 
   @Test
   void restCreatesReadsChangesAndClearsVersionAndRejectsUnknownIds() {
-    String name = "version_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
-    String token = given().contentType("application/json")
-        .body(Map.of("username", name, "email", name + "@example.test", "password", "test-password"))
-        .post("/api/auth/register").then().statusCode(200).extract().path("token");
+    String token = VerifiedUserFixture.createToken(em);
     Map<String, Object> draft = new HashMap<>();
     draft.put("title", "Version test");
     draft.put("description", "");

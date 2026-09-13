@@ -129,6 +129,17 @@ class AuthServiceTest {
   }
 
   @Test
+  void expiredTokenCannotVerifyAccount() {
+    var delivery = service.register("account", "account@example.com", "correct-password");
+    var stored = verificationTokens.lastStored;
+    verificationTokens.replace(new EmailVerificationToken(stored.userId(), stored.tokenHash(),
+        java.time.Instant.now().minusSeconds(1), stored.createdAt()));
+    assertThrows(ValidationException.class, () -> service.verifyEmail(delivery.token()));
+    assertNull(users.byUsername("account").orElseThrow().emailVerifiedAt());
+    assertThrows(ForbiddenException.class, () -> service.login("account", "correct-password"));
+  }
+
+  @Test
   void missingUserLoginIsRejected() {
     AuthenticationException error =
         assertThrows(AuthenticationException.class, () -> service.login("missing", "password-123"));

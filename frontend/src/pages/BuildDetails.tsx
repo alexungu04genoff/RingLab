@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
@@ -13,6 +13,17 @@ const COMMENT_PAGE_SIZE = 20;
 
 export function BuildDetails() {
   const { id } = useParams();
+  return <BuildDetailsContent key={id} />;
+}
+
+// A new build gets fresh local state. Pending mutations can only update their old instance.
+function BuildDetailsContent() {
+  const { id } = useParams();
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -144,7 +155,7 @@ export function BuildDetails() {
             onClick={() =>
               act(async () => {
                 await api(`/builds/${id}`, json("DELETE"));
-                navigate("/my-builds");
+                if (mounted.current) navigate("/my-builds");
               })
             }
           >

@@ -76,6 +76,8 @@ The first start migrates the schema and seeds 52 racers, 62 source machines, 186
 
 ### Email verification and SMTP
 
+The public `/resend-verification` page is linked from login, registration, and failed verification links. It remains available after a refresh or delivery failure and displays a generic success message without signing the user in.
+
 Local-account verification links contain a URL-safe 256-bit random secret. RingLab stores only its SHA-256 digest; it is single-use, expires after 24 hours, and a resend replaces the old token. Existing accounts are backfilled as verified by Flyway V15, so deployment does not lock them out. Resending always returns the same success message and is limited to 5 attempts per hour per client IP.
 
 Set `PUBLIC_BASE_URL` to the public frontend origin and `MAIL_FROM` to the sender address. Configure SMTP with `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_TLS`; do not commit credentials. Production also needs the sender domain/DNS configuration required by the chosen SMTP provider. If delivery fails after account creation, the account remains unverified and the user can use resend verification.
@@ -220,7 +222,7 @@ Usernames and emails are normalized to lowercase and independently unique. Usern
 
 Application services enforce account and content validity even when called without REST. REST Bean Validation remains for early HTTP feedback. Passwords are never trimmed; login accepts whitespace passwords previously allowed at registration and retains its broader legacy length range. Only username/email uniqueness violations become duplicate-account errors.
 
-Login and registration return an RSA-signed JWT with the user's UUID as its subject and the `user` role. Tokens expire after one hour. Development uses the local ignored key pair generated during setup. Restarting development does not invalidate existing sessions while those keys remain in place.
+Successful local login and Google sign-in return an RSA-signed JWT with the user's UUID as its subject and the `user` role. Local registration returns a message only; verify the email address before logging in. Tokens expire after one hour. Development uses the local ignored key pair generated during setup. Restarting development does not invalidate existing sessions while those keys remain in place.
 
 The client keeps the bearer token in **sessionStorage**, surviving refresh in the same tab. Every authenticated request includes `Authorization: Bearer …`. A 401 clears the client session. Backend role checks protect mutations; application services separately verify resource ownership. Hidden buttons are only a UI convenience.
 
