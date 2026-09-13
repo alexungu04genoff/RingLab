@@ -134,15 +134,17 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
         </span>
       </div>
       <div className="card-body">
-        <span className="eyebrow">{build.racer.name}</span>
+        <div className="card-kicker">
+          <span className="eyebrow">{build.racer.name}</span>
+          <span className="machine-name">
+            <ComponentsIcon />
+            <span>{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
+              build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
+                ? build.frontPart.sourceMachineName
+                : "Mixed machine"}</span>
+          </span>
+        </div>
         <h2>{build.title}</h2>
-        <p className="machine-name">
-          <ComponentsIcon />
-          <span>{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
-            build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
-              ? build.frontPart.sourceMachineName
-              : "Mixed machine"}</span>
-        </p>
         <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
             <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
