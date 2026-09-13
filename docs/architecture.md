@@ -28,6 +28,10 @@ dev.ringlab/
 
 The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
 
+Application services own input validity as well as orchestration. AuthService validates private input records with the existing Jakarta Validator, preserving the same username/email/password constraints as REST without depending on REST DTOs. Login preserves legacy credential acceptance, including whitespace passwords, and never trims passwords. BuildService and CommentService explicitly validate text, null inputs and pagination bounds. REST Bean Validation remains an early transport check; no HTTP types flow inward.
+
+Outbound method documentation specifies literal search, any-part source-machine matching, comment/version ordering, vote absence/bulk-summary conventions and atomic replacement. UserDbAdapter translates only PostgreSQL uniqueness violations for the Flyway username/email constraints; unrelated failures reach the safe unexpected-error boundary.
+
 PostgreSQL adapters implement persistence ports; `SteamNewsAdapter` implements the outbound REST port `GameNewsRepository`. This demonstrates the same application boundary with two different infrastructure types. Steam HTTP details and JSON records stay in `adapter/out/steam`; the application only requests five latest domain news items.
 
 ```text
@@ -62,6 +66,7 @@ A build may hold one nullable `remixedFromBuildId`: a lightweight parent referen
 which existing configuration it was derived from. Remix creation copies configuration into a new,
 independent build and validates it through the normal create path. The self-referencing foreign key
 uses `ON DELETE SET NULL`, so deleting the source never deletes its remixes.
+BuildService resolves optional provenance without requiring the source to still exist: a concurrently deleted source produces `remixedFrom: null` during REST assembly. The requested build itself still uses the normal required lookup and 404 behavior.
 
 Edit/delete flows load the existing record and compare the authenticated actor to the stored author before any write. The client cannot set author IDs. Comment deletion uses the comment author, including when the build belongs to somebody else. Service transactions enclose each mutation; database foreign keys and unique/check constraints remain the final consistency boundary.
 
@@ -71,7 +76,7 @@ Edit/delete flows load the existing record and compare the authenticated actor t
 
 `Machine` is catalog/source-machine metadata. The framework-independent `MachinePart` record represents a FRONT, REAR, or TIRE component originating from a source machine; `MachinePartType` is an enum persisted as a string. `Build` composes exactly one FRONT + one REAR + one TIRE, alongside one racer. Required part IDs and foreign keys preserve references; BuildService enforces the slot types and rejects unknown IDs with validation exceptions, mapped to 400 by REST. Parts can come from different machines. Gadgets remain an independent ordered configuration mapped through `build_gadgets`; their stored order is presentation-only. BuildService rejects duplicate or unknown gadgets and unknown/out-of-range current costs, then uses `GadgetPlate` to determine whether some order-independent assignment fits two rows of three slots. No row assignment is stored or exposed, and gadget costs are not patch-aware.
 
-Explore's compact “Uses parts from” filter retains the `machineId` query parameter as a source-machine ID. It matches front OR rear OR tire source using the same predicate for results and counts, composing with racer, literal search, author, all sorts, and pagination.
+Explore's compact “Uses parts from” filter retains the `machineId` query parameter as a source-machine ID. It matches front OR rear OR tire source when retrieving candidates, composing with racer, literal search and author. BuildService ranks and paginates those candidates and derives the total from their count.
 
 Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. PostgreSQL `INSERT … ON CONFLICT … DO UPDATE` makes repeated/concurrent votes update the same row atomically. A single aggregate query per requested build counts upvotes and downvotes; `VoteSummary` derives score as upvotes minus downvotes. No client-owned or cached counters exist. Build and vote responses expose `score`, `upvotes`, and `downvotes`; vote responses also retain `myVote`.
 
@@ -121,8 +126,8 @@ There is no default or backfill: existing builds remain versionless and editing 
 or clear a version. BuildService rejects unknown non-null IDs with a validation exception, mapped
 to 400 by REST. The catalog endpoint
 `GET /api/game-versions` lists release dates newest first; build responses contain a small nested
-`gameVersion` DTO or null. Explore's optional `gameVersionId` predicate is shared by PostgreSQL
-item/count queries before pagination and composes with existing filters and all three sorts.
+`gameVersion` DTO or null. Explore's optional `gameVersionId` predicate filters candidates in PostgreSQL
+before application ranking/pagination and composes with existing filters and all three sorts.
 Wilson ranking and visible raw scores are unchanged. Steam news remains an independent external
 REST adapter; automatic patch extraction and synchronization are intentionally not implemented.
 
@@ -143,4 +148,6 @@ Compare Builds is a URL-driven frontend view for exactly two existing builds. It
 
 `AcceptanceTest` uses Quarkus's test runner, HTTP requests, actual JWT registration/login, Flyway, and PostgreSQL. `PackagedApiIT` repeats it against the production artifact. `DomainTest` checks immutable collection and vote/ownership behavior. Frontend tests check ordering and API errors/session expiration. The test run's external-database option requires a disposable database.
 
-JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, gadget rules and calculated stats remain outside the implemented scope.
+`RepositoryContractIntegrationTest` checks actual persisted deletion effects (including surviving remix contents), literal/blank search, any-slot machine matching, comment/version tie-breaks and vote replacement/absence conventions. Deletion postconditions belong to BuildRepository's contract; PostgreSQL retains responsibility for implementing them atomically with its existing constraints.
+
+JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, additional gadget compatibility rules, patch-aware costs and calculated stats remain outside the implemented scope; current-cost Gadget Plate capacity validation is implemented.

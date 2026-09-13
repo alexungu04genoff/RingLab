@@ -1,5 +1,7 @@
 # MVP implementation plan
 
+This records the initial plan, not the current feature boundary. The implemented system now includes composable machine parts, current-cost Gadget Plate validation, optional game versions and remix provenance, and domain/application ranking before pagination. See [architecture.md](architecture.md) for current behavior.
+
 The initial workspace was empty. Build a local Java 21 / Quarkus modular monolith and a React / TypeScript Vite client.
 
 1. Flyway schema and separate exact game-data seeds.

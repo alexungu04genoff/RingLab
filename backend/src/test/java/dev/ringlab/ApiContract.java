@@ -95,6 +95,16 @@ public abstract class ApiContract {
   }
 
   @Test
+  void registrationAndLoginBothAcceptUnmodifiedSpacePasswords() {
+    String name = "spaces_" + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
+    var credentials = Map.of("username", name, "email", name + "@example.test", "password", "        ");
+    String id = request(null).body(credentials).post("/api/auth/register")
+        .then().statusCode(200).extract().path("user.id");
+    request(null).body(Map.of("username", name, "password", "        "))
+        .post("/api/auth/login").then().statusCode(200).body("user.id", equalTo(id));
+  }
+
+  @Test
   void rejectsDuplicateAccountsAndInvalidLogins() {
     var user = register();
     request(null)

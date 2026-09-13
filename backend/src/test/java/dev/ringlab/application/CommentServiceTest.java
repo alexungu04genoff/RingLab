@@ -86,6 +86,26 @@ class CommentServiceTest {
     assertEquals("Comment not found", error.getMessage());
   }
 
+  @Test
+  void rejectsNullBlankAndOversizedCommentsWithoutSaving() {
+    for (String text : Arrays.asList(null, "", " \t\n", "x".repeat(2001))) {
+      assertThrows(ValidationException.class, () -> service.create(buildId, authorId, text));
+    }
+    assertThrows(ValidationException.class, () -> service.create(buildId, null, "Text"));
+    assertThrows(ValidationException.class, () -> service.create(null, authorId, "Text"));
+    assertNull(comments.lastCreated);
+    assertEquals("x".repeat(2000), service.create(buildId, authorId, "x".repeat(2000)).text());
+  }
+
+  @Test
+  void rejectsInvalidPaginationBeforeRepositoryCall() {
+    for (int[] bounds : List.of(new int[] {-1, 20}, new int[] {0, 0}, new int[] {0, 51})) {
+      assertThrows(ValidationException.class, () -> service.list(buildId, bounds[0], bounds[1]));
+    }
+    assertNull(comments.listedBuildId);
+    assertDoesNotThrow(() -> service.list(buildId, 0, 50));
+  }
+
   private Comment comment(UUID id, UUID author, String text) {
     return new Comment(id, buildId, author, text, Instant.parse("2026-01-01T00:00:00Z"));
   }

@@ -11,5 +11,9 @@ public interface UserRepository {
 
   boolean exists(String username, String email);
 
+  /** Creates an account with independently unique normalized username and email.
+   * Concurrent uniqueness conflicts must produce the existing semantic
+   * AlreadyExistsException; unrelated storage failures must not be classified as duplicates.
+   */
   void create(User user);
 }

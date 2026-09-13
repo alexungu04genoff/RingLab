@@ -317,6 +317,63 @@ class BuildServiceTest {
     assertEquals(List.of(second, gadgetId), service.get(created.id()).gadgetIds());
   }
 
+  @Test
+  void rejectsInvalidTextAndNullDraftFieldsWithoutSaving() {
+    assertThrows(ValidationException.class, () -> service.create(authorId, null));
+    assertThrows(ValidationException.class, () -> service.create(null, draft("Valid")));
+    for (String title : Arrays.asList(null, "", " \t\n", "x".repeat(121))) {
+      assertThrows(ValidationException.class, () -> service.create(authorId, draft(title)));
+    }
+    for (var invalid : List.of(
+        new BuildService.Draft("Valid", null, racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildService.Draft("Valid", "x".repeat(10001), racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildService.Draft("Valid", "", null, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        draftWithGadgets(null), draftWithGadgets(Arrays.asList((UUID) null)))) {
+      assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
+    }
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void acceptsTextBoundariesAndRejectsInvalidEditWithoutChangingBuild() {
+    var valid = new BuildService.Draft("x".repeat(120), "d".repeat(10000), racerId,
+        frontPartId, rearPartId, tirePartId, null, null, List.of());
+    Build created = service.create(authorId, valid);
+    assertEquals(valid.title(), created.title());
+    assertEquals(valid.description(), created.description());
+    assertThrows(ValidationException.class, () -> service.edit(created.id(), authorId, draft(" ")));
+    assertEquals(created, service.get(created.id()));
+  }
+
+  @Test
+  void guardsInvalidQueriesBeforeCallingRepositories() {
+    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    assertThrows(ValidationException.class, () -> service.list(null));
+    for (var query : List.of(
+        new BuildService.Query(null, BuildSort.NEWEST, 0, 12),
+        new BuildService.Query(filter, null, 0, 12),
+        new BuildService.Query(filter, BuildSort.NEWEST, -1, 12),
+        new BuildService.Query(filter, BuildSort.NEWEST, 0, 0),
+        new BuildService.Query(filter, BuildSort.NEWEST, 0, 51),
+        new BuildService.Query(new BuildRepository.Filter("x".repeat(121), null, null, null, null),
+            BuildSort.NEWEST, 0, 12))) {
+      assertThrows(ValidationException.class, () -> service.list(query));
+    }
+  }
+
+  @Test
+  void missingOptionalSourceDoesNotMakeExistingRemixMissing() {
+    Build source = service.create(authorId, draft("Source"));
+    Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
+        frontPartId, rearPartId, tirePartId, null, source.id(), List.of()));
+    assertEquals(Optional.of(source), service.remixSource(remix));
+    builds.saved.remove(source.id());
+    assertTrue(service.remixSource(remix).isEmpty());
+    assertEquals(remix, service.get(remix.id()));
+    assertThrows(NotFoundException.class, () -> service.get(source.id()));
+    assertTrue(service.remixSource(existingBuild()).isEmpty());
+  }
+
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
         title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));

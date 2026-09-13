@@ -12,13 +12,22 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class AuthServiceTest {
+  private static final jakarta.validation.ValidatorFactory VALIDATORS =
+      jakarta.validation.Validation.byDefaultProvider().configure()
+          .messageInterpolator(new org.hibernate.validator.messageinterpolation.ParameterMessageInterpolator())
+          .buildValidatorFactory();
+
+  @org.junit.jupiter.api.AfterAll
+  static void closeValidators() {
+    VALIDATORS.close();
+  }
   private InMemoryUserRepository users;
   private AuthService service;
 
   @BeforeEach
   void setUp() {
     users = new InMemoryUserRepository();
-    service = new AuthService(users);
+    service = new AuthService(users, VALIDATORS.getValidator());
   }
 
   @Test
@@ -89,6 +98,46 @@ class AuthServiceTest {
     assertEquals("Password must be at most 72 UTF-8 bytes", error.getMessage());
     assertNull(users.checkedUsername);
     assertNull(users.lastCreated);
+  }
+
+  @Test
+  void acceptedPasswordsCanLogInWithoutTrimming() {
+    for (String password : List.of("        ", " password ", "x".repeat(72), "€".repeat(24))) {
+      User registered = service.register("account", "account@example.com", password);
+      assertEquals(registered, service.login("ACCOUNT", password));
+      assertTrue(BcryptUtil.matches(password, registered.passwordHash()));
+    }
+  }
+
+  @Test
+  void rejectsInvalidRegistrationInputsBeforePersistence() {
+    for (String username : Arrays.asList(null, "", "ab", "bad-name", "a".repeat(31))) {
+      assertThrows(ValidationException.class,
+          () -> service.register(username, "account@example.com", "password-123"));
+    }
+    for (String email : Arrays.asList(null, "", " ", "not-an-email", "a".repeat(255))) {
+      assertThrows(ValidationException.class,
+          () -> service.register("account", email, "password-123"));
+    }
+    for (String password : Arrays.asList(null, "", "short", "x".repeat(73))) {
+      assertThrows(ValidationException.class,
+          () -> service.register("account", "account@example.com", password));
+    }
+    assertNull(users.lastCreated);
+    assertNull(users.checkedUsername);
+  }
+
+  @Test
+  void loginValidatesNullAndLengthWithoutApplyingNewRegistrationMinimums() {
+    for (String username : Arrays.asList(null, "", " ", "x".repeat(31))) {
+      assertThrows(ValidationException.class, () -> service.login(username, "password-123"));
+    }
+    for (String password : Arrays.asList(null, "", "x".repeat(73))) {
+      assertThrows(ValidationException.class, () -> service.login("account", password));
+    }
+    User legacy = user("account", "short");
+    users.create(legacy);
+    assertEquals(legacy, service.login("account", "short"));
   }
 
   private static User user(String username, String password) {

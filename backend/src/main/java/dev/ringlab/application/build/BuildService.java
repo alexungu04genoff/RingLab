@@ -19,6 +19,7 @@ import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 @ApplicationScoped
@@ -38,10 +39,23 @@ public class BuildService {
   private final VoteRepository votes;
 
   public Build get(UUID id) {
+    if (id == null) throw new ValidationException("Missing build ID");
     return builds.find(id).orElseThrow(() -> NotFoundException.missing("Build"));
   }
 
+  /** Provenance is optional: its source may have been deleted since the build was read. */
+  public Optional<Build> remixSource(Build build) {
+    return build.remixedFromBuildId() == null
+        ? Optional.empty() : builds.find(build.remixedFromBuildId());
+  }
+
   public Page list(Query query) {
+    if (query == null || query.filter() == null || query.sort() == null)
+      throw new ValidationException("Missing build query, filter or sort");
+    if (query.page() < 0 || query.size() < 1 || query.size() > 50)
+      throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
+    if (query.filter().search() != null && query.filter().search().length() > 120)
+      throw new ValidationException("Search must be at most 120 characters");
     List<Build> candidates = builds.search(query.filter());
     var summaries = votes.summaries(candidates.stream().map(Build::id).toList());
     List<Build> ranked = candidates.stream()
@@ -55,6 +69,11 @@ public class BuildService {
   }
 
   private void validate(Draft d) {
+    if (d == null) throw new ValidationException("Missing build draft");
+    if (d.title() == null || d.title().isBlank() || d.title().length() > 120)
+      throw new ValidationException("Title must be nonblank and at most 120 characters");
+    if (d.description() == null || d.description().length() > 10000)
+      throw new ValidationException("Description is required and must be at most 10000 characters");
     requireRacer(d.racerId());
     requirePart(d.frontPartId(), MachinePartType.FRONT);
     requirePart(d.rearPartId(), MachinePartType.REAR);
@@ -66,6 +85,7 @@ public class BuildService {
   }
 
   private void requireRacer(UUID id) {
+    if (id == null) throw new ValidationException("Missing racer ID");
     if (game.findRacer(id).isEmpty()) throw new ValidationException("Unknown racer ID");
   }
 
@@ -79,6 +99,8 @@ public class BuildService {
   }
 
   private void validateGadgets(List<UUID> gadgetIds) {
+    if (gadgetIds == null || gadgetIds.stream().anyMatch(java.util.Objects::isNull))
+      throw new ValidationException("Gadget IDs are required and must not contain null");
     if (new HashSet<>(gadgetIds).size() != gadgetIds.size()) {
       throw new ValidationException("Duplicate gadget ID");
     }
@@ -109,6 +131,7 @@ public class BuildService {
 
   @Transactional
   public Build create(UUID author, Draft d) {
+    if (author == null) throw new ValidationException("Missing author ID");
     validate(d);
     if (d.remixedFromBuildId() != null && builds.find(d.remixedFromBuildId()).isEmpty()) {
       throw new ValidationException("Unknown remix source build ID");

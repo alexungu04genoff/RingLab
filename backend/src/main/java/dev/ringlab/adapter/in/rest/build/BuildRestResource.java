@@ -54,7 +54,7 @@ public class BuildRestResource {
   private BuildResponse response(Build b) {
     var author = users.current(b.authorId());
     var summary = votes.summary(b.id());
-    var remixSource = b.remixedFromBuildId() == null ? null : builds.get(b.remixedFromBuildId());
+    var remixSource = builds.remixSource(b).orElse(null);
     return new BuildResponse(
         b.id(),
         b.title(),
