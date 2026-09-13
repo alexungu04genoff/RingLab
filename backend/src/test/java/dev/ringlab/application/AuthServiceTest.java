@@ -39,12 +39,12 @@ class AuthServiceTest {
   void duplicateUsernameOrEmailIsRejectedAfterNormalization() {
     users.duplicate = true;
 
-    AppException error =
+    AlreadyExistsException error =
         assertThrows(
-            AppException.class,
+            AlreadyExistsException.class,
             () -> service.register("Existing_USER", "Existing@Example.COM", "password-123"));
 
-    assertEquals(409, error.status);
+    assertEquals("Username or email already registered", error.getMessage());
     assertEquals("existing_user", users.checkedUsername);
     assertEquals("existing@example.com", users.checkedEmail);
     assertNull(users.lastCreated);
@@ -63,19 +63,17 @@ class AuthServiceTest {
     User user = user("account", "correct-password");
     users.usersByUsername.put(user.username(), user);
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.login("account", "wrong-password"));
+    AuthenticationException error =
+        assertThrows(AuthenticationException.class, () -> service.login("account", "wrong-password"));
 
-    assertEquals(401, error.status);
     assertEquals("Invalid username or password", error.getMessage());
   }
 
   @Test
   void missingUserLoginIsRejected() {
-    AppException error =
-        assertThrows(AppException.class, () -> service.login("missing", "password-123"));
+    AuthenticationException error =
+        assertThrows(AuthenticationException.class, () -> service.login("missing", "password-123"));
 
-    assertEquals(401, error.status);
     assertEquals("Invalid username or password", error.getMessage());
   }
 
@@ -83,12 +81,11 @@ class AuthServiceTest {
   void rejectsPasswordOverBcryptUtf8ByteLimit() {
     String seventyFiveUtf8Bytes = "€".repeat(25);
 
-    AppException error =
+    ValidationException error =
         assertThrows(
-            AppException.class,
+            ValidationException.class,
             () -> service.register("account", "account@example.com", seventyFiveUtf8Bytes));
 
-    assertEquals(400, error.status);
     assertEquals("Password must be at most 72 UTF-8 bytes", error.getMessage());
     assertNull(users.checkedUsername);
     assertNull(users.lastCreated);

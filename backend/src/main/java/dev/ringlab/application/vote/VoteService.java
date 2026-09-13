@@ -3,7 +3,7 @@ package dev.ringlab.application.vote;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.vote.Vote;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.VoteRepository;
@@ -32,7 +32,7 @@ public class VoteService {
   @Transactional
   public Result put(UUID user, UUID build, int value) {
     builds.get(build);
-    if (value != 1 && value != -1) throw new AppException(400, "Vote must be -1 or 1");
+    if (value != 1 && value != -1) throw new ValidationException("Vote must be -1 or 1");
     votes.put(new Vote(user, build, value));
     return get(user, build);
   }

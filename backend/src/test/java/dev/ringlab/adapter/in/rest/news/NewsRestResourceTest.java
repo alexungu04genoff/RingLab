@@ -1,7 +1,7 @@
 package dev.ringlab.adapter.in.rest.news;
 
 import dev.ringlab.adapter.in.rest.ErrorRestExceptionMapper;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.application.news.GameNewsService;
 import dev.ringlab.domain.news.GameNewsItem;
 import java.time.Instant;
@@ -24,9 +24,9 @@ class NewsRestResourceTest {
   @Test
   void unavailableNewsUsesExistingSafeErrorMapping() {
     var resource = new NewsRestResource(new GameNewsService(count -> {
-      throw new AppException(503, "News unavailable");
+      throw new ExternalServiceUnavailableException("News unavailable");
     }));
-    var error = assertThrows(AppException.class, resource::latest);
+    var error = assertThrows(ExternalServiceUnavailableException.class, resource::latest);
     try (var response = new ErrorRestExceptionMapper().toResponse(error)) {
       assertEquals(503, response.getStatus());
       assertEquals(new ErrorRestExceptionMapper.ErrorResponse("News unavailable"), response.getEntity());

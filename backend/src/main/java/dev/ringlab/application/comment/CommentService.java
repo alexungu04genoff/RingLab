@@ -4,7 +4,8 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.domain.comment.Comment;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ForbiddenException;
+import dev.ringlab.application.NotFoundException;
 import dev.ringlab.port.out.CommentRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
@@ -32,8 +33,8 @@ public class CommentService {
 
   @Transactional
   public void delete(UUID id, UUID actor) {
-    var c = comments.find(id).orElseThrow(() -> AppException.missing("Comment"));
-    AppException.requireOwner(c.authorId(), actor);
+    var c = comments.find(id).orElseThrow(() -> NotFoundException.missing("Comment"));
+    ForbiddenException.requireOwner(c.authorId(), actor);
     comments.delete(id);
   }
 }

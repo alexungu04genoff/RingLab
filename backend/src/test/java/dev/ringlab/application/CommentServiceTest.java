@@ -38,9 +38,7 @@ class CommentServiceTest {
     assertEquals(2, comments.listedPage);
     assertEquals(5, comments.listedSize);
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.list(UUID.randomUUID(), 0, 20));
-    assertEquals(404, error.status);
+    assertThrows(NotFoundException.class, () -> service.list(UUID.randomUUID(), 0, 20));
   }
 
   @Test
@@ -70,19 +68,18 @@ class CommentServiceTest {
     Comment comment = comment(UUID.randomUUID(), authorId, "Text");
     comments.comments.put(comment.id(), comment);
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.delete(comment.id(), UUID.randomUUID()));
+    ForbiddenException error =
+        assertThrows(ForbiddenException.class, () -> service.delete(comment.id(), UUID.randomUUID()));
 
-    assertEquals(403, error.status);
+    assertEquals("Only the author may change this resource", error.getMessage());
     assertNull(comments.deletedId);
   }
 
   @Test
   void missingCommentCannotBeDeleted() {
-    AppException error =
-        assertThrows(AppException.class, () -> service.delete(UUID.randomUUID(), authorId));
+    NotFoundException error =
+        assertThrows(NotFoundException.class, () -> service.delete(UUID.randomUUID(), authorId));
 
-    assertEquals(404, error.status);
     assertEquals("Comment not found", error.getMessage());
   }
 

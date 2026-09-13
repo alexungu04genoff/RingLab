@@ -2,7 +2,7 @@ package dev.ringlab.adapter.out.db.auth;
 
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.AlreadyExistsException;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;
@@ -32,7 +32,7 @@ public class UserDbAdapter implements UserRepository, PanacheRepositoryBase<User
     try {
       persistAndFlush(mapper.toEntity(user));
     } catch (ConstraintViolationException e) {
-      throw new AppException(409, "Username or email already registered");
+      throw new AlreadyExistsException("Username or email already registered");
     }
   }
 }

@@ -6,7 +6,9 @@ import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.MachinePartType;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ForbiddenException;
+import dev.ringlab.application.NotFoundException;
+import dev.ringlab.application.ValidationException;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -27,7 +29,7 @@ public class BuildService {
   private final GameDataRepository game;
 
   public Build get(UUID id) {
-    return builds.find(id).orElseThrow(() -> AppException.missing("Build"));
+    return builds.find(id).orElseThrow(() -> NotFoundException.missing("Build"));
   }
 
   public BuildRepository.Page list(BuildRepository.Filter filter) {
@@ -40,27 +42,27 @@ public class BuildService {
     requirePart(d.rearPartId(), MachinePartType.REAR);
     requirePart(d.tirePartId(), MachinePartType.TIRE);
     if (d.gameVersionId() != null && game.findGameVersion(d.gameVersionId()).isEmpty()) {
-      throw new AppException(400, "Unknown game version ID");
+      throw new ValidationException("Unknown game version ID");
     }
     validateGadgets(d.gadgetIds());
   }
 
   private void requireRacer(UUID id) {
-    if (game.findRacer(id).isEmpty()) throw new AppException(400, "Unknown racer ID");
+    if (game.findRacer(id).isEmpty()) throw new ValidationException("Unknown racer ID");
   }
 
   private void requirePart(UUID id, MachinePartType expectedType) {
-    if (id == null) throw new AppException(400, "Missing " + expectedType + " part ID");
+    if (id == null) throw new ValidationException("Missing " + expectedType + " part ID");
     var part = game.findMachinePart(id)
-        .orElseThrow(() -> new AppException(400, "Unknown " + expectedType + " part ID"));
+        .orElseThrow(() -> new ValidationException("Unknown " + expectedType + " part ID"));
     if (part.type() != expectedType) {
-      throw new AppException(400, "Expected " + expectedType + " part, got " + part.type());
+      throw new ValidationException("Expected " + expectedType + " part, got " + part.type());
     }
   }
 
   private void validateGadgets(List<UUID> gadgetIds) {
     if (new HashSet<>(gadgetIds).size() != gadgetIds.size()) {
-      throw new AppException(400, "Duplicate gadget ID");
+      throw new ValidationException("Duplicate gadget ID");
     }
 
     List<Integer> slotCosts = gadgetIds.stream()
@@ -68,21 +70,21 @@ public class BuildService {
         .map(this::requireValidSlotCost)
         .toList();
     if (!GadgetPlate.canFit(slotCosts)) {
-      throw new AppException(400, "Selected gadgets do not fit the 2x3 Gadget Plate");
+      throw new ValidationException("Selected gadgets do not fit the 2x3 Gadget Plate");
     }
   }
 
   private Gadget requireGadget(UUID id) {
     return game.findGadget(id)
-        .orElseThrow(() -> new AppException(400, "Unknown gadget ID"));
+        .orElseThrow(() -> new ValidationException("Unknown gadget ID"));
   }
 
   private int requireValidSlotCost(Gadget gadget) {
     if (gadget.slotCost() == null) {
-      throw new AppException(400, "Gadget slot cost is unknown: " + gadget.name());
+      throw new ValidationException("Gadget slot cost is unknown: " + gadget.name());
     }
     if (gadget.slotCost() < 1 || gadget.slotCost() > GadgetPlate.ROW_CAPACITY) {
-      throw new AppException(400, "Gadget slot cost is invalid: " + gadget.name());
+      throw new ValidationException("Gadget slot cost is invalid: " + gadget.name());
     }
     return gadget.slotCost();
   }
@@ -112,7 +114,7 @@ public class BuildService {
   @Transactional
   public Build edit(UUID id, UUID actor, Draft d) {
     var old = get(id);
-    AppException.requireOwner(old.authorId(), actor);
+    ForbiddenException.requireOwner(old.authorId(), actor);
     validate(d);
     var b =
         new Build(
@@ -134,7 +136,7 @@ public class BuildService {
 
   @Transactional
   public void delete(UUID id, UUID actor) {
-    AppException.requireOwner(get(id).authorId(), actor);
+    ForbiddenException.requireOwner(get(id).authorId(), actor);
     builds.delete(id);
   }
 }

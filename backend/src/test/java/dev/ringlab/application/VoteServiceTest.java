@@ -52,9 +52,9 @@ class VoteServiceTest {
   @Test
   void rejectsValuesOtherThanUpvoteOrDownvote() {
     for (int value : List.of(0, 2, -2)) {
-      AppException error =
-          assertThrows(AppException.class, () -> service.put(userId, buildId, value));
-      assertEquals(400, error.status);
+      ValidationException error =
+          assertThrows(ValidationException.class, () -> service.put(userId, buildId, value));
+      assertEquals("Vote must be -1 or 1", error.getMessage());
     }
     assertNull(votes.lastVote);
   }
@@ -63,10 +63,10 @@ class VoteServiceTest {
   void rejectsVoteWhenBuildIsMissing() {
     UUID missingBuild = UUID.randomUUID();
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.put(userId, missingBuild, 1));
+    NotFoundException error =
+        assertThrows(NotFoundException.class, () -> service.put(userId, missingBuild, 1));
 
-    assertEquals(404, error.status);
+    assertEquals("Build not found", error.getMessage());
     assertNull(votes.lastVote);
   }
 

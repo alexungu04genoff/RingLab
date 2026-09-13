@@ -1,7 +1,7 @@
 package dev.ringlab.adapter.out.steam;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ExternalServiceUnavailableException;
 import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import java.time.Instant;
@@ -45,8 +45,7 @@ class SteamNewsAdapterTest {
     for (RuntimeException failure : List.of(new ProcessingException("external body"),
         new WebApplicationException("external body", 502))) {
       var adapter = new SteamNewsAdapter((appId, count, maxLength) -> { throw failure; }, 2486820);
-      var error = assertThrows(AppException.class, () -> adapter.latest(5));
-      assertEquals(503, error.status);
+      var error = assertThrows(ExternalServiceUnavailableException.class, () -> adapter.latest(5));
       assertEquals("News unavailable", error.getMessage());
     }
   }
@@ -54,10 +53,10 @@ class SteamNewsAdapterTest {
   @Test
   void rejectsMalformedResponsesAndUnsafeLinks() {
     var malformed = new SteamNewsAdapter((appId, count, maxLength) -> null, 2486820);
-    assertEquals(503, assertThrows(AppException.class, () -> malformed.latest(5)).status);
+    assertThrows(ExternalServiceUnavailableException.class, () -> malformed.latest(5));
     var unsafe = new SteamNewsAdapter((appId, count, maxLength) ->
         new SteamNewsResponse(new SteamNewsResponse.AppNews(List.of(
             new SteamNewsResponse.NewsItem("1", "Title", "javascript:alert(1)", 1700000000L)))), 2486820);
-    assertEquals(503, assertThrows(AppException.class, () -> unsafe.latest(5)).status);
+    assertThrows(ExternalServiceUnavailableException.class, () -> unsafe.latest(5));
   }
 }

@@ -1,6 +1,6 @@
 package dev.ringlab.adapter.out.steam;
 
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.domain.news.GameNewsItem;
 import dev.ringlab.port.out.GameNewsRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -45,7 +45,7 @@ public class SteamNewsAdapter implements GameNewsRepository {
     } catch (ProcessingException | WebApplicationException | IllegalArgumentException
         | java.time.DateTimeException e) {
       log.warn("Steam news unavailable");
-      throw new AppException(503, "News unavailable");
+      throw new ExternalServiceUnavailableException("News unavailable");
     }
   }
 }

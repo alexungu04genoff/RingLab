@@ -1,6 +1,6 @@
 package dev.ringlab.application.news;
 
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.domain.news.GameNewsItem;
 import dev.ringlab.port.out.GameNewsRepository;
 import java.time.Instant;
@@ -22,8 +22,8 @@ class GameNewsServiceTest {
   @Test
   void preservesEmptyResultsAndControlledFailure() {
     assertTrue(new GameNewsService(count -> List.of()).latest().isEmpty());
-    var failure = new AppException(503, "News unavailable");
+    var failure = new ExternalServiceUnavailableException("News unavailable");
     var service = new GameNewsService(count -> { throw failure; });
-    assertSame(failure, assertThrows(AppException.class, service::latest));
+    assertSame(failure, assertThrows(ExternalServiceUnavailableException.class, service::latest));
   }
 }

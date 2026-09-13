@@ -3,7 +3,7 @@ package dev.ringlab;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.domain.vote.Vote;
 import java.time.Instant;
 import java.util.*;
@@ -28,9 +28,9 @@ class DomainTest {
     assertThrows(IllegalArgumentException.class, () -> new Vote(owner, other, 0));
     assertThrows(IllegalArgumentException.class, () -> new Vote(owner, other, 2));
     assertDoesNotThrow(() -> new Vote(owner, other, -1));
-    assertDoesNotThrow(() -> AppException.requireOwner(owner, owner));
-    assertEquals(
-        403,
-        assertThrows(AppException.class, () -> AppException.requireOwner(owner, other)).status);
+    assertDoesNotThrow(() -> ForbiddenException.requireOwner(owner, owner));
+    var error =
+        assertThrows(ForbiddenException.class, () -> ForbiddenException.requireOwner(owner, other));
+    assertEquals("Only the author may change this resource", error.getMessage());
   }
 }

@@ -3,7 +3,10 @@ package dev.ringlab.application.auth;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.auth.User;
-import dev.ringlab.application.AppException;
+import dev.ringlab.application.AuthenticationException;
+import dev.ringlab.application.AlreadyExistsException;
+import dev.ringlab.application.NotFoundException;
+import dev.ringlab.application.ValidationException;
 import dev.ringlab.port.out.UserRepository;
 import io.quarkus.elytron.security.common.BcryptUtil;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -23,9 +26,9 @@ public class AuthService {
     username = username.toLowerCase(Locale.ROOT);
     email = email.toLowerCase(Locale.ROOT);
     if (password.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72)
-      throw new AppException(400, "Password must be at most 72 UTF-8 bytes");
+      throw new ValidationException("Password must be at most 72 UTF-8 bytes");
     if (users.exists(username, email))
-      throw new AppException(409, "Username or email already registered");
+      throw new AlreadyExistsException("Username or email already registered");
     User user =
         new User(
             UUID.randomUUID(), username, email, BcryptUtil.bcryptHash(password), Instant.now());
@@ -36,11 +39,12 @@ public class AuthService {
   public User login(String username, String password) {
     var user = users.byUsername(username.toLowerCase(Locale.ROOT));
     boolean valid = BcryptUtil.matches(password, user.map(User::passwordHash).orElse(dummyHash));
-    if (user.isEmpty() || !valid) throw new AppException(401, "Invalid username or password");
+    if (user.isEmpty() || !valid)
+      throw new AuthenticationException("Invalid username or password");
     return user.get();
   }
 
   public User current(UUID id) {
-    return users.byId(id).orElseThrow(() -> AppException.missing("User"));
+    return users.byId(id).orElseThrow(() -> NotFoundException.missing("User"));
   }
 }

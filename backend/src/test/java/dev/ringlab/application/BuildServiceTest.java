@@ -46,9 +46,9 @@ class BuildServiceTest {
     builds.saved.put(build.id(), build);
 
     assertEquals(build, service.get(build.id()));
-    AppException error =
-        assertThrows(AppException.class, () -> service.get(UUID.randomUUID()));
-    assertEquals(404, error.status);
+    NotFoundException error =
+        assertThrows(NotFoundException.class, () -> service.get(UUID.randomUUID()));
+    assertEquals("Build not found", error.getMessage());
   }
 
   @Test
@@ -73,9 +73,9 @@ class BuildServiceTest {
   void rejectsUnknownRacer() {
     gameData.racers.clear();
 
-    AppException error = assertThrows(AppException.class, () -> service.create(authorId, draft("Build")));
+    ValidationException error =
+        assertThrows(ValidationException.class, () -> service.create(authorId, draft("Build")));
 
-    assertEquals(400, error.status);
     assertEquals("Unknown racer ID", error.getMessage());
     assertNull(builds.lastSaved);
   }
@@ -84,9 +84,9 @@ class BuildServiceTest {
   void rejectsUnknownFrontPart() {
     gameData.parts.remove(frontPartId);
 
-    AppException error = assertThrows(AppException.class, () -> service.create(authorId, draft("Build")));
+    ValidationException error =
+        assertThrows(ValidationException.class, () -> service.create(authorId, draft("Build")));
 
-    assertEquals(400, error.status);
     assertEquals("Unknown FRONT part ID", error.getMessage());
     assertNull(builds.lastSaved);
   }
@@ -95,9 +95,9 @@ class BuildServiceTest {
   void rejectsUnknownGadget() {
     gameData.gadgets.clear();
 
-    AppException error = assertThrows(AppException.class, () -> service.create(authorId, draft("Build")));
+    ValidationException error =
+        assertThrows(ValidationException.class, () -> service.create(authorId, draft("Build")));
 
-    assertEquals(400, error.status);
     assertEquals("Unknown gadget ID", error.getMessage());
     assertNull(builds.lastSaved);
   }
@@ -106,10 +106,9 @@ class BuildServiceTest {
   void rejectsDuplicateGadgetsBeforeSaving() {
     var duplicate = draftWithGadgets(List.of(gadgetId, gadgetId));
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.create(authorId, duplicate));
+    ValidationException error =
+        assertThrows(ValidationException.class, () -> service.create(authorId, duplicate));
 
-    assertEquals(400, error.status);
     assertEquals("Duplicate gadget ID", error.getMessage());
     assertNull(builds.lastSaved);
   }
@@ -120,15 +119,13 @@ class BuildServiceTest {
     UUID zeroCostId = addGadget("Zero cost", 0);
     UUID excessiveCostId = addGadget("Excessive cost", 4);
 
-    AppException unknownCost = assertThrows(AppException.class,
+    ValidationException unknownCost = assertThrows(ValidationException.class,
         () -> service.create(authorId, draftWithGadgets(List.of(unknownCostId))));
-    assertEquals(400, unknownCost.status);
     assertEquals("Gadget slot cost is unknown: Unknown cost", unknownCost.getMessage());
 
     for (UUID invalidId : List.of(zeroCostId, excessiveCostId)) {
-      AppException invalidCost = assertThrows(AppException.class,
+      ValidationException invalidCost = assertThrows(ValidationException.class,
           () -> service.create(authorId, draftWithGadgets(List.of(invalidId))));
-      assertEquals(400, invalidCost.status);
       assertTrue(invalidCost.getMessage().startsWith("Gadget slot cost is invalid: "));
     }
     assertNull(builds.lastSaved);
@@ -140,16 +137,14 @@ class BuildServiceTest {
         addGadget("First", 2), addGadget("Second", 2), addGadget("Third", 2));
     var invalid = draftWithGadgets(twoSlotGadgets);
 
-    AppException createError =
-        assertThrows(AppException.class, () -> service.create(authorId, invalid));
-    assertEquals(400, createError.status);
+    ValidationException createError =
+        assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     assertEquals("Selected gadgets do not fit the 2x3 Gadget Plate", createError.getMessage());
 
     var existing = service.create(authorId, draft("Existing"));
     builds.lastSaved = null;
-    AppException editError = assertThrows(AppException.class,
+    ValidationException editError = assertThrows(ValidationException.class,
         () -> service.edit(existing.id(), authorId, invalid));
-    assertEquals(400, editError.status);
     assertEquals("Selected gadgets do not fit the 2x3 Gadget Plate", editError.getMessage());
     assertNull(builds.lastSaved);
     assertEquals(List.of(gadgetId), service.get(existing.id()).gadgetIds());
@@ -175,11 +170,12 @@ class BuildServiceTest {
     Build old = existingBuild();
     builds.saved.put(old.id(), old);
 
-    AppException error =
+    ForbiddenException error =
         assertThrows(
-            AppException.class, () -> service.edit(old.id(), UUID.randomUUID(), draft("Updated")));
+            ForbiddenException.class,
+            () -> service.edit(old.id(), UUID.randomUUID(), draft("Updated")));
 
-    assertEquals(403, error.status);
+    assertEquals("Only the author may change this resource", error.getMessage());
     assertNull(builds.lastSaved);
   }
 
@@ -198,10 +194,10 @@ class BuildServiceTest {
     Build old = existingBuild();
     builds.saved.put(old.id(), old);
 
-    AppException error =
-        assertThrows(AppException.class, () -> service.delete(old.id(), UUID.randomUUID()));
+    ForbiddenException error =
+        assertThrows(ForbiddenException.class, () -> service.delete(old.id(), UUID.randomUUID()));
 
-    assertEquals(403, error.status);
+    assertEquals("Only the author may change this resource", error.getMessage());
     assertNull(builds.deletedId);
   }
 
@@ -227,8 +223,7 @@ class BuildServiceTest {
         new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, List.of()),
         new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, List.of()),
         new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, List.of()))) {
-      var error = assertThrows(AppException.class, () -> service.create(authorId, wrong));
-      assertEquals(400, error.status);
+      var error = assertThrows(ValidationException.class, () -> service.create(authorId, wrong));
       assertTrue(error.getMessage().startsWith("Expected "));
     }
     assertNull(builds.lastSaved);
@@ -237,7 +232,7 @@ class BuildServiceTest {
   @Test
   void rejectsMissingPartAndPreservesOrderedGadgets() {
     var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, List.of());
-    assertEquals(400, assertThrows(AppException.class, () -> service.create(authorId, invalid)).status);
+    assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     UUID second = UUID.randomUUID();
     gameData.gadgets.put(second, new Gadget(second, "Second", null, 2, null));
     var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
@@ -286,13 +281,12 @@ class BuildServiceTest {
   @Test
   void rejectsUnknownVersionOnCreateAndEditWithoutSaving() {
     var invalid = versionDraft(UUID.randomUUID());
-    var error = assertThrows(AppException.class, () -> service.create(authorId, invalid));
-    assertEquals(400, error.status);
+    var error = assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     assertEquals("Unknown game version ID", error.getMessage());
     assertNull(builds.lastSaved);
     var existing = service.create(authorId, versionDraft(null));
-    assertEquals(400, assertThrows(AppException.class,
-        () -> service.edit(existing.id(), authorId, invalid)).status);
+    assertThrows(
+        ValidationException.class, () -> service.edit(existing.id(), authorId, invalid));
     assertEquals(existing, service.get(existing.id()));
   }
 
