@@ -11,5 +11,11 @@ export default defineConfig({
       reporter: ["text", "html", "json-summary", "lcov"],
     },
   },
-  server: { host: "127.0.0.1", proxy: { "/api": "http://localhost:8080" } },
+  server: {
+    host: "127.0.0.1",
+    port: 5173,
+    strictPort: true,
+    allowedHosts: ["dev.ringlabgarage.com"],
+    proxy: { "/api": "http://127.0.0.1:8080" },
+  },
 });

@@ -72,6 +72,20 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
+For `https://dev.ringlabgarage.com`, reuse the existing Cloudflare Tunnel route to
+`http://127.0.0.1:5173`. Vite explicitly allows this hostname and requires port 5173
+instead of silently choosing another port. Its `/api` proxy targets local Quarkus
+at `127.0.0.1:8080`. Keep the development database and ignored JWT keys local.
+In the ignored `backend/.env`, set `PUBLIC_BASE_URL=https://dev.ringlabgarage.com`
+and include `https://dev.ringlabgarage.com` in `FRONTEND_ORIGIN` alongside the
+localhost origins. If Google login is enabled, add this HTTPS origin to the
+existing Google OAuth client's authorized JavaScript origins as well.
+
+If dev reports a DNS error, compare the configured resolver with
+`Resolve-DnsName dev.ringlabgarage.com -Server 1.1.1.1`. A stale NXDOMAIN response
+from the local resolver does not require recreating the tunnel. The dev hostname
+requires the local frontend, backend, database, and tunnel to remain running.
+
 The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
 
 ### Email verification and SMTP
