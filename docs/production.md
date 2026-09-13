@@ -45,7 +45,8 @@ return 404. No Vite server runs in production. Caddy persists certificates in
 `ringlab-production_caddy_data`. HTTP/3 is disabled; no UDP port is required.
 
 Backend and Caddy share the private Docker bridge `proxy`. Only Caddy has the fixed
-address 172.30.50.2. PostgreSQL and backend share a separate internal `database`
+address 172.30.50.2; backend is pinned to 172.30.50.3 so Docker cannot assign it
+Caddy's address during startup. PostgreSQL and backend share a separate internal `database`
 network; Caddy cannot connect directly to PostgreSQL. Backend has outbound access
 through the proxy bridge for Google, Brevo, and Steam. Check for subnet conflicts
 before deploying; if changed, update both the fixed Caddy IP and TRUSTED_PROXY_ADDRESS.
@@ -180,9 +181,12 @@ https://ringlabgarage.com and MAIL_FROM to noreply@ringlabgarage.com. Rate limit
 retain application.properties defaults; optional RATE_LIMIT_* values can go in
 production.env. No signing key or fallback production secret is in an image.
 
-Brevo: use smtp-relay.brevo.com, port 465, SMTP_TLS=true (implicit TLS), the Brevo
-SMTP login and an active SMTP key. Enter these directly in the protected server
-file. SMTP_TLS does not select STARTTLS; do not simply substitute port 587.
+Brevo on Hetzner: use smtp-relay.brevo.com, port 587, SMTP_TLS=false and
+QUARKUS_MAILER_START_TLS=REQUIRED, plus the Brevo SMTP login and an active SMTP key.
+SMTP_TLS=false disables implicit TLS, not encryption: STARTTLS is mandatory and
+certificate validation remains enabled. Hetzner blocks outbound 465 by default.
+Enter credentials directly in the protected server file. If Brevo SMTP IP blocking
+is enabled, authorize only the VPS's actual outgoing IP (currently 204.168.215.4).
 The authenticated domain/sender and existing SPF/DKIM/DMARC are untouched.
 Keep mail mocking disabled in production.
 
