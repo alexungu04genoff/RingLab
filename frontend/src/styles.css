@@ -662,6 +662,9 @@ main:has(.explore-hero) {
   justify-content: space-between;
   gap: 12px;
 }
+.card-kicker > .eyebrow {
+  font-size: 12px;
+}
 .machine-name {
   display: flex;
   align-items: center;
