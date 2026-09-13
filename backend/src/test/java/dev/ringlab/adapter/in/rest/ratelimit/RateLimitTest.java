@@ -100,6 +100,26 @@ class RateLimitTest {
   }
 
   @Test
+  void onlyTheExplicitDockerProxyCanSupplyVisitorIdentity() {
+    assertEquals("203.0.113.8",
+        ClientIpResolver.resolve("172.30.50.2", "203.0.113.8", true, "172.30.50.2"));
+    assertEquals("172.30.50.3",
+        ClientIpResolver.resolve("172.30.50.3", "203.0.113.8", true, "172.30.50.2"));
+    assertEquals("172.30.50.2",
+        ClientIpResolver.resolve("172.30.50.2", "203.0.113.8", false, "172.30.50.2"));
+    assertEquals("172.30.50.2",
+        ClientIpResolver.resolve("172.30.50.2", "203.0.113.8", true, "caddy"));
+    assertEquals("172.30.50.2",
+        ClientIpResolver.resolve("172.30.50.2", "203.0.113.8", true, "172.30.50.0/24"));
+    assertEquals("unknown",
+        ClientIpResolver.resolve(null, "203.0.113.8", true, ""));
+    assertEquals("172.30.50.2",
+        ClientIpResolver.resolve("172.30.50.2", "203.0.113.8, 198.51.100.1", true, "172.30.50.2"));
+    assertEquals("2001:db8:0:0:0:0:0:8",
+        ClientIpResolver.resolve("172.30.50.2", "2001:db8::8", true, "172.30.50.2"));
+  }
+
+  @Test
   void rejectionResponseUsesSafeJsonAndValidRetryAfter() {
     try (Response response = RateLimitFilter.rejectionResponse(
         InMemoryRateLimiter.Decision.rejected(12))) {

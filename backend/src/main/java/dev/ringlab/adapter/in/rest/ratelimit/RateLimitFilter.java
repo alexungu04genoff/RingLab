@@ -51,7 +51,7 @@ public class RateLimitFilter implements ContainerRequestFilter {
     String clientIp = ClientIpResolver.resolve(
         serverRequest.remoteAddress().hostAddress(),
         requestContext.getHeaderString(CLOUDFLARE_CLIENT_IP),
-        settings.trustCloudflareClientIp());
+        settings.trustCloudflareClientIp(), settings.trustedProxyAddress());
     Optional<String> authenticatedUserId = securityIdentity.isAnonymous()
         ? Optional.empty()
         : Optional.ofNullable(jwt.getSubject());

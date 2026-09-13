@@ -57,10 +57,12 @@ the existing safe `{message}` JSON shape, and a whole-second `Retry-After` value
 authorization and application errors remain unchanged for requests that the limiter admits.
 
 Client IP resolution ignores `X-Forwarded-For`. It uses the immediate peer unless
-`TRUST_CLOUDFLARE_CLIENT_IP=true`, the peer is loopback, and `CF-Connecting-IP` contains one valid IP
-literal. This narrowly supports the documented local Cloudflare Quick Tunnel -> Vite -> Quarkus
-path, where Vite passes the edge-provided header through. It assumes the backend remains local-only;
-other proxy layouts require their own explicit trust boundary.
+`TRUST_CLOUDFLARE_CLIENT_IP=true`, the peer is loopback or exactly matches the optional
+`TRUSTED_PROXY_ADDRESS`, and `CF-Connecting-IP` contains one valid IP
+literal. The loopback case supports the documented local Cloudflare Quick Tunnel -> Vite -> Quarkus
+path, where Vite passes the edge-provided header through and the backend remains local-only.
+The production Docker case trusts only Caddy's fixed address and its sanitized header,
+as described below; other proxy layouts require their own explicit trust boundary.
 
 This state is per Quarkus process and resets on restart. Horizontal deployment would require a
 shared limiter such as Redis or rate limiting at a trusted edge, neither of which is part of the
@@ -235,6 +237,19 @@ Routes cover Explore, My Builds, details, create/edit, register/login, and the r
 Compare Builds is a URL-driven frontend view for exactly two existing builds. It composes the current detail and paginated browse APIs to compare semantic racer, patch, Front/Rear/Tire, ordered gadget, Gadget Plate, and vote fields rather than free-form text; it stores no comparison state on the backend.
 
 ## Verification and limits
+
+Production packaging is defined separately in `compose.production.yaml`: Caddy
+serves the compiled React SPA and proxies unchanged `/api/*` paths to the Java 21
+Quarkus container; PostgreSQL 17 persists in a production-only volume on an internal
+network. Only Caddy publishes 80/443. Images are built on CI after both test jobs
+pass, not on the VPS. This configuration is prepared, not yet deployed.
+
+The rate-limit adapter can additionally trust one explicitly configured proxy IP.
+Production pins Caddy's Docker address and makes it replace the visitor-IP header
+after checking Cloudflare's source ranges. Quarkus uses the original socket peer;
+arbitrary Docker peers are not trusted. Local loopback behavior is unchanged.
+See [production deployment](production.md) for configuration, trust boundaries,
+secret mounts, later deployment commands, backup and rollback limitations.
 
 `AcceptanceTest` uses Quarkus's test runner, HTTP requests, actual JWT registration/login, Flyway, and PostgreSQL. `PackagedApiIT` repeats it against the production artifact. `DomainTest` checks immutable collection and vote/ownership behavior. Frontend tests check ordering and API errors/session expiration. The test run's external-database option requires a disposable database.
 

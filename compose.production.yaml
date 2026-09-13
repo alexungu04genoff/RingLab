@@ -1,0 +1,100 @@
+name: ringlab-production
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  caddy:
+    image: ${FRONTEND_IMAGE:?Set the frontend image tag or digest}
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_SITE: ${CADDY_SITE:-ringlabgarage.com}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      proxy:
+        ipv4_address: 172.30.50.2
+    depends_on:
+      - backend
+    mem_limit: 256m
+    logging: *logging
+
+  backend:
+    image: ${BACKEND_IMAGE:?Set the backend image tag or digest}
+    restart: unless-stopped
+    env_file:
+      - path: ./production.env
+        format: raw
+    environment:
+      QUARKUS_PROFILE: prod
+      QUARKUS_HTTP_HOST: 0.0.0.0
+      QUARKUS_HTTP_PROXY_PROXY_ADDRESS_FORWARDING: "false"
+      DB_URL: jdbc:postgresql://postgres:5432/ringlab_production
+      DB_USER: ${DB_USER:?Set a dedicated production database user}
+      DB_PASSWORD: ${DB_PASSWORD:?Set a unique production database password}
+      JWT_PUBLIC_KEY: file:/run/ringlab-jwt/public.pem
+      JWT_PRIVATE_KEY: file:/run/ringlab-jwt/private.pem
+      PUBLIC_BASE_URL: https://ringlabgarage.com
+      FRONTEND_ORIGIN: https://ringlabgarage.com
+      MAIL_FROM: noreply@ringlabgarage.com
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?Set the existing OAuth client ID}
+      TRUST_CLOUDFLARE_CLIENT_IP: "true"
+      TRUSTED_PROXY_ADDRESS: 172.30.50.2
+    volumes:
+      - type: bind
+        source: ./secrets/jwt
+        target: /run/ringlab-jwt
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - proxy
+      - database
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 1536m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *logging
+
+  postgres:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ringlab_production
+      POSTGRES_USER: ${DB_USER:?Set a dedicated production database user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set a unique production database password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - database
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    mem_limit: 1g
+    logging: *logging
+
+networks:
+  proxy:
+    ipam:
+      config:
+        - subnet: 172.30.50.0/24
+  database:
+    internal: true
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

@@ -8,8 +8,15 @@ final class ClientIpResolver {
 
   static String resolve(
       String immediatePeerAddress, String cloudflareClientIp, boolean trustCloudflareClientIp) {
+    return resolve(immediatePeerAddress, cloudflareClientIp, trustCloudflareClientIp, null);
+  }
+
+  static String resolve(
+      String immediatePeerAddress, String cloudflareClientIp, boolean trustCloudflareClientIp,
+      String trustedProxyAddress) {
     String peer = canonicalIp(immediatePeerAddress);
-    if (trustCloudflareClientIp && isLoopback(peer)) {
+    String proxy = canonicalIp(trustedProxyAddress);
+    if (trustCloudflareClientIp && (isLoopback(peer) || (peer != null && peer.equals(proxy)))) {
       String cloudflareAddress = canonicalIp(cloudflareClientIp);
       if (cloudflareAddress != null) {
         return cloudflareAddress;

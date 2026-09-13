@@ -13,6 +13,7 @@ class RateLimitSettings {
   private final Duration bucketIdleTimeout;
   private final int maxBuckets;
   private final boolean trustCloudflareClientIp;
+  private final String trustedProxyAddress;
 
   @Inject
   RateLimitSettings(Config config) {
@@ -36,6 +37,8 @@ class RateLimitSettings {
     maxBuckets = config.getValue("ringlab.rate-limit.max-buckets", Integer.class);
     trustCloudflareClientIp =
         config.getValue("ringlab.rate-limit.trust-cloudflare-client-ip", Boolean.class);
+    trustedProxyAddress = config.getOptionalValue(
+        "ringlab.rate-limit.trusted-proxy-address", String.class).orElse("");
   }
 
   Map<RequestRateLimitPolicy, RateLimitRule> rules() {
@@ -52,6 +55,10 @@ class RateLimitSettings {
 
   boolean trustCloudflareClientIp() {
     return trustCloudflareClientIp;
+  }
+
+  String trustedProxyAddress() {
+    return trustedProxyAddress;
   }
 
   private static RateLimitRule rule(Config config, String policyName) {
