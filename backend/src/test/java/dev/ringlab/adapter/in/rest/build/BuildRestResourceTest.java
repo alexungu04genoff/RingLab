@@ -13,9 +13,18 @@ import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import java.time.Instant;
 import java.util.*;
+import jakarta.ws.rs.DefaultValue;
 import org.junit.jupiter.api.Test;
 
 class BuildRestResourceTest {
+  @Test
+  void defaultsPublicBuildListingToBestRated() throws NoSuchMethodException {
+    var list = BuildRestResource.class.getDeclaredMethod("list", String.class, UUID.class,
+        UUID.class, UUID.class, UUID.class, String.class, int.class, int.class);
+
+    assertEquals("rated", list.getParameters()[5].getAnnotation(DefaultValue.class).value());
+  }
+
   @Test
   void deletedOptionalSourceMapsToNullForDetailAndList() {
     UUID id = UUID.randomUUID();
