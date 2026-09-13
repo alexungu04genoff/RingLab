@@ -34,12 +34,12 @@ class BuildRankingTest {
         Map.entry(oneDown.id(), new VoteSummary(0, 1)),
         Map.entry(twoDown.id(), new VoteSummary(0, 2)));
 
-    List<Build> actual = new ArrayList<>(List.of(twoDown, empty, tiny, negative, strong,
-        balanced, perfect, positive, good, oneDown, eight));
+    List<BuildRanking.Candidate> actual = candidates(twoDown, empty, tiny, negative, strong,
+        balanced, perfect, positive, good, oneDown, eight);
     actual.sort(BuildRanking.comparator(BuildSort.BEST_RATED, facts));
 
     assertEquals(List.of(strong, perfect, good, eight, tiny, positive,
-        balanced, empty, negative, oneDown, twoDown), actual);
+        balanced, empty, negative, oneDown, twoDown).stream().map(Build::id).toList(), ids(actual));
   }
 
   @Test
@@ -51,9 +51,9 @@ class BuildRankingTest {
         old.id(), new VoteSummary(3, 0), laterSecond.id(), new VoteSummary(3, 0),
         laterFirst.id(), new VoteSummary(3, 0));
     for (BuildSort sort : BuildSort.values()) {
-      List<Build> actual = new ArrayList<>(List.of(old, laterSecond, laterFirst));
+      List<BuildRanking.Candidate> actual = candidates(old, laterSecond, laterFirst);
       actual.sort(BuildRanking.comparator(sort, equal));
-      assertEquals(List.of(laterFirst, laterSecond, old), actual);
+      assertEquals(List.of(laterFirst.id(), laterSecond.id(), old.id()), ids(actual));
     }
   }
 
@@ -62,5 +62,15 @@ class BuildRankingTest {
     Instant time = Instant.parse("2026-01-01T00:00:00Z").plusSeconds(age);
     return new Build(value, id, "", value, value, value, value, value,
         null, null, List.of(), time, time);
+  }
+
+  private List<BuildRanking.Candidate> candidates(Build... builds) {
+    return Arrays.stream(builds).map(build ->
+        new BuildRanking.Candidate(build.id(), build.createdAt()))
+        .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+  }
+
+  private List<UUID> ids(List<BuildRanking.Candidate> candidates) {
+    return candidates.stream().map(BuildRanking.Candidate::id).toList();
   }
 }

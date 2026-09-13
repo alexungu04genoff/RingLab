@@ -1,6 +1,7 @@
 package dev.ringlab.port.out;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.ranking.BuildRanking;
 import java.util.*;
 
 public interface BuildRepository {
@@ -18,10 +19,13 @@ public interface BuildRepository {
 
   Optional<Build> find(UUID id);
 
-  /** All matching builds, each once, with no ordering or pagination guarantee.
+  /** All matching lightweight ranking candidates, each once, with no ordering or pagination guarantee.
    * Ranking and pagination belong to the application, not this adapter.
    */
-  List<Build> search(Filter filter);
+  List<BuildRanking.Candidate> searchCandidates(Filter filter);
+
+  /** Fully hydrates the requested builds. Result order is unspecified. */
+  List<Build> findAll(Collection<UUID> ids);
 
   void save(Build build);
 

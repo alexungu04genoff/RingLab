@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.adapter.out.db.gamedata.MachinePartDbEntity;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.port.out.BuildRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.persistence.EntityManager;
@@ -28,13 +29,24 @@ public class BuildDbAdapter implements BuildRepository {
     return Optional.ofNullable(mapper.toDomain(em.find(BuildDbEntity.class, id)));
   }
 
-  public List<Build> search(Filter filter) {
+  public List<BuildRanking.Candidate> searchCandidates(Filter filter) {
     CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
 
-    CriteriaQuery<BuildDbEntity> itemQuery = criteriaBuilder.createQuery(BuildDbEntity.class);
+    CriteriaQuery<BuildRanking.Candidate> itemQuery = criteriaBuilder.createQuery(BuildRanking.Candidate.class);
     Root<BuildDbEntity> itemRoot = itemQuery.from(BuildDbEntity.class);
+    itemQuery.select(criteriaBuilder.construct(
+        BuildRanking.Candidate.class, itemRoot.get("id"), itemRoot.get("createdAt")));
     itemQuery.where(filters(criteriaBuilder, itemQuery, itemRoot, filter).toArray(Predicate[]::new));
-    return em.createQuery(itemQuery).getResultList().stream().map(mapper::toDomain).toList();
+    return em.createQuery(itemQuery).getResultList();
+  }
+
+  public List<Build> findAll(java.util.Collection<UUID> ids) {
+    if (ids.isEmpty()) return List.of();
+    CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
+    CriteriaQuery<BuildDbEntity> query = criteriaBuilder.createQuery(BuildDbEntity.class);
+    Root<BuildDbEntity> root = query.from(BuildDbEntity.class);
+    query.where(root.get("id").in(ids));
+    return em.createQuery(query).getResultList().stream().map(mapper::toDomain).toList();
   }
 
   private List<Predicate> filters(

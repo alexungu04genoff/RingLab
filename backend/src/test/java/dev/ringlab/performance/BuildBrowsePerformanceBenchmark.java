@@ -236,12 +236,17 @@ class BuildBrowsePerformanceBenchmark {
   private BuildService.Page invokeNewestWithoutVotes() {
     return QuarkusTransaction.requiringNew().call(() -> {
       entityManager.clear();
-      List<Build> candidates = buildRepository.search(
+      List<BuildRanking.Candidate> candidates = buildRepository.searchCandidates(
           new BuildRepository.Filter(null, null, null, null, null));
-      List<Build> ranked = candidates.stream()
+      List<BuildRanking.Candidate> ranked = candidates.stream()
           .sorted(BuildRanking.comparator(BuildSort.NEWEST, Map.of()))
           .toList();
-      return new BuildService.Page(ranked.subList(0, Math.min(PAGE_SIZE, ranked.size())), ranked.size());
+      List<UUID> pageIds = ranked.subList(0, Math.min(PAGE_SIZE, ranked.size())).stream()
+          .map(BuildRanking.Candidate::id).toList();
+      Map<UUID, Build> hydrated = buildRepository.findAll(pageIds).stream()
+          .collect(java.util.stream.Collectors.toMap(Build::id, build -> build));
+      return new BuildService.Page(pageIds.stream().map(hydrated::get)
+          .filter(java.util.Objects::nonNull).toList(), ranked.size());
     });
   }
 

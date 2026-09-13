@@ -19,6 +19,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -71,18 +72,22 @@ public class BuildService {
       throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
     if (query.filter().search() != null && query.filter().search().length() > 120)
       throw new ValidationException("Search must be at most 120 characters");
-    List<Build> candidates = builds.search(query.filter());
+    List<BuildRanking.Candidate> candidates = builds.searchCandidates(query.filter());
     var summaries = query.sort() == BuildSort.NEWEST
         ? Map.<UUID, VoteSummary>of()
-        : votes.summaries(candidates.stream().map(Build::id).toList());
-    List<Build> ranked = candidates.stream()
+        : votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());
+    List<BuildRanking.Candidate> ranked = candidates.stream()
         .sorted(BuildRanking.comparator(query.sort(), summaries))
         .toList();
     long offset = (long) query.page() * query.size();
     if (offset >= ranked.size()) return new Page(List.of(), ranked.size(), Map.of());
     int from = (int) offset;
     int to = (int) Math.min(offset + query.size(), ranked.size());
-    List<Build> items = ranked.subList(from, to);
+    List<UUID> pageIds = ranked.subList(from, to).stream().map(BuildRanking.Candidate::id).toList();
+    Map<UUID, Build> hydratedById = new HashMap<>();
+    for (Build build : builds.findAll(pageIds)) hydratedById.put(build.id(), build);
+    List<Build> items = pageIds.stream().map(hydratedById::get)
+        .filter(java.util.Objects::nonNull).toList();
     Map<UUID, VoteSummary> pageSummaries = query.sort() == BuildSort.NEWEST
         ? votes.summaries(items.stream().map(Build::id).toList())
         : items.stream().filter(build -> summaries.containsKey(build.id()))

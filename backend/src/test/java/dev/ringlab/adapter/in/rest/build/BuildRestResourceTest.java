@@ -35,7 +35,10 @@ class BuildRestResourceTest {
       public Optional<Build> find(UUID requested) {
         return requested.equals(id) ? Optional.of(remix) : Optional.empty();
       }
-      public List<Build> search(Filter filter) { return List.of(remix); }
+      public List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> searchCandidates(Filter filter) {
+        return List.of(new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(id, remix.createdAt()));
+      }
+      public List<Build> findAll(Collection<UUID> ids) { return List.of(remix); }
       public void save(Build build) { throw new UnsupportedOperationException(); }
       public void delete(UUID build) { throw new UnsupportedOperationException(); }
     };

@@ -74,6 +74,22 @@ class BuildServiceTest {
   }
 
   @Test
+  void listingRestoresRankedOrderAndSkipsMissingBulkHydrationResults() {
+    Instant base = Instant.parse("2026-01-01T00:00:00Z");
+    Build oldest = rankedBuild("oldest", base);
+    Build middle = rankedBuild("middle", base.plusSeconds(1));
+    Build newest = rankedBuild("newest", base.plusSeconds(2));
+    builds.searchResults = List.of(middle, oldest, newest);
+    builds.hydrationResults = List.of(oldest, newest);
+
+    var page = service.list(new BuildService.Query(
+        new BuildRepository.Filter(null, null, null, null, null), BuildSort.NEWEST, 0, 3));
+
+    assertEquals(List.of(newest, oldest), page.items());
+    assertEquals(List.of(newest.id(), middle.id(), oldest.id()), builds.hydratedIds);
+  }
+
+  @Test
   void scoreAndBestRatedReturnPageSummariesFromTheirRankingQuery() {
     Instant base = Instant.parse("2026-01-01T00:00:00Z");
     Build first = rankedBuild("first", base.plusSeconds(1));
@@ -469,6 +485,8 @@ class BuildServiceTest {
   private static final class InMemoryBuildRepository implements BuildRepository {
     private final Map<UUID, Build> saved = new HashMap<>();
     private List<Build> searchResults;
+    private List<Build> hydrationResults;
+    private List<UUID> hydratedIds = List.of();
     private Build lastSaved;
     private UUID deletedId;
 
@@ -478,8 +496,19 @@ class BuildServiceTest {
     }
 
     @Override
-    public List<Build> search(Filter filter) {
-      return searchResults == null ? List.copyOf(saved.values()) : searchResults;
+    public List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> searchCandidates(Filter filter) {
+      List<Build> results = searchResults == null ? List.copyOf(saved.values()) : searchResults;
+      return results.stream().map(build ->
+          new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(build.id(), build.createdAt())).toList();
+    }
+
+    @Override
+    public List<Build> findAll(Collection<UUID> ids) {
+      hydratedIds = List.copyOf(ids);
+      if (hydrationResults != null) return hydrationResults;
+      Map<UUID, Build> available = new HashMap<>(saved);
+      if (searchResults != null) searchResults.forEach(build -> available.put(build.id(), build));
+      return ids.stream().map(available::get).filter(Objects::nonNull).toList();
     }
 
     @Override

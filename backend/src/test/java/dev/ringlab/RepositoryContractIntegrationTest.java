@@ -82,11 +82,11 @@ class RepositoryContractIntegrationTest {
     }
     Build decoy = build(author.id(), "Literal XX mixed", null);
     em.flush();
-    assertEquals(expected, ids(builds.search(new BuildRepository.Filter("%_ mixed", null, target, author.id(), null))));
+    assertEquals(expected, candidateIds(builds.searchCandidates(new BuildRepository.Filter("%_ mixed", null, target, author.id(), null))));
     for (String blank : List.of("", " \t\n")) {
       Set<UUID> all = new HashSet<>(expected);
       all.add(decoy.id());
-      assertEquals(all, ids(builds.search(new BuildRepository.Filter(blank, null, null, author.id(), null))));
+      assertEquals(all, candidateIds(builds.searchCandidates(new BuildRepository.Filter(blank, null, null, author.id(), null))));
     }
   }
 
@@ -226,6 +226,11 @@ class RepositoryContractIntegrationTest {
 
   private Set<UUID> ids(List<Build> result) {
     return result.stream().map(Build::id).collect(java.util.stream.Collectors.toSet());
+  }
+
+  private Set<UUID> candidateIds(List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> result) {
+    return result.stream().map(dev.ringlab.domain.build.ranking.BuildRanking.Candidate::id)
+        .collect(java.util.stream.Collectors.toSet());
   }
 
   private long rows(String table, UUID build) {

@@ -192,6 +192,75 @@ build. At 5,000 unfiltered candidates those batched collection fetches remain 31
 statements and are expected to remain the dominant large-set cost. The browse candidate
 projection/page-only gadget hydration optimization remains deliberately unimplemented.
 
+## Optimization Pass 2
+
+Measured on 2026-09-13 with the same `BuildBrowsePerformanceBenchmark`, disposable database,
+datasets, scenarios, two warm-ups, seven recorded iterations, and development environment described
+above. The baseline and Pass 1 values remain unchanged.
+
+This pass replaces full candidate materialization with a two-phase browse read. `BuildDbAdapter`
+projects only candidate ID and creation time while retaining every existing database filter.
+`BuildService` performs canonical global ranking and pagination over those facts, bulk-hydrates only
+the selected page, and restores the ranked ID order independently of database result order. SCORE and
+BEST_RATED still retrieve candidate-wide raw vote summaries; NEWEST still retrieves summaries only
+for the page.
+
+### Pass 2 complete rerun
+
+All latencies are milliseconds. Service SQL now consists of candidate projection, optional ranking
+vote facts or page vote facts, page entity hydration, and one batched page gadget-collection fetch.
+
+| Builds | Scenario | Candidates / total | Returned | Service median | HTTP median | Service SQL | HTTP SQL |
+|---:|---|---:|---:|---:|---:|---:|---:|
+| 60 | newest, page 0 | 60 | 12 | 24.462 | 137.121 | 4 | 50 |
+| 60 | score, page 0 | 60 | 12 | 18.151 | 103.186 | 4 | 49 |
+| 60 | rated, page 0 | 60 | 12 | 21.007 | 103.674 | 4 | 49 |
+| 60 | racer-filtered rated | 12 | 12 | 16.093 | 68.562 | 4 | 29 |
+| 60 | machine-filtered rated | 12 | 12 | 20.663 | 102.014 | 4 | 29 |
+| 60 | version-filtered rated | 15 | 12 | 17.464 | 88.346 | 4 | 42 |
+| 60 | title search, rated | 6 | 6 | 14.714 | 54.693 | 4 | 25 |
+| 60 | rated, page 4 | 60 | 12 | 13.824 | 87.064 | 4 | 48 |
+| 500 | newest, page 0 | 500 | 12 | 12.208 | 97.133 | 4 | 50 |
+| 500 | score, page 0 | 500 | 12 | 19.506 | 86.300 | 4 | 44 |
+| 500 | rated, page 0 | 500 | 12 | 18.715 | 81.500 | 4 | 44 |
+| 500 | racer-filtered rated | 100 | 12 | 13.926 | 79.121 | 4 | 37 |
+| 500 | machine-filtered rated | 100 | 12 | 15.816 | 72.310 | 4 | 37 |
+| 500 | version-filtered rated | 125 | 12 | 16.095 | 81.134 | 4 | 44 |
+| 500 | title search, rated | 50 | 12 | 16.880 | 69.922 | 4 | 37 |
+| 500 | rated, page 4 | 500 | 12 | 16.495 | 76.881 | 4 | 44 |
+| 5,000 | newest, page 0 | 5,000 | 12 | 18.766 | 90.469 | 4 | 50 |
+| 5,000 | score, page 0 | 5,000 | 12 | 87.811 | 127.926 | 4 | 44 |
+| 5,000 | rated, page 0 | 5,000 | 12 | 72.840 | 145.434 | 4 | 44 |
+| 5,000 | racer-filtered rated | 1,000 | 12 | 26.885 | 80.027 | 4 | 37 |
+| 5,000 | machine-filtered rated | 1,000 | 12 | 29.666 | 77.647 | 4 | 37 |
+| 5,000 | version-filtered rated | 1,250 | 12 | 33.021 | 87.395 | 4 | 44 |
+| 5,000 | title search, rated | 500 | 12 | 24.763 | 73.484 | 4 | 37 |
+| 5,000 | rated, page 4 | 5,000 | 12 | 61.723 | 115.948 | 4 | 46 |
+
+### Pass 1 to Pass 2 comparison at 5,000 builds
+
+Positive percentages mean a lower median. Timing is noisy on this single development workstation;
+the query-count change is deterministic and should carry more weight.
+
+| Scenario | Service before | Service after | Service improvement | HTTP before | HTTP after | HTTP improvement | Service SQL before / after | HTTP SQL before / after |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| NEWEST | 508.365 | 18.766 | 96.3% | 649.014 | 90.469 | 86.1% | 315 / 4 | 361 / 50 |
+| SCORE | 855.950 | 87.811 | 89.7% | 560.504 | 127.926 | 77.2% | 315 / 4 | 351 / 44 |
+| BEST_RATED | 444.796 | 72.840 | 83.6% | 482.667 | 145.434 | 69.9% | 315 / 4 | 351 / 44 |
+
+The former 313 candidate gadget-fetch statements disappeared in every 5,000-candidate service
+scenario. Service SQL fell from 315 to 4 statements: one lightweight candidate projection, one vote
+summary query, one page build query, and one page gadget-collection fetch. For NEWEST the vote query
+is page-only; for SCORE and BEST_RATED it remains candidate-wide as required for exact ranking.
+Statement count is now constant with candidate count at the measured page size.
+
+The next dominant measured database concern is the deliberately unoptimized response-enrichment
+fan-out: full 12-item HTTP responses used 44-50 statements for the unfiltered 5,000-build page-0
+scenarios, of which 40-46 occurred after the four-statement service phase. SCORE and BEST_RATED also
+retain O(N) candidate vote aggregation and application sorting; their 5,000-candidate service medians
+remain materially higher than NEWEST even though SQL statement counts are equal. This pass does not
+optimize either concern.
+
 ### NEWEST vote-summary impact
 
 At baseline, production NEWEST executed the same all-candidate bulk vote query as SCORE and BEST_RATED even though

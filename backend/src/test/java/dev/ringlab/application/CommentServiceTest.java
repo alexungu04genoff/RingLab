@@ -125,8 +125,14 @@ class CommentServiceTest {
     }
 
     @Override
-    public List<Build> search(Filter filter) {
-      return List.copyOf(builds.values());
+    public List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> searchCandidates(Filter filter) {
+      return builds.values().stream().map(build ->
+          new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(build.id(), build.createdAt())).toList();
+    }
+
+    @Override
+    public List<Build> findAll(Collection<UUID> ids) {
+      return ids.stream().map(builds::get).filter(Objects::nonNull).toList();
     }
 
     @Override
