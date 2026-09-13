@@ -33,6 +33,10 @@ public class ProfanityPolicy {
     if (containsProfanity(text)) throw new ValidationException(MESSAGE);
   }
 
+  public void requireClean(String text, String field) {
+    if (containsProfanity(text)) throw new ValidationException(MESSAGE, field);
+  }
+
   private static List<Pattern> loadBlockedTerms() {
     try (var input = ProfanityPolicy.class.getResourceAsStream("/profanity.txt")) {
       if (input == null) throw new IllegalStateException("Missing profanity word list");

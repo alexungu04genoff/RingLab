@@ -14,8 +14,13 @@ import jakarta.ws.rs.ext.Provider;
 @Provider
 public class ErrorRestExceptionMapper implements ExceptionMapper<AppException> {
   public record ErrorResponse(String message) {}
+  public record FieldErrorResponse(String message, String field) {}
 
   public Response toResponse(AppException e) {
+    if (e instanceof ValidationException validation && validation.field() != null) {
+      return Response.status(Response.Status.BAD_REQUEST)
+          .entity(new FieldErrorResponse(e.getMessage(), validation.field())).build();
+    }
     return Response.status(statusFor(e)).entity(new ErrorResponse(e.getMessage())).build();
   }
 

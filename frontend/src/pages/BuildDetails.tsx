@@ -28,6 +28,7 @@ export function BuildDetails() {
   const [vote, setVote] = useState<Vote>();
   const [text, setText] = useState("");
   const [error, setError] = useState("");
+  const [commentError, setCommentError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -42,13 +43,13 @@ export function BuildDetails() {
       });
     return () => controller.abort();
   }, [id, user]);
-  async function act(task: () => Promise<void>) {
+  async function act(task: () => Promise<void>, reportError = setError) {
     setBusy(true);
-    setError("");
+    reportError("");
     try {
       await task();
     } catch (e) {
-      setError((e as Error).message);
+      reportError((e as Error).message);
     } finally {
       setBusy(false);
     }
@@ -326,7 +327,7 @@ export function BuildDetails() {
                     );
                     if (lastPage === page) setRevision((r) => r + 1);
                     else setPage(lastPage);
-                  });
+                  }, setCommentError);
                 }}
               >
                 <label>
@@ -336,10 +337,17 @@ export function BuildDetails() {
                     maxLength={2000}
                     rows={3}
                     value={text}
-                    onChange={(e) => setText(e.target.value)}
+                    aria-describedby={commentError ? "comment-error" : undefined}
+                    onChange={(e) => {
+                      setText(e.target.value);
+                      setCommentError("");
+                    }}
                     placeholder="Share your thoughts on this setup…"
                   />
                 </label>
+                <div id="comment-error">
+                  <ErrorNotice message={commentError} />
+                </div>
                 <button className="primary" disabled={busy || !text.trim()}>
                   Post comment
                 </button>

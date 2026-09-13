@@ -99,11 +99,11 @@ public class BuildService {
   private void validate(Draft d) {
     if (d == null) throw new ValidationException("Missing build draft");
     if (d.title() == null || d.title().isBlank() || d.title().length() > 120)
-      throw new ValidationException("Title must be nonblank and at most 120 characters");
+      throw new ValidationException("Title must be nonblank and at most 120 characters", "title");
     if (d.description() == null || d.description().length() > 10000)
-      throw new ValidationException("Description is required and must be at most 10000 characters");
-    profanity.requireClean(d.title());
-    profanity.requireClean(d.description());
+      throw new ValidationException("Description is required and must be at most 10000 characters", "description");
+    profanity.requireClean(d.title(), "title");
+    profanity.requireClean(d.description(), "description");
     requireRacer(d.racerId());
     requirePart(d.frontPartId(), MachinePartType.FRONT);
     requirePart(d.rearPartId(), MachinePartType.REAR);

@@ -155,6 +155,7 @@ class BuildServiceTest {
     for (var draft : List.of(badTitle, badDescription)) {
       var error = assertThrows(ValidationException.class, () -> service.create(authorId, draft));
       assertEquals("Text contains inappropriate language", error.getMessage());
+      assertEquals(draft == badTitle ? "title" : "description", error.field());
     }
     assertNull(builds.lastSaved);
   }

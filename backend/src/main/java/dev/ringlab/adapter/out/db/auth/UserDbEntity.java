@@ -18,6 +18,9 @@ public class UserDbEntity {
   @Column(name = "password_hash", length = 100)
   public String passwordHash;
 
+  @Column(name = "email_verified_at")
+  public Instant emailVerifiedAt;
+
   @Column(name = "created_at", nullable = false)
   public Instant createdAt;
 }

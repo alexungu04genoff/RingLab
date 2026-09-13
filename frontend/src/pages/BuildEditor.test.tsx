@@ -46,6 +46,18 @@ function expectNoWrite() {
   expect(vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT")).toEqual([]);
 }
 
+it.each(["title", "description"])("shows %s validation beside its input and clears it on editing", async (field) => {
+  await openA();
+  vi.mocked(api).mockRejectedValueOnce(new ApiError(400, "Text contains inappropriate language", undefined, field));
+  const input = screen.getByLabelText(field === "title" ? "Build title" : "Description");
+  fireEvent.submit(input.closest("form")!);
+  const alert = await screen.findByRole("alert");
+  expect(alert.parentElement?.id).toBe(`build-${field}-error`);
+  expect(input.getAttribute("aria-describedby")).toBe(alert.parentElement?.id);
+  fireEvent.change(input, { target: { value: "Clean revised text" } });
+  expect(screen.queryByRole("alert")).toBeNull();
+});
+
 it.each(["network", "forbidden"])("removes A's draft when B fails with %s", async (failure) => {
   loadB = () => Promise.reject(failure === "network" ? new Error("Network unavailable") : new ApiError(403, "Forbidden"));
   const router = await openA();

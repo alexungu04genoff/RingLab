@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, json } from "../api";
+import { api, ApiError, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
@@ -39,6 +39,7 @@ export function BuildEditor() {
   const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<{ title?: string; description?: string }>({});
   const [busy, setBusy] = useState(false);
   const [gadgetSearch, setGadgetSearch] = useState("");
   const [stockSourceId, setStockSourceId] = useState("");
@@ -53,6 +54,7 @@ export function BuildEditor() {
     setAllowed(!id);
     setLoading(!!id);
     setError("");
+    setFieldErrors({});
     setStockSourceId("");
     if (!id) return;
     const controller = new AbortController();
@@ -87,6 +89,7 @@ export function BuildEditor() {
   }, [id, user?.id]);
   useEffect(() => {
     if (!remixSourceId) return;
+    setFieldErrors({});
     const controller = new AbortController();
     setLoading(true);
     api<Build>(`/builds/${remixSourceId}`, { signal: controller.signal })
@@ -101,6 +104,9 @@ export function BuildEditor() {
   }, [remixSourceId]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
+    if (key === "title" || key === "description") {
+      setFieldErrors((current) => ({ ...current, [key]: undefined }));
+    }
   }
   const selectedRacer = racers.data?.find((r) => r.id === draft.racerId);
   const selectedGadgets = draft.gadgetIds
@@ -133,6 +139,7 @@ export function BuildEditor() {
               if (busy || !canSubmit || loading || !plateStatus.valid) return;
               setBusy(true);
               setError("");
+              setFieldErrors({});
               try {
                 const b = await api<Build>(
                   id ? `/builds/${id}` : "/builds",
@@ -140,7 +147,11 @@ export function BuildEditor() {
                 );
                 navigate(`/builds/${b.id}`);
               } catch (e) {
-                setError((e as Error).message);
+                if (e instanceof ApiError && (e.field === "title" || e.field === "description")) {
+                  setFieldErrors({ [e.field]: e.message });
+                } else {
+                  setError((e as Error).message);
+                }
               } finally {
                 setBusy(false);
               }
@@ -168,20 +179,26 @@ export function BuildEditor() {
                     required
                     maxLength={120}
                     value={draft.title}
+                    aria-invalid={!!fieldErrors.title}
+                    aria-describedby={fieldErrors.title ? "build-title-error" : undefined}
                     onChange={(e) => field("title", e.target.value)}
                     placeholder="Give your setup a name"
                   />
                 </label>
+                <div id="build-title-error"><ErrorNotice message={fieldErrors.title ?? ""} /></div>
                 <label>
                   Description
                   <textarea
                     maxLength={10000}
                     rows={6}
                     value={draft.description}
+                    aria-invalid={!!fieldErrors.description}
+                    aria-describedby={fieldErrors.description ? "build-description-error" : undefined}
                     onChange={(e) => field("description", e.target.value)}
                     placeholder="What makes this combination work for you?"
                   />
                 </label>
+                <div id="build-description-error"><ErrorNotice message={fieldErrors.description ?? ""} /></div>
               </section>
               <section className="panel">
                 <h2>

@@ -24,6 +24,7 @@ class RateLimitSettings {
     configuredRules.put(RequestRateLimitPolicy.LOGIN, rule(config, "login"));
     configuredRules.put(RequestRateLimitPolicy.GOOGLE_LOGIN, rule(config, "google-login"));
     configuredRules.put(RequestRateLimitPolicy.REGISTRATION, rule(config, "registration"));
+    configuredRules.put(RequestRateLimitPolicy.RESEND_VERIFICATION, rule(config, "resend-verification"));
     configuredRules.put(RequestRateLimitPolicy.BUILD_CREATION, rule(config, "build-creation"));
     configuredRules.put(RequestRateLimitPolicy.COMMENT_CREATION, rule(config, "comment-creation"));
     configuredRules.put(RequestRateLimitPolicy.VOTING, rule(config, "voting"));

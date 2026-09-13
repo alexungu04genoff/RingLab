@@ -9,6 +9,8 @@ public interface UserRepository {
 
   Optional<User> byUsername(String username);
 
+  Optional<User> byEmail(String email);
+
   boolean exists(String username, String email);
 
   /**
@@ -16,4 +18,6 @@ public interface UserRepository {
    * uniqueness conflicts are translated to the semantic duplicate-account error.
    */
   void create(User user);
+
+  void markEmailVerified(UUID userId, java.time.Instant verifiedAt);
 }

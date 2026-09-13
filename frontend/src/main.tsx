@@ -6,6 +6,7 @@ import { Explore } from "./pages/Explore";
 import { BuildEditor } from "./pages/BuildEditor";
 import { BuildDetails } from "./pages/BuildDetails";
 import { AuthPage } from "./pages/AuthPage";
+import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
 import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
@@ -88,6 +89,7 @@ function App() {
             path="/register"
             element={<AuthPage key="register" register />}
           />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/game-data" element={<GameData />} />
           <Route
             path="*"

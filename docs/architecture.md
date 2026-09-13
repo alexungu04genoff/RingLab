@@ -33,6 +33,9 @@ policy before application services persist them. The policy loads a small classp
 applies Unicode normalization and case folding, and recognizes simple punctuation- or
 space-separated spellings with word boundaries. Application services are authoritative; this
 intentionally limited check is not a comprehensive moderation system.
+Build title and description validation failures include an optional field identifier in the REST
+error response. The shared create/edit/remix editor displays these errors beside the corresponding
+input; failures without a field remain at form level.
 
 ## HTTP rate limiting
 

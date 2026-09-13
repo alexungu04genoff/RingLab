@@ -7,6 +7,7 @@ import { ErrorNotice } from "../components";
 import type { Session } from "../types";
 export function AuthPage({ register = false }: { register?: boolean }) {
   const [error, setError] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
   const [busy, setBusy] = useState(false);
   const { accept } = useAuth();
   const navigate = useNavigate();
@@ -31,6 +32,14 @@ export function AuthPage({ register = false }: { register?: boolean }) {
       setBusy(false);
     }
   }
+  if (registeredEmail) return (
+    <div className="auth-layout"><div className="auth-intro"><div className="eyebrow accent">ONE MORE LAP</div><h1>Check your<br /><em>email.</em></h1></div>
+      <section className="panel auth-form"><h2>Verify your account</h2><p>We sent a verification link to {registeredEmail}. Open it, then return here to log in.</p>
+        <button className="primary" onClick={() => navigate("/login")}>Go to log in</button>
+        <button disabled={busy} onClick={async () => { setBusy(true); setError(""); try { await api("/auth/resend-verification", json("POST", { email: registeredEmail })); } catch (e) { setError((e as Error).message); } finally { setBusy(false); } }}>{busy ? "Please wait…" : "Resend verification email"}</button>
+        <ErrorNotice message={error} />
+      </section></div>
+  );
   return (
     <div className="auth-layout">
       <div className="auth-intro">
@@ -61,11 +70,12 @@ export function AuthPage({ register = false }: { register?: boolean }) {
           setError("");
           const data = new FormData(e.currentTarget);
           try {
-            const session = await api<Session>(
-              `/auth/${register ? "register" : "login"}`,
-              json("POST", Object.fromEntries(data)),
-            );
-            complete(session);
+            if (register) {
+              await api("/auth/register", json("POST", Object.fromEntries(data)));
+              setRegisteredEmail(String(data.get("email") ?? ""));
+            } else {
+              complete(await api<Session>("/auth/login", json("POST", Object.fromEntries(data))));
+            }
           } catch (e) {
             setError((e as Error).message);
           } finally {

@@ -49,7 +49,7 @@ public class ExternalAuthService {
     }
     profanity.requireClean(username);
     Instant now = Instant.now();
-    var user = new User(UUID.randomUUID(), username, email, null, now);
+    var user = new User(UUID.randomUUID(), username, email, null, now, now);
     users.create(user);
     identities.create(new ExternalIdentity(user.id(), verified.provider(), verified.subject(), now));
     return user;

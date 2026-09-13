@@ -12,6 +12,7 @@ export class ApiError extends Error {
     public status: number,
     message: string,
     public retryAfterSeconds?: number,
+    public field?: string,
   ) {
     super(status === 429 && retryAfterSeconds !== undefined
       ? `${message} Try again in ${retryAfterSeconds} seconds.` : message);
@@ -48,6 +49,7 @@ export async function api<T>(
         }[response.status] ??
           "Something went wrong. Please try again."),
       Number.isFinite(delay) && delay >= 0 ? delay : undefined,
+      typeof data?.field === "string" ? data.field : undefined,
     );
   }
   if (response.status === 204 || response.headers.get("content-length") === "0")

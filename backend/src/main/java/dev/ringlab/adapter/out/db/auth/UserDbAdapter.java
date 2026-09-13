@@ -6,6 +6,7 @@ import dev.ringlab.application.AlreadyExistsException;
 import io.quarkus.hibernate.orm.panache.PanacheRepositoryBase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.*;
+import java.time.Instant;
 import org.hibernate.exception.ConstraintViolationException;
 
 @ApplicationScoped
@@ -24,6 +25,10 @@ public class UserDbAdapter implements UserRepository, PanacheRepositoryBase<User
     return find("username", username).firstResultOptional().map(mapper::toDomain);
   }
 
+  public Optional<User> byEmail(String email) {
+    return find("email", email).firstResultOptional().map(mapper::toDomain);
+  }
+
   public boolean exists(String username, String email) {
     return count("username = ?1 or email = ?2", username, email) > 0;
   }
@@ -39,5 +44,9 @@ public class UserDbAdapter implements UserRepository, PanacheRepositoryBase<User
       }
       throw e;
     }
+  }
+
+  public void markEmailVerified(UUID userId, Instant verifiedAt) {
+    update("emailVerifiedAt = ?1 where id = ?2", verifiedAt, userId);
   }
 }
