@@ -12,7 +12,7 @@ dev.ringlab/
   application/{auth,build,comment,news,vote}/
   port/out/
     {User,Build,Comment,GameData,GameNews,Vote}Repository.java
-  adapter/in/rest/{auth,build,comment,gamedata,news,vote}/
+  adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
   adapter/out/steam/
@@ -23,10 +23,39 @@ dev.ringlab/
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Racer` and `Machine` carry `RacingType` and image path; `Gadget` carries its description, nullable latest verified slot cost, and image path. `Build` snapshots its ordered gadget list. `Vote` permits only −1 and +1. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions for validation, authentication, existing resources, forbidden operations, missing resources, and unavailable external services; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
-- **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
+- **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser extracts a UUID from a verified JWT. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
 The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules.
+
+## HTTP rate limiting
+
+`RateLimitFilter` is an inbound REST filter. It selects one of a small fixed set of endpoint
+policies and consumes from an in-process token bucket before invoking a resource. Public reads,
+build browsing, news, login, Google login and registration use client-IP identities. Build
+creation, comment creation, vote mutation and other authenticated mutations use the verified JWT
+subject (the RingLab user UUID); requests without a verified user safely fall back to an IP key.
+The initial policies are respectively 120/minute, 60/minute, 30/minute, 10/minute, 10/minute,
+5/hour, 10/minute, 10/minute, 60/minute and 30/minute. Configuration uses one
+`capacity/ISO-8601-duration` property per policy.
+
+The limiter stores buckets in a synchronized, access-ordered in-memory map. Token refill is based
+on elapsed time, so a full bucket permits a reasonable burst rather than imposing fixed spacing.
+Idle buckets expire after two hours, cleanup runs at most once per minute, and a hard 10,000-bucket
+cap evicts the least recently accessed identity when necessary. A rejection returns HTTP 429,
+the existing safe `{message}` JSON shape, and a whole-second `Retry-After` value. Normal validation,
+authorization and application errors remain unchanged for requests that the limiter admits.
+
+Client IP resolution ignores `X-Forwarded-For`. It uses the immediate peer unless
+`TRUST_CLOUDFLARE_CLIENT_IP=true`, the peer is loopback, and `CF-Connecting-IP` contains one valid IP
+literal. This narrowly supports the documented local Cloudflare Quick Tunnel -> Vite -> Quarkus
+path, where Vite passes the edge-provided header through. It assumes the backend remains local-only;
+other proxy layouts require their own explicit trust boundary.
+
+This state is per Quarkus process and resets on restart. Horizontal deployment would require a
+shared limiter such as Redis or rate limiting at a trusted edge, neither of which is part of the
+current single-instance design. Cloudflare/network protection is complementary; the REST filter is
+not presented as volumetric DDoS prevention.
 
 Application services own input validity as well as orchestration. AuthService validates private input records with the existing Jakarta Validator, preserving the same username/email/password constraints as REST without depending on REST DTOs. Login preserves legacy credential acceptance, including whitespace passwords, and never trims passwords. BuildService and CommentService explicitly validate text, null inputs and pagination bounds. REST Bean Validation remains an early transport check; no HTTP types flow inward.
 

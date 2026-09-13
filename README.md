@@ -17,8 +17,8 @@ backend/src/main/java/dev/ringlab/
   port/out/
                UserRepository, BuildRepository, CommentRepository,
                GameDataRepository, GameNewsRepository and VoteRepository contracts
-  adapter/in/rest/{auth,build,comment,gamedata,news,vote}/
-               REST entry points and current JWT identity
+  adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
+               REST entry points, current JWT identity and HTTP rate limiting
                feature-local request/ and response/ DTO packages
   adapter/out/db/{auth,build,comment,gamedata,vote}/
                DbEntity, DbMapper and DbAdapter persistence types
@@ -74,6 +74,40 @@ Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost
 The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Register through the UI, then create your first build. Registration signs you in immediately; login is also available separately. Use another browser/session to register a second account and try ownership restrictions.
 
 Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_ORIGIN` defaults to `http://localhost:5173`.
+
+## API rate limiting
+
+The Quarkus REST boundary applies an in-memory token bucket before API calls reach application
+services. The initial full bucket allows a normal UI page to make a short burst. Defaults are:
+
+- public reads: 120/minute per client IP
+- `GET /api/builds`: 60/minute per client IP
+- `GET /api/news`: 30/minute per client IP
+- login and Google login: 10/minute per client IP, in separate buckets
+- registration: 5/hour per client IP
+- build creation: 10/minute per authenticated user
+- comment creation: 10/minute per authenticated user
+- vote changes/removal: 60/minute per authenticated user
+- other authenticated mutations: 30/minute per authenticated user
+
+An exhausted bucket returns HTTP 429 with `{"message":"Too many requests"}` and a whole-second
+`Retry-After` header. Each policy can be adjusted without recompiling through the corresponding
+`RATE_LIMIT_*` environment variable in `application.properties`; values use
+`capacity/ISO-8601-duration`, for example `60/PT1M`. Idle buckets expire after two hours, and the
+in-memory store is also capped at 10,000 identities. Those bounds are configurable through
+`RATE_LIMIT_BUCKET_IDLE_TIMEOUT` and `RATE_LIMIT_MAX_BUCKETS`.
+
+By default, the client identity is Quarkus's immediate socket peer; arbitrary `X-Forwarded-For`
+values are never trusted. For the local Cloudflare Quick Tunnel path (`cloudflared` -> Vite on
+`:5173` -> Quarkus on `:8080`), set `TRUST_CLOUDFLARE_CLIENT_IP=true`. RingLab then accepts the
+single `CF-Connecting-IP` value only when Quarkus's immediate peer is loopback. Vite preserves that
+incoming header while proxying `/api`. This assumes Quarkus remains local-only behind that Vite
+process; a different proxy topology needs an explicit trusted-proxy design.
+
+The buckets belong to one Quarkus process and reset on restart. Multiple application instances
+would require shared state or edge rate limiting. Cloudflare/network filtering remains separate;
+this feature limits ordinary application-level request flooding and is not volumetric DDoS
+protection.
 
 ## Optional presentation dataset
 
