@@ -488,6 +488,7 @@ public abstract class ApiContract {
         .body("items[0].id", equalTo(first));
     given()
         .queryParam("authorId", owner.id)
+        .queryParam("sort", "newest")
         .get("/api/builds")
         .then()
         .statusCode(200)
@@ -512,6 +513,7 @@ public abstract class ApiContract {
         .body("items[0].id", equalTo(first));
     given()
         .queryParam("authorId", owner.id)
+        .queryParam("sort", "newest")
         .queryParam("size", 1)
         .queryParam("page", 0)
         .get("/api/builds")
@@ -521,6 +523,7 @@ public abstract class ApiContract {
         .body("items[0].id", equalTo(second));
     given()
         .queryParam("authorId", owner.id)
+        .queryParam("sort", "newest")
         .queryParam("size", 1)
         .queryParam("page", 1)
         .get("/api/builds")

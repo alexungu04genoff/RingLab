@@ -156,6 +156,16 @@
             <quarkus.jacoco.data-file>${project.build.directory}/jacoco-quarkus.exec</quarkus.jacoco.data-file>
             <quarkus.jacoco.reuse-data-file>true</quarkus.jacoco.reuse-data-file>
             <quarkus.jacoco.report-location>${project.build.directory}/site/jacoco</quarkus.jacoco.report-location>
+            <ringlab.rate-limit.general>100000/PT1M</ringlab.rate-limit.general>
+            <ringlab.rate-limit.build-list>100000/PT1M</ringlab.rate-limit.build-list>
+            <ringlab.rate-limit.news>100000/PT1M</ringlab.rate-limit.news>
+            <ringlab.rate-limit.login>100000/PT1M</ringlab.rate-limit.login>
+            <ringlab.rate-limit.google-login>100000/PT1M</ringlab.rate-limit.google-login>
+            <ringlab.rate-limit.registration>100000/PT1M</ringlab.rate-limit.registration>
+            <ringlab.rate-limit.build-creation>100000/PT1M</ringlab.rate-limit.build-creation>
+            <ringlab.rate-limit.comment-creation>100000/PT1M</ringlab.rate-limit.comment-creation>
+            <ringlab.rate-limit.voting>100000/PT1M</ringlab.rate-limit.voting>
+            <ringlab.rate-limit.authenticated-mutation>100000/PT1M</ringlab.rate-limit.authenticated-mutation>
           </systemPropertyVariables>
         </configuration>
       </plugin>
@@ -173,9 +183,9 @@
         <configuration>
           <systemPropertyVariables>
             <java.util.logging.manager>org.jboss.logmanager.LogManager</java.util.logging.manager>
-            <mp.jwt.verify.publickey.location>${env.JWT_PUBLIC_KEY}</mp.jwt.verify.publickey.location>
-            <smallrye.jwt.sign.key.location>${env.JWT_PRIVATE_KEY}</smallrye.jwt.sign.key.location>
             <maven.home>${maven.home}</maven.home>
+            <quarkus.test.integration-test-profile>test</quarkus.test.integration-test-profile>
+            <quarkus.test.arg-line>-Dringlab.rate-limit.general=100000/PT1M -Dringlab.rate-limit.build-list=100000/PT1M -Dringlab.rate-limit.news=100000/PT1M -Dringlab.rate-limit.login=100000/PT1M -Dringlab.rate-limit.google-login=100000/PT1M -Dringlab.rate-limit.registration=100000/PT1M -Dringlab.rate-limit.build-creation=100000/PT1M -Dringlab.rate-limit.comment-creation=100000/PT1M -Dringlab.rate-limit.voting=100000/PT1M -Dringlab.rate-limit.authenticated-mutation=100000/PT1M</quarkus.test.arg-line>
           </systemPropertyVariables>
         </configuration>
       </plugin>
