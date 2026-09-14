@@ -33,7 +33,18 @@ jobs:
           java-version: '21'
           cache: maven
       - run: java backend/scripts/GenerateJwtKeys.java backend/.keys
-      - run: mvn -f backend/pom.xml verify
+      - name: Test backend and enforce coverage thresholds
+        run: mvn -f backend/pom.xml verify
+      - name: Add backend coverage to the job summary
+        if: always()
+        run: node scripts/coverage-summary.mjs backend backend/target/site/jacoco/jacoco.xml
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/target/site/jacoco
+          if-no-files-found: warn
 
   frontend:
     runs-on: ubuntu-latest
@@ -46,8 +57,19 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
         working-directory: frontend
-      - run: npm run test:coverage
+      - name: Test frontend and enforce coverage thresholds
+        run: npm run test:coverage
         working-directory: frontend
+      - name: Add frontend coverage to the job summary
+        if: always()
+        run: node scripts/coverage-summary.mjs frontend frontend/coverage/coverage-summary.json
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
+          if-no-files-found: warn
       - run: npm run build
         working-directory: frontend
 

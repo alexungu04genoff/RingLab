@@ -86,6 +86,21 @@ class GoogleAuthIntegrationTest {
 
   @Test
   @TestTransaction
+  void adapterTranslatesDuplicateExternalIdentityToAStableApplicationError() {
+    var userId = UUID.randomUUID();
+    users.create(new User(userId, "identity_adapter", "identity-adapter@example.test", null, Instant.now()));
+    var original = new ExternalIdentity(userId, "GOOGLE", "adapter-subject", Instant.now());
+    identities.create(original);
+    em.clear();
+
+    var error = assertThrows(dev.ringlab.application.AlreadyExistsException.class,
+        () -> identities.create(original));
+
+    assertEquals("Sign-in was completed concurrently. Please try again.", error.getMessage());
+  }
+
+  @Test
+  @TestTransaction
   void identityCannotReferenceMissingUser() {
     assertThrows(PersistenceException.class, () -> em.createNativeQuery(
         "insert into external_identities(user_id, provider, provider_subject, created_at) values (:id, 'GOOGLE', 'missing-user', current_timestamp)")

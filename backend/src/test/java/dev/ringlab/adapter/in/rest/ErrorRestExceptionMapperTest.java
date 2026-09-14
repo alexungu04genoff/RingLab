@@ -9,6 +9,7 @@ import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
+import dev.ringlab.adapter.in.rest.ErrorRestExceptionMapper.FieldErrorResponse;
 import org.junit.jupiter.api.Test;
 
 class ErrorRestExceptionMapperTest {
@@ -22,6 +23,14 @@ class ErrorRestExceptionMapperTest {
     assertMapping(404, new NotFoundException("Missing"));
     assertMapping(409, new AlreadyExistsException("Duplicate"));
     assertMapping(503, new ExternalServiceUnavailableException("Unavailable"));
+  }
+
+  @Test
+  void preservesTheFieldForActionableValidationErrors() {
+    try (var response = mapper.toResponse(new ValidationException("Title is required", "title"))) {
+      assertEquals(400, response.getStatus());
+      assertEquals(new FieldErrorResponse("Title is required", "title"), response.getEntity());
+    }
   }
 
   private void assertMapping(int expectedStatus, AppException exception) {

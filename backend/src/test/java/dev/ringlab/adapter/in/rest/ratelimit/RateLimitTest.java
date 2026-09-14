@@ -2,6 +2,7 @@ package dev.ringlab.adapter.in.rest.ratelimit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import dev.ringlab.adapter.in.rest.ErrorRestExceptionMapper;
@@ -169,6 +170,26 @@ class RateLimitTest {
     RateLimitRule rule = RateLimitRule.parse("5/PT1H");
     assertEquals(5, rule.capacity());
     assertEquals(Duration.ofHours(1), rule.refillPeriod());
+  }
+
+  @Test
+  void invalidRateConfigurationFailsAtStartupWithActionableMessages() {
+    assertEquals("Rate-limit value is required",
+        assertThrows(IllegalArgumentException.class, () -> RateLimitRule.parse(null)).getMessage());
+    assertEquals("Rate-limit value must use the form <capacity>/<ISO-8601 duration>",
+        assertThrows(IllegalArgumentException.class, () -> RateLimitRule.parse("5")).getMessage());
+    assertEquals("Rate-limit capacity must be an integer",
+        assertThrows(IllegalArgumentException.class, () -> RateLimitRule.parse("many/PT1M")).getMessage());
+    assertEquals("Rate-limit capacity must be positive",
+        assertThrows(IllegalArgumentException.class, () -> RateLimitRule.parse("0/PT1M")).getMessage());
+    for (String duration : new String[] {"PT0S", "-PT1S"}) {
+      assertEquals("Rate-limit refill period must be positive",
+          assertThrows(IllegalArgumentException.class,
+              () -> RateLimitRule.parse("1/" + duration)).getMessage());
+    }
+    assertEquals("Rate-limit refill period must be positive",
+        assertThrows(IllegalArgumentException.class,
+            () -> new RateLimitRule(1, null)).getMessage());
   }
 
   private static RequestRateLimitPolicy policy(String method, String path) {

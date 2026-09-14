@@ -16,7 +16,9 @@ export function useLoad<T>(path: string, refresh = 0) {
     setError("");
     setData(undefined);
     api<T>(path, { signal: controller.signal })
-      .then(setData)
+      .then((value) => {
+        if (!controller.signal.aborted) setData(value);
+      })
       .catch((e) => {
         if (!controller.signal.aborted) setError(e.message);
       })

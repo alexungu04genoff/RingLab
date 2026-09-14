@@ -129,6 +129,31 @@ class AuthServiceTest {
   }
 
   @Test
+  void resendDoesNotRevealMissingVerifiedOrExternalAccounts() {
+    User verified = user("verified", "password-123");
+    users.create(verified);
+    users.create(new User(UUID.randomUUID(), "external", "external@example.test", null, Instant.now()));
+
+    assertTrue(service.resendVerification("missing@example.test").isEmpty());
+    assertTrue(service.resendVerification("verified@example.com").isEmpty());
+    assertTrue(service.resendVerification("external@example.test").isEmpty());
+    for (String invalid : Arrays.asList(null, "", " ", "x".repeat(255))) {
+      assertTrue(service.resendVerification(invalid).isEmpty());
+    }
+    assertNull(verificationTokens.lastStored);
+  }
+
+  @Test
+  void resendNormalizesEmailAndIssuesANewTokenForAnUnverifiedLocalAccount() {
+    service.register("account", "account@example.com", "password-123");
+
+    var delivery = service.resendVerification("ACCOUNT@EXAMPLE.COM").orElseThrow();
+
+    assertEquals("account@example.com", delivery.email());
+    assertNotEquals(delivery.token(), verificationTokens.lastStored.tokenHash());
+  }
+
+  @Test
   void expiredTokenCannotVerifyAccount() {
     var delivery = service.register("account", "account@example.com", "correct-password");
     var stored = verificationTokens.lastStored;
@@ -145,6 +170,24 @@ class AuthServiceTest {
         assertThrows(AuthenticationException.class, () -> service.login("missing", "password-123"));
 
     assertEquals("Invalid username or password", error.getMessage());
+  }
+
+  @Test
+  void malformedVerificationTokensAreRejectedBeforeRepositoryLookup() {
+    for (String token : Arrays.asList(null, "", " ", "x".repeat(513))) {
+      var error = assertThrows(ValidationException.class, () -> service.verifyEmail(token));
+      assertEquals("Verification link is invalid or expired", error.getMessage());
+    }
+    assertNull(verificationTokens.lastLookupHash);
+  }
+
+  @Test
+  void currentReturnsTheAccountOrReportsThatItNoLongerExists() {
+    User existing = user("account", "password-123");
+    users.create(existing);
+
+    assertEquals(existing, service.current(existing.id()));
+    assertThrows(NotFoundException.class, () -> service.current(UUID.randomUUID()));
   }
 
   @Test
@@ -270,6 +313,7 @@ class AuthServiceTest {
   private static final class InMemoryVerificationTokens implements EmailVerificationTokenRepository {
     private final Map<String, EmailVerificationToken> byHash = new HashMap<>();
     private EmailVerificationToken lastStored;
+    private String lastLookupHash;
 
     @Override public void replace(EmailVerificationToken token) {
       byHash.values().removeIf(existing -> existing.userId().equals(token.userId()));
@@ -277,6 +321,7 @@ class AuthServiceTest {
       lastStored = token;
     }
     @Override public Optional<EmailVerificationToken> byTokenHashForUpdate(String hash) {
+      lastLookupHash = hash;
       return Optional.ofNullable(byHash.get(hash));
     }
     @Override public void delete(UUID userId) {
