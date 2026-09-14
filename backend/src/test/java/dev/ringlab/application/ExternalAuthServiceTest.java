@@ -37,9 +37,54 @@ class ExternalAuthServiceTest {
     users.create(local);
     var error = assertThrows(AlreadyExistsException.class,
         () -> service("new-subject", "Alex@example.test").login("credential"));
-    assertEquals("An account already exists with this email. Sign in with your existing account first.", error.getMessage());
+    assertEquals(
+        "An account already exists with this email. Sign in with your username and password, "
+            + "then link Google from your account page.",
+        error.getMessage());
     assertEquals(List.of(local), new ArrayList<>(users.values.values()));
     assertTrue(identities.values.isEmpty());
+  }
+
+  @Test
+  void signedInUserCanLinkMatchingGoogleIdentityAndUseItForLaterLogin() {
+    var local = new User(UUID.randomUUID(), "local", "alex@example.test", "hash", Instant.now());
+    users.create(local);
+
+    service("stable-subject", "Alex@example.test").link(local.id(), "credential");
+
+    assertEquals(local.id(), identities.find("GOOGLE", "stable-subject").orElseThrow().userId());
+    assertEquals(local, service("stable-subject", "changed@example.test").login("credential"));
+  }
+
+  @Test
+  void linkingIsIdempotentForTheSameUser() {
+    var local = new User(UUID.randomUUID(), "local", "alex@example.test", "hash", Instant.now());
+    users.create(local);
+    var service = service("stable-subject", "alex@example.test");
+
+    service.link(local.id(), "credential");
+    service.link(local.id(), "credential");
+
+    assertEquals(1, identities.values.size());
+  }
+
+  @Test
+  void linkRejectsMismatchedEmailAndIdentityOwnedByAnotherUser() {
+    var local = new User(UUID.randomUUID(), "local", "alex@example.test", "hash", Instant.now());
+    var other = new User(UUID.randomUUID(), "other", "other@example.test", "hash", Instant.now());
+    users.create(local);
+    users.create(other);
+
+    var mismatch = assertThrows(ForbiddenException.class,
+        () -> service("new-subject", "different@example.test").link(local.id(), "credential"));
+    assertEquals("Google account email must match your RingLab email.", mismatch.getMessage());
+    assertTrue(identities.values.isEmpty());
+
+    service("owned-subject", "other@example.test").link(other.id(), "credential");
+    var owned = assertThrows(AlreadyExistsException.class,
+        () -> service("owned-subject", "alex@example.test").link(local.id(), "credential"));
+    assertEquals("This Google account is already linked to another RingLab account.", owned.getMessage());
+    assertEquals(1, identities.values.size());
   }
 
   @Test

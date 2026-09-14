@@ -35,8 +35,8 @@ function loadGoogle(): Promise<void> {
   return scriptLoading;
 }
 
-export function GoogleSignIn({ onCredential, disabled }: {
-  onCredential: (credential: string) => void; disabled: boolean;
+export function GoogleSignIn({ onCredential, disabled, showSeparator = true }: {
+  onCredential: (credential: string) => void; disabled: boolean; showSeparator?: boolean;
 }) {
   const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID?.trim();
   const container = useRef<HTMLDivElement>(null);
@@ -69,6 +69,6 @@ export function GoogleSignIn({ onCredential, disabled }: {
   return <div className="google-sign-in">
     <div ref={container} aria-label="Sign in with Google" aria-disabled={disabled} />
     {error && <p role="status">{error}</p>}
-    <p className="muted">──────── or ────────</p>
+    {showSeparator && <p className="muted">──────── or ────────</p>}
   </div>;
 }

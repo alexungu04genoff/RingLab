@@ -45,11 +45,11 @@ it("exchanges the GIS credential and accepts only the normal RingLab session", a
 });
 
 it("shows an email conflict without accepting a session and allows a retry", async () => {
-  vi.mocked(api).mockRejectedValueOnce(new Error("Sign in with your existing account first.")).mockResolvedValueOnce(session);
+  vi.mocked(api).mockRejectedValueOnce(new Error("Sign in with your username and password, then link Google from your account page.")).mockResolvedValueOnce(session);
   page(true);
   const button = await screen.findByRole("button", { name: "Continue with Google" });
   await userEvent.click(button);
-  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("existing account"));
+  await waitFor(() => expect(screen.getByRole("alert").textContent).toContain("account page"));
   expect(accept).not.toHaveBeenCalled();
   expect(screen.getByLabelText(/^Password/)).toBeTruthy();
   await userEvent.click(button);

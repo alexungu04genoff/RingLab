@@ -41,6 +41,14 @@ public class AuthRestResource {
     return session(externalAuth.login(r.credential()));
   }
 
+  @POST
+  @Path("google/link")
+  @RolesAllowed("user")
+  public MessageResponse linkGoogle(@Valid @NotNull GoogleSignInRequest request) {
+    externalAuth.link(actor.id(), request.credential());
+    return new MessageResponse("Google sign-in is now linked to your account.");
+  }
+
   private SessionResponse session(User u) {
     return new SessionResponse(
         Jwt.subject(u.id().toString()).upn(u.username()).groups("user").sign(),

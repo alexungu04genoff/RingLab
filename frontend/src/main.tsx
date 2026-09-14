@@ -8,6 +8,7 @@ import { BuildDetails } from "./pages/BuildDetails";
 import { AuthPage } from "./pages/AuthPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { ResendVerificationPage } from "./pages/ResendVerificationPage";
+import { AccountPage } from "./pages/AccountPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
 import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
@@ -40,7 +41,7 @@ function App() {
               <span>Loading…</span>
             ) : user ? (
               <>
-                <span>@{user.username}</span>
+                <Link to="/account">@{user.username}</Link>
                 <button onClick={() => logout().catch(() => {})}>
                   Log out
                 </button>
@@ -92,6 +93,10 @@ function App() {
           />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
           <Route path="/resend-verification" element={<ResendVerificationPage />} />
+          <Route
+            path="/account"
+            element={<RequireAuth><AccountPage /></RequireAuth>}
+          />
           <Route path="/game-data" element={<GameData />} />
           <Route
             path="*"
