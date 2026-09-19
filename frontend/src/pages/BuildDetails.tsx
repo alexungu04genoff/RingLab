@@ -240,6 +240,9 @@ function BuildDetailsContent() {
                       </p>
                     )}
                   </section>
+                  <div className="hero-stats">
+                    <BuildStats build={b} />
+                  </div>
                   <div className="hero-context">
                     <section className="hero-gadgets" aria-label="Selected gadgets">
                       <div className="eyebrow">GADGETS</div>
@@ -273,7 +276,6 @@ function BuildDetailsContent() {
             </section>
             <section className="panel loadout-item">
               <MachineSetup build={b} />
-              <BuildStats build={b} />
             </section>
           </div>
           <section className="panel">

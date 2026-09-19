@@ -1273,10 +1273,26 @@ hr {
 }
 .hero-details {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(180px, 0.8fr);
+  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.8fr);
   gap: 18px;
   border-top: 1px solid var(--border);
   padding: 16px 20px 20px;
+}
+.hero-stats {
+  min-width: 0;
+  border-left: 1px solid var(--border);
+  padding-left: 18px;
+}
+.hero-stats .base-stats,
+.hero-stats .base-stats-request > .muted {
+  margin-block: 0;
+}
+.hero-stats .base-stats h3 {
+  font-size: 15px;
+}
+.hero-stats .base-stats > .muted,
+.hero-stats .base-stats-request > .muted {
+  font-size: 10px;
 }
 .hero-context {
   display: flex;
@@ -1914,6 +1930,11 @@ hr {
   .hero-details {
     grid-template-columns: 1fr;
   }
+  .hero-stats {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding: 16px 0 0;
+  }
   .hero-build-info {
     border-left: 0;
     border-top: 1px solid var(--border);
@@ -2356,7 +2377,32 @@ hr {
 }
 /* The same nullable stat block is used for catalog, preview and comparisons. */
 .base-stats { margin-block: 1rem; }
-.base-stats h3 { margin-bottom: .5rem; }
-.base-stats dl { display: grid; gap: .4rem; margin: .5rem 0; }
-.base-stats dl > div { display: flex; justify-content: space-between; gap: 1rem; }
-.base-stats dd { margin: 0; font-variant-numeric: tabular-nums; }
+.base-stats h3 { margin-bottom: .35rem; }
+.base-stats > .muted { margin: 0 0 .75rem; }
+.stat-bars { display: grid; gap: .65rem; margin: .5rem 0 .8rem; }
+.stat-row { --stat-color: var(--accent); }
+.stat-acceleration { --stat-color: #f1c75b; }
+.stat-handling { --stat-color: #e767d1; }
+.stat-power { --stat-color: #ff7868; }
+.stat-boost { --stat-color: #73df8b; }
+.stat-label { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 4px; }
+.stat-label dt { color: #dce6f6; font-size: 11px; font-weight: 700; }
+.stat-label dd { margin: 0; color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 800; }
+.stat-track {
+  height: 7px;
+  overflow: hidden;
+  border: 1px solid #ffffff14;
+  border-radius: 999px;
+  background: #0d131d;
+  box-shadow: inset 0 1px 3px #0008;
+}
+.stat-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--stat-color) 68%, #fff 4%), var(--stat-color));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--stat-color) 45%, transparent);
+}
+.stat-track.unknown {
+  background: repeating-linear-gradient(135deg, #171e2a, #171e2a 5px, #111722 5px, #111722 10px);
+}

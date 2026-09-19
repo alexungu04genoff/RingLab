@@ -15,6 +15,8 @@ it("renders known values including true zero and decimals", () => {
   expect(screen.getByText("17.5")).toBeTruthy();
   expect(screen.getByText("0")).toBeTruthy();
   expect(screen.queryByText(/Partial/)).toBeNull();
+  expect(screen.getByRole("progressbar", { name: "Speed: 17.5" }).getAttribute("aria-valuenow")).toBe("17.5");
+  expect(screen.getAllByRole("progressbar")).toHaveLength(5);
 });
 
 it("renders a partial stat as a dash without losing known values", () => {
@@ -28,6 +30,7 @@ it("renders a missing historical record as unavailable", () => {
   render(<StatsBlock version="1.3.1" />);
   expect(screen.getByText("Stats unavailable for Ver. 1.3.1")).toBeTruthy();
   expect(screen.getAllByText("—")).toHaveLength(5);
+  expect(screen.getByRole("progressbar", { name: "Speed: unknown" }).getAttribute("aria-valuenow")).toBeNull();
 });
 
 it("requires an explicit version and does not make a preview request without one", () => {
