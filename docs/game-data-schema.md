@@ -87,8 +87,10 @@ without rounding. NULL is unknown, not zero; a missing historical row means all 
 unknown. Catalog presence does not imply stat availability for every historical version.
 
 V16 deliberately imports no numerical data because the source audit could not establish a verified
-Ver. 1.3.1 snapshot. See [the record-level audit](stats-1.3.1-audit.md). Future verified imports must
-use a new migration, never modify V16. No 1.3.2 balance snapshot or 1.4.1 statistics are seeded.
+Ver. 1.3.1 snapshot. See [the record-level audit](stats-1.3.1-audit.md). V17 independently seeds the
+available Ver. 1.4.1 community-sheet snapshot: 35 racers and all three parts for 52 machines.
+Blank and missing rows remain unknown. Future imports must use new migrations, never modify V16 or
+V17. No 1.3.2 balance snapshot is seeded.
 
 Base build stats sum racer + front + rear + tire per field; any unknown contribution makes only
 that resulting field unknown. Stock-machine totals sum the three parts and are never stored as an

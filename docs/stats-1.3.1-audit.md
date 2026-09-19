@@ -41,7 +41,7 @@ no such comparable pair was obtained. **This does not mean the sources agree.** 
 The task's release-date rule is applied at the 2026-03-18 baseline: releases after that date have
 no entry in this snapshot, including the March 25 Mega Man pack. This classification does not
 claim which executable patch was running on their later release day. Ver. 1.3.2 is not a new
-balance snapshot; Ver. 1.4.1 is not modelled or backfilled.
+balance snapshot. Ver. 1.4.1 is modelled separately by V17 and is not backfilled into this baseline.
 
 ## Classification
 

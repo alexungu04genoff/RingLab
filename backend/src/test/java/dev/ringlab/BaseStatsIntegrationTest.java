@@ -17,11 +17,32 @@ import org.junit.jupiter.api.Test;
 
 @QuarkusTest
 class BaseStatsIntegrationTest {
+  private static final UUID LATEST = UUID.fromString("50000000-0000-0000-0000-000000000001");
   private static final UUID BASELINE = UUID.fromString("50000000-0000-0000-0000-000000000002");
   @Inject GameDataRepository game;
   @Inject BaseStatsRepository stats;
   @Inject BaseStatsService service;
   @Inject EntityManager em;
+
+  @Test
+  void latestVersionIncludesSourcedRacerAndPerPartStats() {
+    var amy = game.listRacers().stream().filter(r -> r.name().equals("Amy Rose")).findFirst().orElseThrow();
+    var speedster = game.listMachines().stream()
+        .filter(m -> m.name().equals("Speedster Lightning")).findFirst().orElseThrow();
+    var parts = game.listMachineParts().stream()
+        .filter(p -> p.sourceMachineId().equals(speedster.id())).toList();
+    var front = parts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow();
+    var rear = parts.stream().filter(p -> p.type().name().equals("REAR")).findFirst().orElseThrow();
+    var tire = parts.stream().filter(p -> p.type().name().equals("TIRE")).findFirst().orElseThrow();
+
+    given().queryParam("gameVersionId", LATEST).queryParam("racerId", amy.id())
+        .queryParam("frontPartId", front.id()).queryParam("rearPartId", rear.id())
+        .queryParam("tirePartId", tire.id()).get("/api/stats/build").then().statusCode(200)
+        .body("speed", equalTo(65)).body("acceleration", equalTo(30))
+        .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34));
+    assertEquals(35, stats.racerStats(LATEST).size());
+    assertEquals(156, stats.machinePartStats(LATEST).size());
+  }
 
   @Test
   void unverifiedBaselineAndVersionlessBuildsSerializeExplicitNulls() {

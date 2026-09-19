@@ -1,0 +1,106 @@
+-- Ver. 1.4.1 values transcribed from the community stat sheet documented in
+-- docs/stats-1.3.1-audit.md. The sheet's machine values are per-part contributions:
+-- three identical stock parts sum to the published stock-machine totals.
+-- Missing/blank source rows remain absent rather than being treated as zero.
+
+INSERT INTO racer_stats (racer_id, game_version_id, speed, acceleration, handling, power, boost)
+SELECT r.id, '50000000-0000-0000-0000-000000000001', v.speed, v.acceleration, v.handling, v.power, v.boost
+FROM (VALUES
+    ('Sonic the Hedgehog', 20, 5, 13, 15, 7),
+    ('Miles "Tails" Prower', 15, 20, 7, 13, 5),
+    ('Knuckles the Echidna', 13, 8, 5, 18, 16),
+    ('Amy Rose', 5, 15, 20, 7, 13),
+    ('Cream & Cheese', 7, 14, 19, 9, 11),
+    ('Big the Cat', 12, 10, 7, 17, 14),
+    ('Silver the Hedgehog', 7, 13, 20, 9, 11),
+    ('Blaze the Cat', 20, 7, 11, 13, 9),
+    ('Shadow the Hedgehog', 20, 7, 11, 13, 9),
+    ('Rouge the Bat', 5, 16, 19, 7, 13),
+    ('E-123 Omega', 11, 9, 7, 20, 13),
+    ('Vector the Crocodile', 13, 7, 5, 19, 16),
+    ('Espio the Chameleon', 17, 5, 14, 16, 8),
+    ('Charmy Bee', 14, 18, 10, 11, 7),
+    ('Zavok', 13, 7, 5, 20, 15),
+    ('Zazz', 16, 18, 8, 13, 5),
+    ('Dr. Eggman', 14, 8, 5, 17, 16),
+    ('Metal Sonic', 19, 5, 13, 16, 7),
+    ('Egg Pawn', 16, 17, 8, 14, 5),
+    ('Sage', 14, 17, 10, 12, 7),
+    ('Jet the Hawk', 19, 7, 11, 14, 9),
+    ('Wave the Swallow', 16, 19, 7, 13, 5),
+    ('Storm the Albatross', 11, 9, 7, 19, 14),
+    ('Tails Nine', 15, 20, 7, 13, 5),
+    ('Rusty Rose', 5, 15, 20, 7, 13),
+    ('Knuckles the Dread', 13, 7, 5, 20, 15),
+    ('Werehog', 14, 9, 6, 16, 15),
+    ('Hatsune Miku', 9, 14, 15, 6, 16),
+    ('Joker', 7, 14, 18, 10, 11),
+    ('Ichiban Kasuga', 12, 11, 8, 16, 13),
+    ('Steve', 12, 9, 6, 18, 15),
+    ('Alex', 11, 10, 7, 18, 14),
+    ('Creeper', 14, 19, 9, 11, 7),
+    ('SpongeBob SquarePants', 7, 14, 16, 10, 13),
+    ('Patrick Star', 13, 9, 6, 17, 15)
+) AS v(name, speed, acceleration, handling, power, boost)
+JOIN racers r ON r.name = v.name;
+
+INSERT INTO machine_part_stats
+    (machine_part_id, game_version_id, speed, acceleration, handling, power, boost)
+SELECT p.id, '50000000-0000-0000-0000-000000000001',
+       v.speed, v.acceleration, v.handling, v.power, v.boost
+FROM (VALUES
+    ('Speedster Lightning', 20, 5, 13, 15, 7),
+    ('Dark Reaper', 20, 6, 12, 14, 8),
+    ('Mirage Blade', 19, 7, 11, 14, 9),
+    ('Super Shining', 18, 5, 13, 16, 8),
+    ('Royal Chariot', 20, 7, 11, 13, 9),
+    ('Stealth Chaser', 19, 6, 12, 15, 8),
+    ('Retro Future', 18, 7, 11, 14, 10),
+    ('Wild GT', 17, 5, 14, 16, 8),
+    ('Buster M', 19, 5, 13, 16, 7),
+    ('Arsene Wing', 17, 6, 13, 15, 9),
+    ('Whirlwind Sport', 15, 20, 7, 13, 5),
+    ('Jumble Rage', 14, 20, 8, 12, 6),
+    ('Hyper Scorpion', 14, 19, 9, 11, 7),
+    ('Cyber Spear', 15, 18, 9, 12, 6),
+    ('Pawn Calibur', 13, 20, 9, 11, 7),
+    ('Long Stinger', 16, 19, 7, 13, 5),
+    ('Radical Fours', 16, 18, 8, 13, 5),
+    ('Racing Buggy', 14, 18, 10, 11, 7),
+    ('Giganto Liner', 15, 19, 8, 12, 6),
+    ('Pink Cabriolet', 5, 15, 20, 7, 13),
+    ('Lip Spyder', 6, 14, 20, 8, 12),
+    ('Victoria Carriage', 7, 14, 19, 9, 11),
+    ('Moto Beetle', 7, 14, 18, 10, 11),
+    ('Ancient Throne', 5, 16, 17, 8, 14),
+    ('Little Lady', 5, 16, 19, 7, 13),
+    ('Hot Hatch', 6, 15, 19, 8, 12),
+    ('Fossil Rock', 5, 16, 18, 8, 13),
+    ('Neo Lightron', 7, 13, 20, 9, 11),
+    ('Minecart', 7, 14, 16, 10, 13),
+    ('Patty Wagon', 7, 14, 17, 10, 12),
+    ('Land Smasher', 13, 7, 5, 20, 15),
+    ('Road Dragoon', 12, 8, 6, 20, 14),
+    ('Knight Tank', 12, 9, 6, 18, 15),
+    ('Fang Loader', 11, 10, 7, 18, 14),
+    ('Beat Gator', 11, 9, 7, 20, 13),
+    ('Frog Cruiser', 13, 7, 5, 19, 16),
+    ('Cross Dozer', 12, 8, 6, 19, 15),
+    ('Trail Runner', 14, 8, 5, 17, 16),
+    ('Egg Drillster Mk.II', 11, 9, 7, 19, 14),
+    ('Beast Spike', 12, 11, 8, 16, 13),
+    ('Dragon Brave', 13, 9, 6, 17, 15),
+    ('TYPE-J Iota', 13, 16, 21, 10, 30),
+    ('TYPE-S Stream', 12, 17, 22, 9, 30),
+    ('Sakura Board', 12, 17.5, 22, 9, 29),
+    ('Triple Fan', 14, 16.5, 23, 10, 28),
+    ('Pop Float', 13, 18, 22, 9, 28),
+    ('TYPE-W Windy', 11, 18, 23, 8, 30),
+    ('Wispon Booster', 13, 17, 21, 10, 29),
+    ('Quad Copter', 11, 19, 23, 8, 29),
+    ('Jaws Rocket', 12, 19, 23, 8, 28),
+    ('Blue Star', 14, 17, 22, 10, 27),
+    ('Diva Macchina', 14, 18, 22, 10, 26)
+) AS v(name, speed, acceleration, handling, power, boost)
+JOIN machines m ON m.name = v.name
+JOIN machine_parts p ON p.source_machine_id = m.id;
