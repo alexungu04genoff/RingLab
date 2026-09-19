@@ -40,8 +40,21 @@ class BaseStatsIntegrationTest {
         .queryParam("tirePartId", tire.id()).get("/api/stats/build").then().statusCode(200)
         .body("speed", equalTo(65)).body("acceleration", equalTo(30))
         .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34));
-    assertEquals(35, stats.racerStats(LATEST).size());
-    assertEquals(156, stats.machinePartStats(LATEST).size());
+    assertEquals(37, stats.racerStats(LATEST).size());
+    assertEquals(159, stats.machinePartStats(LATEST).size());
+
+    var whisper = game.listRacers().stream().filter(r -> r.name().equals("Whisper")).findFirst().orElseThrow();
+    var hyperScorpion = game.listMachines().stream()
+        .filter(m -> m.name().equals("Hyper Scorpion")).findFirst().orElseThrow();
+    var hyperParts = game.listMachineParts().stream()
+        .filter(p -> p.sourceMachineId().equals(hyperScorpion.id())).toList();
+    given().queryParam("gameVersionId", LATEST).queryParam("racerId", whisper.id())
+        .queryParam("frontPartId", hyperParts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow().id())
+        .queryParam("rearPartId", hyperParts.stream().filter(p -> p.type().name().equals("REAR")).findFirst().orElseThrow().id())
+        .queryParam("tirePartId", hyperParts.stream().filter(p -> p.type().name().equals("TIRE")).findFirst().orElseThrow().id())
+        .get("/api/stats/build").then().statusCode(200)
+        .body("speed", equalTo(49)).body("acceleration", equalTo(70))
+        .body("handling", equalTo(43)).body("power", equalTo(38)).body("boost", equalTo(40));
   }
 
   @Test
