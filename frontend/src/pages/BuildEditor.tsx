@@ -104,10 +104,11 @@ export function BuildEditor() {
     return () => controller.abort();
   }, [remixSourceId]);
   useEffect(() => {
-    if (id || remixSourceId || !versions.data?.length) return;
+    const newestVersionId = versions.data?.[0]?.id;
+    if (id || remixSourceId || !newestVersionId) return;
     setDraft((current) => current.gameVersionId
       ? current
-      : { ...current, gameVersionId: versions.data[0].id });
+      : { ...current, gameVersionId: newestVersionId });
   }, [id, remixSourceId, versions.data, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
