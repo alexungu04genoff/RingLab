@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { ComponentsIcon } from "./icons";
-import type { Build, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
+import { buildStatsPath, statNames } from "./stats";
+import type { BaseStats, Build, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
+import { useLoad } from "./useLoad";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -145,6 +147,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
           </span>
         </div>
         <h2>{build.title}</h2>
+        <BuildCardStats build={build} />
         <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
             <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
@@ -166,6 +169,28 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
       </div>
     </Link>
   );
+}
+
+function BuildCardStats({ build }: { build: Build }) {
+  const path = buildStatsPath({ gameVersionId: build.gameVersion?.id ?? null,
+    racerId: build.racer.id, frontPartId: build.frontPart.id,
+    rearPartId: build.rearPart.id, tirePartId: build.tirePart.id });
+  const result = useLoad<BaseStats>(path);
+  if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
+  if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
+  if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
+  return <dl className="card-stats" aria-label="Base stats">
+    {statNames.map((name) => {
+      const value = result.data?.[name];
+      const label = name[0].toUpperCase() + name.slice(1);
+      return <div className={`card-stat stat-${name}`} key={name}>
+        <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
+        <span className={`card-stat-track${value == null ? " unknown" : ""}`} aria-hidden="true">
+          <span style={{ width: `${value == null ? 0 : Math.min(100, Math.max(0, value))}%` }} />
+        </span>
+      </div>;
+    })}
+  </dl>;
 }
 export function isStockSetup(build: Pick<Build, "frontPart" | "rearPart" | "tirePart">) {
   return build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&

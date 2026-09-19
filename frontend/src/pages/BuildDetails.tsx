@@ -267,14 +267,16 @@ function BuildDetailsContent() {
                           )}
                         </>
                       ) : (
-                        <p className="muted">Patch unspecified</p>
+                        <p className="build-version-row">
+                          <span className="detail-version patch-unspecified">Patch unspecified</span>
+                        </p>
                       )}
                     </section>
                   </div>
                 </div>
               </div>
             </section>
-            <section className="panel loadout-item">
+            <section className="panel loadout-item machine-setup-panel">
               <MachineSetup build={b} />
             </section>
           </div>

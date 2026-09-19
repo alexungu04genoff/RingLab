@@ -656,6 +656,31 @@ main:has(.explore-hero) {
   margin: 7px 0;
   overflow-wrap: anywhere;
 }
+.card-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 5px;
+  margin: 14px 0 12px;
+}
+.card-stats.unavailable {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .35px;
+  text-transform: uppercase;
+}
+.card-stat { min-width: 0; --stat-color: var(--accent); }
+.card-stat > div { display: flex; justify-content: space-between; gap: 3px; margin-bottom: 4px; }
+.card-stat dt { overflow: hidden; color: var(--muted); font-size: 7px; font-weight: 750; text-overflow: ellipsis; text-transform: uppercase; }
+.card-stat dd { margin: 0; color: #eef5ff; font-size: 8px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.card-stat-track { display: block; height: 4px; overflow: hidden; border-radius: 999px; background: #0d131d; }
+.card-stat-track > span { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
+.card-stat-track.unknown { background: repeating-linear-gradient(135deg, #171e2a, #171e2a 3px, #111722 3px, #111722 6px); }
+.card-stat.stat-acceleration { --stat-color: #f1c75b; }
+.card-stat.stat-handling { --stat-color: #e767d1; }
+.card-stat.stat-power { --stat-color: #ff7868; }
+.card-stat.stat-boost { --stat-color: #73df8b; }
 .card-kicker {
   display: flex;
   align-items: center;
@@ -777,8 +802,9 @@ main:has(.explore-hero) {
   color: #f0d48d;
 }
 .card-meta .patch-unspecified {
-  background: #292d35;
-  color: #aeb5c1;
+  border: 1px solid #856a2f;
+  background: #3a321f;
+  color: #f0d48d;
 }
 .empty {
   text-align: center;
@@ -1185,7 +1211,8 @@ hr {
   margin-left: 4px;
   color: var(--muted);
 }
-.detail-version.patch-older {
+.detail-version.patch-older,
+.detail-version.patch-unspecified {
   padding: 3px 7px;
   border: 1px solid #856a2f;
   border-radius: 4px;
@@ -1208,7 +1235,7 @@ hr {
   gap: 20px;
 }
 .detail-loadout {
-  grid-template-columns: minmax(0, 1.62fr) minmax(280px, 1fr);
+  grid-template-columns: minmax(0, 2.2fr) minmax(230px, 0.65fr);
   align-items: start;
 }
 .loadout-item {
@@ -1273,8 +1300,8 @@ hr {
 }
 .hero-details {
   display: grid;
-  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1fr) minmax(180px, 0.8fr);
-  gap: 18px;
+  grid-template-columns: minmax(135px, 0.55fr) minmax(300px, 1.35fr) minmax(180px, 0.7fr);
+  gap: 22px;
   border-top: 1px solid var(--border);
   padding: 16px 20px 20px;
 }
@@ -1288,12 +1315,17 @@ hr {
   margin-block: 0;
 }
 .hero-stats .base-stats h3 {
-  font-size: 15px;
+  font-size: 18px;
 }
 .hero-stats .base-stats > .muted,
 .hero-stats .base-stats-request > .muted {
-  font-size: 10px;
+  font-size: 11px;
 }
+.hero-stats .stat-bars { gap: .85rem; }
+.hero-stats .stat-label dt,
+.hero-stats .stat-label dd { font-size: 13px; }
+.hero-stats .stat-calculation { margin-bottom: 7px; font-size: 10px; }
+.hero-stats .stat-track { height: 10px; }
 .hero-context {
   display: flex;
   min-width: 0;
@@ -2275,6 +2307,15 @@ hr {
 .machine-part-card strong { font-size: 14px; }
 .machine-part-card .part-type { width: fit-content; margin-top: 5px; padding: 2px 6px; font-size: 9px; }
 .machine-part-slot { flex: 0 0 auto; color: #d2d8e5; font-size: 11px; letter-spacing: 1.2px; text-align: right; }
+.machine-setup-panel .machine-setup-heading { gap: 8px; padding: 14px 14px 0; }
+.machine-setup-panel .machine-setup-heading h2 { font-size: 16px; }
+.machine-setup-panel .setup-indicator { padding: 4px 7px; font-size: 9px; }
+.machine-setup-panel .machine-setup-grid { gap: 7px; padding: 12px 14px 14px; }
+.machine-setup-panel .machine-part-card { gap: 8px; padding: 7px; }
+.machine-setup-panel .machine-part-card .artwork { width: 54px; height: 44px; flex-basis: 54px; }
+.machine-setup-panel .machine-part-card strong { font-size: 12px; }
+.machine-setup-panel .machine-part-card .part-type { margin-top: 3px; font-size: 8px; }
+.machine-setup-panel .machine-part-slot { font-size: 9px; letter-spacing: .8px; }
 .detail-gadgets li { align-items: flex-start; }
 .detail-gadgets .artwork { width: 60px; height: 60px; flex: 0 0 60px; }
 .gadget-copy { min-width: 0; }
@@ -2379,6 +2420,10 @@ hr {
 .base-stats { margin-block: 1rem; }
 .base-stats h3 { margin-bottom: .35rem; }
 .base-stats > .muted { margin: 0 0 .75rem; }
+.stat-legend { display: flex; flex-wrap: wrap; gap: 10px; margin: -.2rem 0 .8rem; color: var(--muted); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .45px; }
+.stat-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.stat-legend i { width: 13px; height: 6px; border-radius: 999px; background: #d9efff; }
+.stat-legend .machine-swatch { background: repeating-linear-gradient(135deg, #3aaafa, #3aaafa 3px, #1676b9 3px, #1676b9 6px); }
 .stat-bars { display: grid; gap: .65rem; margin: .5rem 0 .8rem; }
 .stat-row { --stat-color: var(--accent); }
 .stat-acceleration { --stat-color: #f1c75b; }
@@ -2388,7 +2433,12 @@ hr {
 .stat-label { display: flex; justify-content: space-between; gap: 1rem; margin-bottom: 4px; }
 .stat-label dt { color: #dce6f6; font-size: 11px; font-weight: 700; }
 .stat-label dd { margin: 0; color: #fff; font-size: 11px; font-variant-numeric: tabular-nums; font-weight: 800; }
+.stat-calculation { display: flex; align-items: baseline; gap: 4px; margin: -1px 0 5px; color: var(--muted); font-size: 9px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.stat-calculation .character-value { color: #d9efff; }
+.stat-calculation .machine-value { color: var(--stat-color); }
+.stat-calculation strong { margin-left: auto; color: #fff; }
 .stat-track {
+  display: flex;
   height: 7px;
   overflow: hidden;
   border: 1px solid #ffffff14;
@@ -2403,6 +2453,8 @@ hr {
   background: linear-gradient(90deg, color-mix(in srgb, var(--stat-color) 68%, #fff 4%), var(--stat-color));
   box-shadow: 0 0 10px color-mix(in srgb, var(--stat-color) 45%, transparent);
 }
+.stat-character-fill { flex: 0 0 auto; border-radius: 999px 0 0 999px; background: color-mix(in srgb, var(--stat-color) 35%, #e8f6ff); }
+.stat-machine-fill { flex: 0 0 auto; border-radius: 0 999px 999px 0; background: repeating-linear-gradient(135deg, var(--stat-color), var(--stat-color) 4px, color-mix(in srgb, var(--stat-color) 68%, #08111b) 4px, color-mix(in srgb, var(--stat-color) 68%, #08111b) 8px); }
 .stat-track.unknown {
   background: repeating-linear-gradient(135deg, #171e2a, #171e2a 5px, #111722 5px, #111722 10px);
 }
