@@ -2,10 +2,35 @@ $scriptPath = Join-Path (Split-Path -Parent $PSScriptRoot) "Start-RingLab.ps1"
 . $scriptPath -SkipMain
 
 Describe "Start-RingLab launcher" {
+    Context "PowerShell compatibility" {
+        It "uses a successful native exit code even when the command writes status to stderr" {
+            $cmd = Get-RequiredCommandPath "cmd.exe"
+            $result = Invoke-NativeCommand -FilePath $cmd -ArgumentList @(
+                "/c", "echo normal-status 1>&2 & exit /b 0"
+            )
+            $result.ExitCode | Should Be 0
+            $result.Output | Should Match "normal-status"
+        }
+
+        It "recognizes a racer JSON array" {
+            Mock Invoke-HttpGet {
+                [pscustomobject]@{
+                    Success = $true
+                    StatusCode = 200
+                    Content = '[{"id":"racer-1","name":"Amy Rose","racingType":"HANDLING"}]'
+                    Error = $null
+                }
+            }
+            Test-RacerEndpoint -Uri "http://localhost/api/racers" | Should Be $true
+        }
+    }
+
     Context "Docker readiness" {
         It "fails clearly when Docker CLI is unavailable" {
             Mock Get-RequiredCommandPath { throw "Required command 'docker.exe' was not found on PATH." }
-            { Ensure-DockerReady -TimeoutSeconds 2 } | Should Throw "*docker.exe*"
+            $message = ""
+            try { Ensure-DockerReady -TimeoutSeconds 2 } catch { $message = $_.Exception.Message }
+            $message | Should Match "docker.exe"
         }
 
         It "waits until the local Docker engine becomes ready" {
@@ -34,13 +59,15 @@ Describe "Start-RingLab launcher" {
             Mock Start-DockerDesktop {}
             Mock Start-Sleep {}
 
-            { Ensure-DockerReady -TimeoutSeconds 2 } | Should Throw "*did not expose its local engine*"
+            $message = ""
+            try { Ensure-DockerReady -TimeoutSeconds 2 } catch { $message = $_.Exception.Message }
+            $message | Should Match "did not expose its local engine"
         }
     }
 
     Context "JWT key safety" {
         BeforeEach {
-            $script:keyFixture = Join-Path $TestDrive "backend"
+            $script:keyFixture = Join-Path $TestDrive ([Guid]::NewGuid().ToString())
             New-Item -ItemType Directory -Path $script:keyFixture | Out-Null
         }
 
@@ -65,7 +92,9 @@ Describe "Start-RingLab launcher" {
             Set-Content -LiteralPath (Join-Path $keyDirectory "private.pem") -Value "private"
             New-Item -ItemType File -Path (Join-Path $keyDirectory "public.pem") | Out-Null
 
-            { Ensure-JwtKeys -BackendPath $script:keyFixture } | Should Throw "*private.pem is Valid and public.pem is Empty*"
+            $message = ""
+            try { Ensure-JwtKeys -BackendPath $script:keyFixture } catch { $message = $_.Exception.Message }
+            $message | Should Match "private.pem is Valid and public.pem is Empty"
         }
 
         It "preserves an existing nonempty pair" {
@@ -76,7 +105,8 @@ Describe "Start-RingLab launcher" {
             Mock Invoke-NativeCommand { throw "must not regenerate" }
 
             Ensure-JwtKeys -BackendPath $script:keyFixture
-            Assert-MockCalled Invoke-NativeCommand -Times 0
+            (Get-Content -LiteralPath (Join-Path $keyDirectory "private.pem")) | Should Be "private"
+            (Get-Content -LiteralPath (Join-Path $keyDirectory "public.pem")) | Should Be "public"
         }
     }
 
@@ -117,9 +147,13 @@ Describe "Start-RingLab launcher" {
             Mock Get-PortConflictDescription { "other-app (PID 4242)" }
             $script:startCount = 0
 
-            { Ensure-DevelopmentService -Name "RingLab backend" -Port 8080 `
-                -HealthCheck { $false } -StartAction { $script:startCount++ } } |
-                Should Throw "*other-app*"
+            $message = ""
+            try {
+                Ensure-DevelopmentService -Name "RingLab backend" -Port 8080 `
+                    -HealthCheck { $false } -StartAction { $script:startCount++ }
+            }
+            catch { $message = $_.Exception.Message }
+            $message | Should Match "other-app"
             $script:startCount | Should Be 0
         }
     }

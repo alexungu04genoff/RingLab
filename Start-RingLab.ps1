@@ -21,14 +21,19 @@ function Invoke-NativeCommand {
     )
 
     $originalLocation = Get-Location
+    $originalErrorPreference = $ErrorActionPreference
     try {
         if ($WorkingDirectory) {
             Set-Location -LiteralPath $WorkingDirectory
         }
+        # Windows PowerShell 5.1 wraps native stderr as nonterminating ErrorRecord objects.
+        # Capture that diagnostic stream and decide success only from the native exit code.
+        $ErrorActionPreference = "Continue"
         $lines = @(& $FilePath @ArgumentList 2>&1)
         $exitCode = $LASTEXITCODE
     }
     finally {
+        $ErrorActionPreference = $originalErrorPreference
         if ($WorkingDirectory) {
             Set-Location -LiteralPath $originalLocation
         }
@@ -275,7 +280,9 @@ function Test-RacerEndpoint {
         return $false
     }
     try {
-        $items = @($response.Content | ConvertFrom-Json)
+        # PS 5.1 can wrap a directly piped JSON array as one nested item inside @(...).
+        $parsed = $response.Content | ConvertFrom-Json
+        $items = @($parsed)
         $valid = $items.Count -gt 0 -and
             $null -ne $items[0].PSObject.Properties["id"] -and
             $null -ne $items[0].PSObject.Properties["name"] -and
