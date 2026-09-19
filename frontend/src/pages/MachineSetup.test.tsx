@@ -87,11 +87,11 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain('aria-live="polite">39</strong>');
 });
 
-it("offers an optional version selector defaulting to unspecified", () => {
+it("offers an optional version selector with an explicit unavailable-stats warning", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
   const selector = html.match(/Game version \/ Patch<select([^>]*)>(.*?)<\/select>/)!;
   expect(selector[1]).not.toContain("required");
-  expect(selector[2]).toContain('value="" selected="">Unspecified');
+  expect(selector[2]).toContain('value="" selected="">Unspecified (stats unavailable)');
   expect(selector[2]).toContain('value="version">Ver. 1.4.1');
 });
 

@@ -103,6 +103,12 @@ export function BuildEditor() {
       });
     return () => controller.abort();
   }, [remixSourceId]);
+  useEffect(() => {
+    if (id || remixSourceId || !versions.data?.length) return;
+    setDraft((current) => current.gameVersionId
+      ? current
+      : { ...current, gameVersionId: versions.data[0].id });
+  }, [id, remixSourceId, versions.data, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
     if (key === "title" || key === "description") {
@@ -168,7 +174,7 @@ export function BuildEditor() {
                   <select value={draft.gameVersionId ?? ""}
                     disabled={versions.loading}
                     onChange={(e) => field("gameVersionId", e.target.value || null)}>
-                    <option value="">Unspecified</option>
+                    <option value="">Unspecified (stats unavailable)</option>
                     {versions.data?.map((version) => (
                       <option key={version.id} value={version.id}>Ver. {version.version}</option>
                     ))}

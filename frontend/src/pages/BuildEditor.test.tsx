@@ -19,6 +19,7 @@ const buildA: Build = {
   score: 0, upvotes: 0, downvotes: 0,
 };
 const buildB = { ...buildA, id: "B", title: "Build B draft" };
+const latestVersion = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
 let loadB: () => Promise<Build>;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -28,6 +29,7 @@ beforeEach(() => {
     if (path === "/builds/B") return loadB();
     if (path === "/racers") return [buildA.racer];
     if (path === "/machine-parts") return [buildA.frontPart, buildA.rearPart, buildA.tirePart];
+    if (path === "/game-versions") return [latestVersion];
     return [];
   });
 });
@@ -45,6 +47,20 @@ async function openA() {
 function expectNoWrite() {
   expect(vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT")).toEqual([]);
 }
+
+it("defaults a new build to the latest known patch", async () => {
+  render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
+    <Route path="/builds/new" element={<BuildEditor />} />
+  </Routes></MemoryRouter>);
+  await waitFor(() => expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value)
+    .toBe(latestVersion.id));
+  expect(screen.getByRole("option", { name: "Unspecified (stats unavailable)" })).toBeTruthy();
+});
+
+it("preserves an unspecified patch when editing an existing build", async () => {
+  await openA();
+  expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value).toBe("");
+});
 
 it.each(["title", "description"])("shows %s validation beside its input and clears it on editing", async (field) => {
   await openA();
