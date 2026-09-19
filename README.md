@@ -42,7 +42,20 @@ Install Java **21**, Maven **3.9+**, Node.js **22.12+** (with npm), and Docker w
 
 ## Start locally
 
-From the repository root:
+On Windows, the recommended one-command startup from the repository root is:
+
+```powershell
+.\Start-RingLab.ps1
+```
+
+The launcher checks the local Docker Desktop context, starts only the PostgreSQL service from
+`compose.yaml`, preserves or safely creates the local JWT key pair, and starts Quarkus and Vite in
+separate visible terminals when they are not already healthy. It verifies the backend, frontend,
+and Vite API proxy before reporting readiness. The Cloudflare Tunnel is optional: local readiness
+does not depend on it, and the launcher falls back to opening localhost when public dev is
+unavailable.
+
+The equivalent manual startup begins from the repository root:
 
 ```sh
 docker compose up -d
