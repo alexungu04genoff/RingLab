@@ -56,15 +56,16 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
         const characterWidth = hasBreakdown ? Math.min(100, Math.max(0, character)) : 0;
         const machineWidth = hasBreakdown ? Math.min(100 - characterWidth, Math.max(0, machine)) : 0;
         return <div className={`stat-row stat-${name}`} key={name}>
-          <div className="stat-label"><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
-          {hasBreakdown && <div className="stat-calculation"
-            aria-label={`${label} calculation: Character ${character} plus Machine ${machine} equals ${value}`}>
-            <span className="character-value">Character {character}</span>
-            <span aria-hidden="true">+</span>
-            <span className="machine-value">Machine {machine}</span>
-            <span aria-hidden="true">=</span>
-            <strong>{value}</strong>
-          </div>}
+          <div className="stat-label">
+            <dt>{label}</dt>
+            {hasBreakdown && <span className="stat-calculation"
+              aria-label={`${label} components: Character ${character} plus Machine ${machine}`}>
+              <span className="character-value">Character {character}</span>
+              <span aria-hidden="true">+</span>
+              <span className="machine-value">Machine {machine}</span>
+            </span>}
+            <dd>{value ?? "—"}</dd>
+          </div>
           <div className={`stat-track${value == null ? " unknown" : ""}`} role="progressbar"
             aria-label={`${label}: ${value ?? "unknown"}`} aria-valuemin={0} aria-valuemax={statMaximum}
             aria-valuenow={value ?? undefined}>

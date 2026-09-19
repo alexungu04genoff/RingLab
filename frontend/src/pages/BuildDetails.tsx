@@ -239,6 +239,11 @@ function BuildDetailsContent() {
                         to vote.
                       </p>
                     )}
+                    <div className="score-description">
+                      <div className="eyebrow">BUILD NOTE</div>
+                      <p>{b.description || "No description provided."}</p>
+                      {b.description && <a href="#build-setup">Read full setup</a>}
+                    </div>
                   </section>
                   <div className="hero-stats">
                     <BuildStats build={b} />
@@ -253,34 +258,34 @@ function BuildDetailsContent() {
                         {b.gadgets.length === 0 && <span>No gadgets</span>}
                       </div>
                     </section>
-                    <section className="hero-build-info" aria-label="Build information">
-                      <div className="eyebrow">BUILD INFO</div>
-                      {b.gameVersion ? (
-                        <>
-                          <p className="build-version-row">
-                            <span className={`detail-version patch-${versionAge}`}>Ver. {b.gameVersion.version}</span>
-                            <span className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
-                          </p>
-                          {versionAge === "latest" && <p className="patch-status">Latest known patch</p>}
-                          {versionAge === "older" && (
-                            <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="build-version-row">
-                          <span className="detail-version patch-unspecified">Patch unspecified</span>
-                        </p>
-                      )}
+                    <section className="hero-machine-setup" aria-label="Machine setup">
+                      <MachineSetup build={b} compact />
                     </section>
                   </div>
+                  <section className="hero-build-info" aria-label="Build information">
+                    <div className="eyebrow">BUILD INFO</div>
+                    {b.gameVersion ? (
+                      <>
+                        <p className="build-version-row">
+                          <span className={`detail-version patch-${versionAge}`}>Ver. {b.gameVersion.version}</span>
+                          <span className="muted">Released {date(`${b.gameVersion.releasedAt}T00:00:00`)}</span>
+                        </p>
+                        {versionAge === "latest" && <p className="patch-status">Latest known patch</p>}
+                        {versionAge === "older" && (
+                          <p className="older-patch-notice">Built for an older patch. Behavior may differ in newer versions.</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="build-version-row">
+                        <span className="detail-version patch-unspecified">Patch unspecified</span>
+                      </p>
+                    )}
+                  </section>
                 </div>
               </div>
             </section>
-            <section className="panel loadout-item machine-setup-panel">
-              <MachineSetup build={b} />
-            </section>
           </div>
-          <section className="panel">
+          <section className="panel" id="build-setup">
             <h2>The setup</h2>
             <p className="prose">
               {b.description || "The author has not added a description."}

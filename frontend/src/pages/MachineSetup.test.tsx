@@ -143,12 +143,16 @@ it("renders a safe invalid Gadget Plate status with an accessible validation inf
   expect(details).not.toContain('class="detail-note"');
 });
 
-it("uses a cohesive hero card with Build Info and a Machine Setup-only right column", () => {
+it("places the compact machine setup below gadgets inside the cohesive hero card", () => {
+  build = { ...stock, description: "My favorite setup." };
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
   expect(details).toContain('class="loadout detail-loadout"');
   expect(details).toContain('class="panel loadout-item racer-loadout"');
   expect(details).toContain('class="racer-banner"');
   expect(details).toContain('class="hero-gadgets"');
+  expect(details).toContain('class="hero-machine-setup"');
+  expect(details.indexOf('class="hero-machine-setup"')).toBeGreaterThan(details.indexOf('class="hero-gadgets"'));
+  expect(details).toContain('class="machine-setup compact-machine-setup"');
   expect(details).toContain('aria-label="Ring Engine: Gain rings over time."');
   expect(details).toContain('role="tooltip"><strong>Ring Engine</strong><span>Gain rings over time.</span>');
   expect(details).toContain('class="hero-details"');
@@ -158,6 +162,11 @@ it("uses a cohesive hero card with Build Info and a Machine Setup-only right col
   expect(details).toContain('aria-label="Community score and voting"');
   expect(details).toContain('aria-live="polite">39</strong>');
   expect(details).toContain('class="vote-buttons"');
+  expect(details).toContain('class="score-description"');
+  expect(details).toContain("BUILD NOTE");
+  expect(details).toContain("My favorite setup.");
+  expect(details).toContain('href="#build-setup"');
+  expect(details).toContain('id="build-setup"');
   expect(details).not.toContain("<aside>");
 });
 

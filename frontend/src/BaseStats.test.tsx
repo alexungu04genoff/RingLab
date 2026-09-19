@@ -41,7 +41,7 @@ it("shows character and machine contributions separately from the total", () => 
   render(<StatsBlock stats={complete} version="1.3.1" breakdown={breakdown} />);
   expect(screen.getByText("Character")).toBeTruthy();
   expect(screen.getByText("Machine")).toBeTruthy();
-  expect(screen.getByLabelText("Speed calculation: Character 5 plus Machine 12.5 equals 17.5")).toBeTruthy();
+  expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
   expect(screen.getByRole("progressbar", { name: "Speed: 17.5" }).querySelectorAll(".stat-fill")).toHaveLength(2);
 });
 
@@ -81,7 +81,7 @@ it("requests backend totals for the selected components and excludes gadgets", a
   await screen.findByRole("progressbar", { name: "Speed: 17.5" });
   expect(fetch.mock.calls[0][0]).toBe("/api/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t");
   expect(fetch.mock.calls.some(([url]) => url === "/api/stats/catalog?gameVersionId=v")).toBe(true);
-  expect(screen.getByLabelText("Speed calculation: Character 5 plus Machine 12.5 equals 17.5")).toBeTruthy();
+  expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
   expect(screen.getByText(/Gadget effects are not included/)).toBeTruthy();
   expect(buildStatsPath({ ...draft, tirePartId: "" })).not.toContain("tirePartId");
 });
