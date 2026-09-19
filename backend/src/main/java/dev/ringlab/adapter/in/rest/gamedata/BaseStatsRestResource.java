@@ -26,6 +26,16 @@ public class BaseStatsRestResource {
   public record CatalogResponse(UUID gameVersionId, Map<UUID, StatsResponse> racers,
                                 Map<UUID, StatsResponse> machineParts, Map<UUID, StatsResponse> machines) {}
 
+  public record BuildStatsResponse(BigDecimal speed, BigDecimal acceleration, BigDecimal handling,
+                                   BigDecimal power, BigDecimal boost,
+                                   StatsResponse character, StatsResponse machine) {
+    public static BuildStatsResponse from(BaseStatsService.BuildStats stats) {
+      var total = stats.total();
+      return new BuildStatsResponse(total.speed(), total.acceleration(), total.handling(), total.power(), total.boost(),
+          StatsResponse.from(stats.character()), StatsResponse.from(stats.machine()));
+    }
+  }
+
   @GET
   @Path("catalog")
   public CatalogResponse catalog(@QueryParam("gameVersionId") UUID version) {
@@ -35,10 +45,10 @@ public class BaseStatsRestResource {
 
   @GET
   @Path("build")
-  public StatsResponse build(@QueryParam("gameVersionId") UUID version,
+  public BuildStatsResponse build(@QueryParam("gameVersionId") UUID version,
       @QueryParam("racerId") UUID racer, @QueryParam("frontPartId") UUID front,
       @QueryParam("rearPartId") UUID rear, @QueryParam("tirePartId") UUID tire) {
-    return StatsResponse.from(stats.build(version, racer, front, rear, tire));
+    return BuildStatsResponse.from(stats.buildBreakdown(version, racer, front, rear, tire));
   }
 
   private Map<UUID, StatsResponse> responses(Map<UUID, BaseStats> values) {

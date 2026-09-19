@@ -21,6 +21,7 @@ public class BaseStatsService {
 
   public record Catalog(UUID gameVersionId, Map<UUID, BaseStats> racers,
                         Map<UUID, BaseStats> machineParts, Map<UUID, BaseStats> machines) {}
+  public record BuildStats(BaseStats total, BaseStats character, BaseStats machine) {}
 
   public Catalog catalog(UUID version) {
     requireVersion(version);
@@ -38,7 +39,11 @@ public class BaseStatsService {
 
   /** No selected version means no calculation and no fallback to the latest patch. */
   public BaseStats build(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
-    if (version == null) return BaseStats.UNKNOWN;
+    return buildBreakdown(version, racer, front, rear, tire).total();
+  }
+
+  public BuildStats buildBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
+    if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
     requireVersion(version);
     if (racer != null && game.findRacer(racer).isEmpty()) throw NotFoundException.missing("Racer");
     requirePart(front, MachinePartType.FRONT);
@@ -46,7 +51,9 @@ public class BaseStatsService {
     requirePart(tire, MachinePartType.TIRE);
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
-    return BaseStats.sum(List.of(value(racers, racer), value(parts, front), value(parts, rear), value(parts, tire)));
+    var character = value(racers, racer);
+    var machine = BaseStats.sum(List.of(value(parts, front), value(parts, rear), value(parts, tire)));
+    return new BuildStats(BaseStats.sum(List.of(character, machine)), character, machine);
   }
 
   private BaseStats value(Map<UUID, BaseStats> values, UUID id) {

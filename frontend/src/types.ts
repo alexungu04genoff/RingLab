@@ -11,6 +11,10 @@ export interface BaseStats {
   power: number | null;
   boost: number | null;
 }
+export interface BuildStatsResult extends BaseStats {
+  character: BaseStats;
+  machine: BaseStats;
+}
 export interface StatsCatalog {
   gameVersionId: string;
   racers: Record<string, BaseStats>;

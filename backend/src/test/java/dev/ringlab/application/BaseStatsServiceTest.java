@@ -51,7 +51,10 @@ class BaseStatsServiceTest {
   void sumsOnlySelectedComponentsAndDerivesStockStatsFromParts() {
     racers.put(racer, ones());
     for (var id : List.of(front, rear, tire)) parts.put(id, ones());
-    assertEquals(new BigDecimal("4"), service.build(version, racer, front, rear, tire).speed());
+    var breakdown = service.buildBreakdown(version, racer, front, rear, tire);
+    assertEquals(new BigDecimal("4"), breakdown.total().speed());
+    assertEquals(BigDecimal.ONE, breakdown.character().speed());
+    assertEquals(new BigDecimal("3"), breakdown.machine().speed());
     assertEquals(new BigDecimal("3"), service.catalog(version).machines().get(machine).speed());
     parts.put(front, new BaseStats(BigDecimal.ZERO, BigDecimal.ONE, null, BigDecimal.ONE, BigDecimal.ONE));
     var total = service.build(version, racer, front, rear, tire);

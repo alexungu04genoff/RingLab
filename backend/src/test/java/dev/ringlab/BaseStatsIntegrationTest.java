@@ -39,7 +39,8 @@ class BaseStatsIntegrationTest {
         .queryParam("frontPartId", front.id()).queryParam("rearPartId", rear.id())
         .queryParam("tirePartId", tire.id()).get("/api/stats/build").then().statusCode(200)
         .body("speed", equalTo(65)).body("acceleration", equalTo(30))
-        .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34));
+        .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34))
+        .body("character.speed", notNullValue()).body("machine.speed", notNullValue());
     assertEquals(37, stats.racerStats(LATEST).size());
     assertEquals(159, stats.machinePartStats(LATEST).size());
 
@@ -62,7 +63,7 @@ class BaseStatsIntegrationTest {
     assertTrue(stats.racerStats(BASELINE).isEmpty());
     assertTrue(stats.machinePartStats(BASELINE).isEmpty());
     given().get("/api/stats/build").then().statusCode(200)
-        .body("keySet()", containsInAnyOrder("speed", "acceleration", "handling", "power", "boost"))
+        .body("keySet()", containsInAnyOrder("speed", "acceleration", "handling", "power", "boost", "character", "machine"))
         .body("speed", nullValue()).body("handling", nullValue());
     given().queryParam("gameVersionId", BASELINE).queryParam("racerId", game.listRacers().getFirst().id())
         .get("/api/stats/build").then().statusCode(200).body("speed", nullValue());

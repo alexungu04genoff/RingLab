@@ -3,7 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { ComponentsIcon } from "./icons";
 import { buildStatsPath, statNames } from "./stats";
-import type { BaseStats, Build, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
+import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
@@ -175,18 +175,27 @@ function BuildCardStats({ build }: { build: Build }) {
   const path = buildStatsPath({ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
     rearPartId: build.rearPart.id, tirePartId: build.tirePart.id });
-  const result = useLoad<BaseStats>(path);
+  const result = useLoad<BuildStatsResult>(path);
   if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
   if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
   if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
   return <dl className="card-stats" aria-label="Base stats">
     {statNames.map((name) => {
       const value = result.data?.[name];
+      const character = result.data?.character?.[name];
+      const machine = result.data?.machine?.[name];
+      const hasBreakdown = value != null && character != null && machine != null;
       const label = name[0].toUpperCase() + name.slice(1);
+      const width = value == null ? 0 : Math.min(100, Math.max(0, value));
+      const characterWidth = hasBreakdown ? Math.min(100, Math.max(0, character)) : 0;
+      const machineWidth = hasBreakdown ? Math.min(100 - characterWidth, Math.max(0, machine)) : 0;
       return <div className={`card-stat stat-${name}`} key={name}>
         <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
         <span className={`card-stat-track${value == null ? " unknown" : ""}`} aria-hidden="true">
-          <span style={{ width: `${value == null ? 0 : Math.min(100, Math.max(0, value))}%` }} />
+          {hasBreakdown ? <>
+            <span className="card-stat-character-fill" style={{ width: `${characterWidth}%` }} />
+            <span className="card-stat-machine-fill" style={{ width: `${machineWidth}%` }} />
+          </> : <span style={{ width: `${width}%` }} />}
         </span>
       </div>;
     })}

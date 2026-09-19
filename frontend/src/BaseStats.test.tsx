@@ -87,7 +87,11 @@ it("requests backend totals for the selected components and excludes gadgets", a
 });
 
 it("shows compact version-aware stat bars on build cards", async () => {
-  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(calculated)));
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    ...calculated,
+    character: catalog.racers.r,
+    machine: { speed: 12.5, acceleration: 3, handling: 9, power: 8, boost: 6 },
+  })));
   vi.stubGlobal("fetch", fetch);
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
     sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" });
@@ -99,6 +103,8 @@ it("shows compact version-aware stat bars on build cards", async () => {
   render(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   expect(screen.getByText("Loading stats…")).toBeTruthy();
   expect(await screen.findByText("17.5")).toBeTruthy();
+  expect(document.querySelectorAll(".card-stat-character-fill")).toHaveLength(5);
+  expect(document.querySelectorAll(".card-stat-machine-fill")).toHaveLength(5);
   expect(fetch).toHaveBeenCalledWith(
     "/api/stats/build?gameVersionId=v&racerId=r&frontPartId=FRONT&rearPartId=REAR&tirePartId=TIRE",
     expect.anything(),
