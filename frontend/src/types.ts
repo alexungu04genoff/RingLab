@@ -4,6 +4,19 @@ export interface User {
   email: string;
   createdAt: string;
 }
+export interface BaseStats {
+  speed: number | null;
+  acceleration: number | null;
+  handling: number | null;
+  power: number | null;
+  boost: number | null;
+}
+export interface StatsCatalog {
+  gameVersionId: string;
+  racers: Record<string, BaseStats>;
+  machineParts: Record<string, BaseStats>;
+  machines: Record<string, BaseStats>;
+}
 export type RacingType =
   | "SPEED"
   | "ACCELERATION"

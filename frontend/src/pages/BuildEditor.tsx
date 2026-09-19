@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { DraftStats } from "../BaseStats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, json } from "../api";
 import { useAuth } from "../auth";
@@ -305,6 +306,7 @@ export function BuildEditor() {
             <aside className="panel selection build-preview">
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
+              <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} />
               <div className="preview-core">
                 <section className="preview-item">
                   <span className="preview-label">Selected racer</span>

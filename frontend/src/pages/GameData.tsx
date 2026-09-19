@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Artwork, ErrorNotice, date, racingTypeClass } from "../components";
 import { useLoad } from "../useLoad";
+import { StatsBlock } from "../BaseStats";
+import type { StatsCatalog } from "../types";
 import type { Gadget, GameVersion, Machine, Racer } from "../types";
 import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
 
@@ -101,6 +103,9 @@ function CollectionCard({ item, tab }: { item: CollectionItem; tab: CollectionKe
 export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
+  const versions = useLoad<GameVersion[]>("/game-versions");
+  const baseline = versions.data?.find((v) => v.version === "1.3.1");
+  const stats = useLoad<StatsCatalog>(baseline ? `/stats/catalog?gameVersionId=${baseline.id}` : "");
   return (
     <>
       <div className="page-heading collection-heading">
@@ -132,9 +137,18 @@ export function GameData() {
         ))}
       </div>
       <ErrorNotice message={items.error} />
+      <ErrorNotice message={versions.error || stats.error} />
       {items.loading && <p role="status">Loading collection…</p>}
       <div className={`collection collection-${tab}`}>
-        {items.data?.map((item) => <CollectionCard item={item} tab={tab} key={item.id} />)}
+        {items.data?.map((item) => <div key={item.id}>
+          <CollectionCard item={item} tab={tab} />
+          {"racingType" in item && <>
+            {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
+              : !versions.error && !stats.error && <StatsBlock
+                stats={(tab === "machines" ? stats.data?.machines : stats.data?.racers)?.[item.id]}
+                version="1.3.1" title={tab === "machines" ? "Stock base stats (parts total)" : "Racer base stats"} />}
+          </>}
+        </div>)}
       </div>
     </>
   );

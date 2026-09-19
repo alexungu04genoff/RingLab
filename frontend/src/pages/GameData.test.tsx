@@ -44,3 +44,22 @@ it("links every catalog version to its Steam patch notes", () => {
   });
   expect(patchNotesUrl("unknown")).toBeNull();
 });
+
+it("keeps later racers visible and displays only the explicitly requested historical stats", () => {
+  const racers: Racer[] = [
+    { id: "known", name: "Historical racer", racingType: "SPEED", imagePath: null },
+    { id: "later", name: "Later racer", racingType: "SPEED", imagePath: null },
+  ];
+  vi.mocked(useLoad).mockImplementation((path) => ({ loading: false, error: "", data:
+    path === "/racers" ? racers : path === "/game-versions"
+      ? [{ id: "baseline", version: "1.3.1", releasedAt: "2026-03-18" }]
+      : { gameVersionId: "baseline", racers: { known: { speed: 20, acceleration: 5, handling: null, power: 15, boost: 7 } },
+        machineParts: {}, machines: {} },
+  }));
+  const html = renderToStaticMarkup(<GameData />);
+  expect(html).toContain("Historical racer");
+  expect(html).toContain("Later racer");
+  expect(html).toContain("Partial stats");
+  expect(html).toContain("Stats unavailable for Ver. 1.3.1");
+  expect(useLoad).toHaveBeenCalledWith("/stats/catalog?gameVersionId=baseline");
+});

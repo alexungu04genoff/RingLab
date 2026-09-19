@@ -2354,3 +2354,9 @@ hr {
   .compare-summary .artwork { height: 100px; }
   .compare-value:not(:has(.machine-setup)) { align-items: flex-start; flex-wrap: wrap; }
 }
+/* The same nullable stat block is used for catalog, preview and comparisons. */
+.base-stats { margin-block: 1rem; }
+.base-stats h3 { margin-bottom: .5rem; }
+.base-stats dl { display: grid; gap: .4rem; margin: .5rem 0; }
+.base-stats dl > div { display: flex; justify-content: space-between; gap: 1rem; }
+.base-stats dd { margin: 0; font-variant-numeric: tabular-nums; }

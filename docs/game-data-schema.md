@@ -1,12 +1,16 @@
 # Game-data schema
 
-This is the implemented relational shape after Flyway V12. It shows the game catalog and the
+This is the implemented relational shape after Flyway V16. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
 
 ```mermaid
 erDiagram
     RACERS ||--o{ BUILDS : selected_by
     GAME_VERSIONS ||--o{ BUILDS : labels
+    RACERS ||--o{ RACER_STATS : contributes
+    GAME_VERSIONS ||--o{ RACER_STATS : versions
+    MACHINE_PARTS ||--o{ MACHINE_PART_STATS : contributes
+    GAME_VERSIONS ||--o{ MACHINE_PART_STATS : versions
     MACHINES ||--|{ MACHINE_PARTS : provides
     MACHINE_PARTS ||--o{ BUILDS : front_part
     MACHINE_PARTS ||--o{ BUILDS : rear_part
@@ -19,6 +23,24 @@ erDiagram
         varchar name UK
         varchar racing_type "nullable enum"
         varchar image_path "nullable"
+    }
+    RACER_STATS {
+        uuid racer_id PK,FK
+        uuid game_version_id PK,FK
+        numeric speed "nullable"
+        numeric acceleration "nullable"
+        numeric handling "nullable"
+        numeric power "nullable"
+        numeric boost "nullable"
+    }
+    MACHINE_PART_STATS {
+        uuid machine_part_id PK,FK
+        uuid game_version_id PK,FK
+        numeric speed "nullable"
+        numeric acceleration "nullable"
+        numeric handling "nullable"
+        numeric power "nullable"
+        numeric boost "nullable"
     }
     MACHINES {
         uuid id PK
@@ -59,15 +81,27 @@ erDiagram
 ```
 
 The current `machine_parts` rows identify selectable components and their source machine only.
-They do not yet store the Wiki's front/back display labels or the five part statistics. Gadget
+They do not yet store the Wiki's front/back display labels. Five base stats live separately in
+`machine_part_stats` and `racer_stats`, keyed by entity and game version. Decimal values are retained
+without rounding. NULL is unknown, not zero; a missing historical row means all five values are
+unknown. Catalog presence does not imply stat availability for every historical version.
+
+V16 deliberately imports no numerical data because the source audit could not establish a verified
+Ver. 1.3.1 snapshot. See [the record-level audit](stats-1.3.1-audit.md). Future verified imports must
+use a new migration, never modify V16. No 1.3.2 balance snapshot or 1.4.1 statistics are seeded.
+
+Base build stats sum racer + front + rear + tire per field; any unknown contribution makes only
+that resulting field unknown. Stock-machine totals sum the three parts and are never stored as an
+independent value. Builds with no version have no assumed baseline. Missing stats do not affect
+build validity or publishing. Base stats and gadget-modified/effective stats are distinct concepts;
+numerical gadget effects are intentionally outside this implementation. Gadget
 metadata is a current snapshot; it is not version-aware even though some costs and effects changed
 between patches.
 
 ## Focused improvements
 
-1. Add explicit part labels and five integer stat columns to `machine_parts`, then expose them in
-   `MachinePartResponse`. This is the most useful next catalog improvement because mixed builds can
-   then show both their generated machine name and calculated base statistics.
+1. Verify a dated historical source and per-part contributions before importing numerical data.
+   Part labels and the Extreme Gear composition correction remain separate work.
 2. Add a small `gadget_versions` table keyed by `(gadget_id, game_version_id)` for effect text,
    slot cost and mode restrictions. Keep `gadgets` as stable identity/artwork and resolve rules for
    the build's selected patch.

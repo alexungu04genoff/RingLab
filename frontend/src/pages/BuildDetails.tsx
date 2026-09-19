@@ -4,6 +4,7 @@ import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
+import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
@@ -272,6 +273,7 @@ function BuildDetailsContent() {
             </section>
             <section className="panel loadout-item">
               <MachineSetup build={b} />
+              <BuildStats build={b} />
             </section>
           </div>
           <section className="panel">

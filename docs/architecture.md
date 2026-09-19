@@ -9,9 +9,9 @@ Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `p
 ```text
 dev.ringlab/
   domain/{auth,build,comment,gamedata,news,vote}/
-  application/{auth,build,comment,news,validation,vote}/
+  application/{auth,build,comment,gamedata,news,validation,vote}/
   port/out/
-    {User,Build,Comment,GameData,GameNews,Vote}Repository.java
+    {User,Build,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
   adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
@@ -85,6 +85,29 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 `vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details. Build detail responses obtain their vote summary through VoteService; list responses reuse page vote summaries supplied by BuildService after ranking. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 
 ## Mapping and flow
+
+`BaseStatsService` resolves explicitly selected versions through `GameDataRepository` and reads
+historical contributions through the flat `BaseStatsRepository` port. `BaseStatsDbAdapter` uses
+two fixed parameterized SQL queries against Flyway V16's normalized tables; no generic query
+framework, runtime external source, or duplicated machine totals are introduced. Decimal values
+use `BigDecimal` in the JDK-only `BaseStats` domain record. Its sum operation is the canonical
+calculation for both four-component builds and three-component stock machines. An unknown field
+propagates to only that field's total. Missing rows are fully unknown, never zero.
+
+`GET /api/stats/catalog?gameVersionId=…` returns version-specific racer and part maps (absent rows
+have no entry) plus derived stock-machine totals. `GET /api/stats/build` accepts `gameVersionId`,
+`racerId`, `frontPartId`, `rearPartId`, and `tirePartId`; omitted components are unknown, unknown
+catalog IDs are rejected, and a missing version returns five explicit null fields without assuming
+a version. These read-only routes neither mutate builds nor impose a stats-availability rule.
+Existing build response contracts remain compatible.
+
+Game Collection explicitly displays the 1.3.1 baseline. Editor preview, details and comparison
+request backend totals for their own selected version. React renders values, partial/unavailable
+labels and dashes; it never adds contributions. Requests are aborted/remounted when selections
+change to prevent stale totals. Stats errors remain separate from publishing validity. The current
+audit imports no numerical values; catalog identities remain selectable, including later releases.
+Base stats exclude gadget-modified/effective stats; gadget effects, versioned gadget costs, Extreme
+Gear correction and new compatibility rules remain separate work.
 
 Local registration creates a user with a nullable `emailVerifiedAt`, persists a SHA-256 digest of a
 256-bit URL-safe verification secret, and asks the outbound Quarkus Mailer adapter to deliver the
@@ -258,4 +281,4 @@ secret mounts, later deployment commands, backup and rollback limitations.
 
 `RepositoryContractIntegrationTest` checks actual persisted deletion effects (including surviving remix contents), literal/blank search, any-slot machine matching, comment/version tie-breaks and vote replacement/absence conventions. Deletion postconditions belong to BuildRepository's contract; PostgreSQL retains responsibility for implementing them atomically with its existing constraints.
 
-JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, additional gadget compatibility rules, patch-aware costs and calculated stats remain outside the implemented scope; current-cost Gadget Plate capacity validation is implemented.
+JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, additional gadget compatibility rules, patch-aware costs and gadget-modified stats remain outside the implemented scope; current-cost Gadget Plate capacity validation and nullable versioned base-stat calculation are implemented.

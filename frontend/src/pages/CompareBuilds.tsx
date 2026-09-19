@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { gadgetPlateStatus } from "../buildForm";
 import { Artwork, countLabel, date, ErrorNotice, isStockSetup, MachineSetup, racingTypeClass } from "../components";
 import { useLoad } from "../useLoad";
+import { BuildStats } from "../BaseStats";
 import type { Build, BuildPage, Gadget } from "../types";
 
 const SELECTOR_PAGE_SIZE = 8;
@@ -139,6 +140,9 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
         <strong>{build.gameVersion ? `Ver. ${build.gameVersion.version}` : "Unspecified"}</strong></DiffValue>
       <DiffValue different={diff.composition} label="Machine composition"><MachineSetup build={build} compact
         differences={{ FRONT: diff.front, REAR: diff.rear, TIRE: diff.tires }} /></DiffValue>
+      <section className="panel">
+        <BuildStats build={build} />
+      </section>
       <section className="panel compare-gadget-panel">
         <div className="gadget-heading"><h2>Gadgets</h2>
           <span className={`gadget-plate-status ${plate.valid ? "valid" : "invalid"} ${diff.plate ? "different" : ""}`}
