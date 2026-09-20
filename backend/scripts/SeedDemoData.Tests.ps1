@@ -26,6 +26,11 @@ $guests = @('Joker', 'Mega Man', 'SpongeBob SquarePants')
 Assert-True (@($plan.Builds | Where-Object { $_.Racer -in $main }).Count -eq 36) 'Expected 60% main cast'
 Assert-True (@($plan.Builds | Where-Object { $_.Racer -in $guests }).Count -eq 6) 'Expected 10% guests'
 Assert-True (@($plan.Builds | Where-Object { $_.Racer -notin $main -and $_.Racer -notin $guests }).Count -eq 18) 'Expected 30% other Sonic characters'
+Assert-True (@($plan.Builds | Where-Object Version -eq '1.4.1').Count -eq 54) 'Expected 90% newest-patch builds'
+Assert-True (@($plan.Builds | Where-Object Version -eq '1.3.1').Count -eq 2) 'Expected two 1.3.1 builds'
+Assert-True (@($plan.Builds | Where-Object Version -eq '1.2.2').Count -eq 2) 'Expected two 1.2.2 builds'
+Assert-True (@($plan.Builds | Where-Object Version -eq '1.2.0').Count -eq 2) 'Expected two 1.2.0 builds'
+Assert-True (@($plan.Builds | Where-Object { -not $_.Version }).Count -eq 0) 'Every demo build must have a patch'
 Assert-True (@($plan.Votes | ForEach-Object { "$($_[0])/$($_[1])" } | Sort-Object -Unique).Count -eq $plan.Votes.Count) 'Duplicate user/build vote'
 $buildByKey = @{}
 foreach ($build in $plan.Builds) {

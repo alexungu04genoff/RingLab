@@ -59,17 +59,30 @@ class BaseStatsIntegrationTest {
   }
 
   @Test
-  void unverifiedBaselineAndVersionlessBuildsSerializeExplicitNulls() {
-    assertTrue(stats.racerStats(BASELINE).isEmpty());
-    assertTrue(stats.machinePartStats(BASELINE).isEmpty());
+  void knownVersionsUseIndependentCopiesOfTheCurrentStats() {
+    var amy = game.listRacers().stream().filter(r -> r.name().equals("Amy Rose")).findFirst().orElseThrow();
+    var speedster = game.listMachines().stream()
+        .filter(m -> m.name().equals("Speedster Lightning")).findFirst().orElseThrow();
+    var parts = game.listMachineParts().stream()
+        .filter(p -> p.sourceMachineId().equals(speedster.id())).toList();
+    for (var version : game.listGameVersions()) {
+      assertEquals(37, stats.racerStats(version.id()).size());
+      assertEquals(159, stats.machinePartStats(version.id()).size());
+      given().queryParam("gameVersionId", version.id()).queryParam("racerId", amy.id())
+          .queryParam("frontPartId", parts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow().id())
+          .queryParam("rearPartId", parts.stream().filter(p -> p.type().name().equals("REAR")).findFirst().orElseThrow().id())
+          .queryParam("tirePartId", parts.stream().filter(p -> p.type().name().equals("TIRE")).findFirst().orElseThrow().id())
+          .get("/api/stats/build").then().statusCode(200)
+          .body("speed", equalTo(65)).body("acceleration", equalTo(30))
+          .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34));
+    }
+  }
+
+  @Test
+  void versionlessBuildsSerializeExplicitNulls() {
     given().get("/api/stats/build").then().statusCode(200)
         .body("keySet()", containsInAnyOrder("speed", "acceleration", "handling", "power", "boost", "character", "machine"))
         .body("speed", nullValue()).body("handling", nullValue());
-    given().queryParam("gameVersionId", BASELINE).queryParam("racerId", game.listRacers().getFirst().id())
-        .get("/api/stats/build").then().statusCode(200).body("speed", nullValue());
-    given().queryParam("gameVersionId", BASELINE).get("/api/stats/catalog").then().statusCode(200)
-        .body("racers.size()", equalTo(0)).body("machineParts.size()", equalTo(0))
-        .body("machines.size()", equalTo(62));
     given().get("/api/stats/catalog").then().statusCode(400);
     given().queryParam("gameVersionId", UUID.randomUUID()).get("/api/stats/catalog").then().statusCode(404);
     given().queryParam("gameVersionId", UUID.randomUUID()).get("/api/stats/build").then().statusCode(404);
@@ -114,7 +127,6 @@ class BaseStatsIntegrationTest {
           .queryParam("frontPartId", front).queryParam("rearPartId", rear).queryParam("tirePartId", tire)
           .get("/api/stats/build").then().statusCode(200).body("speed", equalTo(17.5f)).body("handling", nullValue());
       assertNull(stats.machinePartStats(version).get(front).handling());
-      assertEquals(BaseStats.UNKNOWN, service.build(BASELINE, racer, front, rear, tire));
       assertEquals(BaseStats.UNKNOWN, service.build(null, racer, front, rear, tire));
       assertThrows(RuntimeException.class, () -> QuarkusTransaction.requiringNew().run(() ->
           em.createNativeQuery("INSERT INTO racer_stats (racer_id, game_version_id) VALUES (:racer, :version)")

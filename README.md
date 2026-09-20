@@ -194,6 +194,9 @@ accept optional `gameVersionId` (UUID or null); responses include `gameVersion` 
 Explore's Patch filter sends `gameVersionId` and filters in PostgreSQL before pagination.
 V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (2025-12-03).
 Existing builds remain versionless; the optional demo seeder assigns a repeatable mix to demo builds.
+For a fresh demo plan, 90% use the newest patch and 10% are distributed evenly across the older
+patches. The four known versions currently have independent rows containing the same base stats;
+future migrations may change one version without affecting the others.
 
 Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. Hibernate validates the migrated schema; it never creates or drops it.
 

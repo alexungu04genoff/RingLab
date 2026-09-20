@@ -101,11 +101,14 @@ catalog IDs are rejected, and a missing version returns five explicit null field
 a version. These read-only routes neither mutate builds nor impose a stats-availability rule.
 Existing build response contracts remain compatible.
 
-Game Collection explicitly displays the 1.3.1 baseline. Editor preview, details and comparison
+Game Collection can display any selected patch snapshot. The four currently known patches begin
+with identical explicitly stored base stats; they are not resolved through a runtime fallback, so
+future version migrations can diverge safely. Editor preview, details and comparison
 request backend totals for their own selected version. React renders values, partial/unavailable
 labels and dashes; it never adds contributions. Requests are aborted/remounted when selections
-change to prevent stale totals. Stats errors remain separate from publishing validity. The current
-audit imports no numerical values; catalog identities remain selectable, including later releases.
+change to prevent stale totals. Stats errors remain separate from publishing validity. The original
+1.3.1 audit supplied no historical numerical evidence; V22's copied rows are an explicit product
+policy rather than a claim of independently verified historical differences.
 Base stats exclude gadget-modified/effective stats; gadget effects, versioned gadget costs, Extreme
 Gear correction and new compatibility rules remain separate work.
 

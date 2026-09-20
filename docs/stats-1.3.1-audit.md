@@ -4,6 +4,13 @@ Checked 2026-09-19 against main `03cfa842625ef083e9f134e7cc81e7ff03256e60`.
 Decision: **no numerical data imported**. V16 creates storage only. All catalog identities survive.
 Test fixtures containing numbers are synthetic, isolated test snapshots, not game-data evidence.
 
+## Current RingLab policy
+
+V22 later copies the complete 1.4.1 snapshot into the three older selectable versions at the
+owner's direction. This makes current calculations available for those choices; it is not new
+historical evidence and does not change the audit below. Each version keeps independent rows so
+future sourced patch values can diverge without changing other snapshots.
+
 ## Evidence and limits
 
 - **S1:** [supplied community spreadsheet](https://docs.google.com/spreadsheets/d/1StdwFmVCdYBJnCi7HpuzW5iPU3czAv0njwjgaJcCgY4/edit?gid=0).

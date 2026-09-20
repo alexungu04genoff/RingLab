@@ -319,12 +319,17 @@ $voteDefinitions += $expansion.Votes
 $commentDefinitions += $expansion.Comments
 
 $mixedRearSources = @{ "route" = "Dark Reaper"; "boost" = "Speedster Lightning"; "amy-drift" = "TYPE-S Stream" }
-$versionMix = @("1.4.1", "1.4.1", "1.3.1", "1.4.1", "1.2.2", "1.4.1", "1.3.1", "1.4.1", "1.2.0", $null)
-for ($index = 0; $index -lt 17; $index++) {
+$olderVersions = @("1.3.1", "1.2.2", "1.2.0")
+for ($index = 0; $index -lt $buildDefinitions.Count; $index++) {
   $definition = $buildDefinitions[$index]
-  $rear = if ($mixedRearSources.ContainsKey($definition.Key)) { $mixedRearSources[$definition.Key] } else { $definition.Machine }
-  $definition | Add-Member NoteProperty RearMachine $rear
-  $definition | Add-Member NoteProperty Version $versionMix[$index % $versionMix.Count]
+  if (-not $definition.PSObject.Properties["RearMachine"]) {
+    $rear = if ($mixedRearSources.ContainsKey($definition.Key)) { $mixedRearSources[$definition.Key] } else { $definition.Machine }
+    $definition | Add-Member NoteProperty RearMachine $rear
+  }
+  # Exactly one build in ten uses an older patch. Cycling the older versions
+  # keeps the fresh 60-build plan at 90% newest without relying on randomness.
+  $version = if ($index % 10 -eq 9) { $olderVersions[[Math]::Floor($index / 10) % $olderVersions.Count] } else { "1.4.1" }
+  $definition | Add-Member NoteProperty Version $version -Force
 }
 # Creation order mixes authors and characters in Newest, rather than appending all guests last.
 # Existing timestamps are never rewritten; the API remains responsible for creation time.
