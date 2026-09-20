@@ -130,6 +130,7 @@ it.each([false, true])("renders Build Info inside the hero card and preserves ra
   expect(details).not.toContain('class="detail-heading"><div><div class="eyebrow accent">COMMUNITY BUILD</div><h1>My setup</h1><p>by <strong>@driver</strong> <span class="muted">· Jan 1, 2026</span><span');
   expect(details).toContain('aria-live="polite">39</strong>');
   expect(card).toContain('aria-label="Community score 39, 40 upvotes, 1 downvote"');
+  expect(card).toContain('aria-label="How Best rated works"');
   expect(card).toContain('class="upvote-count">↑ 40</span>');
   expect(card).toContain('class="downvote-count">↓ 1</span>');
 });

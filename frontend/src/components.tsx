@@ -132,6 +132,10 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
         </span>
         <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
           <span className="community-score">Score {build.score}</span>
+          <span className="score-help" tabIndex={0} aria-label="How Best rated works">
+            <span aria-hidden="true">i</span>
+            <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
+          </span>
           <span aria-hidden="true"> · </span>
           <span className="upvote-count">↑ {build.upvotes}</span>
           <span aria-hidden="true"> · </span>

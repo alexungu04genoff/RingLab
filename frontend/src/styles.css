@@ -404,7 +404,7 @@ main:has(.explore-hero) {
   font-weight: 700;
 }
 .sort-help [role="tooltip"], .score-help [role="tooltip"] {
-  position: absolute; z-index: 5; right: 0; bottom: calc(100% + 10px);
+  position: absolute; z-index: 30; right: 0; bottom: calc(100% + 10px);
   width: min(310px, 75vw); padding: 10px 12px; border: 1px solid var(--accent-muted);
   border-radius: 7px; background: #101721; color: #eceef3; font-size: 11px;
   font-weight: 400; line-height: 1.5; box-shadow: 0 8px 24px #0008;
@@ -446,7 +446,7 @@ main:has(.explore-hero) {
   border: 1px solid var(--border);
   border-radius: 10px;
   background: var(--panel);
-  overflow: hidden;
+  overflow: visible;
   transition:
     transform 0.15s,
     border-color 0.15s;
@@ -455,6 +455,8 @@ main:has(.explore-hero) {
   transform: translateY(-3px);
   border-color: var(--accent-muted);
 }
+.build-card:has(.score-help:hover),
+.build-card:has(.score-help:focus) { position: relative; z-index: 2; }
 .card-art {
   height: 145px;
   position: relative;
@@ -579,6 +581,7 @@ main:has(.explore-hero) {
   border-radius: 5px;
 }
 .community-score { color: #dcecff; }
+.score .score-help { margin-left: 4px; }
 .upvote-count { color: #73df8b; }
 .downvote-count { color: #ff8877; }
 .card-parts {
@@ -1280,6 +1283,7 @@ hr {
 .racer-loadout {
   display: flex;
   flex-direction: column;
+  overflow: visible;
 }
 .racer-loadout > div:last-child {
   flex: 1;
@@ -1292,6 +1296,8 @@ hr {
 .racer-banner {
   position: relative;
   height: 165px;
+  overflow: hidden;
+  border-radius: 9px 9px 0 0;
 }
 .loadout-item .racer-banner > .artwork {
   height: 100%;
