@@ -1,8 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
 import { GameData, newestGameVersion, patchNotesUrl } from "./GameData";
-import type { Gadget, Racer } from "../types";
+import type { BaseStats, Gadget, Machine, MachinePart, Racer } from "../types";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 
@@ -73,4 +74,28 @@ it("selects the newest version by release date", () => {
     { id: "older", version: "1.3.1", releasedAt: "2026-03-18" },
   ])?.id).toBe("latest");
   expect(newestGameVersion(undefined)).toBeUndefined();
+});
+
+it("shows each available stock part and its stats in the machine hover popup", () => {
+  const machine: Machine = { id: "dark-reaper", name: "Dark Reaper", racingType: "SPEED", imagePath: null };
+  const part = (type: MachinePart["type"]): MachinePart => ({
+    id: type.toLowerCase(), type, sourceMachineId: machine.id, sourceMachineName: machine.name,
+    sourceMachineImagePath: null, racingType: "SPEED",
+  });
+  const parts = [part("FRONT"), part("REAR"), part("TIRE")];
+  const values: BaseStats = { speed: 11, acceleration: 12, handling: 13, power: 14, boost: 15 };
+  vi.mocked(useLoad).mockImplementation((path) => ({ loading: false, error: "", data:
+    path === "/racers" ? [] : path === "/machines" ? [machine] : path === "/machine-parts" ? parts
+      : path === "/game-versions" ? [{ id: "latest", version: "1.4.1", releasedAt: "2026-06-23" }]
+      : { gameVersionId: "latest", racers: {}, machines: { [machine.id]: values },
+        machineParts: Object.fromEntries(parts.map(({ id }) => [id, values])) },
+  }));
+
+  render(<GameData />);
+  fireEvent.click(screen.getByRole("button", { name: /Stock Machines/ }));
+
+  expect(screen.getByLabelText("Front part stats").textContent).toContain("Speed11");
+  expect(screen.getByLabelText("Rear part stats").textContent).toContain("Acceleration12");
+  expect(screen.getByLabelText("Tire part stats").textContent).toContain("Boost15");
+  expect(screen.getAllByText("Ver. 1.4.1")).toHaveLength(2);
 });

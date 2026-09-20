@@ -2,9 +2,10 @@ import { useState } from "react";
 import { Artwork, ErrorNotice, date, racingTypeClass } from "../components";
 import { useLoad } from "../useLoad";
 import { StatsBlock } from "../BaseStats";
-import type { StatsCatalog } from "../types";
-import type { Gadget, GameVersion, Machine, Racer } from "../types";
+import type { BaseStats, StatsCatalog } from "../types";
+import type { Gadget, GameVersion, Machine, MachinePart, Racer } from "../types";
 import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
+import { statNames } from "../stats";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -50,16 +51,45 @@ function RacerCard({ racer }: { racer: Racer }) {
   );
 }
 
-function MachineCard({ machine }: { machine: Machine }) {
+const partLabel = (part: MachinePart) => part.type === "TIRE" ? "Tire" :
+  part.type[0] + part.type.slice(1).toLowerCase();
+
+function PartStats({ part, stats }: { part: MachinePart; stats?: BaseStats }) {
+  return <section className="machine-part-stats" aria-label={`${partLabel(part)} part stats`}>
+    <h3>{partLabel(part)}</h3>
+    <dl>{statNames.map((stat) => <div key={stat}>
+      <dt>{stat[0].toUpperCase() + stat.slice(1)}</dt>
+      <dd>{stats?.[stat] ?? "—"}</dd>
+    </div>)}</dl>
+  </section>;
+}
+
+function MachineCard({ machine, parts, partStats, version }: {
+  machine: Machine;
+  parts: MachinePart[];
+  partStats: StatsCatalog["machineParts"] | undefined;
+  version: string | null;
+}) {
   return (
-    <article className="panel collection-item machine-collection-item">
-      <Artwork item={machine} compact />
-      <div className="collection-copy">
-        <span className="eyebrow">Machine</span>
-        <h2>{machine.name}</h2>
-        <RacingTypeBadge item={machine} />
-      </div>
-    </article>
+    <div className="machine-collection-hover" tabIndex={0} aria-describedby={`machine-stats-${machine.id}`}>
+      <article className="panel collection-item machine-collection-item">
+        <Artwork item={machine} compact />
+        <div className="collection-copy">
+          <span className="eyebrow">Machine</span>
+          <h2>{machine.name}</h2>
+          <RacingTypeBadge item={machine} />
+        </div>
+      </article>
+      <aside className="machine-stats-popup" id={`machine-stats-${machine.id}`}>
+        <div className="machine-stats-popup-heading">
+          <div><span className="eyebrow">Stock part stats</span><strong>{machine.name}</strong></div>
+          <span>Ver. {version ?? "unknown"}</span>
+        </div>
+        {parts.length > 0 ? <div className="machine-part-stats-grid">
+          {parts.map((part) => <PartStats key={part.id} part={part} stats={partStats?.[part.id]} />)}
+        </div> : <p>Part stats unavailable.</p>}
+      </aside>
+    </div>
   );
 }
 
@@ -98,10 +128,15 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
   );
 }
 
-function CollectionCard({ item, tab }: { item: CollectionItem; tab: CollectionKey }) {
+function CollectionCard({ item, tab, machineParts, stats, version }: {
+  item: CollectionItem; tab: CollectionKey; machineParts: MachinePart[];
+  stats: StatsCatalog | undefined; version: string | null;
+}) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("slotCost" in item) return <GadgetCard gadget={item} />;
-  if (tab === "machines") return <MachineCard machine={item} />;
+  if (tab === "machines") return <MachineCard machine={item}
+    parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
+    partStats={stats?.machineParts} version={version} />;
   return <RacerCard racer={item} />;
 }
 
@@ -109,6 +144,7 @@ export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const machineParts = useLoad<MachinePart[]>("/machine-parts");
   const latestVersion = newestGameVersion(versions.data);
   const stats = useLoad<StatsCatalog>(latestVersion ? `/stats/catalog?gameVersionId=${latestVersion.id}` : "");
   return (
@@ -142,11 +178,12 @@ export function GameData() {
         ))}
       </div>
       <ErrorNotice message={items.error} />
-      <ErrorNotice message={versions.error || stats.error} />
+      <ErrorNotice message={versions.error || stats.error || machineParts.error} />
       {items.loading && <p role="status">Loading collection…</p>}
       <div className={`collection collection-${tab}`}>
         {items.data?.map((item) => <div key={item.id}>
-          <CollectionCard item={item} tab={tab} />
+          <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
+            stats={stats.data} version={latestVersion?.version ?? null} />
           {"racingType" in item && <>
             {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
               : !versions.error && !stats.error && <StatsBlock
