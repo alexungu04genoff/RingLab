@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { hasNextCommentPage, lastCommentPage } from "./commentPagination";
+import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "./commentPagination";
 import type { CommentPage } from "./types";
 
 const page = (total: number, pageNumber = 0): CommentPage => ({
   items: [],
   total,
   page: pageNumber,
-  size: 20,
+  size: COMMENT_PAGE_SIZE,
 });
 
 describe("comment pagination", () => {
@@ -20,7 +20,8 @@ describe("comment pagination", () => {
   });
 
   it("finds the page containing a newly appended comment", () => {
-    expect(lastCommentPage(20, 20)).toBe(0);
-    expect(lastCommentPage(21, 20)).toBe(1);
+    expect(COMMENT_PAGE_SIZE).toBe(20);
+    expect(lastCommentPage(20, COMMENT_PAGE_SIZE)).toBe(0);
+    expect(lastCommentPage(21, COMMENT_PAGE_SIZE)).toBe(1);
   });
 });

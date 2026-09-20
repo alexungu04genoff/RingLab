@@ -10,6 +10,7 @@ param(
   [switch]$Preview,
   [switch]$ValidateOnly,
   [switch]$Refresh,
+  [switch]$ProfessorDemoOnly,
   [switch]$PromoteFeatured,
   [switch]$Apply
 )
@@ -156,6 +157,7 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
 }
 
 Assert-LoopbackUrl $BaseUrl
+if($ProfessorDemoOnly -and !$Refresh){throw 'ProfessorDemoOnly requires -Refresh so existing managed records receive the normal conflict checks.'}
 if($Preview){
   if(!$CatalogSnapshotPath){throw 'Offline preview requires -CatalogSnapshotPath. Use -ExportCatalogSnapshot with live read-only validation first.'}
   $catalog=Get-Content -Raw -LiteralPath $CatalogSnapshotPath|ConvertFrom-Json
@@ -197,15 +199,27 @@ foreach($b in $plan.builds){
   $buildIds[$b.key]=[string]$actual.id;$actualFingerprint=Get-Fingerprint (Get-ActualRequest $actual)
   if($actual.author.username -cne "ringlab_demo_$($b.owner)") {throw "Fixture owner mismatch: $($b.key)"}
   if($actualFingerprint -ne $record.fingerprint -and $actualFingerprint -ne $record.pendingFingerprint){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fields were edited';id=$actual.id};continue}
-  $desired=Get-Request $b $buildIds;$desiredFingerprint=Get-Fingerprint $desired
+  if($ProfessorDemoOnly){
+    $desired=Get-ActualRequest $actual
+    if($b.fixtureKind){$desired.title=$b.title;$desired.description=$b.description}
+  } else {$desired=Get-Request $b $buildIds}
+  $desiredFingerprint=Get-Fingerprint $desired
   # Remix origin is immutable in BuildService.edit. Never claim that refresh adds provenance.
   $desired.remixedFromBuildId=if($actual.remixedFrom){$actual.remixedFrom.id}else{$null}
   $desiredFingerprint=Get-Fingerprint $desired
   $actions+=[pscustomobject]@{key=$b.key;action=if($desiredFingerprint -eq $actualFingerprint){'retain'}else{'update'};reason='trusted managed record';id=$actual.id;before=$actualFingerprint}
 }
+if($ProfessorDemoOnly){
+  foreach($action in @($actions|Where-Object action -eq 'add')){$action.action='conflict';$action.reason='professor fixture refresh never creates missing records'}
+}
 $manualCount=@($allBuilds|Where-Object {$id=[string]$_.id;$id -notin @($actions.id|ForEach-Object{[string]$_})}).Count
 $actions+=[pscustomobject]@{key='(unrelated/manual builds)';action='retain-manual';reason='outside fixture ownership';id=$null;count=$manualCount}
 Show-Summary $plan $actions $allBuilds
+foreach($fixture in @($plan.builds|Where-Object fixtureKind)){
+  $action=@($actions|Where-Object key -eq $fixture.key)[0]
+  $current=@($allBuilds|Where-Object id -eq $action.id)|Select-Object -First 1
+  Write-Host "Fixture $($action.action): $($fixture.key) [$($current.title)] -> [$($fixture.title)]"
+}
 foreach($conflict in @($actions|Where-Object action -eq 'conflict')){Write-Warning "$($conflict.key): $($conflict.reason)"}
 if($PromoteFeatured){Write-Host 'Featured Sonic: add missing votes from 65 reserved fixture voters; preserve all existing votes. This is fictional demo engagement.'}
 if(!$Apply){Write-Host 'Preview only. Add -Apply to perform the displayed additions/updates; use -Refresh -Apply for an explicit refresh.';return [pscustomobject]@{plan=$plan;actions=$actions}}
@@ -226,6 +240,16 @@ $beforeJson | Set-Content -LiteralPath $backupPath -Encoding utf8
 Write-Host "Saved local community snapshot: $backupPath"
 $bootstrap=Invoke-RingLabApi POST '/dev-fixtures/demo-accounts' @{accounts=@($plan.users|Select-Object key,username,email);password=$DemoPassword}
 $sessions=@{};foreach($entry in (ConvertTo-DemoArray $bootstrap)){$sessions[$entry.key]=$entry.session}
+$sessionKeyByUserId=@{};foreach($key in $sessions.Keys){$sessionKeyByUserId[[string]$sessions[$key].user.id]=$key}
+foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
+  $id=[string]$buildIds[$fixture.key]
+  $foreign=@($before.votes|Where-Object build_id -eq $id|Where-Object {!$sessionKeyByUserId.ContainsKey([string]$_.user_id)})
+  if($foreign.Count){throw "$($fixture.key): controlled Wilson fixture has $($foreign.Count) vote(s) outside the demo accounts; refusing to rewrite engagement."}
+}
+foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
+  $id=[string]$buildIds[$fixture.key];$currentCount=@($before.comments|Where-Object build_id -eq $id).Count
+  if($currentCount -gt $fixture.targetComments){throw "$($fixture.key): current comments ($currentCount) exceed the controlled target ($($fixture.targetComments)); refusing to delete comments."}
+}
 foreach($b in $plan.builds){
   $action=@($actions|Where-Object key -eq $b.key)[0];if($action.action -in @('conflict','retain')){continue}
   $request=Get-Request $b $buildIds
@@ -233,7 +257,8 @@ foreach($b in $plan.builds){
     if(!$Refresh){continue}
     $current=Invoke-RingLabApi GET "/builds/$($action.id)"
     if($current.author.id -ne $sessions[$b.owner].user.id -or (Get-Fingerprint (Get-ActualRequest $current)) -ne $action.before){throw "Concurrent edit or ownership conflict for $($b.key); stopping without overwriting it."}
-    $request.remixedFromBuildId=if($current.remixedFrom){$current.remixedFrom.id}else{$null}
+    if($ProfessorDemoOnly){$request=Get-ActualRequest $current;$request.title=$b.title;$request.description=$b.description}
+    else{$request.remixedFromBuildId=if($current.remixedFrom){$current.remixedFrom.id}else{$null}}
     $previous=@($state.builds|Where-Object key -eq $b.key)|Select-Object -First 1
     $preserveEngagement=[bool]($action.legacy -or $previous.preserveEngagement)
     $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{
@@ -248,7 +273,28 @@ foreach($b in $plan.builds){
   Save-State $state
   Write-Host "Saved fixture $($b.key)."
 }
+foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
+  $action=@($actions|Where-Object key -eq $fixture.key)[0]
+  if($action.action -eq 'conflict'){continue}
+  $id=[string]$buildIds[$fixture.key]
+  $desired=@{};foreach($vote in @($plan.votes|Where-Object build -eq $fixture.key)){$desired[$vote.user]=[int]$vote.value}
+  $current=@{};foreach($vote in @($before.votes|Where-Object build_id -eq $id)){$current[$sessionKeyByUserId[[string]$vote.user_id]]=[int]$vote.value}
+  foreach($userKey in $sessions.Keys){
+    $hasDesired=$desired.ContainsKey($userKey);$hasCurrent=$current.ContainsKey($userKey)
+    if($hasDesired -and (!$hasCurrent -or $current[$userKey] -ne $desired[$userKey])){
+      Invoke-RingLabApi PUT "/builds/$id/vote" @{value=$desired[$userKey]} $sessions[$userKey].token|Out-Null
+    } elseif(!$hasDesired -and $hasCurrent) {
+      Invoke-RingLabApi DELETE "/builds/$id/vote" $null $sessions[$userKey].token|Out-Null
+    }
+  }
+  $state.votes=@($state.votes|Where-Object {$_ -notlike "vote/*/$($fixture.key)"})+@($plan.votes|Where-Object build -eq $fixture.key|ForEach-Object key)
+  Save-State $state
+  $actual=Invoke-RingLabApi GET "/builds/$id"
+  if($actual.upvotes -ne $fixture.targetUpvotes -or $actual.downvotes -ne $fixture.targetDownvotes){throw "$($fixture.key): vote reconciliation did not reach the planned totals."}
+  Write-Host "Reconciled Wilson fixture $($fixture.key): $($actual.upvotes) up, $($actual.downvotes) down."
+}
 foreach($vote in $plan.votes){
+  if(@($plan.builds|Where-Object {$_.key -eq $vote.build -and $_.fixtureKind -eq 'WILSON'}).Count){continue}
   if($vote.key -in @($state.votes)){continue};if(!$buildIds.ContainsKey($vote.build)){continue}
   if(@($actions|Where-Object {$_.key -eq $vote.build -and $_.action -eq 'conflict'}).Count){continue}
   $record=@($state.builds|Where-Object key -eq $vote.build)|Select-Object -First 1
@@ -257,7 +303,27 @@ foreach($vote in $plan.votes){
   if($current.myVote -eq 0){Invoke-RingLabApi PUT "/builds/$($buildIds[$vote.build])/vote" @{value=$vote.value} $sessions[$vote.user].token|Out-Null}
   $state.votes=@($state.votes)+$vote.key;Save-State $state
 }
+foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
+  $action=@($actions|Where-Object key -eq $fixture.key)[0]
+  if($action.action -eq 'conflict'){continue}
+  $id=[string]$buildIds[$fixture.key];$desired=@($plan.comments|Where-Object build -eq $fixture.key)
+  $tracked=@($state.comments|Where-Object {$_ -like "comment/$($fixture.key)/*"})
+  $currentCount=@($before.comments|Where-Object build_id -eq $id).Count
+  $untrackedCount=$currentCount-$tracked.Count
+  if($untrackedCount -lt 0){throw "$($fixture.key): fixture state tracks more comments than the database contains."}
+  $missing=@($desired|Where-Object key -notin @($state.comments))
+  if($untrackedCount -gt $missing.Count){throw "$($fixture.key): current comments cannot be reconciled without deleting activity."}
+  foreach($adopted in @($missing|Select-Object -First $untrackedCount)){$state.comments=@($state.comments)+$adopted.key;Save-State $state}
+  foreach($comment in @($desired|Where-Object key -notin @($state.comments))){
+    Invoke-RingLabApi POST "/builds/$id/comments" @{text=$comment.text} $sessions[$comment.user].token|Out-Null
+    $state.comments=@($state.comments)+$comment.key;Save-State $state
+  }
+  $actual=Invoke-RingLabApi GET "/builds/$id/comments?page=0&size=1"
+  if($actual.total -ne $fixture.targetComments){throw "$($fixture.key): comment reconciliation reached $($actual.total), expected $($fixture.targetComments)."}
+  Write-Host "Reconciled Comment fixture $($fixture.key): $($actual.total) comments."
+}
 foreach($comment in $plan.comments){
+  if(@($plan.builds|Where-Object {$_.key -eq $comment.build -and $_.fixtureKind -eq 'COMMENT'}).Count){continue}
   if($comment.key -in @($state.comments)){continue};if(!$buildIds.ContainsKey($comment.build)){continue}
   $record=@($state.builds|Where-Object key -eq $comment.build)|Select-Object -First 1
   if(!$record -or $record.preserveEngagement -or @($actions|Where-Object {$_.key -eq $comment.build -and $_.action -eq 'conflict'}).Count){continue}

@@ -71,6 +71,31 @@ try{
   Assert-True ($featuredVotes.Count -eq 65 -and @($featuredVotes|Where-Object value -ne 1).Count -eq 0) 'Featured demo reception must be 65 positive fixture votes'
   Assert-True (@($featuredVotes.user|Sort-Object -Unique).Count -eq 65) 'Featured fixture repeats voters'
   Assert-True (@($featuredVotes|Where-Object user -eq $featured.owner).Count -eq 0) 'Featured fixture self-votes'
+  $wilson=@($plan.builds|Where-Object fixtureKind -eq 'WILSON')
+  $commentDemos=@($plan.builds|Where-Object fixtureKind -eq 'COMMENT')
+  Assert-True ($wilson.Count -eq 10) 'Expected 10 Wilson demonstration fixtures'
+  Assert-True ($commentDemos.Count -eq 6) 'Expected 6 comment pagination fixtures'
+  Assert-True (@($wilson|Where-Object {$_.title -cnotlike '[[]Wilson Demo[]]*'}).Count -eq 0) 'Wilson fixture lacks the exact title prefix'
+  Assert-True (@($commentDemos|Where-Object {$_.title -cnotlike '[[]Comment Demo[]]*'}).Count -eq 0) 'Comment fixture lacks the exact title prefix'
+  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]Pagination Demo[]]*'}).Count -eq 0) 'Current fixture still uses the Pagination Demo prefix'
+  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 0) 'Current fixture still uses the old DEMO prefix'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*demo*'}).Count -eq 16) 'Demo title search does not find all controlled fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*wilson*'}).Count -eq 10) 'Wilson title search does not find exactly 10 fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*comment*'}).Count -eq 6) 'Comment title search does not find exactly 6 fixtures'
+  Assert-True ($featured.fixtureKind -eq $null -and $featured.title -notmatch '(?i)demo') 'Featured Sonic build was renamed as a demo fixture'
+  foreach($build in $wilson){
+    $fixtureVotes=@($plan.votes|Where-Object build -eq $build.key)
+    Assert-True (@($fixtureVotes|Where-Object value -eq 1).Count -eq $build.targetUpvotes) "Wrong planned upvotes: $($build.key)"
+    Assert-True (@($fixtureVotes|Where-Object value -eq -1).Count -eq $build.targetDownvotes) "Wrong planned downvotes: $($build.key)"
+    if($build.title -match '(\d+)↑ (\d+)↓'){
+      Assert-True ([int]$Matches[1] -eq $build.targetUpvotes -and [int]$Matches[2] -eq $build.targetDownvotes) "Wilson title counts disagree with the plan: $($build.key)"
+    }
+  }
+  foreach($build in $commentDemos){
+    Assert-True (@($plan.comments|Where-Object build -eq $build.key).Count -eq $build.targetComments) "Wrong planned comment total: $($build.key)"
+    Assert-True ($build.title -match "[[]Comment Demo[]] $($build.targetComments) comments") "Comment title count disagrees with the plan: $($build.key)"
+  }
+  Assert-True (@($repeat.builds|Where-Object fixtureKind).Count -eq 16) 'Deterministic rerun duplicated or dropped controlled fixtures'
   foreach($build in $plan.builds){
     $front=@($parts|Where-Object id -eq $build.frontPartId)[0]
     $rear=@($parts|Where-Object id -eq $build.rearPartId)[0]
@@ -109,4 +134,4 @@ try{
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing stats were silently treated as usable numbers'
   Remove-Item -LiteralPath $brokenPath
 }finally{Remove-Item -LiteralPath $snapshot -ErrorAction SilentlyContinue}
-Write-Host 'PASS: independent catalog, deterministic planning, seed variation, release-date patch selection, 54/6 distribution, Standard/Board rules, text consistency, remix provenance, plate validation, offline safety, and unsafe-target refusal.'
+Write-Host 'PASS: deterministic community planning, 10 Wilson demos, 6 comment demos, search discoverability, authoritative fixture counts, Standard/Board rules, remix provenance, plate validation, offline safety, and unsafe-target refusal.'

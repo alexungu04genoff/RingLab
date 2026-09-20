@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
-import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
+import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
 import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
@@ -10,7 +10,6 @@ import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
 
-const COMMENT_PAGE_SIZE = 20;
 
 export function BuildDetails() {
   const { id } = useParams();

@@ -73,6 +73,27 @@ function Get-CommunityDemoPlan {
   $legacyKeys=@('cornering','items','route','acceleration','recovery','boost','shadow','finish','amy-drift','tails-grid','shadow-laps','sonic-speed','sonic-boost','sonic-route','knuckles-power','knuckles-endurance','knuckles-ring')
   $legacyTitles=@('[DEMO] Cornering Showcase','[DEMO] Item Control Practice','[DEMO] Ring Route Session','[DEMO] Acceleration Lab','[DEMO] Power Recovery Run','[DEMO] Boost Timing Notes','[DEMO] Dark Reaper Sprint','[DEMO] Consistent Finish Plan','[DEMO] Drift Line Routine','[DEMO] Starting Grid Notes','[DEMO] Night Circuit Notes','[DEMO] Speedster Session','[DEMO] Boost Route Notes','[DEMO] Balanced Start','[DEMO] Power Lineup','[DEMO] Steady Lap Plan','[DEMO] Ring Collection Notes')
   $legacyOwners=@('amy','amy','amy','tails','tails','tails','shadow','shadow','amy','tails','shadow','sonic','sonic','sonic','knuckles','knuckles','knuckles')
+  $wilsonFixtures=[ordered]@{
+    cornering=[pscustomobject]@{title='[Wilson Demo] Small perfect sample — 3↑ 0↓';upvotes=3;downvotes=0;description='This pair demonstrates how sample size affects Wilson confidence.'}
+    items=[pscustomobject]@{title='[Wilson Demo] Large near-perfect sample — 40↑ 1↓';upvotes=40;downvotes=1;description='This pair demonstrates how sample size affects Wilson confidence.'}
+    route=[pscustomobject]@{title='[Wilson Demo] Same score, cleaner reception — 15↑ 0↓';upvotes=15;downvotes=0;description='This build has the same net score as another demo case but a cleaner approval ratio.'}
+    acceleration=[pscustomobject]@{title='[Wilson Demo] Same score, divided reception — 25↑ 10↓';upvotes=25;downvotes=10;description='This build has the same net score as another demo case but more divided reception.'}
+    recovery=[pscustomobject]@{title='[Wilson Demo] Clean small sample — 8↑ 0↓';upvotes=8;downvotes=0;description='This build shows a positive result supported by a small clean sample.'}
+    boost=[pscustomobject]@{title='[Wilson Demo] Bigger but controversial — 40↑ 20↓';upvotes=40;downvotes=20;description='This build shows how a larger but divided sample compares within the positive-score group.'}
+    shadow=[pscustomobject]@{title='[Wilson Demo] No votes yet';upvotes=0;downvotes=0;description='This build demonstrates the unrated zero-score case.'}
+    finish=[pscustomobject]@{title='[Wilson Demo] Even split — 5↑ 5↓';upvotes=5;downvotes=5;description='This build demonstrates an evenly divided zero-score case.'}
+    'amy-drift'=[pscustomobject]@{title='[Wilson Demo] Negative reception — 20↑ 40↓';upvotes=20;downvotes=40;description='This build demonstrates a substantial sample in the negative-score group.'}
+    'tails-grid'=[pscustomobject]@{title='[Wilson Demo] Downvotes only — 0↑ 8↓';upvotes=0;downvotes=8;description='This build demonstrates a uniformly negative sample.'}
+  }
+  # The Explore UI requests 20 comments per page. These totals expose exact page boundaries.
+  $commentFixtures=[ordered]@{
+    'shadow-laps'=[pscustomobject]@{title='[Comment Demo] 21 comments — first overflow';comments=21;description='This discussion has 21 comments so the final comment appears on page 2.'}
+    'sonic-boost'=[pscustomobject]@{title='[Comment Demo] 40 comments — two full pages';comments=40;description='This discussion has 40 comments and fills exactly two pages.'}
+    'sonic-route'=[pscustomobject]@{title='[Comment Demo] 41 comments — third-page overflow';comments=41;description='This discussion has 41 comments so the final comment appears on page 3.'}
+    'knuckles-power'=[pscustomobject]@{title='[Comment Demo] 61 comments — four-page example';comments=61;description='This discussion has 61 comments so the final comment appears on page 4.'}
+    'knuckles-endurance'=[pscustomobject]@{title='[Comment Demo] 81 comments — five-page example';comments=81;description='This discussion has 81 comments so the final comment appears on page 5.'}
+    'knuckles-ring'=[pscustomobject]@{title='[Comment Demo] 101 comments — long discussion';comments=101;description='This longer discussion has 101 comments across six pages.'}
+  }
   $communityTitles=[ordered]@{
     amy=@('Amy is still my first pick','Another evening with Amy','Borrowing a Tails setup')
     tails=@('Tails and a notebook full of ideas','Keeping it simple with Tails')
@@ -161,13 +182,28 @@ function Get-CommunityDemoPlan {
     if($b.key -eq 'sonic-speed'){$title='Sonic — my regular garage pick'}
     $description="$setup $tone"
     if($b.ordinal % 3 -ne 0){$description+=" Keeping $($selected[0].name) with $($selected[1].name) for this version of the loadout."}
-    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
+    $fixtureKind=$null;$targetUpvotes=$null;$targetDownvotes=$null;$targetComments=$null
+    if($wilsonFixtures.Contains($b.key)){
+      $fixture=$wilsonFixtures[$b.key];$fixtureKind='WILSON';$title=$fixture.title
+      $description="$($fixture.description) $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes
+    } elseif($commentFixtures.Contains($b.key)) {
+      $fixture=$commentFixtures[$b.key];$fixtureKind='COMMENT';$title=$fixture.title
+      $description="$($fixture.description) $setup";$targetComments=$fixture.comments
+    }
+    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
   }
   $votes=@();$comments=@()
   foreach($b in $builds){
     $roll=$random.Next(100)
     $attention=if($roll -lt 22){0}elseif($roll -lt 62){$random.Next(1,5)}elseif($roll -lt 90){$random.Next(5,14)}else{$random.Next(18,36)}
     $candidates=@(Invoke-DemoShuffle @($users | Where-Object key -ne $b.owner) $random)
+    if($b.fixtureKind -eq 'WILSON'){
+      $targetTotal=$b.targetUpvotes+$b.targetDownvotes
+      for($i=0;$i -lt $targetTotal;$i++){
+        $votes+=[pscustomobject]@{key="vote/$($candidates[$i].key)/$($b.key)";user=$candidates[$i].key;build=$b.key;value=if($i -lt $b.targetUpvotes){1}else{-1}}
+      }
+      continue
+    }
     # A visible Sonic entry is an explicit editorial fixture, not a ranking rule.
     if($b.key -eq 'sonic-speed'){$attention=65}
     for($i=0;$i -lt [Math]::Min($attention,$candidates.Count);$i++){
@@ -175,6 +211,7 @@ function Get-CommunityDemoPlan {
       if($b.key -eq 'sonic-speed'){$down=0}
       $votes+=[pscustomobject]@{key="vote/$($candidates[$i].key)/$($b.key)";user=$candidates[$i].key;build=$b.key;value=if($random.NextDouble() -lt $down){-1}else{1}}
     }
+    if($b.fixtureKind -eq 'COMMENT'){continue}
     $cc=if(!$attention){0}elseif($random.NextDouble() -lt .5){0}else{[Math]::Min(4,1+$random.Next([Math]::Max(1,[Math]::Min(4,$attention))))}
     for($i=0;$i -lt $cc;$i++){
       $speaker=$candidates[($i+2)%$candidates.Count]
@@ -182,6 +219,21 @@ function Get-CommunityDemoPlan {
       $comments+=[pscustomobject]@{key="comment/$($b.key)/$i";user=$speaker.key;build=$b.key;text=$texts[$i%4]}
     }
     if($cc -ge 2 -and $random.NextDouble() -lt .55){$comments+=[pscustomobject]@{key="comment/$($b.key)/author";user=$b.owner;build=$b.key;text='Mostly curiosity. I am comparing it with my other saved setup.'}}
+  }
+  $discussionTexts=@(
+    'I tried a similar setup last night and the handling felt predictable.',
+    'The gadget order makes sense to me, especially for longer races.',
+    'I would keep this saved and compare it with a stock setup next.',
+    'This is a useful variation; thanks for sharing the reasoning.',
+    'The machine-part combination is interesting without feeling random.',
+    'I would like to see how this performs on a more technical course.'
+  )
+  foreach($b in @($builds|Where-Object fixtureKind -eq 'COMMENT')){
+    $speakers=@($users|Where-Object key -ne $b.owner)
+    for($i=0;$i -lt $b.targetComments;$i++){
+      $speaker=$speakers[$i%$speakers.Count]
+      $comments+=[pscustomobject]@{key="comment/$($b.key)/page-$i";user=$speaker.key;build=$b.key;text=$discussionTexts[$i%$discussionTexts.Count]}
+    }
   }
   [pscustomobject]@{schemaVersion=2;seed=$RandomSeed;referenceTime=$ReferenceTime.ToUniversalTime().ToString('o');newestVersion=$latest;users=$users;builds=$builds;votes=$votes;comments=$comments}
 }
