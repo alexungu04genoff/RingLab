@@ -21,9 +21,9 @@ class BuildRestResourceTest {
   @Test
   void defaultsPublicBuildListingToBestRated() throws NoSuchMethodException {
     var list = BuildRestResource.class.getDeclaredMethod("list", String.class, UUID.class,
-        UUID.class, UUID.class, UUID.class, String.class, int.class, int.class);
+        UUID.class, UUID.class, UUID.class, boolean.class, String.class, int.class, int.class);
 
-    assertEquals("rated", list.getParameters()[5].getAnnotation(DefaultValue.class).value());
+    assertEquals("rated", list.getParameters()[6].getAnnotation(DefaultValue.class).value());
   }
 
   @Test
@@ -61,8 +61,8 @@ class BuildRestResourceTest {
       }
     };
     var votes = new CountingVoteService();
-    var resource = new BuildRestResource(builds, users, new Catalog(id), votes, null);
-    var page = resource.list(null, null, null, null, null, "newest", 0, 12);
+    var resource = new BuildRestResource(builds, users, new Catalog(id), votes, null, null);
+    var page = resource.list(null, null, null, null, null, false, "newest", 0, 12);
     assertEquals(1, page.total());
     assertEquals(id, page.items().getFirst().id());
     assertEquals(3, page.items().getFirst().score());

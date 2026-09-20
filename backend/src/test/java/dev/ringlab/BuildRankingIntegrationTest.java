@@ -53,7 +53,7 @@ class BuildRankingIntegrationTest {
 
     var rated = List.of(strong, perfect, good, eight, tiny, zero, poor, down);
     assertEquals(rated, ids(author, "rated", 0, 50));
-    assertEquals(rated, buildResource.list(null, null, null, author, null, "rated", 0, 50)
+    assertEquals(rated, buildResource.list(null, null, null, author, null, false, "rated", 0, 50)
         .items().stream().map(response -> response.id()).toList());
     assertEquals(List.of(down, zero, poor, tiny, eight, good, perfect, strong),
         ids(author, "newest", 0, 50));

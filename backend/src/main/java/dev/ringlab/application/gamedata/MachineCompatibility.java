@@ -14,12 +14,18 @@ public final class MachineCompatibility {
   private MachineCompatibility() {}
 
   public static RacingType requireCompatible(GameDataRepository game, MachinePart... parts) {
+    return requireCompatible(game::findMachine, parts);
+  }
+
+  public static RacingType requireCompatible(
+      java.util.function.Function<java.util.UUID, java.util.Optional<Machine>> machines,
+      MachinePart... parts) {
     Machine reference = null;
     String referenceSlot = null;
     for (var part : parts) {
       if (part == null) continue;
       String slot = label(part.type().name());
-      var machine = game.findMachine(part.sourceMachineId())
+      var machine = machines.apply(part.sourceMachineId())
           .orElseThrow(() -> new ValidationException("Unknown source machine ID"));
       if (machine.racingType() == null) {
         throw new ValidationException(slot + " compatibility cannot be verified: source machine racing type is unknown.");

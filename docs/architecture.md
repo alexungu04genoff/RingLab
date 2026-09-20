@@ -285,3 +285,13 @@ secret mounts, later deployment commands, backup and rollback limitations.
 `RepositoryContractIntegrationTest` checks actual persisted deletion effects (including surviving remix contents), literal/blank search, any-slot machine matching, comment/version tie-breaks and vote replacement/absence conventions. Deletion postconditions belong to BuildRepository's contract; PostgreSQL retains responsibility for implementing them atomically with its existing constraints.
 
 JWT logout is client-side token disposal; a copied token lasts until its one-hour expiry. There is no refresh/revocation system. Curated/custom artwork, additional gadget compatibility rules, patch-aware costs and gadget-modified stats remain outside the implemented scope; current-cost Gadget Plate capacity validation and nullable versioned base-stat calculation are implemented.
+# Community showcase snapshot
+
+`application/community` selects up to three eligible builds with the existing domain Best Rated
+comparator and caches one immutable snapshot per process. Read-only eligibility reuses machine
+compatibility and Gadget Plate rules; controlled demo prefixes are excluded only here.
+`adapter/in/rest/community` composes existing public build/stats DTOs, constructs trusted public
+URLs, implements conditional GET and formats Discord payloads without posting them.
+`TopCommunityBuilds` loads this snapshot independently above Explore filters and supplies its stats
+to the shared BuildCard. Normal search results and pagination remain complete.
+See [the integration guide](community-top-builds.md) for contracts, policy, TTL and scaling limits.

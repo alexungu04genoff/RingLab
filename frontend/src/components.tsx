@@ -121,7 +121,9 @@ export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
   );
 }
 
-export function BuildCard({ build, versions = [] }: { build: Build; versions?: GameVersion[] }) {
+export function BuildCard({ build, versions = [], stats, compact = false, rank }: {
+  build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; compact?: boolean; rank?: number;
+}) {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
   const setupIssues = savedBuildSetupIssues(build);
@@ -129,9 +131,10 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
     <Link
       to={`/builds/${build.id}`}
       state={{ from: browseOrigin(location.pathname, location.search) }}
-      className="build-card"
+      className={`build-card${compact ? " build-card-compact" : ""}`}
     >
       <div className="card-art">
+        {rank != null && <span className="top-community-rank" aria-label={`Rank ${rank}`}>#{rank}</span>}
         <Artwork item={build.racer} portrait />
         <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
           {build.racer.racingType ?? "Unknown"}
@@ -161,14 +164,14 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
             aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
         </div>
         <h2>{build.title}</h2>
-        <BuildCardStats build={build} />
-        <div className="tags">
+        {!compact && (stats ? <BuildCardStatsContent build={build} stats={stats} /> : <BuildCardStats build={build} />)}
+        {!compact && <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
             <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
           ))}
           {build.gadgets.length > CARD_GADGET_LIMIT && <span>+{build.gadgets.length - CARD_GADGET_LIMIT}</span>}
           {build.gadgets.length === 0 && <span>No gadgets</span>}
-        </div>
+        </div>}
         <div className="card-meta">
           <span>@{build.author.username}</span>
           {build.gameVersion ? (
@@ -193,11 +196,15 @@ function BuildCardStats({ build }: { build: Build }) {
   if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
   if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
   if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
+  return <BuildCardStatsContent build={build} stats={result.data} />;
+}
+
+function BuildCardStatsContent({ build, stats }: { build: Build; stats: BuildStatsResult }) {
   const warning = buildStatsWarning(build);
   return <><dl className="card-stats" aria-label="Base stats">
     {statNames.map((name) => {
       const { value, hasBreakdown, label, width, characterWidth, machineWidth }
-        = statPresentation(name, result.data, result.data);
+        = statPresentation(name, stats, stats);
       return <div className={`card-stat stat-${name}`} key={name}>
         <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
         <span className={`card-stat-track${value == null ? " unknown" : ""}`} aria-hidden="true">

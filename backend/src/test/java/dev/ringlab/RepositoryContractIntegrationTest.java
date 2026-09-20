@@ -139,6 +139,20 @@ class RepositoryContractIntegrationTest {
 
   @Test
   @TestTransaction
+  void buildCandidateFiltersExcludeRequestedIdsBeforeRankingAndPagination() {
+    User author = user();
+    Build included = build(author.id(), "Included build", null);
+    Build excluded = build(author.id(), "Excluded build", null);
+
+    var result = candidateIds(builds.searchCandidates(new BuildRepository.Filter(
+        null, null, null, author.id(), null, Set.of(excluded.id()))));
+
+    assertTrue(result.contains(included.id()));
+    assertFalse(result.contains(excluded.id()));
+  }
+
+  @Test
+  @TestTransaction
   void commentsOrderBeforePaginationAndRetainTotalOnEmptyPages() {
     User author = user();
     Build build = build(author.id(), "Comments", null);

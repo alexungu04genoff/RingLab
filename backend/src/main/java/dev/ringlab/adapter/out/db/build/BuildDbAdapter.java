@@ -59,6 +59,9 @@ public class BuildDbAdapter implements BuildRepository {
   private List<Predicate> filters(
       CriteriaBuilder criteriaBuilder, CriteriaQuery<?> query, Root<BuildDbEntity> build, Filter filter) {
     List<Predicate> predicates = new ArrayList<>();
+    if (!filter.excludedIds().isEmpty()) {
+      predicates.add(criteriaBuilder.not(build.get("id").in(filter.excludedIds())));
+    }
     if (filter.gameVersionId() != null) {
       predicates.add(criteriaBuilder.equal(build.get("gameVersionId"), filter.gameVersionId()));
     }

@@ -94,6 +94,21 @@ export interface BuildDraft {
   remixedFromBuildId: string | null;
   gadgetIds: string[];
 }
+export interface TopCommunitySnapshot {
+  schemaVersion: number;
+  ranking: "best-rated";
+  scope: "overall";
+  patches: "all";
+  snapshotAt: string;
+  items: {
+    rank: number;
+    build: Build;
+    machineType: RacingType;
+    stats: BuildStatsResult;
+    buildUrl: string;
+    artworkUrl: string | null;
+  }[];
+}
 export interface BuildPage {
   items: Build[];
   total: number;

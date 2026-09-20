@@ -16,7 +16,16 @@ public interface BuildRepository {
       UUID racerId,
       UUID machineId,
       UUID authorId,
-      UUID gameVersionId) {}
+      UUID gameVersionId,
+      Set<UUID> excludedIds) {
+    public Filter(String search, UUID racerId, UUID machineId, UUID authorId, UUID gameVersionId) {
+      this(search, racerId, machineId, authorId, gameVersionId, Set.of());
+    }
+
+    public Filter {
+      excludedIds = excludedIds == null ? Set.of() : Set.copyOf(excludedIds);
+    }
+  }
 
   Optional<Build> find(UUID id);
 

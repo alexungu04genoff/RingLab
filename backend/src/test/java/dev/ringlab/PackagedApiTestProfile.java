@@ -10,6 +10,7 @@ public class PackagedApiTestProfile implements QuarkusTestProfile {
   public Map<String, String> getConfigOverrides() {
     Path directory = Path.of("target", "packaged-test-jwt").toAbsolutePath();
     return Map.of(
+        "ringlab.public-base-url", "http://localhost:5173",
         "smallrye.jwt.sign.key.location", directory.resolve("private.pem").toString(),
         "mp.jwt.verify.publickey.location", directory.resolve("public.pem").toString());
   }

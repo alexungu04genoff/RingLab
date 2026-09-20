@@ -54,6 +54,12 @@ public class BaseStatsService {
     if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
+    return calculate(racer, front, rear, tire, racers, parts);
+  }
+
+  /** Shared calculation for validated selections, including a preloaded snapshot catalog. */
+  public static BuildStats calculate(UUID racer, UUID front, UUID rear, UUID tire,
+      Map<UUID, BaseStats> racers, Map<UUID, BaseStats> parts) {
     var character = value(racers, racer);
     var contributions = new java.util.ArrayList<BaseStats>();
     contributions.add(value(parts, front));
@@ -63,7 +69,7 @@ public class BaseStatsService {
     return new BuildStats(BaseStats.sum(List.of(character, machine)), character, machine);
   }
 
-  private BaseStats value(Map<UUID, BaseStats> values, UUID id) {
+  private static BaseStats value(Map<UUID, BaseStats> values, UUID id) {
     return id == null ? BaseStats.UNKNOWN : values.getOrDefault(id, BaseStats.UNKNOWN);
   }
 

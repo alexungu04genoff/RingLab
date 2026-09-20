@@ -53,7 +53,8 @@ enum RequestRateLimitPolicy {
     if (method.equals("POST") && path.equals("/api/auth/resend-verification")) {
       return Optional.of(RESEND_VERIFICATION);
     }
-    if (method.equals("GET") && path.equals("/api/builds")) {
+    if (method.equals("GET") && (path.equals("/api/builds")
+        || path.equals("/api/community/top-builds") || path.equals("/api/community/top-builds/discord"))) {
       return Optional.of(BUILD_LIST);
     }
     if (method.equals("GET") && path.equals("/api/news")) {

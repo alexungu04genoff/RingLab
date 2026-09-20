@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
+import dev.ringlab.application.community.CommunitySnapshotCache;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.VoteSummary;
@@ -38,6 +39,7 @@ public class BuildRestResource {
   private final GameDataRepository game;
   private final VoteService votes;
   private final CurrentUser actor;
+  private final CommunitySnapshotCache communitySnapshots;
 
   private RacerResponse racerItem(UUID id) {
     return RacerResponse.from(game.findRacer(id).orElseThrow());
@@ -84,6 +86,7 @@ public class BuildRestResource {
       @QueryParam("machineId") UUID machine,
       @QueryParam("authorId") UUID author,
       @QueryParam("gameVersionId") UUID gameVersion,
+      @QueryParam("excludeTop") @DefaultValue("false") boolean excludeTop,
       @QueryParam("sort") @DefaultValue("rated") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
@@ -92,8 +95,13 @@ public class BuildRestResource {
       case "rated" -> BuildSort.BEST_RATED;
       default -> BuildSort.NEWEST;
     };
+    var excludedIds = excludeTop
+        ? communitySnapshots.get().items().stream()
+            .map(item -> item.build().id())
+            .collect(java.util.stream.Collectors.toSet())
+        : Set.<UUID>of();
     var result = builds.list(new BuildService.Query(
-        new BuildRepository.Filter(search, racer, machine, author, gameVersion),
+        new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds),
         buildSort, page, size));
     return new BuildPageResponse(
         result.items().stream().map(build -> response(build, result.summary(build.id()))).toList(),

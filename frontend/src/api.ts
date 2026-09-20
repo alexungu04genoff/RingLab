@@ -20,14 +20,15 @@ export class ApiError extends Error {
 }
 export async function api<T>(
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { anonymous?: boolean } = {},
 ): Promise<T> {
+  const { anonymous = false, ...requestOptions } = options;
   const headers = new Headers(options.headers);
   if (options.body) headers.set("Content-Type", "application/json");
-  if (bearer) headers.set("Authorization", `Bearer ${bearer}`);
-  const response = await fetch(`/api${path}`, { ...options, headers });
+  if (bearer && !anonymous) headers.set("Authorization", `Bearer ${bearer}`);
+  const response = await fetch(`/api${path}`, { ...requestOptions, headers });
   if (!response.ok) {
-    if (response.status === 401 && bearer) {
+    if (response.status === 401 && bearer && !anonymous) {
       setToken(null);
       window.dispatchEvent(new Event("ringlab-session-expired"));
     }

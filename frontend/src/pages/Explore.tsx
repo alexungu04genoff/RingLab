@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
+import { TopCommunityBuilds } from "../TopCommunityBuilds";
 import type { BuildPage, GameVersion, Machine, Racer } from "../types";
 import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../icons";
 
@@ -292,6 +293,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   if (machine) params.set("machineId", machine);
   if (gameVersion) params.set("gameVersionId", gameVersion);
   if (mine && user) params.set("authorId", user.id);
+  if (!mine) params.set("excludeTop", "true");
   const builds = useLoad<BuildPage>(`/builds?${params}`);
   const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
   const activeChips = activeExploreFilterChips(
@@ -369,6 +371,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </div>
         )}
       </div>
+      {!mine && <TopCommunityBuilds versions={versions.data || []} />}
       <section className="filters" aria-label="Filter builds">
         <form
           className="search"
