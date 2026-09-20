@@ -20,7 +20,7 @@ class MachineCompositionMigrationIntegrationTest {
       migrate(schema, "26");
       String before;
       try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-        sql.execute("SET search_path TO " + schema);
+        sql.execute("SET LOCAL search_path TO " + schema);
         sql.execute("INSERT INTO users(id,username,email,created_at) VALUES ('00000000-0000-4000-8000-000000000027','upgrade','upgrade@test.invalid',now())");
         sql.execute("INSERT INTO builds(id,title,description,author_id,racer_id,front_part_id,rear_part_id,tire_part_id,created_at,updated_at) "
             + "SELECT m.id,m.name,'preserve','00000000-0000-4000-8000-000000000027',(SELECT id FROM racers LIMIT 1),f.id,r.id,t.id,now(),now() FROM machines m "
@@ -31,7 +31,7 @@ class MachineCompositionMigrationIntegrationTest {
       }
       migrate(schema, "27");
       try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-        sql.execute("SET search_path TO " + schema);
+        sql.execute("SET LOCAL search_path TO " + schema);
         assertEquals(before, snapshot(sql));
         assertEquals("0", value(sql, "SELECT count(*) FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='machines' AND column_name='family'"));
         assertEquals("YES", value(sql, "SELECT is_nullable FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='builds' AND column_name='tire_part_id'"));
@@ -51,7 +51,7 @@ class MachineCompositionMigrationIntegrationTest {
       try {
         migrate(schema, "26");
         try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-          sql.execute("SET search_path TO " + schema);
+          sql.execute("SET LOCAL search_path TO " + schema);
           sql.execute(corrupt);
         }
         assertThrows(org.flywaydb.core.api.FlywayException.class, () -> migrate(schema, "27"));
