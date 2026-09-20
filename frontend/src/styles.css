@@ -1339,6 +1339,9 @@ hr {
 .racer-identity > .type-badge {
   position: static;
   flex: 0 0 auto;
+  padding: 7px 12px;
+  font-size: 14px;
+  letter-spacing: 1.2px;
   box-shadow: 0 5px 16px #0007;
 }
 .hero-details {
@@ -2702,7 +2705,7 @@ nav,
 .hero-machine-setup .machine-part-card .part-type { font-size: 12px; }
 .hero-machine-setup .compact-machine-setup .machine-setup-heading h2 { font-size: 16px; }
 .hero-machine-setup .compact-machine-setup .machine-part-card strong { font-size: 13px; }
-.hero-machine-setup .compact-machine-setup .setup-indicator,
+.hero-machine-setup .compact-machine-setup .setup-indicator { padding: 6px 11px; font-size: 13px; }
 .hero-machine-setup .compact-machine-setup .machine-part-slot { font-size: 10px; }
 .hero-machine-setup .compact-machine-setup .machine-part-card .part-type { font-size: 10px; }
 .machine-family-choice {
