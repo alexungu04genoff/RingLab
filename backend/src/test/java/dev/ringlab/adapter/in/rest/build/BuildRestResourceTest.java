@@ -86,7 +86,7 @@ class BuildRestResourceTest {
       return Optional.of(new MachinePart(id, id, MachinePartType.FRONT));
     }
     public Optional<Machine> findMachine(UUID requested) {
-      return Optional.of(new Machine(id, "Machine", RacingType.SPEED, null, MachineFamily.STANDARD));
+      return Optional.of(new Machine(id, "Machine", RacingType.SPEED, null));
     }
     public List<GameVersion> listGameVersions() { return List.of(); }
     public Optional<GameVersion> findGameVersion(UUID requested) { return Optional.empty(); }

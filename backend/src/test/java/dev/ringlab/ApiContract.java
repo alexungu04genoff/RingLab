@@ -52,7 +52,7 @@ public abstract class ApiContract {
   private List<String> standardMachineIds() {
     List<Map<String, Object>> machines = given().get("/api/machines").then()
         .statusCode(200).extract().jsonPath().getList("$");
-    return machines.stream().filter(machine -> "STANDARD".equals(machine.get("family")))
+    return machines.stream().filter(machine -> !"BOOST".equals(machine.get("racingType")))
         .map(machine -> (String) machine.get("id")).toList();
   }
 
@@ -122,6 +122,29 @@ public abstract class ApiContract {
     request(null).body(Map.of("username", name, "password", "        "))
         .post("/api/auth/login").then().statusCode(200).body("user.username", equalTo(name))
         .body("token", not(emptyOrNullString()));
+  }
+
+  @Test
+  void catalogBackedCompositionKeepsMikuIndependentAndRejectsGigantoRear() {
+    var author = register();
+    List<Map<String, Object>> machines = given().get("/api/machines").as(List.class);
+    String power = (String) machines.stream().filter(m -> "Goromaru".equals(m.get("name"))).findFirst().orElseThrow().get("id");
+    String acceleration = (String) machines.stream().filter(m -> "Giganto Liner".equals(m.get("name"))).findFirst().orElseThrow().get("id");
+    String miku = given().get("/api/racers").path("find { it.name == 'Hatsune Miku' }.id");
+    var body = draft();
+    body.put("racerId", miku);
+    stockParts(body, power);
+    body.put("gadgetIds", List.of());
+    String id = request(author.token).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+    body.put("rearPartId", partId(acceleration, "REAR"));
+    request(author.token).body(body).post("/api/builds").then().statusCode(400).body("message", containsString("Power"));
+    request(author.token).body(body).put("/api/builds/" + id).then().statusCode(400);
+    body.put("remixedFromBuildId", id);
+    request(author.token).body(body).post("/api/builds").then().statusCode(400);
+    given().queryParam("gameVersionId", body.get("gameVersionId"))
+        .queryParam("frontPartId", body.get("frontPartId"))
+        .queryParam("rearPartId", body.get("rearPartId"))
+        .get("/api/stats/build").then().statusCode(400);
   }
 
   @Test
@@ -221,19 +244,19 @@ public abstract class ApiContract {
         allOf(
             hasEntry("name", "Dark Reaper"),
             hasEntry("racingType", "SPEED"),
-            hasEntry("family", "STANDARD"),
+            not(hasKey("family")),
             not(hasKey("description")),
             not(hasKey("slotCost"))));
     assertThat(
         gadget, allOf(hasKey("description"), hasKey("slotCost"), not(hasKey("racingType"))));
     assertThat(machinePart, allOf(
         hasEntry("sourceMachineImagePath", "/assets/machines/dark-reaper.png"),
-        hasEntry("sourceMachineFamily", "STANDARD")));
-    assertThat(board, hasEntry("family", "BOARD"));
+        hasEntry("racingType", "SPEED"), not(hasKey("sourceMachineFamily"))));
+    assertThat(board, hasEntry("racingType", "BOOST"));
     assertThat(boardParts.stream().map(part -> (String) part.get("type"))
         .collect(java.util.stream.Collectors.toSet()), equalTo(Set.of("FRONT", "REAR")));
     assertThat(boardParts.stream()
-        .allMatch(part -> "BOARD".equals(part.get("sourceMachineFamily"))), is(true));
+        .allMatch(part -> "BOOST".equals(part.get("racingType"))), is(true));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);
   }
 
@@ -261,7 +284,12 @@ public abstract class ApiContract {
         .body("rearPart.sourceMachineImagePath", notNullValue())
         .body("tirePart.sourceMachineImagePath", notNullValue())
         .body("author.id", equalTo(author.id));
-    body.put("rearPartId", partId(standardMachineIds().getFirst(), "REAR"));
+    List<Map<String, Object>> catalog = given().get("/api/machine-parts").then().statusCode(200).extract().jsonPath().getList("$");
+    var front = catalog.stream().filter(p -> p.get("id").equals(body.get("frontPartId"))).findFirst().orElseThrow();
+    var compatibleRear = catalog.stream().filter(p -> "REAR".equals(p.get("type"))
+        && front.get("racingType").equals(p.get("racingType"))
+        && !front.get("sourceMachineId").equals(p.get("sourceMachineId"))).findFirst().orElseThrow();
+    body.put("rearPartId", compatibleRear.get("id"));
     request(author.token).body(body).put("/api/builds/" + id).then().statusCode(200);
     given().get("/api/builds/" + id).then().statusCode(200)
         .body("frontPart.id", equalTo(body.get("frontPartId")))

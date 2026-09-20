@@ -5,6 +5,7 @@ import { ComponentsIcon } from "./icons";
 import { buildStatsPath, statNames, statPresentation } from "./stats";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
+import { machineTypeLabel } from "./machineComposition";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -151,7 +152,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
           <span className="eyebrow">{build.racer.name}</span>
           <span className="machine-name">
             <ComponentsIcon />
-            <span>{build.frontPart.sourceMachineFamily === "BOARD" ? "Board · " : ""}{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
+            <span>{machineTypeLabel(build.frontPart.racingType)} · {build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
               (!build.tirePart || build.frontPart.sourceMachineId === build.tirePart.sourceMachineId)
                 ? build.frontPart.sourceMachineName
                 : "Mixed machine"}</span>
@@ -217,7 +218,7 @@ export function MachineSetup({ build, compact = false, differences }: {
   differences?: Partial<Record<MachinePart["type"], boolean>>;
 }) {
   const stockSetup = isStockSetup(build);
-  const family = build.frontPart.sourceMachineFamily;
+  const machineType = build.frontPart.racingType;
   const setupParts: Array<[string, MachinePart]> = [
     ["FRONT", build.frontPart], ["REAR", build.rearPart],
     ...(build.tirePart ? [["TIRES", build.tirePart] as [string, MachinePart]] : []),
@@ -227,7 +228,7 @@ export function MachineSetup({ build, compact = false, differences }: {
       <div className="machine-setup-heading">
         <div>
           <div className="eyebrow">MACHINE SETUP</div>
-          <h2>{family === "BOARD" ? "Board parts by source machine" : "Parts by source machine"}</h2>
+          <h2>{machineTypeLabel(machineType)} parts by source machine</h2>
         </div>
         <span className={`setup-indicator ${stockSetup ? "stock-setup" : "mixed-setup"}`}>
           {stockSetup ? "Stock setup" : "Mixed setup"}

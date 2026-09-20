@@ -4,10 +4,9 @@ import java.util.UUID;
 import java.util.Objects;
 
 public record Machine(
-    UUID id, String name, RacingType racingType, String imagePath, MachineFamily family) {
+    UUID id, String name, RacingType racingType, String imagePath) {
   public Machine {
     Objects.requireNonNull(id);
     Objects.requireNonNull(name);
-    Objects.requireNonNull(family);
   }
 }

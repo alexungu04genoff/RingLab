@@ -6,9 +6,9 @@ const build: Build = {
   id: "internal-build-id", title: "Amy is still my first pick", description: "Do not share this description.",
   author: { id: "internal-author-id", username: "amy-fan" },
   racer: { id: "racer-id", name: "Amy Rose", racingType: "SPEED", imagePath: null },
-  frontPart: { id: "front-id", type: "FRONT", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
-  rearPart: { id: "rear-id", type: "REAR", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
-  tirePart: { id: "tire-id", type: "TIRE", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
+  frontPart: { id: "front-id", type: "FRONT", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
+  rearPart: { id: "rear-id", type: "REAR", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
+  tirePart: { id: "tire-id", type: "TIRE", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
   gameVersion: { id: "version-id", version: "1.4.1", releasedAt: "2026-06-23" },
   remixedFrom: null,
   gadgets: [
@@ -57,12 +57,12 @@ it("handles an unspecified patch, unknown costs, and no gadgets without inventin
 it("shares a Board without inventing a tire", () => {
   const board = {
     ...build,
-    frontPart: { ...build.frontPart, sourceMachineFamily: "BOARD" as const },
-    rearPart: { ...build.rearPart, sourceMachineFamily: "BOARD" as const },
+    frontPart: { ...build.frontPart, racingType: "BOOST" as const },
+    rearPart: { ...build.rearPart, racingType: "BOOST" as const },
     tirePart: null,
   };
   const text = formatBuildForSharing(board, "https://ringlab.example/builds/board");
-  expect(text).toContain("Family: Board");
+  expect(text).toContain("Type: Boost · Extreme Gear");
   expect(text).not.toContain("Tires:");
   expect(text).not.toContain("Boards do not use tires");
 });

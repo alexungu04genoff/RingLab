@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForFamily, moveGadget, stockMachineSources, switchMachineFamily, toggleGadget } from "./buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, machineSetupError, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "./buildForm";
+import { machineTypes, requiredMachineSlots } from "./machineComposition";
 import type { BuildDraft, Gadget, MachinePart } from "./types";
 describe("ordered gadget selection", () => {
   it("preserves selection order when adding and removing gadgets", () => {
@@ -14,6 +15,34 @@ describe("ordered gadget selection", () => {
     expect(moveGadget(ids, 2, 1)).toEqual(ids);
     expect(ids).toEqual(["b", "a", "c"]);
   });
+});
+
+it.each(machineTypes)("%s filters all slots and presets independently of the racer", (machineType) => {
+  const parts: MachinePart[] = machineTypes.flatMap((racingType) => requiredMachineSlots(racingType).map((type) => ({
+    id: `${racingType}-${type}`, type, sourceMachineId: racingType, sourceMachineName: racingType,
+    sourceMachineImagePath: null, racingType,
+  })));
+  const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "independent", machineType,
+    frontPartId: "", rearPartId: "", tirePartId: null, gameVersionId: "v", gadgetIds: ["g"], remixedFromBuildId: null };
+  expect(stockMachineSources(parts, machineType).map(p => p.sourceMachineId)).toEqual([machineType]);
+  const selected = applyStockMachine(draft, parts, machineType);
+  expect(machineSetupError(selected, parts)).toBe("");
+  expect(selected.racerId).toBe("independent");
+  expect(selected.tirePartId).toBe(machineType === "BOOST" ? null : `${machineType}-TIRE`);
+  for (const slot of requiredMachineSlots(machineType)) {
+    expect(machinePartsForType(parts, machineType, slot).map(p => p.id)).toEqual([`${machineType}-${slot}`]);
+  }
+  expect(applyStockMachine(draft, parts, "missing")).toBe(draft);
+  expect(machineSetupError(draft, parts)).toContain("Select front");
+  expect(machineSetupError({ ...selected, rearPartId: "missing" }, parts)).toContain("cannot be verified");
+  const other = machineType === "POWER" ? "SPEED" : "POWER";
+  expect(machineSetupError({ ...selected, rearPartId: `${other}-REAR` }, parts)).toContain("does not match");
+  expect(switchMachineType(selected, machineType, parts)).toBe(selected);
+  expect(switchMachineType(selected, other, parts)).toMatchObject({ racerId: "independent", title: "Keep", gadgetIds: ["g"], frontPartId: "", rearPartId: "", tirePartId: null });
+  expect(machineSetupError({ ...selected, machineType: null }, parts)).toContain("Select a machine type");
+  expect(stockMachineSources(parts, null)).toEqual([]);
+  expect(machinePartsForType(parts, null, "FRONT")).toEqual([]);
+  expect(machineSetupError({ ...selected, machineType: "BOOST", frontPartId: "BOOST-FRONT", rearPartId: "BOOST-REAR", tirePartId: "POWER-TIRE" }, parts)).toContain("cannot have tires");
 });
 
 const gadget = (id: string, name: string, slotCost: number | null): Gadget =>
@@ -74,11 +103,11 @@ it("rejects duplicate, unknown, missing, and out-of-range gadget data", () => {
 it("applies all stock parts while preserving other fields and permits a later individual change", () => {
   const parts: MachinePart[] = (["FRONT", "REAR", "TIRE"] as const).map((type) => ({
     id: `stock-${type}`, type, sourceMachineId: "stock", sourceMachineName: "Stock",
-    sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
+    sourceMachineImagePath: null, racingType: "SPEED",
   }));
   const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "racer",
     frontPartId: "old-front", rearPartId: "old-rear", tirePartId: "old-tire",
-    machineFamily: "STANDARD", gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
+    machineType: "SPEED", gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
   const stocked = applyStockMachine(draft, parts, "stock");
   expect(stocked).toEqual({ ...draft, frontPartId: "stock-FRONT", rearPartId: "stock-REAR", tirePartId: "stock-TIRE" });
   expect({ ...stocked, rearPartId: "custom-rear" }).toMatchObject({ frontPartId: "stock-FRONT", rearPartId: "custom-rear", tirePartId: "stock-TIRE" });
@@ -87,35 +116,35 @@ it("applies all stock parts while preserving other fields and permits a later in
 it("filters stock and individual parts by family and applies the correct family shape", () => {
   const boardParts: MachinePart[] = (["FRONT", "REAR"] as const).map((type) => ({
     id: `board-${type}`, type, sourceMachineId: "board", sourceMachineName: "Board",
-    sourceMachineImagePath: null, racingType: "HANDLING", sourceMachineFamily: "BOARD",
+    sourceMachineImagePath: null, racingType: "BOOST",
   }));
   const standardParts: MachinePart[] = (["FRONT", "REAR", "TIRE"] as const).map((type) => ({
     id: `standard-${type}`, type, sourceMachineId: "standard", sourceMachineName: "Standard",
-    sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
+    sourceMachineImagePath: null, racingType: "SPEED",
   }));
   const parts = [...boardParts, ...standardParts];
   const draft: BuildDraft = { title: "Keep", description: "", racerId: "racer",
-    frontPartId: "front", rearPartId: "rear", tirePartId: "tire", machineFamily: "STANDARD",
+    frontPartId: "front", rearPartId: "rear", tirePartId: "tire", machineType: "SPEED",
     gameVersionId: "version", remixedFromBuildId: null, gadgetIds: [] };
 
-  expect(stockMachineSources(parts, "STANDARD").map((part) => part.sourceMachineName))
+  expect(stockMachineSources(parts, "SPEED").map((part) => part.sourceMachineName))
     .toEqual(["Standard"]);
-  expect(stockMachineSources(parts, "BOARD").map((part) => part.sourceMachineName))
+  expect(stockMachineSources(parts, "BOOST").map((part) => part.sourceMachineName))
     .toEqual(["Board"]);
-  expect(machinePartsForFamily(parts, "STANDARD", "FRONT").map((part) => part.id))
+  expect(machinePartsForType(parts, "SPEED", "FRONT").map((part) => part.id))
     .toEqual(["standard-FRONT"]);
-  expect(machinePartsForFamily(parts, "BOARD", "REAR").map((part) => part.id))
+  expect(machinePartsForType(parts, "BOOST", "REAR").map((part) => part.id))
     .toEqual(["board-REAR"]);
-  expect(applyStockMachine(draft, parts, "board")).toMatchObject({
-    machineFamily: "BOARD", frontPartId: "board-FRONT", rearPartId: "board-REAR", tirePartId: null,
+  expect(applyStockMachine({ ...draft, machineType: "BOOST" }, parts, "board")).toMatchObject({
+    machineType: "BOOST", frontPartId: "board-FRONT", rearPartId: "board-REAR", tirePartId: null,
   });
   expect(applyStockMachine(draft, parts, "standard")).toMatchObject({
-    machineFamily: "STANDARD", frontPartId: "standard-FRONT",
+    machineType: "SPEED", frontPartId: "standard-FRONT",
     rearPartId: "standard-REAR", tirePartId: "standard-TIRE",
   });
-  expect(switchMachineFamily(draft, "BOARD")).toMatchObject({
-    machineFamily: "BOARD", frontPartId: "", rearPartId: "", tirePartId: null,
+  expect(switchMachineType(draft, "BOOST")).toMatchObject({
+    machineType: "BOOST", frontPartId: "", rearPartId: "", tirePartId: null,
   });
-  expect(switchMachineFamily({ ...draft, machineFamily: "BOARD", tirePartId: null }, "STANDARD"))
-    .toMatchObject({ machineFamily: "STANDARD", frontPartId: "", rearPartId: "", tirePartId: null });
+  expect(switchMachineType({ ...draft, machineType: "BOOST", tirePartId: null }, "SPEED"))
+    .toMatchObject({ machineType: "SPEED", frontPartId: "", rearPartId: "", tirePartId: null });
 });

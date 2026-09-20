@@ -28,7 +28,7 @@ class GameDataRepositoryIntegrationTest {
     for (var source : gameData.listMachines()) {
       var parts = gameData.listMachineParts().stream()
           .filter(p -> p.sourceMachineId().equals(source.id())).toList();
-      var expectedTypes = source.family() == dev.ringlab.domain.gamedata.MachineFamily.BOARD
+      var expectedTypes = source.racingType() == RacingType.BOOST
           ? java.util.Set.of("FRONT", "REAR")
           : java.util.Set.of("FRONT", "REAR", "TIRE");
       assertEquals(expectedTypes,

@@ -75,7 +75,7 @@ class BaseStatsServiceTest {
 
   @Test
   void boardStatsSumFrontAndRearWithoutInventingATireContribution() {
-    catalog.family = MachineFamily.BOARD;
+    catalog.machineType = RacingType.BOOST;
     catalog.catalogParts.removeIf(part -> part.type() == MachinePartType.TIRE);
     racers.put(racer, ones());
     parts.put(front, ones());
@@ -92,7 +92,8 @@ class BaseStatsServiceTest {
   }
 
   private class Catalog implements GameDataRepository {
-    MachineFamily family = MachineFamily.STANDARD;
+    RacingType machineType = RacingType.SPEED;
+    final List<Machine> extraMachines = new ArrayList<>();
     final List<MachinePart> catalogParts = new ArrayList<>(List.of(
         new MachinePart(front, machine, MachinePartType.FRONT),
         new MachinePart(rear, machine, MachinePartType.REAR),
@@ -101,11 +102,28 @@ class BaseStatsServiceTest {
     public Optional<GameVersion> findGameVersion(UUID id) { return listGameVersions().stream().filter(v -> v.id().equals(id)).findFirst(); }
     public List<Racer> listRacers() { return List.of(new Racer(racer, "Racer", RacingType.SPEED, null)); }
     public Optional<Racer> findRacer(UUID id) { return listRacers().stream().filter(r -> r.id().equals(id)).findFirst(); }
-    public List<Machine> listMachines() { return List.of(new Machine(machine, "Machine", RacingType.SPEED, null, family)); }
+    public List<Machine> listMachines() {
+      var machines = new ArrayList<>(extraMachines);
+      machines.add(new Machine(machine, "Machine", machineType, null));
+      return machines;
+    }
     public Optional<Machine> findMachine(UUID id) { return listMachines().stream().filter(m -> m.id().equals(id)).findFirst(); }
     public List<MachinePart> listMachineParts() { return catalogParts; }
     public Optional<MachinePart> findMachinePart(UUID id) { return catalogParts.stream().filter(p -> p.id().equals(id)).findFirst(); }
     public List<Gadget> listGadgets() { return List.of(); }
     public Optional<Gadget> findGadget(UUID id) { return Optional.empty(); }
+  }
+
+  @Test
+  void partialDraftsRejectKnownTypeConflictsEvenWithoutAPatch() {
+    UUID other = UUID.randomUUID();
+    catalog.extraMachines.add(new Machine(other, "Giganto Liner", RacingType.ACCELERATION, null));
+    UUID otherRear = UUID.randomUUID();
+    catalog.catalogParts.add(new MachinePart(otherRear, other, MachinePartType.REAR));
+    assertThrows(ValidationException.class, () -> service.build(version, racer, front, otherRear, null));
+    assertThrows(ValidationException.class, () -> service.build(null, racer, front, otherRear, null));
+    assertEquals(BaseStats.UNKNOWN, service.build(version, racer, null, otherRear, null));
+    catalog.machineType = null;
+    assertThrows(ValidationException.class, () -> service.build(version, racer, front, null, null));
   }
 }

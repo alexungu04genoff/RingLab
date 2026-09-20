@@ -11,7 +11,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: actor }) }));
 vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
   sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
-  racingType: "SPEED", sourceMachineFamily: "STANDARD" });
+  racingType: "SPEED" });
 const build = (id: string): Build => ({
   id, title: `Build ${id}`, description: "", author: actor,
   racer: { id: "racer", name: "Sonic", racingType: "SPEED", imagePath: null },

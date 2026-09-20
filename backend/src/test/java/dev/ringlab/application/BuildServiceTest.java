@@ -10,7 +10,6 @@ import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.Machine;
-import dev.ringlab.domain.gamedata.MachineFamily;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.Racer;
@@ -348,7 +347,7 @@ class BuildServiceTest {
     UUID mixedRear = UUID.randomUUID();
     UUID mixedMachine = UUID.randomUUID();
     gameData.machines.put(mixedMachine,
-        new Machine(mixedMachine, "Other", RacingType.SPEED, null, MachineFamily.STANDARD));
+        new Machine(mixedMachine, "Other", RacingType.SPEED, null));
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, mixedMachine, MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
         tirePartId, gameVersionId, null, List.of(gadgetId));
@@ -368,9 +367,9 @@ class BuildServiceTest {
     UUID boardFront = UUID.randomUUID();
     UUID boardRear = UUID.randomUUID();
     gameData.machines.put(boardMachine,
-        new Machine(boardMachine, "Board", RacingType.HANDLING, null, MachineFamily.BOARD));
+        new Machine(boardMachine, "Board", RacingType.BOOST, null));
     gameData.machines.put(secondBoardMachine,
-        new Machine(secondBoardMachine, "Other Board", RacingType.SPEED, null, MachineFamily.BOARD));
+        new Machine(secondBoardMachine, "Other Board", RacingType.BOOST, null));
     gameData.parts.put(boardFront, new MachinePart(boardFront, boardMachine, MachinePartType.FRONT));
     gameData.parts.put(boardRear, new MachinePart(boardRear, secondBoardMachine, MachinePartType.REAR));
 
@@ -393,7 +392,7 @@ class BuildServiceTest {
     UUID boardFront = UUID.randomUUID();
     UUID boardRear = UUID.randomUUID();
     gameData.machines.put(boardMachine,
-        new Machine(boardMachine, "Board", RacingType.HANDLING, null, MachineFamily.BOARD));
+        new Machine(boardMachine, "Board", RacingType.BOOST, null));
     gameData.parts.put(boardFront, new MachinePart(boardFront, boardMachine, MachinePartType.FRONT));
     gameData.parts.put(boardRear, new MachinePart(boardRear, boardMachine, MachinePartType.REAR));
 
@@ -415,6 +414,47 @@ class BuildServiceTest {
       assertTrue(error.getMessage().startsWith("Expected "));
     }
     assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void allMachineTypesUseTheirOwnSlotsIndependentlyOfRacerType() {
+    for (var type : RacingType.values()) {
+      gameData.machines.put(machineId, new Machine(machineId, "Source", type, null));
+      var tire = type == RacingType.BOOST ? null : tirePartId;
+      var valid = new BuildService.Draft("Valid", "", racerId, frontPartId, rearPartId,
+          tire, gameVersionId, null, List.of());
+      var created = service.create(authorId, valid);
+      assertEquals(tire, created.tirePartId());
+      assertEquals(tire, service.edit(created.id(), authorId, valid).tirePartId());
+      var remix = new BuildService.Draft("Remix", "", racerId, frontPartId, rearPartId,
+          tire, gameVersionId, created.id(), List.of());
+      assertEquals(created.id(), service.create(authorId, remix).remixedFromBuildId());
+      var invalid = new BuildService.Draft("Invalid", "", racerId, frontPartId, rearPartId,
+          tire == null ? tirePartId : null, gameVersionId, null, List.of());
+      assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
+    }
+  }
+
+  @Test
+  void incompatibleRearOrTireCannotBeCreatedEditedOrPublishedAsRemix() {
+    gameData.machines.put(machineId, new Machine(machineId, "Goromaru", RacingType.POWER, null));
+    var original = service.create(authorId, draft("Power machine"));
+    UUID other = UUID.randomUUID();
+    gameData.machines.put(other, new Machine(other, "Giganto Liner", RacingType.ACCELERATION, null));
+    for (var slot : List.of(MachinePartType.REAR, MachinePartType.TIRE)) {
+      UUID partId = UUID.randomUUID();
+      gameData.parts.put(partId, new MachinePart(partId, other, slot));
+      var bad = new BuildService.Draft("Invalid", "", racerId, frontPartId,
+          slot == MachinePartType.REAR ? partId : rearPartId,
+          slot == MachinePartType.TIRE ? partId : tirePartId, gameVersionId, original.id(), List.of());
+      var error = assertThrows(ValidationException.class, () -> service.create(authorId, bad));
+      assertTrue(error.getMessage().contains("Power machine"));
+      assertThrows(ValidationException.class, () -> service.edit(original.id(), authorId, bad));
+      assertEquals(original, service.get(original.id()));
+    }
+    gameData.machines.put(machineId, new Machine(machineId, "Unverified", null, null));
+    assertTrue(assertThrows(ValidationException.class, () -> service.create(authorId, draft("Unknown")))
+        .getMessage().contains("cannot be verified"));
   }
 
   @Test
@@ -635,7 +675,7 @@ class BuildServiceTest {
 
     private GameDataStub(UUID racerId, UUID machineId, UUID gadgetId) {
       racers.put(racerId, new Racer(racerId, "Racer", RacingType.SPEED, null));
-      machines.put(machineId, new Machine(machineId, "Machine", RacingType.BOOST, null, MachineFamily.STANDARD));
+      machines.put(machineId, new Machine(machineId, "Machine", RacingType.SPEED, null));
       gadgets.put(gadgetId, new Gadget(gadgetId, "Gadget", null, 1, null));
     }
 

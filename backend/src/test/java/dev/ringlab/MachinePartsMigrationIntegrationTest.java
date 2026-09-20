@@ -45,8 +45,8 @@ class MachinePartsMigrationIntegrationTest {
           assertEquals(10, rows.getInt(1));
         }
         try (var rows = sql.executeQuery("SELECT "
-            + "count(*) FILTER (WHERE m.family = 'STANDARD' AND b.tire_part_id IS NOT NULL), "
-            + "count(*) FILTER (WHERE m.family = 'BOARD' AND b.tire_part_id IS NULL) "
+            + "count(*) FILTER (WHERE m.racing_type <> 'BOOST' AND b.tire_part_id IS NOT NULL), "
+            + "count(*) FILTER (WHERE m.racing_type = 'BOOST' AND b.tire_part_id IS NULL) "
             + "FROM builds b JOIN machines m ON m.id = b.id WHERE b.description = 'preserved'")) {
           assertTrue(rows.next());
           assertEquals(8, rows.getInt(1));

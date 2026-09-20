@@ -9,7 +9,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
 vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine",
-  sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
+  sourceMachineImagePath: null, racingType: "SPEED",
 });
 const buildA: Build = {
   id: "A", title: "Build A draft", description: "A description", author: { id: "owner", username: "alex" },
@@ -51,6 +51,28 @@ function selectLatestPatch() {
   fireEvent.change(screen.getByLabelText("Game version / Patch"), { target: { value: latestVersion.id } });
 }
 
+it("keeps an incompatible legacy rear visible and requires explicit correction", async () => {
+  const invalid = { ...buildA, rearPart: { ...part("REAR"), id: "wrong-rear", racingType: "POWER" as const, sourceMachineName: "Power source" } };
+  const original = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/builds/A") return invalid;
+    if (path === "/machine-parts") return [part("FRONT"), part("REAR"), part("TIRE"), invalid.rearPart];
+    return original(path, options);
+  });
+  await openA();
+  selectLatestPatch();
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("wrong-rear");
+  expect(screen.getByRole("option", { name: /Power source — incompatible/ })).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  expectNoWrite();
+  fireEvent.change(screen.getByLabelText(/^Rear/), { target: { value: "REAR" } });
+  expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText("Racer"), { target: { value: "racer" } });
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("FRONT");
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("REAR");
+});
+
 it("defaults a new build to the latest known patch", async () => {
   render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
     <Route path="/builds/new" element={<BuildEditor />} />
@@ -81,7 +103,7 @@ it("shows title-cased, color-coded type dots in racer and machine-part dropdowns
 it("filters family choices, applies both stock shapes, and clears selections on switches", async () => {
   const boardParts: MachinePart[] = (["FRONT", "REAR"] as const).map((type) => ({
     ...part(type), id: `board-${type}`, sourceMachineId: "board", sourceMachineName: "Diva Macchina",
-    sourceMachineFamily: "BOARD",
+    racingType: "BOOST",
   }));
   const standardParts: MachinePart[] = (["FRONT", "REAR", "TIRE"] as const).map((type) => ({
     ...part(type), id: `standard-${type}`, sourceMachineId: "standard",
@@ -97,6 +119,8 @@ it("filters family choices, applies both stock shapes, and clears selections on 
     <Route path="/builds/new" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
   const stock = await screen.findByLabelText("Use stock machine") as HTMLSelectElement;
+  expect(stock.disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });
   expect(within(stock).getByRole("option", { name: "Speedster Lightning" })).toBeTruthy();
   expect(within(stock).queryByRole("option", { name: "Diva Macchina" })).toBeNull();
   for (const label of ["Front", "Rear", "Tires"]) {
@@ -111,7 +135,7 @@ it("filters family choices, applies both stock shapes, and clears selections on 
   expect((screen.getByLabelText(/^Tires/) as HTMLSelectElement).value).toBe("standard-TIRE");
   expect(document.querySelectorAll(".preview-parts > div")).toHaveLength(3);
 
-  fireEvent.click(screen.getByLabelText("Board"));
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "BOOST" } });
   expect(stock.value).toBe("");
   expect(screen.getByLabelText(/^Front/)).toBeTruthy();
   expect(screen.getByLabelText(/^Rear/)).toBeTruthy();
@@ -132,7 +156,7 @@ it("filters family choices, applies both stock shapes, and clears selections on 
   expect(screen.queryByText("Boards do not use tires.")).toBeNull();
   expect(screen.queryByText("Boards use front and rear parts only; they do not use tires.")).toBeNull();
 
-  fireEvent.click(screen.getByLabelText("Standard"));
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });
   expect(stock.value).toBe("");
   expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("");
   expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("");

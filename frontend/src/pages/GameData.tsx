@@ -55,7 +55,7 @@ function MachineCard({ machine }: { machine: Machine }) {
     <article className="panel collection-item machine-collection-item">
       <Artwork item={machine} compact />
       <div className="collection-copy">
-        <span className="eyebrow">{machine.family === "BOARD" ? "BOARD" : "STANDARD MACHINE"}</span>
+        <span className="eyebrow">Machine</span>
         <h2>{machine.name}</h2>
         <RacingTypeBadge item={machine} />
       </div>
@@ -101,7 +101,7 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
 function CollectionCard({ item, tab }: { item: CollectionItem; tab: CollectionKey }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("slotCost" in item) return <GadgetCard gadget={item} />;
-  if ("family" in item) return <MachineCard machine={item} />;
+  if (tab === "machines") return <MachineCard machine={item} />;
   return <RacerCard racer={item} />;
 }
 

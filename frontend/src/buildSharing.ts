@@ -1,5 +1,6 @@
 import { gadgetPlateStatus } from "./buildForm";
 import type { Build } from "./types";
+import { machineTypeLabel } from "./machineComposition";
 
 function slotLabel(cost: number): string {
   return `${cost} ${cost === 1 ? "slot" : "slots"}`;
@@ -25,7 +26,7 @@ export function formatBuildForSharing(build: Build, url: string): string {
     `**Patch:** ${build.gameVersion ? `Ver. ${build.gameVersion.version}` : "Unspecified"}`,
     "",
     "**Machine**",
-    `Family: ${build.frontPart.sourceMachineFamily === "BOARD" ? "Board" : "Standard"}`,
+    `Type: ${machineTypeLabel(build.frontPart.racingType)}`,
     `Front: ${build.frontPart.sourceMachineName}`,
     `Rear: ${build.rearPart.sourceMachineName}`,
     ...(build.tirePart ? [`Tires: ${build.tirePart.sourceMachineName}`] : []),

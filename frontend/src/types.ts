@@ -27,7 +27,6 @@ export type RacingType =
   | "HANDLING"
   | "POWER"
   | "BOOST";
-export type MachineFamily = "STANDARD" | "BOARD";
 export interface Racer {
   id: string;
   name: string;
@@ -39,7 +38,6 @@ export interface Machine {
   name: string;
   racingType: RacingType | null;
   imagePath: string | null;
-  family: MachineFamily;
 }
 export interface Gadget {
   id: string;
@@ -56,7 +54,6 @@ export interface MachinePart {
   sourceMachineName: string;
   sourceMachineImagePath: string | null;
   racingType: RacingType | null;
-  sourceMachineFamily: MachineFamily;
 }
 export interface GameVersion {
   id: string;
@@ -92,7 +89,7 @@ export interface BuildDraft {
   frontPartId: string;
   rearPartId: string;
   tirePartId: string | null;
-  machineFamily: MachineFamily;
+  machineType: RacingType | null;
   gameVersionId: string | null;
   remixedFromBuildId: string | null;
   gadgetIds: string[];

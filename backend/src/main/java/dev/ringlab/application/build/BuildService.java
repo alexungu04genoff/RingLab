@@ -7,7 +7,7 @@ import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.Gadget;
-import dev.ringlab.domain.gamedata.MachineFamily;
+import dev.ringlab.domain.gamedata.MachineComposition;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.vote.VoteSummary;
@@ -110,10 +110,10 @@ public class BuildService {
     requireRacer(d.racerId());
     var front = requirePart(d.frontPartId(), MachinePartType.FRONT);
     var rear = requirePart(d.rearPartId(), MachinePartType.REAR);
-    var family = MachineCompatibility.requireCompatible(game, front, rear);
-    if (family == MachineFamily.BOARD) {
+    var machineType = MachineCompatibility.requireCompatible(game, front, rear);
+    if (!MachineComposition.requiredSlots(machineType).contains(MachinePartType.TIRE)) {
       if (d.tirePartId() != null) {
-        throw new ValidationException("Board builds do not use a tire part");
+        throw new ValidationException("Boost machines do not use a tire part");
       }
     } else {
       var tire = requirePart(d.tirePartId(), MachinePartType.TIRE);

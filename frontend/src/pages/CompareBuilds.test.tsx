@@ -14,7 +14,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source: string): MachinePart => ({
   id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,
-  sourceMachineImagePath: `/assets/machines/${source}.png`, racingType: "SPEED", sourceMachineFamily: "STANDARD",
+  sourceMachineImagePath: `/assets/machines/${source}.png`, racingType: "SPEED",
 });
 const gadget = (id: string, cost: number) => ({
   id, name: `Gadget ${id}`, description: null, slotCost: cost, imagePath: `/assets/gadgets/${id}.png`,
@@ -89,11 +89,11 @@ it("marks changed racer, patch, rear part, composition, and gadget positions", (
 
 it("compares Board and Standard builds without dereferencing a missing tire", () => {
   const boardPart = (type: "FRONT" | "REAR") => ({
-    ...part(type, "board"), sourceMachineFamily: "BOARD" as const,
+    ...part(type, "board"), racingType: "BOOST" as const,
   });
   const board: Build = { ...left, frontPart: boardPart("FRONT"), rearPart: boardPart("REAR"), tirePart: null };
 
-  expect(buildDiff(board, left)).toMatchObject({ family: true, tires: true });
+  expect(buildDiff(board, left)).toMatchObject({ machineType: true, tires: true });
 });
 
 it("does not mark matching values as different", () => {

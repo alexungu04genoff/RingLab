@@ -1,4 +1,5 @@
-import type { BuildDraft, Gadget, MachineFamily, MachinePart, MachinePartType } from "./types";
+import type { BuildDraft, Gadget, RacingType, MachinePart, MachinePartType } from "./types";
+import { requiredMachineSlots } from "./machineComposition";
 
 export function toggleGadget(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
@@ -89,41 +90,63 @@ function canFitGadget(
   );
 }
 
-export function machinePartsForFamily(
-  parts: MachinePart[], family: MachineFamily, type: MachinePartType,
+export function machinePartsForType(
+  parts: MachinePart[], machineType: RacingType | null, type: MachinePartType,
 ): MachinePart[] {
-  return parts.filter((part) => part.sourceMachineFamily === family && part.type === type);
+  return machineType ? parts.filter((part) => part.racingType === machineType && part.type === type) : [];
 }
 
-export function stockMachineSources(parts: MachinePart[], family: MachineFamily): MachinePart[] {
+export function stockMachineSources(parts: MachinePart[], machineType: RacingType | null): MachinePart[] {
+  if (!machineType) return [];
   const bySource = new Map<string, MachinePart[]>();
-  parts.filter((part) => part.sourceMachineFamily === family)
+  parts
     .forEach((part) => bySource.set(part.sourceMachineId, [...(bySource.get(part.sourceMachineId) ?? []), part]));
   return [...bySource.values()]
     .filter((sourceParts) => {
-      const types = new Set(sourceParts.map((part) => part.type));
-      return types.has("FRONT") && types.has("REAR")
-        && (family === "BOARD" || types.has("TIRE"));
+      const required = requiredMachineSlots(machineType);
+      return sourceParts.every((part) => part.racingType === machineType)
+        && sourceParts.length === required.length
+        && required.every((slot) => sourceParts.filter((part) => part.type === slot).length === 1);
     })
     .map((sourceParts) => sourceParts[0])
     .sort((a, b) => a.sourceMachineName.localeCompare(b.sourceMachineName));
 }
 
 export function applyStockMachine(draft: BuildDraft, parts: MachinePart[], sourceMachineId: string): BuildDraft {
+  if (!stockMachineSources(parts, draft.machineType).some((part) => part.sourceMachineId === sourceMachineId)) return draft;
   const partId = (type: MachinePartType) =>
     parts.find((part) => part.sourceMachineId === sourceMachineId && part.type === type)?.id;
   const frontPartId = partId("FRONT");
   const rearPartId = partId("REAR");
   const tirePartId = partId("TIRE");
-  const family = parts.find((part) => part.sourceMachineId === sourceMachineId)?.sourceMachineFamily;
-  return frontPartId && rearPartId && family && (family === "BOARD" || tirePartId)
-    ? { ...draft, machineFamily: family, frontPartId, rearPartId,
-      tirePartId: family === "BOARD" ? null : tirePartId! }
+  return frontPartId && rearPartId
+    ? { ...draft, frontPartId, rearPartId,
+      tirePartId: requiredMachineSlots(draft.machineType).includes("TIRE") ? tirePartId! : null }
     : draft;
 }
 
-export function switchMachineFamily(draft: BuildDraft, family: MachineFamily): BuildDraft {
-  return { ...draft, machineFamily: family, frontPartId: "", rearPartId: "", tirePartId: null };
+export function switchMachineType(draft: BuildDraft, machineType: RacingType | null, parts: MachinePart[] = []): BuildDraft {
+  if (machineType === draft.machineType) return draft;
+  const keep = (id: string) => parts.some((part) => part.id === id && part.racingType === machineType) ? id : "";
+  return { ...draft, machineType, frontPartId: keep(draft.frontPartId), rearPartId: keep(draft.rearPartId), tirePartId: null };
+}
+
+export function machineSetupError(draft: BuildDraft, parts: MachinePart[]): string {
+  if (!draft.machineType) return "Select a machine type.";
+  const slots = { FRONT: draft.frontPartId, REAR: draft.rearPartId, TIRE: draft.tirePartId };
+  const required = requiredMachineSlots(draft.machineType);
+  for (const slot of ["FRONT", "REAR", "TIRE"] as const) {
+    const id = slots[slot];
+    if (!required.includes(slot)) {
+      if (id) return "Boost machines cannot have tires. Remove the stored tire to continue.";
+      continue;
+    }
+    const part = parts.find((part) => part.id === id);
+    if (!id) return `Select ${slot.toLowerCase()} parts.`;
+    if (!part || !part.racingType) return `${slot}: compatibility cannot be verified.`;
+    if (part.type !== slot || part.racingType !== draft.machineType) return `${slot}: ${part.sourceMachineName} does not match the selected machine type.`;
+  }
+  return "";
 }
 export function moveGadget(
   ids: string[],

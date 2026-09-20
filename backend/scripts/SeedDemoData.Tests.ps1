@@ -15,16 +15,18 @@ $racers=@(
   [pscustomobject]@{id=New-Id 6;name='New Catalog Racer'}
 )
 $machines=@(
-  [pscustomobject]@{id=New-Id 101;name='Standard One';family='STANDARD'},
-  [pscustomobject]@{id=New-Id 102;name='Renamed Standard';family='STANDARD'},
-  [pscustomobject]@{id=New-Id 103;name='New Standard';family='STANDARD'},
-  [pscustomobject]@{id=New-Id 201;name='Board One';family='BOARD'},
-  [pscustomobject]@{id=New-Id 202;name='New Board';family='BOARD'}
+  [pscustomobject]@{id=New-Id 101;name='Speed One';racingType='SPEED'},
+  [pscustomobject]@{id=New-Id 102;name='Speed Two';racingType='SPEED'},
+  [pscustomobject]@{id=New-Id 103;name='Power One';racingType='POWER'},
+  [pscustomobject]@{id=New-Id 104;name='Acceleration One';racingType='ACCELERATION'},
+  [pscustomobject]@{id=New-Id 105;name='Handling One';racingType='HANDLING'},
+  [pscustomobject]@{id=New-Id 201;name='Boost One';racingType='BOOST'},
+  [pscustomobject]@{id=New-Id 202;name='Boost Two';racingType='BOOST'}
 )
 $parts=@();$partNumber=300
 foreach($machine in $machines){
-  $types=if($machine.family -eq 'BOARD'){@('FRONT','REAR')}else{@('FRONT','REAR','TIRE')}
-  foreach($type in $types){$partNumber++;$parts+=[pscustomobject]@{id=New-Id $partNumber;type=$type;sourceMachineId=$machine.id;sourceMachineName=$machine.name;sourceMachineFamily=$machine.family}}
+  $types=if($machine.racingType -eq 'BOOST'){@('FRONT','REAR')}else{@('FRONT','REAR','TIRE')}
+  foreach($type in $types){$partNumber++;$parts+=[pscustomobject]@{id=New-Id $partNumber;type=$type;sourceMachineId=$machine.id;sourceMachineName=$machine.name;racingType=$machine.racingType}}
 }
 $gadgets=@(
   [pscustomobject]@{id=New-Id 401;name='Ring Engine';slotCost=1},
@@ -52,14 +54,14 @@ try{
   Assert-True (@($plan.builds.owner|Sort-Object -Unique).Count -eq 20) 'Expected 20 authors'
   Assert-True (@($plan.builds|Where-Object version -eq '1.10.0').Count -eq 54) 'Newest version was not selected by release date'
   Assert-True (@($plan.builds|Where-Object version -ne '1.10.0').Count -eq 6) 'Older version allocation is not exactly 10%'
-  Assert-True (@($plan.builds|Where-Object family -eq 'BOARD').Count -eq 12) 'Expected 12 Extreme Gear builds'
+  Assert-True (@($plan.builds|Where-Object machineType -eq 'BOOST').Count -eq 12) 'Expected 12 Extreme Gear builds'
   $mainNames=@('Sonic the Hedgehog','Amy Rose','Miles "Tails" Prower');$guestNames=@('Joker')
   Assert-True (@($plan.builds|Where-Object racerName -in $mainNames).Count -eq 36) 'Expected 60% main-cast builds'
   Assert-True (@($plan.builds|Where-Object racerName -in $guestNames).Count -eq 6) 'Expected 10% guest builds'
   Assert-True (@($plan.builds|Where-Object {$_.racerName -notin $mainNames -and $_.racerName -notin $guestNames}).Count -eq 18) 'Expected 30% other-Sonic builds'
-  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'BOARD' -and $_.tirePartId}).Count -eq 0) 'Board received a tire'
-  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'STANDARD' -and !$_.tirePartId}).Count -eq 0) 'Standard build lacks a tire'
-  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'BOARD' -and $_.description -match '(?i)tire'}).Count -eq 0) 'Board text mentions tires'
+  Assert-True (@($plan.builds|Where-Object {$_.machineType -eq 'BOOST' -and $_.tirePartId}).Count -eq 0) 'Board received a tire'
+  Assert-True (@($plan.builds|Where-Object {$_.machineType -ne 'BOOST' -and !$_.tirePartId}).Count -eq 0) 'Standard build lacks a tire'
+  Assert-True (@($plan.builds|Where-Object {$_.machineType -eq 'BOOST' -and $_.description -match '(?i)tire'}).Count -eq 0) 'Board text mentions tires'
   Assert-True (@($plan.builds|Where-Object {$_.stock -and $_.description -match '(?i)mixed'}).Count -eq 0) 'Stock text says mixed'
   Assert-True (@($plan.builds|Where-Object remixedFromKey).Count -gt 0) 'No real remix provenance'
   $featured=@($plan.builds|Where-Object key -eq 'sonic-speed')[0]
@@ -72,7 +74,7 @@ try{
   foreach($build in $plan.builds){
     $front=@($parts|Where-Object id -eq $build.frontPartId)[0]
     $rear=@($parts|Where-Object id -eq $build.rearPartId)[0]
-    Assert-True ($front.sourceMachineFamily -eq $rear.sourceMachineFamily) "Mixed families: $($build.key)"
+    Assert-True ($front.racingType -eq $rear.racingType) "Mixed families: $($build.key)"
     Assert-True ($build.legacyTitle) "Missing legacy lookup: $($build.key)"
     Assert-True ($build.title -ne $build.legacyTitle) 'Generated title still uses presentation/legacy wording'
   }
@@ -92,12 +94,12 @@ try{
   Assert-Fails {&$seeder -BaseUrl 'https://example.com' -Preview -CatalogSnapshotPath $snapshot} 'Remote target accepted'
 
   $broken=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
-  $broken.machines=@($broken.machines|Where-Object family -ne 'BOARD')
-  $broken.parts=@($broken.parts|Where-Object sourceMachineFamily -ne 'BOARD')
+  $broken.machines=@($broken.machines|Where-Object racingType -ne 'BOOST')
+  $broken.parts=@($broken.parts|Where-Object racingType -ne 'BOOST')
   $brokenPath="$snapshot-broken";$broken|ConvertTo-Json -Depth 10|Set-Content $brokenPath
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing Extreme Gear catalog accepted'
   $badFamily=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
-  foreach($part in $badFamily.parts|Where-Object type -eq 'REAR'){$part.sourceMachineFamily='INVALID'}
+  foreach($part in $badFamily.parts|Where-Object type -eq 'REAR'){$part.racingType='INVALID'}
   $badFamily|ConvertTo-Json -Depth 10|Set-Content $brokenPath
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Invalid cross-family parts passed full plan validation'
   $missingStats=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json

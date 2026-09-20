@@ -14,7 +14,6 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
 const part = (type: MachinePart["type"], source = "Dark Reaper"): MachinePart => ({
   id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,
   sourceMachineImagePath: `/assets/machines/${source.toLowerCase().replaceAll(" ", "-")}.png`, racingType: "SPEED",
-  sourceMachineFamily: "STANDARD",
 });
 const stock: Build = {
   id: "build", title: "My setup", description: "", author: { id: "author", username: "driver" },
@@ -43,17 +42,15 @@ beforeEach(() => {
   });
 });
 
-it("renders three required selectors containing only the correct part type and keeps gadgets separate", () => {
+it("disables machine selectors until a type is chosen and keeps gadgets separate", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
   const selectors = [...html.matchAll(/<label class="part-select">(Front|Rear|Tires)<select([^>]*)>(.*?)<\/select>/g)];
-  expect(selectors.map((match) => match[1])).toEqual(["Front", "Rear", "Tires"]);
-  selectors.forEach((match, index) => {
+  expect(selectors.map((match) => match[1])).toEqual(["Front", "Rear"]);
+  selectors.forEach((match) => {
     expect(match[2]).toContain("required");
-    const type = ["FRONT", "REAR", "TIRE"][index];
-    expect(match[3]).toContain(`value="Dark Reaper-${type}"`);
-    expect(match[3]).toContain(`value="Speedster Lightning-${type}"`);
+    expect(match[2]).toContain("disabled");
     expect(match[3]).not.toContain("Ring Engine");
-    expect([...match[3].matchAll(/<option/g)]).toHaveLength(3);
+    expect([...match[3].matchAll(/<option/g)]).toHaveLength(1);
   });
   expect(html).toContain('type="checkbox"');
   expect(html).toContain("Ring Engine");
@@ -64,9 +61,9 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   build = mixed ? { ...stock, rearPart: part("REAR", "Speedster Lightning") } : stock;
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   expect(card).toContain(mixed ? "Mixed machine" : "Dark Reaper");
-  expect(card).toContain('aria-label="Front: Dark Reaper"');
-  expect(card).toContain('aria-label="Rear:');
-  expect(card).toContain('aria-label="Tires: Dark Reaper"');
+  expect(card).toContain('aria-label="Front · Speed: Dark Reaper"');
+  expect(card).toContain('aria-label="Rear · Speed:');
+  expect(card).toContain('aria-label="Tires · Speed: Dark Reaper"');
   expect(card.includes("Speedster Lightning")).toBe(mixed);
   expect(card).toContain('aria-label="Ring Engine: Gain rings over time."');
   expect(card).toContain('role="tooltip"><strong>Ring Engine</strong>');
@@ -90,17 +87,17 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
 
 it("renders Board setups with two parts and no fake tire", () => {
   const boardPart = (type: "FRONT" | "REAR"): MachinePart => ({
-    ...part(type, "Board source"), sourceMachineFamily: "BOARD",
+    ...part(type, "Board source"), racingType: "BOOST",
   });
   build = { ...stock, frontPart: boardPart("FRONT"), rearPart: boardPart("REAR"), tirePart: null };
 
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
 
-  expect(card).toContain('aria-label="Front: Board source"');
-  expect(card).toContain('aria-label="Rear: Board source"');
+  expect(card).toContain('aria-label="Front · Boost: Board source"');
+  expect(card).toContain('aria-label="Rear · Boost: Board source"');
   expect(card).not.toContain('aria-label="Tires:');
-  expect(details).toContain("Board parts by source machine");
+  expect(details).toContain("Boost · Extreme Gear parts by source machine");
   expect(details).not.toContain("Boards use front and rear parts only; they do not use tires.");
   expect(details).not.toContain(">TIRES<");
 });
@@ -197,7 +194,7 @@ it("uses singular and plural vote labels in accessible text", () => {
   build = { ...stock, upvotes: 1, downvotes: 1 };
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
-  expect(card).toContain('aria-label="1 upvote, 1 downvote"');
+  expect(card).toContain('aria-label="Community score 0, 1 upvote, 1 downvote"');
   expect(details).toContain('aria-label="Vote breakdown: 1 upvote, 1 downvote"');
 });
 

@@ -4,7 +4,7 @@ import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.gamedata.BaseStats;
 import dev.ringlab.domain.gamedata.MachinePartType;
-import dev.ringlab.domain.gamedata.MachineFamily;
+import dev.ringlab.domain.gamedata.MachineComposition;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.port.out.BaseStatsRepository;
 import dev.ringlab.port.out.GameDataRepository;
@@ -34,7 +34,7 @@ public class BaseStatsService {
     for (var machine : game.listMachines()) {
       var contributions = catalogParts.stream().filter(p -> p.sourceMachineId().equals(machine.id()))
           .map(p -> parts.getOrDefault(p.id(), BaseStats.UNKNOWN)).toList();
-      int expectedParts = machine.family() == MachineFamily.BOARD ? 2 : 3;
+      int expectedParts = machine.racingType() == null ? 0 : MachineComposition.requiredSlots(machine.racingType()).size();
       machines.put(machine.id(), contributions.size() == expectedParts
           ? BaseStats.sum(contributions) : BaseStats.UNKNOWN);
     }
@@ -52,10 +52,7 @@ public class BaseStatsService {
     var frontPart = requirePart(front, MachinePartType.FRONT);
     var rearPart = requirePart(rear, MachinePartType.REAR);
     var tirePart = requirePart(tire, MachinePartType.TIRE);
-    var family = MachineCompatibility.requireCompatible(game, frontPart, rearPart, tirePart);
-    if (family == MachineFamily.BOARD && tirePart != null) {
-      throw new ValidationException("Board builds do not use a tire part");
-    }
+    var machineType = MachineCompatibility.requireCompatible(game, frontPart, rearPart, tirePart);
     if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
@@ -63,7 +60,7 @@ public class BaseStatsService {
     var contributions = new java.util.ArrayList<BaseStats>();
     contributions.add(value(parts, front));
     contributions.add(value(parts, rear));
-    if (family != MachineFamily.BOARD) contributions.add(value(parts, tire));
+    if (machineType == null || MachineComposition.requiredSlots(machineType).contains(MachinePartType.TIRE)) contributions.add(value(parts, tire));
     var machine = BaseStats.sum(contributions);
     return new BuildStats(BaseStats.sum(List.of(character, machine)), character, machine);
   }

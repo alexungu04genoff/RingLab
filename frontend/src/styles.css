@@ -26,6 +26,11 @@
 body {
   margin: 0;
 }
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 a {
   color: inherit;
   text-decoration: none;
@@ -197,7 +202,8 @@ nav a.active {
 main {
   max-width: 1704px;
   margin: 0 auto;
-  min-height: calc(100vh - 177px);
+  flex: 1;
+  width: 100%;
   padding: 46px 28px 60px;
 }
 main:has(.explore-hero) {
@@ -1258,7 +1264,7 @@ hr {
   box-shadow: 0 0 0 1px #c75c6d;
 }
 .field-warning {
-  margin: -9px 0 15px;
+  margin: 8px 0 15px;
   color: #ff9aa8;
   font-size: 12px;
 }

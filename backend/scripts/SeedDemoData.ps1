@@ -6,7 +6,7 @@ param(
   [ValidateRange(1,500)][int]$BuildCount=60,
   [int]$RandomSeed=20260920,
   [datetime]$ReferenceTime=[datetime]::Parse('2026-09-20T12:00:00Z'),
-  [ValidateRange(0,1)][double]$BoardRatio=.20,
+  [ValidateRange(0,1)][double]$BoostMachineRatio=.20,
   [switch]$Preview,
   [switch]$ValidateOnly,
   [switch]$Refresh,
@@ -91,12 +91,16 @@ function Assert-Plan($Plan,$Catalog) {
     if($buildKeys.ContainsKey($b.key)){$errors+="$($b.key): duplicate fixture key"}else{$buildKeys[$b.key]=$b}
     $front=$partById[[string]$b.frontPartId];$rear=$partById[[string]$b.rearPartId];$tire=if($b.tirePartId){$partById[[string]$b.tirePartId]}else{$null}
     if(!$front -or $front.type -ne 'FRONT' -or !$rear -or $rear.type -ne 'REAR'){$errors+="$($b.key): missing FRONT or REAR part"}
-    if($front.sourceMachineFamily -ne $b.family -or $rear.sourceMachineFamily -ne $b.family){$errors+="$($b.key): cross-family part combination"}
-    if($b.family -eq 'BOARD' -and $tire){$errors+="$($b.key): Board has a tire"};if($b.family -eq 'STANDARD' -and (!$tire -or $tire.sourceMachineFamily -ne 'STANDARD')){$errors+="$($b.key): Standard build lacks a Standard tire"}
+    if($b.machineType -notin @('SPEED','ACCELERATION','HANDLING','POWER','BOOST')){$errors+="$($b.key): unknown machine type"}
+    foreach($part in @($front,$rear,$tire)|Where-Object{$_}) {
+      $source=@($Catalog.machines|Where-Object id -eq $part.sourceMachineId)
+      if($source.Count -ne 1 -or !$part.racingType -or $source[0].racingType -ne $b.machineType -or $part.racingType -ne $b.machineType){$errors+="$($b.key): incompatible source machine type"}
+    }
+    if($b.machineType -eq 'BOOST' -and $tire){$errors+="$($b.key): Boost has a tire"};if($b.machineType -ne 'BOOST' -and (!$tire -or $tire.type -ne 'TIRE')){$errors+="$($b.key): non-Boost build lacks a tire"}
     if(!$versionIds.ContainsKey([string]$b.gameVersionId)){$errors+="$($b.key): unknown version"}
     $costs=@();$seen=@{};foreach($id in $b.gadgetIds){if($seen.ContainsKey([string]$id)){$errors+="$($b.key): duplicate gadget"};$seen[[string]$id]=$true;$g=$gadgetById[[string]$id];if(!$g -or $null -eq $g.slotCost){$errors+="$($b.key): unknown gadget cost"}else{$costs+=[int]$g.slotCost}}
     if(!(Test-GadgetPlateFit $costs)){$errors+="$($b.key): gadgets do not fit the 2x3 plate"}
-    if($b.family -eq 'BOARD' -and $b.description -match '(?i)tires?'){$errors+="$($b.key): Board description mentions a tire"}
+    if($b.machineType -eq 'BOOST' -and $b.description -match '(?i)tires?'){$errors+="$($b.key): Boost description mentions a tire"}
     if($b.stock -and $b.description -match '(?i)mixed'){$errors+="$($b.key): stock description says mixed"}
     if($b.remixedFromKey -and !$buildKeys.ContainsKey($b.remixedFromKey)){$errors+="$($b.key): remix parent does not precede child"}
     if($Catalog.stats){
@@ -123,7 +127,12 @@ function Get-ActualRequest($Build) {
 }
 
 function Read-State {
-  if(Test-Path $StatePath){return Get-Content -Raw -LiteralPath $StatePath|ConvertFrom-Json}
+  if(Test-Path $StatePath){
+    $state=Get-Content -Raw -LiteralPath $StatePath|ConvertFrom-Json
+    if($state.schemaVersion -ne 1){throw 'Unsupported seed-state schema; preserve the manifest and review it before continuing.'}
+    # V1 fingerprints cover request fields only, so family removal does not invalidate ownership.
+    return $state
+  }
   [pscustomobject]@{schemaVersion=1;users=@();builds=@();votes=@();comments=@()}
 }
 
@@ -140,7 +149,7 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
   $latest=$Plan.newestVersion.version
   Write-Host "Plan: $($Plan.users.Count) users, $($Plan.builds.Count) builds, $($Plan.votes.Count) votes, $($Plan.comments.Count) comments."
   Write-Host "Patches: $(@($Plan.builds|Where-Object version -eq $latest).Count) newest ($latest), $(@($Plan.builds|Where-Object version -ne $latest).Count) older."
-  Write-Host "Families: $(@($Plan.builds|Where-Object family -eq 'STANDARD').Count) Standard, $(@($Plan.builds|Where-Object family -eq 'BOARD').Count) Extreme Gear. Setups: $(@($Plan.builds|Where-Object stock).Count) stock, $(@($Plan.builds|Where-Object {!$_.stock}).Count) mixed."
+  Write-Host "Machine types: $(($Plan.builds|Group-Object machineType|ForEach-Object {"$($_.Name): $($_.Count)"}) -join ', '). Setups: $(@($Plan.builds|Where-Object stock).Count) stock, $(@($Plan.builds|Where-Object {!$_.stock}).Count) mixed."
   Write-Host "Fresh-plan remix origins: $(@($Plan.builds|Where-Object remixedFromKey).Count). Refresh preserves each existing build's immutable origin."
   if($Actions){foreach($group in ($Actions|Group-Object action|Sort-Object Name)){$count=if($group.Name -eq 'retain-manual'){($group.Group|Measure-Object count -Sum).Sum}else{$group.Count};Write-Host "Refresh $($group.Name): $count"}}
   if($WholeBuilds){$known=@($WholeBuilds|Where-Object gameVersion);$wholeLatest=@($known|Where-Object {$_.gameVersion.version -eq $latest}).Count;Write-Host "Whole database: $($WholeBuilds.Count) builds; $wholeLatest newest and $($known.Count-$wholeLatest) older among versioned builds."}
@@ -150,17 +159,17 @@ Assert-LoopbackUrl $BaseUrl
 if($Preview){
   if(!$CatalogSnapshotPath){throw 'Offline preview requires -CatalogSnapshotPath. Use -ExportCatalogSnapshot with live read-only validation first.'}
   $catalog=Get-Content -Raw -LiteralPath $CatalogSnapshotPath|ConvertFrom-Json
-  $plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoardRatio;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
+  $plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
 }
 
 $database=Assert-LocalDevelopmentDatabase
 $catalog=Get-LiveCatalog
 if($ExportCatalogSnapshot){$catalog|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $ExportCatalogSnapshot -Encoding utf8;Write-Host "Wrote explicit live catalog snapshot to $ExportCatalogSnapshot";return}
-$plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoardRatio
+$plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio
 Assert-Plan $plan $catalog
-$families=@(ConvertTo-DemoArray $catalog.machines|Select-Object -Expand family -Unique)
-if('BOARD' -notin $families){throw 'Running backend catalog does not expose BOARD / Extreme Gear support.'}
-Write-Host "Preflight passed: local Compose PostgreSQL, Flyway V$($database.appliedMigration), current machine-family catalog."
+$types=@(ConvertTo-DemoArray $catalog.machines|Select-Object -Expand racingType -Unique)
+if('BOOST' -notin $types){throw 'Running backend catalog does not expose Boost / Extreme Gear support.'}
+Write-Host "Preflight passed: local Compose PostgreSQL, Flyway V$($database.appliedMigration), current machine-type catalog."
 if($ValidateOnly){Show-Summary $plan $null $null;Write-Host 'Live validation completed with zero writes.';return $plan}
 
 $state=Read-State;$allBuilds=@(Get-AllBuilds);$stateByKey=@{};foreach($record in @($state.builds)){$stateByKey[$record.key]=$record}

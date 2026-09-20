@@ -45,19 +45,19 @@ function Get-CommunityDemoPlan {
     [ValidateRange(1,500)][int]$BuildCount=60,
     [int]$RandomSeed=20260920,
     [datetime]$ReferenceTime=[datetime]::Parse('2026-09-20T12:00:00Z'),
-    [ValidateRange(0,1)][double]$BoardRatio=.20
+    [ValidateRange(0,1)][double]$BoostMachineRatio=.20
   )
   $random=[System.Random]::new($RandomSeed)
   $racers=@(ConvertTo-DemoArray $Catalog.racers | Sort-Object name,id)
-  $machines=@(ConvertTo-DemoArray $Catalog.machines | Sort-Object family,name,id)
+  $machines=@(ConvertTo-DemoArray $Catalog.machines | Sort-Object racingType,name,id)
   $parts=@(ConvertTo-DemoArray $Catalog.parts | Sort-Object sourceMachineName,type,id)
   $gadgets=@(ConvertTo-DemoArray $Catalog.gadgets | Where-Object { $null -ne $_.slotCost -and $_.slotCost -ge 1 -and $_.slotCost -le 3 } | Sort-Object name,id)
   $versions=@(ConvertTo-DemoArray $Catalog.versions | Where-Object { $_.releasedAt -and [datetime]::Parse(([string]($_.releasedAt))) -le $ReferenceTime } | Sort-Object @{Expression={[datetime]::Parse(([string]($_.releasedAt)))};Descending=$true},version,id)
   if(!$racers.Count){throw 'Catalog has no racers.'};if(!$gadgets.Count){throw 'Catalog has no gadgets with verified slot costs.'};if($versions.Count -lt 2){throw 'At least one newest and one older released game version are required.'}
   $byMachine=@{};foreach($m in $machines){$byMachine[[string]$m.id]=@($parts | Where-Object sourceMachineId -eq $m.id)}
-  $standards=@($machines | Where-Object family -eq 'STANDARD' | Where-Object {$t=@($byMachine[[string]$_.id].type);'FRONT' -in $t -and 'REAR' -in $t -and 'TIRE' -in $t})
-  $boards=@($machines | Where-Object family -eq 'BOARD' | Where-Object {$t=@($byMachine[[string]$_.id].type);'FRONT' -in $t -and 'REAR' -in $t -and 'TIRE' -notin $t})
-  if(!$standards.Count){throw 'Catalog has no complete STANDARD machine.'};if($BoardRatio -gt 0 -and !$boards.Count){throw 'Catalog has no complete BOARD / Extreme Gear machine.'}
+  $standards=@($machines | Where-Object racingType -in @('SPEED','ACCELERATION','HANDLING','POWER') | Where-Object {$t=@($byMachine[[string]$_.id].type);$t.Count -eq 3 -and 'FRONT' -in $t -and 'REAR' -in $t -and 'TIRE' -in $t})
+  $boards=@($machines | Where-Object racingType -eq 'BOOST' | Where-Object {$t=@($byMachine[[string]$_.id].type);$t.Count -eq 2 -and 'FRONT' -in $t -and 'REAR' -in $t})
+  if(!$standards.Count){throw 'Catalog has no complete STANDARD machine.'};if($BoostMachineRatio -gt 0 -and !$boards.Count){throw 'Catalog has no complete BOARD / Extreme Gear machine.'}
 
   $mainNames=@('Sonic the Hedgehog','Shadow the Hedgehog','Miles "Tails" Prower','Amy Rose','Knuckles the Echidna')
   $guestNames=@('Joker','Mega Man','SpongeBob SquarePants','PAC-MAN','Ichiban Kasuga','Steve','Alex','Creeper',
@@ -114,7 +114,7 @@ function Get-CommunityDemoPlan {
     }
     $blueprints+=[pscustomobject]@{key=$key;owner=$owner;title=$title;ordinal=$i}
   }
-  $boardCount=if($boards.Count){[Math]::Round($BuildCount*$BoardRatio,[MidpointRounding]::AwayFromZero)}else{0}
+  $boardCount=if($boards.Count){[Math]::Round($BuildCount*$BoostMachineRatio,[MidpointRounding]::AwayFromZero)}else{0}
   $boardIndexes=@((Invoke-DemoShuffle (0..($BuildCount-1)) $random)|Select-Object -First $boardCount)
   $olderCount=[Math]::Round($BuildCount*.10,[MidpointRounding]::AwayFromZero);if($olderCount -lt 1){$olderCount=1}
   $olderIndexes=@((Invoke-DemoShuffle @(0..($BuildCount-1) | Where-Object { $blueprints[$_].key -ne 'sonic-speed' }) $random)|Select-Object -First $olderCount);$latest=$versions[0];$older=@($versions|Select-Object -Skip 1)
@@ -131,17 +131,19 @@ function Get-CommunityDemoPlan {
   for($i=0; $i -lt $authors.Count; $i++) {
     $profiles[$authors[$i]]=@{
       theme=$themes[$i % $themes.Count]
-      STANDARD=@(Invoke-DemoShuffle $standards $random | Select-Object -First 3)
-      BOARD=@(Invoke-DemoShuffle $boards $random | Select-Object -First 3)
+      machines=@(Invoke-DemoShuffle $machines $random | Select-Object -First 3)
     }
   }
   $builds=@()
   foreach($b in $blueprints){
-    $family=if($b.ordinal -in $boardIndexes){'BOARD'}else{'STANDARD'}
+    $availableTypes=@($standards.racingType | Sort-Object -Unique)
+    $machineType=if($b.ordinal -in $boardIndexes){'BOOST'}else{$availableTypes[$random.Next($availableTypes.Count)]}
     $profile=$profiles[$b.owner]
-    $pool=if($random.NextDouble() -lt .78){@($profile[$family])}elseif($family -eq 'BOARD'){$boards}else{$standards}
-    $fm=$pool[$random.Next($pool.Count)];$mixed=$random.NextDouble() -lt .38;$rm=if($mixed -and $pool.Count -gt 1){@($pool | Where-Object id -ne $fm.id)[$random.Next($pool.Count-1)]}else{$fm};$tm=if($family -eq 'STANDARD' -and $mixed -and $pool.Count -gt 1 -and $random.NextDouble() -lt .5){$pool[$random.Next($pool.Count)]}else{$fm}
-    $front=@($byMachine[[string]$fm.id] | Where-Object type -eq 'FRONT')[0];$rear=@($byMachine[[string]$rm.id] | Where-Object type -eq 'REAR')[0];$tire=if($family -eq 'STANDARD'){@($byMachine[[string]$tm.id] | Where-Object type -eq 'TIRE')[0]}else{$null}
+    $pool=@(@($standards)+@($boards) | Where-Object racingType -eq $machineType)
+    $preferredMachines=@($pool | Where-Object id -in @($profile.machines.id))
+    $frontPool=if($preferredMachines.Count -and $random.NextDouble() -lt .78){$preferredMachines}else{$pool}
+    $fm=$frontPool[$random.Next($frontPool.Count)];$mixed=$random.NextDouble() -lt .38;$rm=if($mixed -and $pool.Count -gt 1){@($pool | Where-Object id -ne $fm.id)[$random.Next($pool.Count-1)]}else{$fm};$tm=if($machineType -ne 'BOOST' -and $mixed -and $pool.Count -gt 1 -and $random.NextDouble() -lt .5){$pool[$random.Next($pool.Count)]}else{$fm}
+    $front=@($byMachine[[string]$fm.id] | Where-Object type -eq 'FRONT')[0];$rear=@($byMachine[[string]$rm.id] | Where-Object type -eq 'REAR')[0];$tire=if($machineType -ne 'BOOST'){@($byMachine[[string]$tm.id] | Where-Object type -eq 'TIRE')[0]}else{$null}
     $group=if($b.ordinal -lt [Math]::Round($BuildCount*.60)){$main}elseif($b.ordinal -lt [Math]::Round($BuildCount*.90)){$other}else{$guests}
     $fav=@($favorites[$b.owner] | ForEach-Object{$wanted=$_;$group | Where-Object name -ceq $wanted} | Where-Object{$_});$racer=if($fav.Count -and $random.NextDouble() -lt .82){$fav[$random.Next($fav.Count)]}else{$group[$random.Next($group.Count)]}
     if($b.key -eq 'sonic-speed') {
@@ -152,14 +154,14 @@ function Get-CommunityDemoPlan {
     $preferred=@($gadgets | Where-Object name -in $profile.theme.names)
     $candidates=@(Invoke-DemoShuffle $preferred $random)+@(Invoke-DemoShuffle @($gadgets | Where-Object name -notin $profile.theme.names) $random)
     $selected=@();foreach($g in $candidates){$trial=@($selected+$g);if($trial.Count -le 4 -and (Test-GadgetPlateFit @($trial.slotCost))){$selected=$trial};if($selected.Count -ge 2 -and $random.NextDouble() -lt .45){break}}
-    $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest};$stock=$fm.id -eq $rm.id -and ($family -eq 'BOARD' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
-    $setup=if($family -eq 'BOARD'){if($stock){"A straightforward $($fm.name) Extreme Gear setup."}else{"An Extreme Gear mix using the $($fm.name) front and $($rm.name) rear."}}else{if($stock){"A straightforward stock $($fm.name) setup."}else{"A mixed Standard setup with $($fm.name), $($rm.name), and $($tm.name) parts."}}
+    $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest};$stock=$fm.id -eq $rm.id -and ($machineType -eq 'BOOST' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
+    $setup=if($machineType -eq 'BOOST'){if($stock){"A straightforward $($fm.name) Extreme Gear setup."}else{"An Extreme Gear mix using the $($fm.name) front and $($rm.name) rear."}}else{if($stock){"A straightforward stock $($fm.name) setup."}else{"A mixed $machineType setup with $($fm.name), $($rm.name), and $($tm.name) parts."}}
     $tone=@('I keep coming back to this one.','Still deciding whether this becomes my regular setup.','A small experiment I wanted to save.','Any thoughts on the gadget order?','Keeping a spare setup for next time.','Nothing ambitious today; just saving my current picks.')[$random.Next(6)]
-    $title=@("$($racer.name): $($profile.theme.label)","An evening with $($racer.name)","$($fm.name), take two","$($racer.name) and a garage experiment","A spare $($family.ToLowerInvariant()) setup","Trying $($selected[0].name)")[$random.Next(6)]
+    $title=@("$($racer.name): $($profile.theme.label)","An evening with $($racer.name)","$($fm.name), take two","$($racer.name) and a garage experiment","A spare $($machineType.ToLowerInvariant()) setup","Trying $($selected[0].name)")[$random.Next(6)]
     if($b.key -eq 'sonic-speed'){$title='Sonic — my regular garage pick'}
     $description="$setup $tone"
     if($b.ordinal % 3 -ne 0){$description+=" Keeping $($selected[0].name) with $($selected[1].name) for this version of the loadout."}
-    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;racerId=$racer.id;racerName=$racer.name;family=$family;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
+    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
   }
   $votes=@();$comments=@()
   foreach($b in $builds){

@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const complete: BaseStats = { speed: 17.5, acceleration: 0, handling: 12, power: 9, boost: 8 };
 const calculated: BaseStats = { ...complete, acceleration: 5 };
 const draft: BuildDraft = { title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
-  tirePartId: "t", machineFamily: "STANDARD", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
+  tirePartId: "t", machineType: "SPEED", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
 const version = { id: "v", version: "1.3.1", releasedAt: "2026-03-18" };
 const breakdown: BuildStatsResult = {
   ...calculated,
@@ -43,7 +43,7 @@ it("shows character and machine contributions separately from the total", () => 
 });
 
 it("calculates Board stats from front and rear without requiring a tire", () => {
-  const boardDraft = { ...draft, machineFamily: "BOARD" as const, tirePartId: null };
+  const boardDraft = { ...draft, machineType: "BOOST" as const, tirePartId: null };
   expect(buildStatsPath(boardDraft)).toBe(
     "/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b");
 });
@@ -66,7 +66,7 @@ it("requires an explicit version and does not make a preview request without one
 it("explains missing versions on saved builds without suggesting a nonexistent selector", () => {
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
     sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
-    racingType: "SPEED", sourceMachineFamily: "STANDARD" });
+    racingType: "SPEED" });
   const build = { racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),
     gameVersion: null } as Build;
@@ -96,7 +96,7 @@ it("uses the backend breakdown for a Board draft without requesting a tire or ca
   };
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(boardBreakdown)));
   vi.stubGlobal("fetch", fetch);
-  render(<DraftStats draft={{ ...draft, machineFamily: "BOARD", tirePartId: null }} version={version} />);
+  render(<DraftStats draft={{ ...draft, machineType: "BOOST", tirePartId: null }} version={version} />);
   await screen.findByRole("progressbar", { name: "Speed: 13" });
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toBe(
@@ -128,7 +128,7 @@ it("shows compact version-aware stat bars on build cards", async () => {
   vi.stubGlobal("fetch", fetch);
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
     sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
-    racingType: "SPEED", sourceMachineFamily: "STANDARD" });
+    racingType: "SPEED" });
   const build = { id: "build", title: "Fast build", description: "", author: { id: "u", username: "driver" },
     racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),

@@ -8,7 +8,7 @@ export { buildStatsPath } from "./stats";
 
 const statMaximum = 100;
 type StatsDraft = Pick<BuildDraft,
-  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineFamily">;
+  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineType">;
 export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   missingVersionMessage = "Select a game version to see stats." }: {
   stats?: BaseStats; version: string | null; title?: string; breakdown?: StatsBreakdown;
@@ -75,5 +75,5 @@ export function BuildStats({ build }: { build: Build }) {
   return <DraftStats draft={{ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
     rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null,
-    machineFamily: build.frontPart.sourceMachineFamily }} version={build.gameVersion} />;
+    machineType: build.frontPart.racingType }} version={build.gameVersion} />;
 }
