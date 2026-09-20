@@ -49,6 +49,13 @@ public abstract class ApiContract {
     return given().get("/api/" + collection).then().statusCode(200).extract().path("id");
   }
 
+  private List<String> standardMachineIds() {
+    List<Map<String, Object>> machines = given().get("/api/machines").then()
+        .statusCode(200).extract().jsonPath().getList("$");
+    return machines.stream().filter(machine -> "STANDARD".equals(machine.get("family")))
+        .map(machine -> (String) machine.get("id")).toList();
+  }
+
   private String partId(String source, String type) {
     List<Map<String, Object>> parts = given().get("/api/machine-parts").then()
         .statusCode(200).extract().jsonPath().getList("$");
@@ -65,6 +72,7 @@ public abstract class ApiContract {
 
   private Map<String, Object> draft() {
     var gadgets = ids("gadgets");
+    var sourceMachine = standardMachineIds().getLast();
     return new HashMap<>(
         Map.of(
             "title",
@@ -73,9 +81,9 @@ public abstract class ApiContract {
             "A test combination",
             "racerId",
             ids("racers").getFirst(),
-            "frontPartId", partId(ids("machines").getLast(), "FRONT"),
-            "rearPartId", partId(ids("machines").getLast(), "REAR"),
-            "tirePartId", partId(ids("machines").getLast(), "TIRE"),
+            "frontPartId", partId(sourceMachine, "FRONT"),
+            "rearPartId", partId(sourceMachine, "REAR"),
+            "tirePartId", partId(sourceMachine, "TIRE"),
             "gameVersionId", ids("game-versions").getFirst(),
             "gadgetIds",
             List.of(gadgets.get(3), gadgets.get(1))));
@@ -194,6 +202,12 @@ public abstract class ApiContract {
             .statusCode(200)
             .extract()
             .path("find { it.sourceMachineName == 'Dark Reaper' }");
+    Map<String, Object> board =
+        given().get("/api/machines").then().statusCode(200).extract()
+            .path("find { it.name == 'Diva Macchina' }");
+    List<Map<String, Object>> boardParts =
+        given().get("/api/machine-parts").then().statusCode(200).extract().jsonPath()
+            .getList("findAll { it.sourceMachineName == 'Diva Macchina' }");
 
     assertThat(
         racer,
@@ -215,6 +229,11 @@ public abstract class ApiContract {
     assertThat(machinePart, allOf(
         hasEntry("sourceMachineImagePath", "/assets/machines/dark-reaper.png"),
         hasEntry("sourceMachineFamily", "STANDARD")));
+    assertThat(board, hasEntry("family", "BOARD"));
+    assertThat(boardParts.stream().map(part -> (String) part.get("type"))
+        .collect(java.util.stream.Collectors.toSet()), equalTo(Set.of("FRONT", "REAR")));
+    assertThat(boardParts.stream()
+        .allMatch(part -> "BOARD".equals(part.get("sourceMachineFamily"))), is(true));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);
   }
 
@@ -242,7 +261,7 @@ public abstract class ApiContract {
         .body("rearPart.sourceMachineImagePath", notNullValue())
         .body("tirePart.sourceMachineImagePath", notNullValue())
         .body("author.id", equalTo(author.id));
-    body.put("rearPartId", partId(ids("machines").getFirst(), "REAR"));
+    body.put("rearPartId", partId(standardMachineIds().getFirst(), "REAR"));
     request(author.token).body(body).put("/api/builds/" + id).then().statusCode(200);
     given().get("/api/builds/" + id).then().statusCode(200)
         .body("frontPart.id", equalTo(body.get("frontPartId")))
@@ -442,7 +461,7 @@ public abstract class ApiContract {
         .queryParam("authorId", owner.id)
         .queryParam("search", "nEeDlE")
         .queryParam("racerId", data.get("racerId"))
-        .queryParam("machineId", ids("machines").getLast())
+        .queryParam("machineId", standardMachineIds().getLast())
         .get("/api/builds")
         .then()
         .statusCode(200)
@@ -457,7 +476,7 @@ public abstract class ApiContract {
     var owner = register();
     var otherAuthor = register();
     var racers = ids("racers");
-    var machines = ids("machines");
+    var machines = standardMachineIds();
 
     var literalBuild = draft();
     literalBuild.put("title", "Literal %_ build");

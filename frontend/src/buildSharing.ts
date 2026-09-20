@@ -28,7 +28,7 @@ export function formatBuildForSharing(build: Build, url: string): string {
     `Family: ${build.frontPart.sourceMachineFamily === "BOARD" ? "Board" : "Standard"}`,
     `Front: ${build.frontPart.sourceMachineName}`,
     `Rear: ${build.rearPart.sourceMachineName}`,
-    ...(build.tirePart ? [`Tires: ${build.tirePart.sourceMachineName}`] : ["Tires: Not used by Boards"]),
+    ...(build.tirePart ? [`Tires: ${build.tirePart.sourceMachineName}`] : []),
     "",
     ...gadgets,
     "",

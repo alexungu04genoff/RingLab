@@ -58,4 +58,16 @@ class GameDataResponseTest {
     assertEquals(machine.imagePath(), MachinePartResponse.from(part, machine).sourceMachineImagePath());
     assertEquals(MachineFamily.STANDARD, MachinePartResponse.from(part, machine).sourceMachineFamily());
   }
+
+  @Test
+  void boardFamilyIsExplicitOnMachineAndPartResponses() {
+    var machine = new Machine(
+        UUID.randomUUID(), "Diva Macchina", RacingType.BOOST,
+        "/assets/machines/diva-macchina.png", MachineFamily.BOARD);
+    var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.FRONT);
+
+    assertEquals(MachineFamily.BOARD, MachineResponse.from(machine).family());
+    assertEquals(MachineFamily.BOARD,
+        MachinePartResponse.from(part, machine).sourceMachineFamily());
+  }
 }

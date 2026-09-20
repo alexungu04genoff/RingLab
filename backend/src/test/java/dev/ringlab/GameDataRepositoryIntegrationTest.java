@@ -24,11 +24,14 @@ class GameDataRepositoryIntegrationTest {
 
     assertEquals(52, gameData.listRacers().size());
     assertEquals(62, gameData.listMachines().size());
-    assertEquals(186, gameData.listMachineParts().size());
+    assertEquals(174, gameData.listMachineParts().size());
     for (var source : gameData.listMachines()) {
       var parts = gameData.listMachineParts().stream()
           .filter(p -> p.sourceMachineId().equals(source.id())).toList();
-      assertEquals(java.util.Set.of("FRONT", "REAR", "TIRE"),
+      var expectedTypes = source.family() == dev.ringlab.domain.gamedata.MachineFamily.BOARD
+          ? java.util.Set.of("FRONT", "REAR")
+          : java.util.Set.of("FRONT", "REAR", "TIRE");
+      assertEquals(expectedTypes,
           parts.stream().map(p -> p.type().name()).collect(java.util.stream.Collectors.toSet()));
       for (var part : parts) assertEquals(part, gameData.findMachinePart(part.id()).orElseThrow());
     }

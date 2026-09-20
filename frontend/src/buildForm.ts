@@ -89,14 +89,21 @@ function canFitGadget(
   );
 }
 
-export function stockMachineSources(parts: MachinePart[]): MachinePart[] {
+export function machinePartsForFamily(
+  parts: MachinePart[], family: MachineFamily, type: MachinePartType,
+): MachinePart[] {
+  return parts.filter((part) => part.sourceMachineFamily === family && part.type === type);
+}
+
+export function stockMachineSources(parts: MachinePart[], family: MachineFamily): MachinePart[] {
   const bySource = new Map<string, MachinePart[]>();
-  parts.forEach((part) => bySource.set(part.sourceMachineId, [...(bySource.get(part.sourceMachineId) ?? []), part]));
+  parts.filter((part) => part.sourceMachineFamily === family)
+    .forEach((part) => bySource.set(part.sourceMachineId, [...(bySource.get(part.sourceMachineId) ?? []), part]));
   return [...bySource.values()]
     .filter((sourceParts) => {
       const types = new Set(sourceParts.map((part) => part.type));
       return types.has("FRONT") && types.has("REAR")
-        && (sourceParts[0].sourceMachineFamily === "BOARD" || types.has("TIRE"));
+        && (family === "BOARD" || types.has("TIRE"));
     })
     .map((sourceParts) => sourceParts[0])
     .sort((a, b) => a.sourceMachineName.localeCompare(b.sourceMachineName));

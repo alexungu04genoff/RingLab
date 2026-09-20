@@ -253,7 +253,6 @@ export function MachineSetup({ build, compact = false, differences }: {
             </article>
           ))}
       </div>
-      {family === "BOARD" && <p className="muted board-note">Boards use front and rear parts only; they do not use tires.</p>}
     </div>
   );
 }

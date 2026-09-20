@@ -78,29 +78,65 @@ it("shows title-cased, color-coded type dots in racer and machine-part dropdowns
   });
 });
 
-it("switches to Board parts and removes the tire selector", async () => {
+it("filters family choices, applies both stock shapes, and clears selections on switches", async () => {
   const boardParts: MachinePart[] = (["FRONT", "REAR"] as const).map((type) => ({
-    ...part(type), id: `board-${type}`, sourceMachineId: "board", sourceMachineName: "Board",
+    ...part(type), id: `board-${type}`, sourceMachineId: "board", sourceMachineName: "Diva Macchina",
     sourceMachineFamily: "BOARD",
+  }));
+  const standardParts: MachinePart[] = (["FRONT", "REAR", "TIRE"] as const).map((type) => ({
+    ...part(type), id: `standard-${type}`, sourceMachineId: "standard",
+    sourceMachineName: "Speedster Lightning",
   }));
   vi.mocked(api).mockImplementation(async (path) => {
     if (path === "/racers") return [buildA.racer];
-    if (path === "/machine-parts") return [...boardParts, buildA.frontPart, buildA.rearPart, buildA.tirePart];
+    if (path === "/machine-parts") return [...boardParts, ...standardParts];
     if (path === "/game-versions") return [latestVersion];
     return [];
   });
   render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
     <Route path="/builds/new" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
-  await waitFor(() => expect(screen.getByLabelText("Board")).toBeTruthy());
-  fireEvent.click(screen.getByLabelText("Board"));
+  const stock = await screen.findByLabelText("Use stock machine") as HTMLSelectElement;
+  expect(within(stock).getByRole("option", { name: "Speedster Lightning" })).toBeTruthy();
+  expect(within(stock).queryByRole("option", { name: "Diva Macchina" })).toBeNull();
+  for (const label of ["Front", "Rear", "Tires"]) {
+    const select = screen.getByLabelText(new RegExp(`^${label}`));
+    expect(within(select).getByRole("option", { name: /Speedster Lightning/ })).toBeTruthy();
+    expect(within(select).queryByRole("option", { name: /Diva Macchina/ })).toBeNull();
+  }
 
-  expect(screen.getByLabelText("Front")).toBeTruthy();
-  expect(screen.getByLabelText("Rear")).toBeTruthy();
-  expect(screen.queryByLabelText("Tires")).toBeNull();
-  expect(screen.getAllByText("Boards use front and rear parts only; they do not use tires.").length)
-    .toBeGreaterThan(0);
-  expect(within(screen.getByLabelText("Front")).getByRole("option", { name: /Board/ })).toBeTruthy();
+  fireEvent.change(stock, { target: { value: "standard" } });
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("standard-FRONT");
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("standard-REAR");
+  expect((screen.getByLabelText(/^Tires/) as HTMLSelectElement).value).toBe("standard-TIRE");
+  expect(document.querySelectorAll(".preview-parts > div")).toHaveLength(3);
+
+  fireEvent.click(screen.getByLabelText("Board"));
+  expect(stock.value).toBe("");
+  expect(screen.getByLabelText(/^Front/)).toBeTruthy();
+  expect(screen.getByLabelText(/^Rear/)).toBeTruthy();
+  expect(screen.queryByLabelText(/^Tires/)).toBeNull();
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("");
+  expect(within(stock).getByRole("option", { name: "Diva Macchina" })).toBeTruthy();
+  expect(within(stock).queryByRole("option", { name: "Speedster Lightning" })).toBeNull();
+  for (const label of ["Front", "Rear"]) {
+    const select = screen.getByLabelText(new RegExp(`^${label}`));
+    expect(within(select).getByRole("option", { name: /Diva Macchina/ })).toBeTruthy();
+    expect(within(select).queryByRole("option", { name: /Speedster Lightning/ })).toBeNull();
+  }
+  fireEvent.change(stock, { target: { value: "board" } });
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("board-FRONT");
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("board-REAR");
+  expect(document.querySelectorAll(".preview-parts > div")).toHaveLength(2);
+  expect(screen.queryByText("Boards do not use tires.")).toBeNull();
+  expect(screen.queryByText("Boards use front and rear parts only; they do not use tires.")).toBeNull();
+
+  fireEvent.click(screen.getByLabelText("Standard"));
+  expect(stock.value).toBe("");
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText(/^Tires/) as HTMLSelectElement).value).toBe("");
 });
 
 it.each(["title", "description"])("shows %s validation beside its input and clears it on editing", async (field) => {

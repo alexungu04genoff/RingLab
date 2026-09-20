@@ -42,7 +42,7 @@ class BaseStatsIntegrationTest {
         .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34))
         .body("character.speed", notNullValue()).body("machine.speed", notNullValue());
     assertEquals(52, stats.racerStats(LATEST).size());
-    assertEquals(186, stats.machinePartStats(LATEST).size());
+    assertEquals(174, stats.machinePartStats(LATEST).size());
 
     var whisper = game.listRacers().stream().filter(r -> r.name().equals("Whisper")).findFirst().orElseThrow();
     var hyperScorpion = game.listMachines().stream()
@@ -67,7 +67,7 @@ class BaseStatsIntegrationTest {
         .filter(p -> p.sourceMachineId().equals(speedster.id())).toList();
     for (var version : game.listGameVersions()) {
       assertEquals(52, stats.racerStats(version.id()).size());
-      assertEquals(186, stats.machinePartStats(version.id()).size());
+      assertEquals(174, stats.machinePartStats(version.id()).size());
       given().queryParam("gameVersionId", version.id()).queryParam("racerId", amy.id())
           .queryParam("frontPartId", parts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow().id())
           .queryParam("rearPartId", parts.stream().filter(p -> p.type().name().equals("REAR")).findFirst().orElseThrow().id())

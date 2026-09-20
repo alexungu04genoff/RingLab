@@ -105,10 +105,11 @@ numerical gadget effects are intentionally outside this implementation. Gadget
 metadata is a current snapshot; it is not version-aware even though some costs and effects changed
 between patches.
 
-`MachineFamily` is authoritative source-machine metadata. All catalog rows existing before V25 are
-migrated to `STANDARD`; no Board catalog identities or statistics are invented. A Board may be
-added later with FRONT and REAR rows only. The application requires every selected part to share
-one family and rejects both a missing Standard tire and any tire supplied for a Board.
+`MachineFamily` is authoritative source-machine metadata. V25 introduces the family column, and
+V26 classifies the verified Extreme Gear catalog as `BOARD`, preserves its FRONT/REAR identifiers,
+and removes the structurally invalid generated TIRE rows. Standard machines retain FRONT, REAR,
+and TIRE. The application requires every selected part to share one family and rejects both a
+missing Standard tire and any tire supplied for a Board.
 
 ## Focused improvements
 

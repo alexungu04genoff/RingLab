@@ -101,7 +101,7 @@ it("renders Board setups with two parts and no fake tire", () => {
   expect(card).toContain('aria-label="Rear: Board source"');
   expect(card).not.toContain('aria-label="Tires:');
   expect(details).toContain("Board parts by source machine");
-  expect(details).toContain("Boards use front and rear parts only; they do not use tires.");
+  expect(details).not.toContain("Boards use front and rear parts only; they do not use tires.");
   expect(details).not.toContain(">TIRES<");
 });
 

@@ -40,10 +40,17 @@ class MachinePartsMigrationIntegrationTest {
         try (var rows = sql.executeQuery("SELECT count(*) FROM builds b "
             + "JOIN machine_parts f ON f.id = b.front_part_id AND f.part_type = 'FRONT' AND f.source_machine_id = b.id "
             + "JOIN machine_parts r ON r.id = b.rear_part_id AND r.part_type = 'REAR' AND r.source_machine_id = b.id "
-            + "JOIN machine_parts t ON t.id = b.tire_part_id AND t.part_type = 'TIRE' AND t.source_machine_id = b.id "
             + "WHERE b.description = 'preserved'")) {
           assertTrue(rows.next());
           assertEquals(10, rows.getInt(1));
+        }
+        try (var rows = sql.executeQuery("SELECT "
+            + "count(*) FILTER (WHERE m.family = 'STANDARD' AND b.tire_part_id IS NOT NULL), "
+            + "count(*) FILTER (WHERE m.family = 'BOARD' AND b.tire_part_id IS NULL) "
+            + "FROM builds b JOIN machines m ON m.id = b.id WHERE b.description = 'preserved'")) {
+          assertTrue(rows.next());
+          assertEquals(8, rows.getInt(1));
+          assertEquals(2, rows.getInt(2));
         }
         try (var rows = sql.executeQuery("SELECT (SELECT count(*) FROM votes WHERE value = 1), "
             + "(SELECT count(*) FROM comments WHERE text = 'preserved comment'), "

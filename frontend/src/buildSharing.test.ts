@@ -63,5 +63,6 @@ it("shares a Board without inventing a tire", () => {
   };
   const text = formatBuildForSharing(board, "https://ringlab.example/builds/board");
   expect(text).toContain("Family: Board");
-  expect(text).toContain("Tires: Not used by Boards");
+  expect(text).not.toContain("Tires:");
+  expect(text).not.toContain("Boards do not use tires");
 });

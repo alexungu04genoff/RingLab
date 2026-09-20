@@ -198,7 +198,7 @@ For a fresh demo plan, 90% use the newest patch and 10% are distributed evenly a
 patches. The four known versions currently have independent rows containing the same base stats;
 future migrations may change one version without affecting the others.
 
-Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the explicit Standard/Board machine family and makes the tire reference nullable for Board builds. Hibernate validates the migrated schema; it never creates or drops it.
+Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the explicit Standard/Board machine family and makes the tire reference nullable for Board builds. V26 classifies the verified Extreme Gear catalog and removes the obsolete generated tire rows for those Boards. Hibernate validates the migrated schema; it never creates or drops it.
 
 Add a new numbered migration when changing schema or seed data. Do not edit migrations after they have been applied to a database you intend to keep. Users and builds persist in PostgreSQL, independently of frontend refreshes or application restarts.
 
@@ -350,7 +350,7 @@ All endpoints are under `/api`; request and response bodies are JSON. IDs are UU
 | POST | `/builds/{id}/comments` | Signed in |
 | DELETE | `/comments/{id}` | Comment author |
 
-`GET /api/machines` includes each source machine's `family` (`STANDARD` or `BOARD`). `GET /api/machine-parts` returns FRONT, REAR, and TIRE components with source-machine metadata including `sourceMachineFamily`. `Machine` remains source/catalog metadata; machine parts and gadgets are separate systems.
+`GET /api/machines` includes each source machine's `family` (`STANDARD` or `BOARD`). `GET /api/machine-parts` returns family-appropriate components—FRONT/REAR/TIRE for Standard and FRONT/REAR for Board—with source-machine metadata including `sourceMachineFamily`. `Machine` remains source/catalog metadata; machine parts and gadgets are separate systems.
 
 Build listing: `search` (literal case-insensitive title substring), `racerId`, `machineId`, `authorId`, `sort=newest|score|rated`, zero-based `page`, and `size` (1–50, default 12). `machineId` means “uses at least one part sourced from this stock machine.” Response: `{items,total,page,size}`. Ties use creation time then ID. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
 

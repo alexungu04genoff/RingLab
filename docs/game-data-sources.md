@@ -5,15 +5,18 @@ This ledger accompanies `V6__released_racer_and_machine_catalog.sql` and
 `V7__verified_gadget_catalog.sql`, `V8__community_artwork_for_catalog_gaps.sql`, and
 `V9__wiki_artwork_for_catalog_presentation.sql`, and
 `V10__sonic_wiki_catalog_facts.sql`. V25 adds machine-family metadata without changing these
-catalog identities. Earlier migrations are unchanged.
+catalog identities. V26 applies the verified Standard/Extreme Gear structural distinction without
+changing valid machine or FRONT/REAR identities. Earlier migrations are unchanged.
 
 ## Coverage and limits
 
 The resulting catalog contains **52 racers, 62 machines and 186 machine parts**. Racers comprise
 23 MAIN, 12 FREE_UPDATE, 16 DLC (13 collaboration racers plus 3 Sonic Prime racers), and 1 BONUS.
-No skin or announced future racer is inserted. Every currently sourced machine remains `STANDARD`
-and has exactly one FRONT, REAR and TIRE catalog part. No Board identity or data is inferred from
-names or artwork. Future verified Board rows may use FRONT and REAR only. These parts implement RingLab's composition model; their presence does not
+No skin or announced future racer is inserted. The verified Extreme Gear catalog is `BOARD`:
+Blue Star, Diva Macchina, Dream Sleeper, Jaws Rocket, Pop Float, Quad Copter, Sakura Board,
+Triple Fan, TYPE-J Iota, TYPE-S Stream, TYPE-W Windy, and Wispon Booster. These machines have
+FRONT and REAR only; all other current machines are `STANDARD` with FRONT, REAR, and TIRE.
+These parts implement RingLab's composition model; their presence does not
 assert that every crossover vehicle can be mixed freely in the actual game.
 
 **Racer release coverage remains based on the official roster and release notices.** V10 uses the
