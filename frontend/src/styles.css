@@ -804,9 +804,9 @@ main:has(.explore-hero) {
   color: #f0d48d;
 }
 .card-meta .patch-unspecified {
-  border: 1px solid #856a2f;
-  background: #3a321f;
-  color: #f0d48d;
+  border: 1px solid #a84f5e;
+  background: #44272e;
+  color: #ff9aa8;
 }
 .empty {
   text-align: center;
@@ -1213,13 +1213,29 @@ hr {
   margin-left: 4px;
   color: var(--muted);
 }
-.detail-version.patch-older,
-.detail-version.patch-unspecified {
+.detail-version.patch-older {
   padding: 3px 7px;
   border: 1px solid #856a2f;
   border-radius: 4px;
   background: #3a321f;
   color: #f0d48d;
+}
+.detail-version.patch-unspecified {
+  padding: 3px 7px;
+  border: 1px solid #a84f5e;
+  border-radius: 4px;
+  background: #44272e;
+  color: #ff9aa8;
+}
+.invalid-select,
+.invalid-select:focus {
+  border-color: #c75c6d;
+  box-shadow: 0 0 0 1px #c75c6d;
+}
+.field-warning {
+  margin: -9px 0 15px;
+  color: #ff9aa8;
+  font-size: 12px;
 }
 .actions {
   display: flex;
@@ -2305,6 +2321,7 @@ hr {
   color: var(--racing-type-color, var(--muted));
   background: transparent;
 }
+.typed-option { color: var(--racing-type-color, var(--text)); }
 .preview-parts { padding: 10px; }
 .preview-parts > div { display: grid; grid-template-columns: 38px 52px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 0; }
 .preview-parts > div > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
@@ -2312,6 +2329,7 @@ hr {
 .preview-parts strong { padding: 0; font-size: 11px; }
 .gadget-search { margin-bottom: 14px; }
 .gadget-option { align-items: flex-start; gap: 12px; }
+.gadget-option input { align-self: center; }
 .gadget-option .artwork { width: 64px; height: 64px; flex: 0 0 64px; }
 .gadget-option-copy { min-width: 0; display: grid; gap: 3px; line-height: 1.35; }
 .gadget-option-copy small { color: var(--accent); }

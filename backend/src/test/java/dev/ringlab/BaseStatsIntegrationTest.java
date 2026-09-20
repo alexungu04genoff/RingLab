@@ -41,8 +41,8 @@ class BaseStatsIntegrationTest {
         .body("speed", equalTo(65)).body("acceleration", equalTo(30))
         .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34))
         .body("character.speed", notNullValue()).body("machine.speed", notNullValue());
-    assertEquals(37, stats.racerStats(LATEST).size());
-    assertEquals(159, stats.machinePartStats(LATEST).size());
+    assertEquals(52, stats.racerStats(LATEST).size());
+    assertEquals(186, stats.machinePartStats(LATEST).size());
 
     var whisper = game.listRacers().stream().filter(r -> r.name().equals("Whisper")).findFirst().orElseThrow();
     var hyperScorpion = game.listMachines().stream()
@@ -66,8 +66,8 @@ class BaseStatsIntegrationTest {
     var parts = game.listMachineParts().stream()
         .filter(p -> p.sourceMachineId().equals(speedster.id())).toList();
     for (var version : game.listGameVersions()) {
-      assertEquals(37, stats.racerStats(version.id()).size());
-      assertEquals(159, stats.machinePartStats(version.id()).size());
+      assertEquals(52, stats.racerStats(version.id()).size());
+      assertEquals(186, stats.machinePartStats(version.id()).size());
       given().queryParam("gameVersionId", version.id()).queryParam("racerId", amy.id())
           .queryParam("frontPartId", parts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow().id())
           .queryParam("rearPartId", parts.stream().filter(p -> p.type().name().equals("REAR")).findFirst().orElseThrow().id())
@@ -141,7 +141,7 @@ class BaseStatsIntegrationTest {
   }
 
   @Test
-  void missingHistoricalStatsDoNotBlockCreateEditOrReadingExistingBuilds() {
+  void versionedBuildsRemainReadableAndCannotClearTheirPatch() {
     String token = VerifiedUserFixture.createToken(em);
     Map<String, Object> draft = new HashMap<>();
     draft.put("title", "Unknown historical stats");
@@ -150,16 +150,16 @@ class BaseStatsIntegrationTest {
     draft.put("gadgetIds", List.of());
     for (String slot : List.of("FRONT", "REAR", "TIRE")) draft.put(slot.toLowerCase() + "PartId",
         game.listMachineParts().stream().filter(p -> p.type().name().equals(slot)).findFirst().orElseThrow().id());
+    draft.put("gameVersionId", BASELINE);
     String id = given().auth().oauth2(token).contentType("application/json").body(draft)
-        .post("/api/builds").then().statusCode(200).body("gameVersion", nullValue()).extract().path("id");
+        .post("/api/builds").then().statusCode(200)
+        .body("gameVersion.version", equalTo("1.3.1")).extract().path("id");
     try {
-      draft.put("gameVersionId", BASELINE);
-      given().auth().oauth2(token).contentType("application/json").body(draft).put("/api/builds/" + id)
-          .then().statusCode(200).body("gameVersion.version", equalTo("1.3.1"));
       given().get("/api/builds/" + id).then().statusCode(200).body("racer.name", equalTo("Red"));
       draft.put("gameVersionId", null);
       given().auth().oauth2(token).contentType("application/json").body(draft).put("/api/builds/" + id)
-          .then().statusCode(200).body("gameVersion", nullValue());
+          .then().statusCode(400).body("message", equalTo("Select a game version / patch"))
+          .body("field", equalTo("gameVersionId"));
     } finally {
       given().auth().oauth2(token).delete("/api/builds/" + id).then().statusCode(204);
     }

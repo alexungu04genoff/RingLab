@@ -77,6 +77,12 @@ export function racingTypeClass(racingType: RacingType | null): string {
   return `racing-type-${racingType?.toLowerCase() ?? "unknown"}`;
 }
 
+export function racingTypeLabel(racingType: RacingType | null): string {
+  if (!racingType) return "Unknown";
+  const lower = racingType.toLowerCase();
+  return `${lower.charAt(0).toUpperCase()}${lower.slice(1)}`;
+}
+
 function BuildPartIcon({ part, label, abbreviation }: {
   part: MachinePart;
   label: string;
@@ -276,9 +282,10 @@ export function ItemSelect({
             : `Choose a ${label.toLowerCase()}`)}
         </option>
         {items.map((i) => (
-          <option key={i.id} value={i.id}>
+          <option key={i.id} value={i.id}
+            className={`typed-option ${racingTypeClass(i.racingType)}`}>
             {i.name}
-            {` · ${i.racingType?.toLowerCase() ?? "Unknown"}`}
+            {` · ● ${racingTypeLabel(i.racingType)}`}
           </option>
         ))}
       </select>

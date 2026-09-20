@@ -21,8 +21,8 @@ class GadgetCatalogIntegrationTest {
   @Test
   void expandedCatalogPreservesSeedIdsAndMapsVerifiedMetadataThroughRest() throws Exception {
     var gadgets = game.listGadgets();
-    assertEquals(70, gadgets.size());
-    assertEquals(70, gadgets.stream().filter(g -> g.imagePath() != null).count());
+    assertEquals(68, gadgets.size());
+    assertEquals(68, gadgets.stream().filter(g -> g.imagePath() != null).count());
     assertEquals(62, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
     assertEquals(52, game.listRacers().stream().filter(r -> r.imagePath() != null).count());
     assertEquals(gadgets.size(), gadgets.stream().map(g -> g.id()).distinct().count());
@@ -53,9 +53,8 @@ class GadgetCatalogIntegrationTest {
       assertEquals(gadget.description(), response.get("description"));
       assertEquals(gadget.slotCost(), response.get("slotCost"));
       assertEquals(gadget.imagePath(), response.get("imagePath"));
-      if (gadget.slotCost() != null) {
-        assertTrue(gadget.slotCost() >= 1 && gadget.slotCost() <= 3, gadget.name());
-      }
+      assertNotNull(gadget.slotCost(), gadget.name());
+      assertTrue(gadget.slotCost() >= 1 && gadget.slotCost() <= 3, gadget.name());
       if (gadget.imagePath() != null) {
         assertTrue(gadget.imagePath().matches("/assets/gadgets/[a-z0-9-]+\\.png"));
         assertTrue(Files.isRegularFile(Path.of("../frontend/public" + gadget.imagePath())), gadget.name());

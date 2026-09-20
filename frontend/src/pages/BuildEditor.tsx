@@ -3,7 +3,7 @@ import { DraftStats } from "../BaseStats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, json } from "../api";
 import { useAuth } from "../auth";
-import { Artwork, ErrorNotice, ItemSelect, racingTypeClass } from "../components";
+import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
@@ -40,7 +40,9 @@ export function BuildEditor() {
   const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
   const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
-  const [fieldErrors, setFieldErrors] = useState<{ title?: string; description?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{
+    title?: string; description?: string; gameVersionId?: string;
+  }>({});
   const [busy, setBusy] = useState(false);
   const [gadgetSearch, setGadgetSearch] = useState("");
   const [stockSourceId, setStockSourceId] = useState("");
@@ -112,7 +114,7 @@ export function BuildEditor() {
   }, [id, remixSourceId, versions.data, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
-    if (key === "title" || key === "description") {
+    if (key === "title" || key === "description" || key === "gameVersionId") {
       setFieldErrors((current) => ({ ...current, [key]: undefined }));
     }
   }
@@ -145,6 +147,10 @@ export function BuildEditor() {
             onSubmit={async (e) => {
               e.preventDefault();
               if (busy || !canSubmit || loading || !plateStatus.valid) return;
+              if (!draft.gameVersionId) {
+                setFieldErrors({ gameVersionId: "Select a game version / patch." });
+                return;
+              }
               setBusy(true);
               setError("");
               setFieldErrors({});
@@ -155,7 +161,7 @@ export function BuildEditor() {
                 );
                 navigate(`/builds/${b.id}`);
               } catch (e) {
-                if (e instanceof ApiError && (e.field === "title" || e.field === "description")) {
+                if (e instanceof ApiError && (e.field === "title" || e.field === "description" || e.field === "gameVersionId")) {
                   setFieldErrors({ [e.field]: e.message });
                 } else {
                   setError((e as Error).message);
@@ -173,14 +179,23 @@ export function BuildEditor() {
                 <label>
                   Game version / Patch
                   <select value={draft.gameVersionId ?? ""}
+                    required
+                    className={!draft.gameVersionId ? "invalid-select" : undefined}
+                    aria-invalid={!draft.gameVersionId}
+                    aria-describedby={!draft.gameVersionId ? "build-version-error" : undefined}
                     disabled={versions.loading}
                     onChange={(e) => field("gameVersionId", e.target.value || null)}>
-                    <option value="">Unspecified (stats unavailable)</option>
+                    <option value="" disabled>Select a patch</option>
                     {versions.data?.map((version) => (
                       <option key={version.id} value={version.id}>Ver. {version.version}</option>
                     ))}
                   </select>
                 </label>
+                {!draft.gameVersionId && (
+                  <p id="build-version-error" className="field-warning" role="alert">
+                    {fieldErrors.gameVersionId ?? "A game version / patch is required."}
+                  </p>
+                )}
                 <label>
                   Build title
                   <input
@@ -252,7 +267,10 @@ export function BuildEditor() {
                         onChange={(e) => field(slot.key, e.target.value)}>
                         <option value="">Choose a source machine</option>
                         {parts.data?.filter((part) => part.type === slot.type).map((part) => (
-                          <option key={part.id} value={part.id}>{part.sourceMachineName}</option>
+                          <option key={part.id} value={part.id}
+                            className={`typed-option ${racingTypeClass(part.racingType)}`}>
+                            {part.sourceMachineName} · ● {racingTypeLabel(part.racingType)}
+                          </option>
                         ))}
                       </select>
                       {selectedPart && <span className="selected-part">
@@ -325,11 +343,13 @@ export function BuildEditor() {
                     </div>
                   )}
                   <strong>{selectedRacer?.name || "Choose a racer"}</strong>
-                  <span className={`preview-meta racing-type-text ${racingTypeClass(selectedRacer?.racingType ?? null)}`}>
-                    {selectedRacer
-                      ? selectedRacer.racingType?.toLowerCase() ?? "Unknown"
-                      : "Your driver appears here"}
-                  </span>
+                  {selectedRacer ? (
+                    <span className={`preview-meta racing-type-text ${racingTypeClass(selectedRacer.racingType)}`}>
+                      {selectedRacer.racingType?.toLowerCase() ?? "Unknown"}
+                    </span>
+                  ) : (
+                    <span className="preview-meta">Your driver appears here</span>
+                  )}
                 </section>
                 <section className="preview-item">
                   <span className="preview-label">Machine setup</span>

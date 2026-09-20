@@ -47,6 +47,9 @@ async function openA() {
 function expectNoWrite() {
   expect(vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT")).toEqual([]);
 }
+function selectLatestPatch() {
+  fireEvent.change(screen.getByLabelText("Game version / Patch"), { target: { value: latestVersion.id } });
+}
 
 it("defaults a new build to the latest known patch", async () => {
   render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
@@ -54,16 +57,30 @@ it("defaults a new build to the latest known patch", async () => {
   </Routes></MemoryRouter>);
   await waitFor(() => expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value)
     .toBe(latestVersion.id));
-  expect(screen.getByRole("option", { name: "Unspecified (stats unavailable)" })).toBeTruthy();
+  expect(screen.getByRole("option", { name: "Select a patch" })).toBeTruthy();
 });
 
-it("preserves an unspecified patch when editing an existing build", async () => {
+it("highlights an unspecified legacy patch and requires a selection", async () => {
   await openA();
-  expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value).toBe("");
+  const select = screen.getByLabelText("Game version / Patch") as HTMLSelectElement;
+  expect(select.value).toBe("");
+  expect(select.getAttribute("aria-invalid")).toBe("true");
+  expect(screen.getByRole("alert").textContent).toContain("required");
+});
+
+it("shows title-cased, color-coded type dots in racer and machine-part dropdowns", async () => {
+  await openA();
+  const options = screen.getAllByRole("option").filter((option) => option.classList.contains("typed-option"));
+  expect(options).toHaveLength(4);
+  options.forEach((option) => {
+    expect(option.textContent).toContain("● Speed");
+    expect(option.classList.contains("racing-type-speed")).toBe(true);
+  });
 });
 
 it.each(["title", "description"])("shows %s validation beside its input and clears it on editing", async (field) => {
   await openA();
+  selectLatestPatch();
   vi.mocked(api).mockRejectedValueOnce(new ApiError(400, "Text contains inappropriate language", undefined, field));
   const input = screen.getByLabelText(field === "title" ? "Build title" : "Description");
   fireEvent.submit(input.closest("form")!);
@@ -104,6 +121,7 @@ it("blocks submission during a delayed B load, then submits only B's loaded draf
   await act(async () => { resolveB(buildB); });
   const title = screen.getByLabelText("Build title") as HTMLInputElement;
   expect(title.value).toBe("Build B draft");
+  selectLatestPatch();
   fireEvent.submit(title.closest("form")!);
   await screen.findByText("Saved destination");
   const writes = vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT");

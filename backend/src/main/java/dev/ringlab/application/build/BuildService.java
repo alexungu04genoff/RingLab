@@ -108,7 +108,10 @@ public class BuildService {
     requirePart(d.frontPartId(), MachinePartType.FRONT);
     requirePart(d.rearPartId(), MachinePartType.REAR);
     requirePart(d.tirePartId(), MachinePartType.TIRE);
-    if (d.gameVersionId() != null && game.findGameVersion(d.gameVersionId()).isEmpty()) {
+    if (d.gameVersionId() == null) {
+      throw new ValidationException("Select a game version / patch", "gameVersionId");
+    }
+    if (game.findGameVersion(d.gameVersionId()).isEmpty()) {
       throw new ValidationException("Unknown game version ID");
     }
     validateGadgets(d.gadgetIds());

@@ -29,7 +29,7 @@ class GameVersionIntegrationTest {
   }
 
   @Test
-  void restCreatesReadsChangesAndClearsVersionAndRejectsUnknownIds() {
+  void restRequiresCreatesReadsAndChangesVersionAndRejectsUnknownIds() {
     String token = VerifiedUserFixture.createToken(em);
     Map<String, Object> draft = new HashMap<>();
     draft.put("title", "Version test");
@@ -42,9 +42,10 @@ class GameVersionIntegrationTest {
     draft.put("gadgetIds", List.of());
     List<String> created = new ArrayList<>();
     try {
-      String versionless = given().auth().oauth2(token).contentType("application/json").body(draft)
-          .post("/api/builds").then().statusCode(200).body("gameVersion", nullValue()).extract().path("id");
-      created.add(versionless);
+      given().auth().oauth2(token).contentType("application/json").body(draft)
+          .post("/api/builds").then().statusCode(400)
+          .body("message", equalTo("Select a game version / patch"))
+          .body("field", equalTo("gameVersionId"));
       var first = game.listGameVersions().getFirst();
       var second = game.listGameVersions().get(1);
       draft.put("gameVersionId", first.id());
@@ -55,15 +56,17 @@ class GameVersionIntegrationTest {
       given().get("/api/builds/" + id).then().statusCode(200)
           .body("gameVersion.id", equalTo(first.id().toString())).body("score", equalTo(0));
       given().queryParam("gameVersionId", first.id()).queryParam("search", "Version test")
-          .get("/api/builds").then().statusCode(200).body("items.id", hasItem(id))
-          .body("items.id", not(hasItem(versionless)));
+          .get("/api/builds").then().statusCode(200).body("items.id", hasItem(id));
       draft.put("gameVersionId", second.id());
       given().auth().oauth2(token).contentType("application/json").body(draft)
           .put("/api/builds/" + id).then().statusCode(200).body("gameVersion.version", equalTo(second.version()));
       draft.put("gameVersionId", null);
       given().auth().oauth2(token).contentType("application/json").body(draft)
-          .put("/api/builds/" + id).then().statusCode(200).body("gameVersion", nullValue());
-      given().get("/api/builds/" + id).then().statusCode(200).body("gameVersion", nullValue());
+          .put("/api/builds/" + id).then().statusCode(400)
+          .body("message", equalTo("Select a game version / patch"))
+          .body("field", equalTo("gameVersionId"));
+      given().get("/api/builds/" + id).then().statusCode(200)
+          .body("gameVersion.id", equalTo(second.id().toString()));
       draft.put("gameVersionId", UUID.randomUUID());
       given().auth().oauth2(token).contentType("application/json").body(draft)
           .post("/api/builds").then().statusCode(400).body("message", equalTo("Unknown game version ID"));

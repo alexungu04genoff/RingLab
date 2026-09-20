@@ -11,6 +11,11 @@ owner's direction. This makes current calculations available for those choices; 
 historical evidence and does not change the audit below. Each version keeps independent rows so
 future sourced patch values can diverge without changing other snapshots.
 
+V24 completes the current catalog from SRC Gadget Builder's current data and its linked
+Ver. 1.4.1 reference spreadsheet, again copying those values into independent rows for every
+selectable version at the owner's direction. These copied rows remain current-data placeholders,
+not evidence that the values were historically unchanged.
+
 ## Evidence and limits
 
 - **S1:** [supplied community spreadsheet](https://docs.google.com/spreadsheets/d/1StdwFmVCdYBJnCi7HpuzW5iPU3czAv0njwjgaJcCgY4/edit?gid=0).
@@ -27,9 +32,10 @@ future sourced patch values can diverge without changing other snapshots.
   service calls were used to retrieve its data. This is an access/provenance limitation, not evidence
   of agreement with S1.
 - **S3:** [SRC Gadget Builder](https://www.srcgadgetbuilder.com/build). Accessible server-rendered
-  shell provides character/machine/gadget controls and an applied-gadget-effects panel, but no
-  historical 1.3.1 numerical table was obtained from the inspected content. Current gadget values
-  are excluded. Its linked reference spreadsheet does not establish independent corroboration.
+  shell provides current character and per-part machine values. Its linked
+  [Ver. 1.4.1 reference spreadsheet](https://docs.google.com/spreadsheets/d/1iNFHfwyTBuC_bnuyBn_VQkoduUmhr4Tu/edit?gid=816749913)
+  supplies the remaining current catalog values imported by V24. It does not establish historical
+  1.3.1 values or independent corroboration. Current gadget values are excluded.
 - **L:** [existing catalog ledger](game-data-sources.md), V2/V4/V6/V10/V11, and the existing
   `game_versions` row date 2026-03-18. L supports identity/release classification, not historical
   numerical stats. The ledger's linked official release notices remain the release evidence.

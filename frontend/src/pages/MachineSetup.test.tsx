@@ -87,12 +87,14 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain('aria-live="polite">39</strong>');
 });
 
-it("offers an optional version selector with an explicit unavailable-stats warning", () => {
+it("requires a version selector with an explicit missing-patch warning", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
   const selector = html.match(/Game version \/ Patch<select([^>]*)>(.*?)<\/select>/)!;
-  expect(selector[1]).not.toContain("required");
-  expect(selector[2]).toContain('value="" selected="">Unspecified (stats unavailable)');
+  expect(selector[1]).toContain("required");
+  expect(selector[1]).toContain('class="invalid-select"');
+  expect(selector[2]).toContain('value="" disabled="" selected="">Select a patch');
   expect(selector[2]).toContain('value="version">Ver. 1.4.1');
+  expect(html).toContain("A game version / patch is required.");
 });
 
 it.each([false, true])("renders Build Info inside the hero card and preserves raw score (versioned=%s)", (versioned) => {

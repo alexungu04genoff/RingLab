@@ -30,6 +30,7 @@ class BuildServiceTest {
   private final UUID tirePartId = UUID.randomUUID();
   private final UUID gadgetId = UUID.randomUUID();
   private final UUID authorId = UUID.randomUUID();
+  private final UUID gameVersionId = UUID.randomUUID();
   private InMemoryBuildRepository builds;
   private GameDataStub gameData;
   private EmptyVoteRepository votes;
@@ -43,6 +44,8 @@ class BuildServiceTest {
     gameData.parts.put(frontPartId, new MachinePart(frontPartId, machineId, MachinePartType.FRONT));
     gameData.parts.put(rearPartId, new MachinePart(rearPartId, machineId, MachinePartType.REAR));
     gameData.parts.put(tirePartId, new MachinePart(tirePartId, machineId, MachinePartType.TIRE));
+    gameData.versions.put(gameVersionId,
+        new GameVersion(gameVersionId, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
     votes = new EmptyVoteRepository();
     profanity = new StubProfanityPolicy();
     service = new BuildService(builds, gameData, votes, profanity);
@@ -139,7 +142,7 @@ class BuildServiceTest {
     assertEquals(frontPartId, created.frontPartId());
     assertEquals(rearPartId, created.rearPartId());
     assertEquals(tirePartId, created.tirePartId());
-    assertNull(created.gameVersionId());
+    assertEquals(gameVersionId, created.gameVersionId());
     assertNull(created.remixedFromBuildId());
     assertEquals(created, service.get(created.id()));
     assertEquals(List.of(gadgetId), created.gadgetIds());
@@ -170,7 +173,7 @@ class BuildServiceTest {
     builds.saved.put(source.id(), source);
 
     var remixDraft = new BuildService.Draft("Remix", "Independent copy", racerId, frontPartId,
-        rearPartId, tirePartId, null, source.id(), List.of(gadgetId));
+        rearPartId, tirePartId, gameVersionId, source.id(), List.of(gadgetId));
     Build remix = service.create(UUID.randomUUID(), remixDraft);
 
     assertEquals(source.id(), remix.remixedFromBuildId());
@@ -184,7 +187,7 @@ class BuildServiceTest {
   @Test
   void rejectsUnknownRemixSource() {
     var draft = new BuildService.Draft("Remix", "", racerId, frontPartId, rearPartId,
-        tirePartId, null, UUID.randomUUID(), List.of(gadgetId));
+        tirePartId, gameVersionId, UUID.randomUUID(), List.of(gadgetId));
 
     ValidationException error =
         assertThrows(ValidationException.class, () -> service.create(authorId, draft));
@@ -198,10 +201,10 @@ class BuildServiceTest {
     Build source = existingBuild();
     builds.saved.put(source.id(), source);
     Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
-        frontPartId, rearPartId, tirePartId, null, source.id(), List.of(gadgetId)));
+        frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of(gadgetId)));
 
     Build edited = service.edit(remix.id(), authorId, new BuildService.Draft("Edited", "", racerId,
-        frontPartId, rearPartId, tirePartId, null, UUID.randomUUID(), List.of(gadgetId)));
+        frontPartId, rearPartId, tirePartId, gameVersionId, UUID.randomUUID(), List.of(gadgetId)));
 
     assertEquals(source.id(), edited.remixedFromBuildId());
   }
@@ -344,7 +347,7 @@ class BuildServiceTest {
     UUID mixedRear = UUID.randomUUID();
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
-        tirePartId, null, null, List.of(gadgetId));
+        tirePartId, gameVersionId, null, List.of(gadgetId));
     var created = service.create(authorId, mixed);
     assertEquals(mixedRear, service.get(created.id()).rearPartId());
     var edited = service.edit(old.id(), authorId, mixed);
@@ -373,7 +376,7 @@ class BuildServiceTest {
     UUID second = UUID.randomUUID();
     gameData.gadgets.put(second, new Gadget(second, "Second", null, 2, null));
     var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
-        tirePartId, null, null, List.of(second, gadgetId));
+        tirePartId, gameVersionId, null, List.of(second, gadgetId));
     var created = service.create(authorId, ordered);
     assertEquals(List.of(second, gadgetId), service.get(created.id()).gadgetIds());
   }
@@ -398,7 +401,7 @@ class BuildServiceTest {
   @Test
   void acceptsTextBoundariesAndRejectsInvalidEditWithoutChangingBuild() {
     var valid = new BuildService.Draft("x".repeat(120), "d".repeat(10000), racerId,
-        frontPartId, rearPartId, tirePartId, null, null, List.of());
+        frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of());
     Build created = service.create(authorId, valid);
     assertEquals(valid.title(), created.title());
     assertEquals(valid.description(), created.description());
@@ -426,7 +429,7 @@ class BuildServiceTest {
   void missingOptionalSourceDoesNotMakeExistingRemixMissing() {
     Build source = service.create(authorId, draft("Source"));
     Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
-        frontPartId, rearPartId, tirePartId, null, source.id(), List.of()));
+        frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of()));
     assertEquals(Optional.of(source), service.remixSource(remix));
     builds.saved.remove(source.id());
     assertTrue(service.remixSource(remix).isEmpty());
@@ -437,12 +440,12 @@ class BuildServiceTest {
 
   private BuildService.Draft draft(String title) {
     return new BuildService.Draft(
-        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));
+        title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of(gadgetId));
   }
 
   private BuildService.Draft draftWithGadgets(List<UUID> gadgetIds) {
     return new BuildService.Draft(
-        "Build", "", racerId, frontPartId, rearPartId, tirePartId, null, null, gadgetIds);
+        "Build", "", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, gadgetIds);
   }
 
   private UUID addGadget(String name, Integer slotCost) {
@@ -457,19 +460,24 @@ class BuildServiceTest {
   }
 
   @Test
-  void createsReadsAddsChangesAndClearsVersion() {
+  void createsReadsAndChangesVersion() {
     UUID first = UUID.randomUUID();
     UUID second = UUID.randomUUID();
     gameData.versions.put(first, new GameVersion(first, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
     gameData.versions.put(second, new GameVersion(second, "1.3.1", java.time.LocalDate.of(2026, 3, 18)));
+    var missingOnCreate = assertThrows(ValidationException.class,
+        () -> service.create(authorId, versionDraft(null)));
+    assertEquals("Select a game version / patch", missingOnCreate.getMessage());
+    assertEquals("gameVersionId", missingOnCreate.field());
     var build = service.create(authorId, versionDraft(first));
     assertEquals(first, service.get(build.id()).gameVersionId());
     service.edit(build.id(), authorId, versionDraft(second));
     assertEquals(second, service.get(build.id()).gameVersionId());
-    service.edit(build.id(), authorId, versionDraft(null));
-    assertNull(service.get(build.id()).gameVersionId());
-    service.edit(build.id(), authorId, versionDraft(first));
-    assertEquals(first, service.get(build.id()).gameVersionId());
+    var missing = assertThrows(ValidationException.class,
+        () -> service.edit(build.id(), authorId, versionDraft(null)));
+    assertEquals("Select a game version / patch", missing.getMessage());
+    assertEquals("gameVersionId", missing.field());
+    assertEquals(second, service.get(build.id()).gameVersionId());
   }
 
   @Test
@@ -478,7 +486,7 @@ class BuildServiceTest {
     var error = assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     assertEquals("Unknown game version ID", error.getMessage());
     assertNull(builds.lastSaved);
-    var existing = service.create(authorId, versionDraft(null));
+    var existing = service.create(authorId, versionDraft(gameVersionId));
     assertThrows(
         ValidationException.class, () -> service.edit(existing.id(), authorId, invalid));
     assertEquals(existing, service.get(existing.id()));
