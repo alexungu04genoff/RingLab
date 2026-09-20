@@ -1,38 +1,14 @@
-import type { BaseStats, Build, BuildDraft, GameVersion, StatsCatalog } from "./types";
+import type { BaseStats, Build, BuildDraft, BuildStatsResult, GameVersion } from "./types";
 import { useLoad } from "./useLoad";
 import { ErrorNotice } from "./components";
-import { buildStatsPath, statNames } from "./stats";
+import { buildStatsPath, statNames, statPresentation } from "./stats";
+import type { StatsBreakdown } from "./stats";
 
 export { buildStatsPath } from "./stats";
 
 const statMaximum = 100;
 type StatsDraft = Pick<BuildDraft,
   "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineFamily">;
-type StatsBreakdown = { character: BaseStats; machine: BaseStats };
-
-function statLabel(name: typeof statNames[number]) {
-  return name[0].toUpperCase() + name.slice(1);
-}
-
-function sumStats(values: Array<BaseStats | undefined>): BaseStats {
-  return Object.fromEntries(statNames.map((name) => [name,
-    values.some((value) => value?.[name] == null)
-      ? null
-      : values.reduce((sum, value) => sum + (value?.[name] ?? 0), 0),
-  ])) as unknown as BaseStats;
-}
-
-export function calculateStatsBreakdown(draft: StatsDraft, catalog?: StatsCatalog): StatsBreakdown | undefined {
-  if (!catalog || !draft.racerId || !draft.frontPartId || !draft.rearPartId
-      || (draft.machineFamily === "STANDARD" && !draft.tirePartId)) return undefined;
-  const partIds = [draft.frontPartId, draft.rearPartId,
-    ...(draft.machineFamily === "STANDARD" && draft.tirePartId ? [draft.tirePartId] : [])];
-  return {
-    character: catalog.racers?.[draft.racerId] ?? sumStats([undefined]),
-    machine: sumStats(partIds.map((id) => catalog.machineParts?.[id])),
-  };
-}
-
 export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   missingVersionMessage = "Select a game version to see stats." }: {
   stats?: BaseStats; version: string | null; title?: string; breakdown?: StatsBreakdown;
@@ -49,14 +25,8 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
         <span><i className="machine-swatch" />Machine</span>
       </div>}
       <dl className="stat-bars">{statNames.map((name) => {
-        const value = stats?.[name];
-        const character = breakdown?.character[name];
-        const machine = breakdown?.machine[name];
-        const hasBreakdown = value != null && character != null && machine != null;
-        const label = statLabel(name);
-        const width = value == null ? 0 : Math.min(100, Math.max(0, value));
-        const characterWidth = hasBreakdown ? Math.min(100, Math.max(0, character)) : 0;
-        const machineWidth = hasBreakdown ? Math.min(100 - characterWidth, Math.max(0, machine)) : 0;
+        const { value, character, machine, hasBreakdown, label, width,
+          characterWidth, machineWidth } = statPresentation(name, stats, breakdown);
         return <div className={`stat-row stat-${name}`} key={name}>
           <div className="stat-label">
             <dt>{label}</dt>
@@ -82,15 +52,12 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   </section>;
 }
 
-function StatsRequest({ path, version, draft }: { path: string; version: string | null; draft: StatsDraft }) {
-  const result = useLoad<BaseStats>(path);
-  const catalog = useLoad<StatsCatalog>(draft.gameVersionId
-    ? `/stats/catalog?gameVersionId=${encodeURIComponent(draft.gameVersionId)}` : "");
-  const breakdown = calculateStatsBreakdown(draft, catalog.data);
+function StatsRequest({ path, version }: { path: string; version: string | null }) {
+  const result = useLoad<BuildStatsResult>(path);
   return <div className="base-stats-request">
-    {path && (result.loading || catalog.loading) ? <p role="status">Loading base stats…</p>
-      : result.error || catalog.error ? <ErrorNotice message={`Could not load base stats: ${result.error || catalog.error}`} />
-        : <StatsBlock stats={result.data} version={version} breakdown={breakdown} />}
+    {path && result.loading ? <p role="status">Loading base stats…</p>
+      : result.error ? <ErrorNotice message={`Could not load base stats: ${result.error}`} />
+        : <StatsBlock stats={result.data} version={version} breakdown={result.data} />}
     <p className="muted">Base stats only. Gadget effects are not included.</p>
   </div>;
 }
@@ -98,7 +65,7 @@ function StatsRequest({ path, version, draft }: { path: string; version: string 
 export function DraftStats({ draft, version }: { draft: StatsDraft; version: GameVersion | null }) {
   const path = buildStatsPath(draft);
   // Remount on selection changes so an earlier response cannot flash as the new setup's stats.
-  return <StatsRequest key={path} path={path} version={version?.version ?? null} draft={draft} />;
+  return <StatsRequest key={path} path={path} version={version?.version ?? null} />;
 }
 
 export function BuildStats({ build }: { build: Build }) {

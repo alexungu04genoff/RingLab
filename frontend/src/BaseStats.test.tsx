@@ -2,9 +2,9 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { buildStatsPath, BuildStats, calculateStatsBreakdown, DraftStats, StatsBlock } from "./BaseStats";
+import { buildStatsPath, BuildStats, DraftStats, StatsBlock } from "./BaseStats";
 import { BuildCard } from "./components";
-import type { BaseStats, Build, BuildDraft, MachinePart, StatsCatalog } from "./types";
+import type { BaseStats, Build, BuildDraft, BuildStatsResult, MachinePart } from "./types";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const complete: BaseStats = { speed: 17.5, acceleration: 0, handling: 12, power: 9, boost: 8 };
@@ -12,13 +12,11 @@ const calculated: BaseStats = { ...complete, acceleration: 5 };
 const draft: BuildDraft = { title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
   tirePartId: "t", machineFamily: "STANDARD", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
 const version = { id: "v", version: "1.3.1", releasedAt: "2026-03-18" };
-const catalog: StatsCatalog = { gameVersionId: "v",
-  racers: { r: { speed: 5, acceleration: 2, handling: 3, power: 1, boost: 2 } },
-  machineParts: {
-    f: { speed: 4, acceleration: 1, handling: 3, power: 2, boost: 2 },
-    b: { speed: 4, acceleration: 1, handling: 3, power: 3, boost: 2 },
-    t: { speed: 4.5, acceleration: 1, handling: 3, power: 3, boost: 2 },
-  }, machines: {} };
+const breakdown: BuildStatsResult = {
+  ...calculated,
+  character: { speed: 5, acceleration: 2, handling: 3, power: 1, boost: 2 },
+  machine: { speed: 12.5, acceleration: 3, handling: 9, power: 8, boost: 6 },
+};
 
 it("renders known values including true zero and decimals", () => {
   render(<StatsBlock stats={complete} version="1.3.1" />);
@@ -37,7 +35,6 @@ it("renders a partial stat as a dash without losing known values", () => {
 });
 
 it("shows character and machine contributions separately from the total", () => {
-  const breakdown = calculateStatsBreakdown(draft, catalog);
   render(<StatsBlock stats={complete} version="1.3.1" breakdown={breakdown} />);
   expect(screen.getByText("Character")).toBeTruthy();
   expect(screen.getByText("Machine")).toBeTruthy();
@@ -47,9 +44,6 @@ it("shows character and machine contributions separately from the total", () => 
 
 it("calculates Board stats from front and rear without requiring a tire", () => {
   const boardDraft = { ...draft, machineFamily: "BOARD" as const, tirePartId: null };
-  const breakdown = calculateStatsBreakdown(boardDraft, catalog);
-
-  expect(breakdown?.machine.speed).toBe(8);
   expect(buildStatsPath(boardDraft)).toBe(
     "/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b");
 });
@@ -82,25 +76,54 @@ it("explains missing versions on saved builds without suggesting a nonexistent s
 });
 
 it("requests backend totals for the selected components and excludes gadgets", async () => {
-  const fetch = vi.fn().mockImplementation((url: string) => Promise.resolve(new Response(JSON.stringify(
-    url.includes("/stats/catalog") ? catalog : calculated,
-  ))));
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(breakdown)));
   vi.stubGlobal("fetch", fetch);
   render(<DraftStats draft={draft} version={version} />);
   expect(screen.getByText("Loading base stats…")).toBeTruthy();
   await screen.findByRole("progressbar", { name: "Speed: 17.5" });
   expect(fetch.mock.calls[0][0]).toBe("/api/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t");
-  expect(fetch.mock.calls.some(([url]) => url === "/api/stats/catalog?gameVersionId=v")).toBe(true);
+  expect(fetch).toHaveBeenCalledTimes(1);
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
   expect(screen.getByText(/Gadget effects are not included/)).toBeTruthy();
   expect(buildStatsPath({ ...draft, tirePartId: null })).not.toContain("tirePartId");
 });
 
+it("uses the backend breakdown for a Board draft without requesting a tire or catalog", async () => {
+  const boardBreakdown: BuildStatsResult = {
+    ...breakdown,
+    machine: { ...breakdown.machine, speed: 8 },
+    speed: 13,
+  };
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(boardBreakdown)));
+  vi.stubGlobal("fetch", fetch);
+  render(<DraftStats draft={{ ...draft, machineFamily: "BOARD", tirePartId: null }} version={version} />);
+  await screen.findByRole("progressbar", { name: "Speed: 13" });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toBe(
+    "/api/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b");
+  expect(screen.getByLabelText("Speed components: Character 5 plus Machine 8")).toBeTruthy();
+});
+
+it("preserves unknown values in an incomplete draft without fetching the catalog", async () => {
+  const unknown: BaseStats = { speed: null, acceleration: null, handling: null, power: null, boost: null };
+  const partial: BuildStatsResult = {
+    speed: 5, acceleration: 2, handling: 3, power: 1, boost: 2,
+    character: breakdown.character,
+    machine: unknown,
+  };
+  const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(partial)));
+  vi.stubGlobal("fetch", fetch);
+  render(<DraftStats draft={{ ...draft, frontPartId: "", rearPartId: "", tirePartId: null }} version={version} />);
+  await screen.findByRole("progressbar", { name: "Speed: 5" });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][0]).toBe("/api/stats/build?gameVersionId=v&racerId=r");
+  expect(screen.queryByLabelText(/Speed components/)).toBeNull();
+  expect(document.querySelector(".stat-speed .stat-fill")?.getAttribute("style")).toContain("5%");
+});
+
 it("shows compact version-aware stat bars on build cards", async () => {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
-    ...calculated,
-    character: catalog.racers.r,
-    machine: { speed: 12.5, acceleration: 3, handling: 9, power: 8, boost: 6 },
+    ...breakdown,
   })));
   vi.stubGlobal("fetch", fetch);
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
@@ -125,7 +148,6 @@ it("shows compact version-aware stat bars on build cards", async () => {
 it("reports preview errors and discards stale responses on selection changes", async () => {
   let resolveOld!: (value: Response) => void;
   const fetch = vi.fn().mockImplementation((url: string) => {
-    if (url.includes("/stats/catalog")) return Promise.resolve(new Response(JSON.stringify(catalog)));
     if (url.includes("racerId=r&")) return new Promise<Response>((resolve) => { resolveOld = resolve; });
     return Promise.resolve(new Response(JSON.stringify({ message: "Unavailable" }), { status: 503 }));
   });
@@ -133,6 +155,6 @@ it("reports preview errors and discards stale responses on selection changes", a
   const view = render(<DraftStats draft={draft} version={version} />);
   view.rerender(<DraftStats draft={{ ...draft, racerId: "new" }} version={version} />);
   await screen.findByText(/Could not load base stats/);
-  resolveOld(new Response(JSON.stringify(complete)));
+  resolveOld(new Response(JSON.stringify(breakdown)));
   await waitFor(() => expect(screen.queryByText("17.5")).toBeNull());
 });

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import { ComponentsIcon } from "./icons";
-import { buildStatsPath, statNames } from "./stats";
+import { buildStatsPath, statNames, statPresentation } from "./stats";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
 export function ErrorNotice({ message }: { message: string }) {
@@ -187,14 +187,8 @@ function BuildCardStats({ build }: { build: Build }) {
   if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
   return <dl className="card-stats" aria-label="Base stats">
     {statNames.map((name) => {
-      const value = result.data?.[name];
-      const character = result.data?.character?.[name];
-      const machine = result.data?.machine?.[name];
-      const hasBreakdown = value != null && character != null && machine != null;
-      const label = name[0].toUpperCase() + name.slice(1);
-      const width = value == null ? 0 : Math.min(100, Math.max(0, value));
-      const characterWidth = hasBreakdown ? Math.min(100, Math.max(0, character)) : 0;
-      const machineWidth = hasBreakdown ? Math.min(100 - characterWidth, Math.max(0, machine)) : 0;
+      const { value, hasBreakdown, label, width, characterWidth, machineWidth }
+        = statPresentation(name, result.data, result.data);
       return <div className={`card-stat stat-${name}`} key={name}>
         <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
         <span className={`card-stat-track${value == null ? " unknown" : ""}`} aria-hidden="true">

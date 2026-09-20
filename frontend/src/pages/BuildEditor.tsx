@@ -232,33 +232,37 @@ export function BuildEditor() {
                 <h2>
                   <span className="step">02</span> Racer & machine
                 </h2>
-                <fieldset className="machine-family-choice">
-                  <legend>Machine family</legend>
-                  {(["STANDARD", "BOARD"] as const).map((family) => (
-                    <label key={family}>
-                      <input type="radio" name="machineFamily" value={family}
-                        checked={draft.machineFamily === family}
-                        onChange={() => {
-                          setStockSourceId("");
-                          setDraft((current) => switchMachineFamily(current, family));
-                        }} />
-                      {family === "STANDARD" ? "Standard" : "Board"}
-                    </label>
-                  ))}
-                </fieldset>
-                <label className="stock-machine-control">
-                  Use stock machine
-                  <select value={stockSourceId} onChange={(e) => {
-                    setStockSourceId(e.target.value);
-                    if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
-                  }}>
-                    <option value="">Choose a complete stock setup</option>
-                    {stockMachineSources(parts.data ?? [], draft.machineFamily).map((part) => (
-                      <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName}</option>
-                    ))}
-                  </select>
-                </label>
-                <div className="two-columns">
+                <div className="machine-setup-controls">
+                  <label className="stock-machine-control">
+                    Use stock machine
+                    <select value={stockSourceId} onChange={(e) => {
+                      setStockSourceId(e.target.value);
+                      if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
+                    }}>
+                      <option value="">Choose a complete stock setup</option>
+                      {stockMachineSources(parts.data ?? [], draft.machineFamily).map((part) => (
+                        <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <fieldset className="machine-family-choice">
+                    <legend>Machine family</legend>
+                    <div className="machine-family-options">
+                      {(["STANDARD", "BOARD"] as const).map((family) => (
+                        <label key={family}>
+                          <input type="radio" name="machineFamily" value={family}
+                            checked={draft.machineFamily === family}
+                            onChange={() => {
+                              setStockSourceId("");
+                              setDraft((current) => switchMachineFamily(current, family));
+                            }} />
+                          {family === "STANDARD" ? "Standard" : "Board"}
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+                </div>
+                <div className={`machine-selection-grid ${draft.machineFamily.toLowerCase()}-machine-selection`}>
                   <div className="racer-select">
                     <ItemSelect
                       label="Racer"
