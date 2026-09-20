@@ -20,9 +20,9 @@ jobs:
           --health-cmd "pg_isready -U ringlab -d ringlab_test"
           --health-interval 5s --health-timeout 5s --health-retries 10
     env:
-      DB_URL: jdbc:postgresql://localhost:5432/ringlab_test
-      DB_USER: ringlab
-      DB_PASSWORD: ringlab_test
+      QUARKUS_DATASOURCE_JDBC_URL: jdbc:postgresql://localhost:5432/ringlab_test
+      QUARKUS_DATASOURCE_USERNAME: ringlab
+      QUARKUS_DATASOURCE_PASSWORD: ringlab_test
       JWT_PUBLIC_KEY: ${{ github.workspace }}/backend/.keys/public.pem
       JWT_PRIVATE_KEY: ${{ github.workspace }}/backend/.keys/private.pem
     steps:

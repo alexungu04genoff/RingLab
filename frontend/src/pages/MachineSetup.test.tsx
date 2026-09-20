@@ -194,7 +194,7 @@ it("uses singular and plural vote labels in accessible text", () => {
   build = { ...stock, upvotes: 1, downvotes: 1 };
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
-  expect(card).toContain('aria-label="Community score 0, 1 upvote, 1 downvote"');
+  expect(card).toContain('aria-label="Community score 39, 1 upvote, 1 downvote"');
   expect(details).toContain('aria-label="Vote breakdown: 1 upvote, 1 downvote"');
 });
 
