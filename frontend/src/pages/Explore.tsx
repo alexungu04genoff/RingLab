@@ -85,6 +85,10 @@ function SearchableFilter({ label, icon, options, value, allLabel, onChange }: {
             setActiveIndex(0);
             event.currentTarget.select();
           }}
+          onClick={() => {
+            setOpen(true);
+            setActiveIndex(0);
+          }}
           onChange={(event) => {
             setText(event.target.value);
             setOpen(true);
@@ -376,7 +380,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           <label>
             <span className="field-label"><SearchIcon /> Search builds</span>
             <input
-              placeholder="Search by build title…"
+              placeholder="Search titles, racers, machines, or gadgets…"
               maxLength={120}
               value={search}
               onChange={(e) => setSearch(e.target.value)}

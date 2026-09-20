@@ -377,17 +377,15 @@ export function BuildEditor() {
                 <section className="preview-item">
                   <span className="preview-label">Machine setup</span>
                   <div className="preview-parts">
-                    {activePartSlots.map((slot) => (
-                      <div key={slot.key}>
-                        {(() => {
-                          const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
-                          return <><span>{slot.label}</span>
-                            {selectedPart && <Artwork item={{ id: selectedPart.sourceMachineId, name: selectedPart.sourceMachineName,
-                              imagePath: selectedPart.sourceMachineImagePath, racingType: selectedPart.racingType }} compact />}
-                            <strong>{selectedPart?.sourceMachineName || "Choose a source machine"}</strong></>;
-                        })()}
-                      </div>
-                    ))}
+                    {activePartSlots.map((slot) => {
+                      const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
+                      return <div className={selectedPart ? "has-selection" : ""} key={slot.key}>
+                        <span>{slot.label}</span>
+                        {selectedPart && <Artwork item={{ id: selectedPart.sourceMachineId, name: selectedPart.sourceMachineName,
+                          imagePath: selectedPart.sourceMachineImagePath, racingType: selectedPart.racingType }} compact />}
+                        <strong>{selectedPart?.sourceMachineName || "Choose a source machine"}</strong>
+                      </div>;
+                    })}
                   </div>
                 </section>
               </div>

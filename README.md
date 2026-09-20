@@ -148,17 +148,27 @@ protection.
 
 ## Optional presentation dataset
 
-With PostgreSQL and the Quarkus development server running, populate an explicitly local demo community from `backend/`:
+With PostgreSQL and the Quarkus development server running, preview an explicitly local demo community from the repository root:
 
 ```powershell
-.\scripts\SeedDemoData.ps1
+.\backend\scripts\SeedDemoData.ps1 -Refresh
 ```
 
-The script plans **100 demo members, 20 build authors, 60 builds, 804 votes and 96 comments** on a fresh database. It retains the original 17 examples and adds 43 fan-written entries with recurring author favorites, different machine combinations, uneven attention, and flat conversations including author replies. Demo usernames remain clearly identified; new titles and comments read as community contributions.
+The default plan contains **100 demo members, about 20 build authors, and 60 builds**. Build count,
+random seed, reference time, and the Standard/Extreme Gear ratio are configurable. For 60 builds,
+the planner creates exactly 54 on the newest released patch and 6 on older released patches, plus
+48 Standard and 12 Extreme Gear setups. Other build counts round both 10% older-patch and the
+configured Board ratio away from zero. Votes and comments are intentionally uneven and therefore
+vary in total with the seed.
 
 The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckles, Amy), **30% other Sonic characters**, and **10% guests**. These are fictional editorial weights, not measured player popularity. Regular authors experiment around their favorites; occasional authors contribute one or two builds. Reader selection favors active members and character fans, but affinity changes attention rather than approval. Popular characters can have poorly received experiments, and guests can have well-received builds. Samples include 40/1, 3/0, 1/0, 20/40, tied scores, and unvoted builds.
 
-The fixed-seed plan lives in `backend/scripts/CommunityDemoPlan.ps1`; the runner resolves all referenced catalog names through REST before writing anything. Creation order interleaves authors and characters. Timestamps remain server-generated: the script does not backdate activity or invent historical play sessions. This is manual local tooling, not a migration or an application startup step.
+The pure planner in `backend/scripts/CommunityDemoPlan.ps1` consumes a canonically ordered catalog
+snapshot. The live runner proves that the API is loopback, the healthy PostgreSQL service comes
+from this repository's `compose.yaml` and is bound to loopback, and Flyway has applied every
+checked-in migration. It then validates all IDs, machine families, required parts, patch IDs,
+Gadget Plate layouts, text constraints, and remix ordering before any write. Timestamps remain
+server-generated because the public API has no fixture-only timestamp override.
 
 All demo accounts use the local-only password `RingLabDemo!2026`:
 
@@ -171,20 +181,47 @@ All demo accounts use the local-only password `RingLabDemo!2026`:
 - new authors: `ringlab_demo_blueblur`, `ringlab_demo_ultimatefan`, `ringlab_demo_rosegrid`, `ringlab_demo_metalhead`, `ringlab_demo_chaotix`, `ringlab_demo_eggman`, `ringlab_demo_bigfan`, `ringlab_demo_phantom`, `ringlab_demo_megafan`, `ringlab_demo_crossover`
 - audience accounts: `ringlab_demo_member_01` through `ringlab_demo_member_80`
 
-Repeated runs reuse demo accounts and builds matched by author and title across all pages. Existing build fields and nonzero votes are preserved, and comments are added only when the same author/text pair is absent. Missing planned votes are added, including votes previously removed manually; changed votes are not reset. Renaming a seeded build makes it a different identity, so a rerun will create the original planned title again. Existing activity can therefore make actual counts differ from the plan. No data is deleted. If a demo account has a different password, the script stops rather than replacing it. Pass `-BaseUrl http://localhost:PORT` for another local API port; only loopback HTTP(S) URLs are accepted.
+An ignored local state file, `backend/.ringlab-demo-state.json`, records stable fixture keys, entity
+IDs, and the last generated fingerprint. Normal reruns are idempotent. Refresh updates only a
+generator-managed build whose current managed fields still match that fingerprint; manual edits
+become conflicts. Votes and comments already recorded by the fixture are not recreated after a
+manual removal. Unrelated accounts, builds, votes, and comments are retained. Legacy records are
+adopted only when one exact reserved owner/title match exists and the creation/update timestamps
+prove that the build was never edited through the application. Edited, renamed, ambiguous, or
+missing legacy records become conflicts. Legacy votes and comments are preserved during adoption.
+
+Account creation uses the loopback-only `/api/dev-fixtures/demo-accounts` resource. That resource
+is absent from production builds, accepts only reserved `ringlab_demo_*@example.test` identities,
+creates already-verified fixture accounts without sending email, and refuses conflicting email or
+password ownership. Normal registration, verification, login, and rate limiting are unchanged.
 
 Preview and narrow verification from the repository root:
 
 ```powershell
-# Returns the complete plan without network access or writes.
-$plan = .\backend\scripts\SeedDemoData.ps1 -Preview
-$plan.Builds | Group-Object Racer | Sort-Object Count -Descending
+# Capture the current live catalog without community writes.
+.\backend\scripts\SeedDemoData.ps1 -ExportCatalogSnapshot .\backend\demo-catalog.local.json
 
-# Reads the running local catalog and validates every planned build; no writes.
+# Offline, deterministic preview from that explicit snapshot. The file is a local snapshot,
+# not a claim that the catalog is still live/current.
+$plan = .\backend\scripts\SeedDemoData.ps1 -Preview `
+  -CatalogSnapshotPath .\backend\demo-catalog.local.json `
+  -BuildCount 60 -RandomSeed 20260920
+
+# Prove the local target and validate the live catalog and complete plan; zero writes.
 .\backend\scripts\SeedDemoData.ps1 -ValidateOnly
 
-# Standalone tests with an in-memory REST fake; no services or dependencies required.
+# Preview a fresh seed, then apply it explicitly.
+.\backend\scripts\SeedDemoData.ps1
+.\backend\scripts\SeedDemoData.ps1 -Apply
+
+# Preview an existing managed dataset, then explicitly apply safe refreshes.
+.\backend\scripts\SeedDemoData.ps1 -Refresh
+.\backend\scripts\SeedDemoData.ps1 -Refresh -Apply
+
+# Pure PowerShell planner tests and the isolated-database bootstrap integration check.
 .\backend\scripts\SeedDemoData.Tests.ps1
+cd backend
+mvn "-Dtest=DemoAccountBootstrapIntegrationTest" test
 ```
 
 ## Migrations and persistence

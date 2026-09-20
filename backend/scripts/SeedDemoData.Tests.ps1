@@ -1,166 +1,86 @@
-# Run directly with PowerShell. No Pester, network, database, or application startup required.
-$ErrorActionPreference = 'Stop'
-$seeder = Join-Path $PSScriptRoot 'SeedDemoData.ps1'
-function Assert-True($Condition, [string]$Message) {
-  if (-not $Condition) { throw $Message }
-}
-function Assert-Fails([scriptblock]$Action, [string]$Message) {
-  $failed = $false
-  try { & $Action | Out-Null } catch { $failed = $true }
-  Assert-True $failed $Message
-}
+$ErrorActionPreference='Stop'
+$seeder=Join-Path $PSScriptRoot 'SeedDemoData.ps1'
+. (Join-Path $PSScriptRoot 'CommunityDemoPlan.ps1')
+function Assert-True($Condition,[string]$Message){if(!$Condition){throw $Message}}
+function Assert-Fails([scriptblock]$Action,[string]$Message){$failed=$false;try{&$Action|Out-Null}catch{$failed=$true};Assert-True $failed $Message}
+function New-Id([int]$Number){'00000000-0000-4000-8000-'+$Number.ToString('000000000000')}
 
-# Every API call is intercepted, including accidental calls from preview mode.
-$state = @{ requests = 0 }
-function Invoke-RestMethod { throw 'Preview must not contact the API' }
-$plan = & $seeder -Preview
-$repeat = & $seeder -Preview
-Assert-True (($plan | ConvertTo-Json -Depth 20 -Compress) -ceq ($repeat | ConvertTo-Json -Depth 20 -Compress)) 'Plan must be deterministic'
-Assert-True ($plan.Users.Count -eq 100 -and $plan.Builds.Count -eq 60) 'Incorrect sample size'
-Assert-True (@($plan.Builds.Owner | Sort-Object -Unique).Count -eq 20) 'Expected 20 authors'
-Assert-True (@($plan.Users.Username | Sort-Object -Unique).Count -eq 100) 'Duplicate account identity'
-Assert-True (@($plan.Builds.Key | Sort-Object -Unique).Count -eq 60) 'Duplicate build key'
-Assert-True (@($plan.Builds | Group-Object Owner,Title | Where-Object Count -gt 1).Count -eq 0) 'Duplicate author/title identity'
-$main = @('Sonic the Hedgehog', 'Shadow the Hedgehog', 'Miles "Tails" Prower', 'Amy Rose', 'Knuckles the Echidna')
-$guests = @('Joker', 'Mega Man', 'SpongeBob SquarePants')
-Assert-True (@($plan.Builds | Where-Object { $_.Racer -in $main }).Count -eq 36) 'Expected 60% main cast'
-Assert-True (@($plan.Builds | Where-Object { $_.Racer -in $guests }).Count -eq 6) 'Expected 10% guests'
-Assert-True (@($plan.Builds | Where-Object { $_.Racer -notin $main -and $_.Racer -notin $guests }).Count -eq 18) 'Expected 30% other Sonic characters'
-Assert-True (@($plan.Builds | Where-Object Version -eq '1.4.1').Count -eq 54) 'Expected 90% newest-patch builds'
-Assert-True (@($plan.Builds | Where-Object Version -eq '1.3.1').Count -eq 2) 'Expected two 1.3.1 builds'
-Assert-True (@($plan.Builds | Where-Object Version -eq '1.2.2').Count -eq 2) 'Expected two 1.2.2 builds'
-Assert-True (@($plan.Builds | Where-Object Version -eq '1.2.0').Count -eq 2) 'Expected two 1.2.0 builds'
-Assert-True (@($plan.Builds | Where-Object { -not $_.Version }).Count -eq 0) 'Every demo build must have a patch'
-Assert-True (@($plan.Votes | ForEach-Object { "$($_[0])/$($_[1])" } | Sort-Object -Unique).Count -eq $plan.Votes.Count) 'Duplicate user/build vote'
-$buildByKey = @{}
-foreach ($build in $plan.Builds) {
-  $buildByKey[$build.Key] = $build
-  Assert-True ($build.Owner -in $plan.Users.Key) 'Unknown build owner'
-}
-foreach ($vote in $plan.Votes) {
-  Assert-True ($vote[0] -in $plan.Users.Key -and $buildByKey.ContainsKey($vote[1]) -and $vote[2] -in @(-1, 1)) 'Invalid vote reference/value'
-  if ($vote[1] -like 'community-*') {
-    Assert-True ($vote[0] -ne $buildByKey[$vote[1]].Owner) 'New builds must not self-vote'
-  }
-}
-foreach ($build in @($plan.Builds | Where-Object Key -like 'community-*')) {
-  $votes = @($plan.Votes | Where-Object { $_[1] -eq $build.Key })
-  Assert-True (@($votes | Where-Object { $_[2] -eq 1 }).Count -eq $build.Upvotes) 'Wrong upvote count'
-  Assert-True (@($votes | Where-Object { $_[2] -eq -1 }).Count -eq $build.Downvotes) 'Wrong downvote count'
-}
-foreach ($sample in @(@(40,1), @(3,0), @(1,0), @(20,40), @(0,0), @(5,5))) {
-  Assert-True (@($plan.Builds | Where-Object { $_.Upvotes -eq $sample[0] -and $_.Downvotes -eq $sample[1] }).Count -gt 0) 'Missing ranking sample'
-}
-Assert-True (@($plan.Builds | Where-Object { $_.Racer -in $guests -and $_.Upvotes -ge 18 }).Count -gt 0) 'Guests should also have well-received builds'
-foreach ($comment in $plan.Comments) {
-  Assert-True ($comment[0] -in $plan.Users.Key -and $buildByKey.ContainsKey($comment[1]) -and $comment[2].Length -le 2000) 'Invalid comment'
-}
-Assert-True (@($plan.Comments | Where-Object { $_[1] -like 'community-*' -and $_[0] -eq $buildByKey[$_[1]].Owner }).Count -gt 0) 'Expected author replies'
-
-# Small REST fake exercises the actual runner, partial-run recovery, pagination, and reruns.
-$state.accounts = @{}
-$state.builds = @{}
-$state.votes = @{}
-$state.comments = @{}
-$state.writes = 0
-$state.failNextComment = $true
-$state.catalogRacers = @($plan.Builds.Racer | Sort-Object -Unique | ForEach-Object { [pscustomobject]@{ id = $_; name = $_ } })
-$state.catalogParts = @(
-  foreach ($name in @(($plan.Builds.Machine + $plan.Builds.RearMachine) | Sort-Object -Unique)) {
-    foreach ($type in @('FRONT', 'REAR', 'TIRE')) { [pscustomobject]@{ id = "$name/$type"; sourceMachineName = $name; type = $type; sourceMachineFamily = 'STANDARD' } }
-  }
+# Independent fixture: it is deliberately not derived from planner output.
+$racers=@(
+  [pscustomobject]@{id=New-Id 1;name='Sonic the Hedgehog'},
+  [pscustomobject]@{id=New-Id 2;name='Amy Rose'},
+  [pscustomobject]@{id=New-Id 3;name='Miles "Tails" Prower'},
+  [pscustomobject]@{id=New-Id 4;name='Rouge the Bat'},
+  [pscustomobject]@{id=New-Id 5;name='Joker'},
+  [pscustomobject]@{id=New-Id 6;name='New Catalog Racer'}
 )
-function Invoke-RestMethod {
-  param($Uri, $Method, $Headers, $Body, $ContentType)
-  $state.requests++
-  $url = [uri]$Uri
-  $path = $url.AbsolutePath
-  $data = if ($Body) { $Body | ConvertFrom-Json } else { $null }
-  $actor = if ($Headers.Authorization) { $Headers.Authorization.Substring(7) } else { $null }
-  switch ($path) {
-    '/api/racers' { return $state.catalogRacers }
-    '/api/machines' { return @() }
-    '/api/machine-parts' { return $state.catalogParts }
-    '/api/gadgets' { return @($plan.Builds.Gadgets | Sort-Object -Unique | ForEach-Object { [pscustomobject]@{ id = $_; name = $_ } }) }
-    '/api/game-versions' { return @($plan.Builds.Version | Where-Object { $_ } | Sort-Object -Unique | ForEach-Object { [pscustomobject]@{ id = $_; version = $_ } }) }
-    '/api/auth/login' {
-      if (-not $state.accounts.ContainsKey($data.username)) {
-        $failure = [Exception]::new('Not registered')
-        $failure | Add-Member NoteProperty Response ([pscustomobject]@{ StatusCode = 401 })
-        throw $failure
-      }
-      return $state.accounts[$data.username]
-    }
-    '/api/auth/register' {
-      Assert-True (-not $state.accounts.ContainsKey($data.username)) 'Account registered twice'
-      $state.writes++
-      $session = [pscustomobject]@{ token = $data.username; user = [pscustomobject]@{ id = $data.username; username = $data.username } }
-      $state.accounts[$data.username] = $session
-      return $session
-    }
-    '/api/builds' {
-      if ($Method -eq 'POST') {
-        $state.writes++
-        $id = "build-$($state.builds.Count)"
-        $data | Add-Member NoteProperty id $id
-        $data | Add-Member NoteProperty authorId $actor
-        $state.builds[$id] = $data
-        return $data
-      }
-      $query = [System.Web.HttpUtility]::ParseQueryString($url.Query)
-      $items = @($state.builds.Values | Where-Object authorId -eq $query['authorId'] | Sort-Object id)
-      return [pscustomobject]@{ total = $items.Count; items = @($items | Select-Object -Skip ([int]$query['page'] * 50) -First 50) }
-    }
-  }
-  if ($path -match '^/api/builds/([^/]+)/vote$') {
-    $key = "$actor/$($Matches[1])"
-    if ($Method -eq 'PUT') { $state.writes++; $state.votes[$key] = $data.value }
-    return [pscustomobject]@{ myVote = [int]$state.votes[$key] }
-  }
-  if ($path -match '^/api/builds/([^/]+)/comments$') {
-    $id = $Matches[1]
-    if (-not $state.comments.ContainsKey($id)) { $state.comments[$id] = @() }
-    if ($Method -eq 'POST') {
-      if ($state.failNextComment) { $state.failNextComment = $false; throw 'Simulated interruption' }
-      $state.writes++
-      $comment = [pscustomobject]@{ authorId = $actor; text = $data.text }
-      $state.comments[$id] += $comment
-      return $comment
-    }
-    $query = [System.Web.HttpUtility]::ParseQueryString($url.Query)
-    return [pscustomobject]@{ total = $state.comments[$id].Count; items = @($state.comments[$id] | Select-Object -Skip ([int]$query['page'] * 50) -First 50) }
-  }
-  throw "Unexpected request: $Method $path"
+$machines=@(
+  [pscustomobject]@{id=New-Id 101;name='Standard One';family='STANDARD'},
+  [pscustomobject]@{id=New-Id 102;name='Renamed Standard';family='STANDARD'},
+  [pscustomobject]@{id=New-Id 103;name='New Standard';family='STANDARD'},
+  [pscustomobject]@{id=New-Id 201;name='Board One';family='BOARD'},
+  [pscustomobject]@{id=New-Id 202;name='New Board';family='BOARD'}
+)
+$parts=@();$partNumber=300
+foreach($machine in $machines){
+  $types=if($machine.family -eq 'BOARD'){@('FRONT','REAR')}else{@('FRONT','REAR','TIRE')}
+  foreach($type in $types){$partNumber++;$parts+=[pscustomobject]@{id=New-Id $partNumber;type=$type;sourceMachineId=$machine.id;sourceMachineName=$machine.name;sourceMachineFamily=$machine.family}}
 }
-$requestCount = $state.requests
-Assert-Fails { & $seeder -BaseUrl 'https://example.com' -Preview } 'Remote target accepted'
-Assert-Fails { & $seeder -BaseUrl 'file:///tmp/demo' -Preview } 'Non-HTTP target accepted'
-Assert-True ($state.requests -eq $requestCount) 'Unsafe target contacted API'
-$savedRacers = $state.catalogRacers
-$state.catalogRacers = @()
-Assert-Fails { & $seeder -ValidateOnly } 'Missing catalog reference accepted'
-Assert-True ($state.writes -eq 0) 'Catalog validation made writes'
-$state.catalogRacers = $savedRacers
-& $seeder -ValidateOnly
-Assert-True ($state.writes -eq 0) 'ValidateOnly made writes'
-Assert-Fails { & $seeder 6>$null } 'Expected simulated partial-run failure'
-& $seeder 6>$null
-Assert-True ($state.accounts.Count -eq 100 -and $state.builds.Count -eq 60) 'Partial rerun duplicated data'
-Assert-True ($state.votes.Count -eq $plan.Votes.Count) 'Missing seeded votes'
-Assert-True (@($state.comments.Values | ForEach-Object { $_ }).Count -eq $plan.Comments.Count) 'Missing/duplicate comments'
+$gadgets=@(
+  [pscustomobject]@{id=New-Id 401;name='Ring Engine';slotCost=1},
+  [pscustomobject]@{id=New-Id 402;name='Boost Item Chance UP';slotCost=2},
+  [pscustomobject]@{id=New-Id 403;name='Strong Finish';slotCost=3},
+  [pscustomobject]@{id=New-Id 404;name='Unknown Cost';slotCost=$null}
+)
+$versions=@(
+  [pscustomobject]@{id=New-Id 501;version='1.2.0';releasedAt='2025-12-03'},
+  [pscustomobject]@{id=New-Id 504;version='1.10.0';releasedAt='2026-08-01'},
+  [pscustomobject]@{id=New-Id 502;version='1.4.1';releasedAt='2026-06-23'},
+  [pscustomobject]@{id=New-Id 503;version='1.3.1';releasedAt='2026-03-18'}
+)
+$catalog=[pscustomobject]@{racers=$racers;machines=$machines;parts=$parts;gadgets=$gadgets;versions=$versions}
+$snapshot=Join-Path ([IO.Path]::GetTempPath()) "ringlab-demo-catalog-$([guid]::NewGuid()).json"
+$catalog|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $snapshot -Encoding utf8
+try{
+  function Invoke-RestMethod {throw 'Offline preview contacted the API'}
+  $plan=&$seeder -Preview -CatalogSnapshotPath $snapshot
+  $repeat=&$seeder -Preview -CatalogSnapshotPath $snapshot
+  $different=&$seeder -Preview -CatalogSnapshotPath $snapshot -RandomSeed 7
+  Assert-True (($plan|ConvertTo-Json -Depth 20 -Compress)-ceq($repeat|ConvertTo-Json -Depth 20 -Compress)) 'Same inputs were not deterministic'
+  Assert-True (($plan|ConvertTo-Json -Depth 20 -Compress)-cne($different|ConvertTo-Json -Depth 20 -Compress)) 'Different seed did not vary output'
+  Assert-True ($plan.users.Count -eq 100 -and $plan.builds.Count -eq 60) 'Wrong default population'
+  Assert-True (@($plan.builds.owner|Sort-Object -Unique).Count -eq 20) 'Expected 20 authors'
+  Assert-True (@($plan.builds|Where-Object version -eq '1.10.0').Count -eq 54) 'Newest version was not selected by release date'
+  Assert-True (@($plan.builds|Where-Object version -ne '1.10.0').Count -eq 6) 'Older version allocation is not exactly 10%'
+  Assert-True (@($plan.builds|Where-Object family -eq 'BOARD').Count -eq 12) 'Expected 12 Extreme Gear builds'
+  $mainNames=@('Sonic the Hedgehog','Amy Rose','Miles "Tails" Prower');$guestNames=@('Joker')
+  Assert-True (@($plan.builds|Where-Object racerName -in $mainNames).Count -eq 36) 'Expected 60% main-cast builds'
+  Assert-True (@($plan.builds|Where-Object racerName -in $guestNames).Count -eq 6) 'Expected 10% guest builds'
+  Assert-True (@($plan.builds|Where-Object {$_.racerName -notin $mainNames -and $_.racerName -notin $guestNames}).Count -eq 18) 'Expected 30% other-Sonic builds'
+  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'BOARD' -and $_.tirePartId}).Count -eq 0) 'Board received a tire'
+  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'STANDARD' -and !$_.tirePartId}).Count -eq 0) 'Standard build lacks a tire'
+  Assert-True (@($plan.builds|Where-Object {$_.family -eq 'BOARD' -and $_.description -match '(?i)tire'}).Count -eq 0) 'Board text mentions tires'
+  Assert-True (@($plan.builds|Where-Object {$_.stock -and $_.description -match '(?i)mixed'}).Count -eq 0) 'Stock text says mixed'
+  Assert-True (@($plan.builds|Where-Object remixedFromKey).Count -gt 0) 'No real remix provenance'
+  foreach($build in $plan.builds){Assert-True (Test-GadgetPlateFit @($build.gadgetIds|ForEach-Object{$id=$_;($gadgets|Where-Object id -eq $id).slotCost})) "Invalid gadget layout: $($build.key)"}
+  Assert-True (!(Test-GadgetPlateFit @(2,2,2))) 'Invalid 2+2+2 plate was accepted'
+  Assert-True ((Get-DemoRefreshDecision '' '' 'new') -eq 'add') 'Missing fixture was not added'
+  Assert-True ((Get-DemoRefreshDecision 'legacy' '' 'new' -LegacyIdentityFound) -eq 'conflict') 'Legacy record without trusted state was overwritten'
+  Assert-True ((Get-DemoRefreshDecision 'manual-edit' 'old' 'new') -eq 'conflict') 'Manual edit was overwritten'
+  Assert-True ((Get-DemoRefreshDecision 'old' 'old' 'new') -eq 'update') 'Unchanged managed record was not refreshable'
+  Assert-True ((Get-DemoRefreshDecision 'same' 'same' 'same') -eq 'retain') 'Idempotent rerun was not retained'
+  Assert-True (Test-DemoLegacyAdoptable 1 '2026-01-01Z' '2026-01-01Z') 'Unedited unambiguous legacy record was not adoptable'
+  Assert-True (!(Test-DemoLegacyAdoptable 2 '2026-01-01Z' '2026-01-01Z')) 'Ambiguous legacy record was adoptable'
+  Assert-True (!(Test-DemoLegacyAdoptable 1 '2026-01-01Z' '2026-01-02Z')) 'Edited legacy record was adoptable'
+  $renamed=$plan.builds[0].PSObject.Copy();$renamed.title='A renamed generated title'
+  Assert-True ($renamed.key -eq $plan.builds[0].key) 'Title change altered stable fixture identity'
+  Assert-Fails {&$seeder -BaseUrl 'https://example.com' -Preview -CatalogSnapshotPath $snapshot} 'Remote target accepted'
 
-# A matching seed build can be beyond the first page after users add their own builds.
-$edited = $state.builds.Values | Select-Object -First 1
-$edited.description = 'My manual edit'
-foreach ($number in 1..55) {
-  $state.builds["aaa-$number"] = [pscustomobject]@{ id = "aaa-$number"; authorId = $edited.authorId; title = "Unrelated $number"; description = 'Keep me' }
-}
-$voteKey = @($state.votes.Keys)[0]
-$state.votes[$voteKey] = -$state.votes[$voteKey]
-$changedVote = $state.votes[$voteKey]
-$writeCount = $state.writes
-& $seeder 6>$null
-Assert-True ($state.writes -eq $writeCount) 'Unchanged rerun wrote or duplicated data'
-Assert-True ($edited.description -eq 'My manual edit' -and $state.votes[$voteKey] -eq $changedVote) 'Rerun overwrote user activity'
-Assert-True ($state.builds.Count -eq 115) 'Pagination lost a seeded build or changed unrelated data'
-Write-Host 'PASS: deterministic fan distribution, references, ranking samples, offline preview, catalog preflight, partial recovery, pagination and non-destructive reruns.'
+  $broken=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
+  $broken.machines=@($broken.machines|Where-Object family -ne 'BOARD')
+  $broken.parts=@($broken.parts|Where-Object sourceMachineFamily -ne 'BOARD')
+  $brokenPath="$snapshot-broken";$broken|ConvertTo-Json -Depth 10|Set-Content $brokenPath
+  Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing Extreme Gear catalog accepted'
+  Remove-Item -LiteralPath $brokenPath
+}finally{Remove-Item -LiteralPath $snapshot -ErrorAction SilentlyContinue}
+Write-Host 'PASS: independent catalog, deterministic planning, seed variation, release-date patch selection, 54/6 distribution, Standard/Board rules, text consistency, remix provenance, plate validation, offline safety, and unsafe-target refusal.'

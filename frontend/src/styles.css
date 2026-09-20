@@ -325,7 +325,7 @@ main:has(.explore-hero) {
 .filters input,
 .filters select,
 .filters .search button {
-  height: 44px;
+  height: 52px;
   border-radius: 7px;
 }
 .searchable-filter-control {
@@ -492,6 +492,7 @@ main:has(.explore-hero) {
   height: 166.667%;
   object-fit: contain;
   object-position: center top;
+  transform: translateY(5px);
 }
 .card-art .artwork.portrait img {
   object-position: 20% top;
@@ -577,6 +578,7 @@ main:has(.explore-hero) {
   padding: 4px 10px;
   border-radius: 5px;
 }
+.community-score { color: #dcecff; }
 .upvote-count { color: #73df8b; }
 .downvote-count { color: #ff8877; }
 .card-parts {
@@ -593,14 +595,14 @@ main:has(.explore-hero) {
 .card-part-icon {
   position: relative;
   display: block;
-  width: 38px;
-  height: 38px;
+  width: 47.5px;
+  height: 47.5px;
   border-radius: 5px;
   outline: none;
 }
 .card-part-icon .artwork.compact {
-  width: 38px;
-  height: 38px;
+  width: 47.5px;
+  height: 47.5px;
   border-radius: 5px;
 }
 .card-part-icon:focus-visible {
@@ -612,13 +614,13 @@ main:has(.explore-hero) {
   bottom: -2px;
   display: grid;
   place-items: center;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   border: 1px solid #ffffff40;
   border-radius: 50%;
   background: #111722;
   color: #eef6ff;
-  font-size: 8px;
+  font-size: 11px;
   font-weight: 900;
   line-height: 1;
 }
@@ -673,7 +675,7 @@ main:has(.explore-hero) {
 .card-stat { min-width: 0; --stat-color: var(--accent); }
 .card-stat > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
 .card-stat dt { overflow: hidden; color: var(--muted); font-size: 9px; font-weight: 750; letter-spacing: .1px; text-overflow: ellipsis; text-transform: uppercase; }
-.card-stat dd { margin: 0; color: #eef5ff; font-size: 11px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.card-stat dd { margin: 0; color: #eef5ff; font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .card-stat-track { display: flex; height: 6px; overflow: hidden; border-radius: 999px; background: #0d131d; }
 .card-stat-track > span { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
 .card-stat-track > .card-stat-character-fill { flex: 0 0 auto; border-radius: 999px 0 0 999px; background: color-mix(in srgb, var(--stat-color) 35%, #e8f6ff); }
@@ -791,6 +793,8 @@ main:has(.explore-hero) {
   font-size: 10px;
   color: var(--muted);
 }
+.card-meta > span:first-child,
+.card-meta time { font-size: 13px; }
 .card-meta .patch-badge {
   border-radius: 4px;
   padding: 4px 7px;
@@ -2343,14 +2347,16 @@ hr {
 .typed-option { color: var(--racing-type-color, var(--text)); }
 .preview-item:has(.preview-parts) { display: flex; flex-direction: column; }
 .preview-parts { display: flex; flex: 1; flex-direction: column; justify-content: center; padding: 10px; }
-.preview-parts > div { display: grid; grid-template-columns: 50px 52px minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 0; }
+.preview-parts > div { display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: center; gap: 10px; padding: 7px 0; }
+.preview-parts > div.has-selection { grid-template-columns: 50px 52px minmax(0, 1fr); }
 .preview-parts > div > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .preview-parts .artwork { width: 52px; height: 42px; margin: 0; }
 .preview-parts .artwork img { object-fit: contain; object-position: center; }
-.preview-parts strong { grid-column: 3; min-width: 0; padding: 0; overflow-wrap: break-word; font-size: 11px; }
+.preview-parts strong { grid-column: 2; min-width: 0; padding: 0; overflow-wrap: break-word; font-size: 11px; }
+.preview-parts > div.has-selection strong { grid-column: 3; }
 .gadget-search { margin-bottom: 14px; }
 .gadget-option { align-items: center; gap: 12px; }
-.gadget-option .artwork { width: 64px; height: 64px; flex: 0 0 64px; }
+.gadget-option .artwork { width: 80px; height: 80px; flex: 0 0 80px; }
 .gadget-option .artwork img { object-fit: contain; object-position: center; }
 .gadget-option-copy { min-width: 0; display: grid; gap: 3px; line-height: 1.35; }
 .gadget-option-copy small { color: var(--accent); }

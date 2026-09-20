@@ -122,6 +122,23 @@ class RepositoryContractIntegrationTest {
 
   @Test
   @TestTransaction
+  void searchMatchesRacerMachineAndGadgetNames() {
+    User author = user();
+    Build build = build(author.id(), "Unrelated build title", null);
+    em.flush();
+
+    for (String search : List.of(
+        game.listRacers().getFirst().name(),
+        game.listMachines().getFirst().name(),
+        game.listGadgets().getFirst().name())) {
+      assertTrue(candidateIds(builds.searchCandidates(
+          new BuildRepository.Filter(search.toUpperCase(Locale.ROOT), null, null, author.id(), null)))
+          .contains(build.id()));
+    }
+  }
+
+  @Test
+  @TestTransaction
   void commentsOrderBeforePaginationAndRetainTotalOnEmptyPages() {
     User author = user();
     Build build = build(author.id(), "Comments", null);

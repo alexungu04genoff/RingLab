@@ -7,8 +7,9 @@ import java.util.*;
 public interface BuildRepository {
   /**
    * Optional candidate filters. Null IDs and blank search are ignored; non-blank search is a
-   * literal, case-insensitive title substring. Racer, author, and game version IDs match exactly;
-   * machine ID matches any selected front, rear, or tire part sourced from that machine.
+   * literal, case-insensitive substring across the title, racer name, selected machine source names,
+   * and selected gadget names. Racer, author, and game version IDs match exactly; machine ID matches
+   * any selected front, rear, or tire part sourced from that machine.
    */
   record Filter(
       String search,

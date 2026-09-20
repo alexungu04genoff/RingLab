@@ -129,7 +129,7 @@ it.each([false, true])("renders Build Info inside the hero card and preserves ra
   expect(details.includes("Patch unspecified")).toBe(!versioned);
   expect(details).not.toContain('class="detail-heading"><div><div class="eyebrow accent">COMMUNITY BUILD</div><h1>My setup</h1><p>by <strong>@driver</strong> <span class="muted">· Jan 1, 2026</span><span');
   expect(details).toContain('aria-live="polite">39</strong>');
-  expect(card).toContain('aria-label="40 upvotes, 1 downvote"');
+  expect(card).toContain('aria-label="Community score 39, 40 upvotes, 1 downvote"');
   expect(card).toContain('class="upvote-count">↑ 40</span>');
   expect(card).toContain('class="downvote-count">↓ 1</span>');
 });
@@ -138,7 +138,7 @@ it("renders separate vote counts on cards and net score plus counts on details",
   build = { ...stock, score: -20, upvotes: 20, downvotes: 40 };
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
-  expect(card).toContain('aria-label="20 upvotes, 40 downvotes"');
+  expect(card).toContain('aria-label="Community score -20, 20 upvotes, 40 downvotes"');
   expect(card).toContain('class="upvote-count">↑ 20</span>');
   expect(card).toContain('class="downvote-count">↓ 40</span>');
   expect(details).toContain('aria-live="polite">-20</strong>');

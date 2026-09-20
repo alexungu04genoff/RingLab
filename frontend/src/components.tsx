@@ -130,7 +130,9 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
         <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
           {build.racer.racingType ?? "Unknown"}
         </span>
-        <span className="score" aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
+        <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
+          <span className="community-score">Score {build.score}</span>
+          <span aria-hidden="true"> · </span>
           <span className="upvote-count">↑ {build.upvotes}</span>
           <span aria-hidden="true"> · </span>
           <span className="downvote-count">↓ {build.downvotes}</span>

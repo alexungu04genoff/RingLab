@@ -9,4 +9,6 @@ production.env
 secrets/
 *.log
 backend/.keys/
+backend/.ringlab-demo-state.json
+backend/demo-catalog.local.json
 frontend/*.tsbuildinfo
