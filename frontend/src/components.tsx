@@ -24,6 +24,9 @@ export function Artwork({
 }) {
   const [failed, setFailed] = useState(false);
   const local = item.imagePath?.startsWith("/assets/");
+  const imageUrl = item.imagePath?.startsWith("/assets/racers/")
+    ? `${item.imagePath}?v=left-facing-artwork`
+    : item.imagePath;
   const racingType = "racingType" in item ? item.racingType ?? "unknown" : "gadget";
   return (
     <div
@@ -31,7 +34,7 @@ export function Artwork({
     >
       {local && !failed ? (
         <img
-          src={item.imagePath!}
+          src={imageUrl!}
           alt={item.name}
           onError={() => setFailed(true)}
         />

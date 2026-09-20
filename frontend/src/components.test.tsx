@@ -18,7 +18,7 @@ it("shows official local artwork even when the racing type is unknown", () => {
   const html = renderToStaticMarkup(
     <Artwork item={{ ...racer, name: "Sample Racer", imagePath: "/assets/racers/sample-racer.png" }} />,
   );
-  expect(html).toContain('src="/assets/racers/sample-racer.png"');
+  expect(html).toContain('src="/assets/racers/sample-racer.png?v=left-facing-artwork"');
   expect(html).toContain('alt="Sample Racer"');
 });
 

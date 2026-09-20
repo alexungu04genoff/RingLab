@@ -720,7 +720,7 @@ main:has(.explore-hero) {
 }
 .card-stat { min-width: 0; --stat-color: var(--accent); }
 .card-stat > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
-.card-stat dt { min-width: 0; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .1px; overflow-wrap: anywhere; text-transform: uppercase; }
+.card-stat dt { min-width: 0; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .1px; text-transform: uppercase; white-space: nowrap; }
 .card-stat dd { margin: 0; color: #eef5ff; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .card-stat-track { display: flex; height: 6px; overflow: hidden; border-radius: 999px; background: #0d131d; }
 .card-stat-track > span { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
