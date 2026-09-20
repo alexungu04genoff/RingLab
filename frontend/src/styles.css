@@ -2503,3 +2503,101 @@ hr {
 .stat-track.unknown {
   background: repeating-linear-gradient(135deg, #171e2a, #171e2a 5px, #111722 5px, #111722 10px);
 }
+
+/* Keep supporting copy readable at 100% browser zoom. */
+body { font-size: 17px; }
+label,
+.user-actions,
+.build-card-score,
+.card-machine,
+.explore-state p,
+.catalog-link,
+.pagination span,
+.detail-heading p,
+.auth-form > p,
+.page-heading p { font-size: 15px; }
+small,
+.combobox-option,
+.combobox-empty,
+.section-heading > span,
+.card-kicker > .eyebrow,
+.step,
+.muted,
+.preview-gadgets button,
+.gadget-option,
+.selected-gadgets,
+.selected-gadgets button,
+.detail-back,
+.field-error,
+.hero-gadgets .card-gadget-icon [role="tooltip"] strong,
+.build-meta,
+.detail-gadgets li,
+.vote-buttons button,
+.info-note,
+.older-patch-notice,
+.comment-meta,
+.section-heading-actions > span,
+.cost-summary,
+.compare-summary p,
+.compare-summary a { font-size: 14px; }
+nav,
+.selected-part strong,
+.machine-part-card strong,
+.hero-machine-setup .machine-setup-heading h2 { font-size: 16px; }
+
+.eyebrow,
+.tags > span,
+.build-card-footer,
+.selected-machine,
+.gadget-number,
+.score-description a,
+.comment-meta time,
+.text-button,
+.selected-part small,
+.preview-gadgets .gadget-name small,
+.setup-indicator,
+.gadget-copy .gadget-cost,
+.compare-gadgets small { font-size: 12px; }
+
+.info-trigger,
+.card-vote-summary,
+.card-stat dt,
+.preview-parts > div > span,
+.machine-part-card .part-type,
+.stat-legend,
+.stat-calculation,
+.hero-stats .stat-calculation,
+.compare-value.different:not(:has(.machine-setup))::after,
+.machine-part-card.different::after,
+.compare-gadgets li.different::after { font-size: 11px; }
+
+.tooltip,
+.filter-chip,
+.clear-filters,
+.news-toggle,
+.card-gadget-icon [role="tooltip"],
+.card-gadget-icon [role="tooltip"] strong,
+.build-card-author,
+.build-form-note,
+.build-note-preview,
+.score-heading,
+.vote-panel p,
+.patch-status,
+.patch-badge,
+.gadget-option-copy > span,
+.machine-part-slot,
+.gadget-copy p,
+.compare-combobox [role="option"] span,
+.compare-kicker,
+.stat-label dt,
+.stat-label dd { font-size: 13px; }
+
+.hero-stats .base-stats > .muted,
+.hero-stats .base-stats-request > .muted,
+.preview-parts strong,
+.hero-machine-setup .machine-part-card strong { font-size: 13px; }
+.hero-stats .stat-label dt,
+.hero-stats .stat-label dd { font-size: 15px; }
+.hero-machine-setup .setup-indicator,
+.hero-machine-setup .machine-part-slot { font-size: 10px; }
+.hero-machine-setup .machine-part-card .part-type { font-size: 10px; }

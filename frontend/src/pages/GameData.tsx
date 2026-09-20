@@ -25,6 +25,11 @@ const patchNotesByVersion: Record<string, string> = {
 
 export const patchNotesUrl = (version: string) => patchNotesByVersion[version] ?? null;
 
+export function newestGameVersion(versions: GameVersion[] | undefined) {
+  return versions?.reduce<GameVersion | undefined>((newest, version) =>
+    !newest || version.releasedAt > newest.releasedAt ? version : newest, undefined);
+}
+
 function RacingTypeBadge({ item }: { item: Racer | Machine }) {
   return (
     <span className={`collection-type racing-type ${racingTypeClass(item.racingType)}`}>
@@ -104,8 +109,8 @@ export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
   const versions = useLoad<GameVersion[]>("/game-versions");
-  const baseline = versions.data?.find((v) => v.version === "1.3.1");
-  const stats = useLoad<StatsCatalog>(baseline ? `/stats/catalog?gameVersionId=${baseline.id}` : "");
+  const latestVersion = newestGameVersion(versions.data);
+  const stats = useLoad<StatsCatalog>(latestVersion ? `/stats/catalog?gameVersionId=${latestVersion.id}` : "");
   return (
     <>
       <div className="page-heading collection-heading">
@@ -146,7 +151,8 @@ export function GameData() {
             {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
               : !versions.error && !stats.error && <StatsBlock
                 stats={(tab === "machines" ? stats.data?.machines : stats.data?.racers)?.[item.id]}
-                version="1.3.1" title={tab === "machines" ? "Stock base stats (parts total)" : "Racer base stats"} />}
+                version={latestVersion?.version ?? null}
+                title={tab === "machines" ? "Stock base stats (parts total)" : "Racer base stats"} />}
           </>}
         </div>)}
       </div>

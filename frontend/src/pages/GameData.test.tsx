@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
-import { GameData, patchNotesUrl } from "./GameData";
+import { GameData, newestGameVersion, patchNotesUrl } from "./GameData";
 import type { Gadget, Racer } from "../types";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
@@ -45,21 +45,32 @@ it("links every catalog version to its Steam patch notes", () => {
   expect(patchNotesUrl("unknown")).toBeNull();
 });
 
-it("keeps later racers visible and displays only the explicitly requested historical stats", () => {
+it("uses the newest released patch for collection stats regardless of API ordering", () => {
   const racers: Racer[] = [
     { id: "known", name: "Historical racer", racingType: "SPEED", imagePath: null },
     { id: "later", name: "Later racer", racingType: "SPEED", imagePath: null },
   ];
   vi.mocked(useLoad).mockImplementation((path) => ({ loading: false, error: "", data:
     path === "/racers" ? racers : path === "/game-versions"
-      ? [{ id: "baseline", version: "1.3.1", releasedAt: "2026-03-18" }]
-      : { gameVersionId: "baseline", racers: { known: { speed: 20, acceleration: 5, handling: null, power: 15, boost: 7 } },
+      ? [
+        { id: "baseline", version: "1.3.1", releasedAt: "2026-03-18" },
+        { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" },
+      ]
+      : { gameVersionId: "latest", racers: { known: { speed: 20, acceleration: 5, handling: null, power: 15, boost: 7 } },
         machineParts: {}, machines: {} },
   }));
   const html = renderToStaticMarkup(<GameData />);
   expect(html).toContain("Historical racer");
   expect(html).toContain("Later racer");
   expect(html).toContain("Partial stats");
-  expect(html).toContain("Stats unavailable for Ver. 1.3.1");
-  expect(useLoad).toHaveBeenCalledWith("/stats/catalog?gameVersionId=baseline");
+  expect(html).toContain("Stats unavailable for Ver. 1.4.1");
+  expect(useLoad).toHaveBeenCalledWith("/stats/catalog?gameVersionId=latest");
+});
+
+it("selects the newest version by release date", () => {
+  expect(newestGameVersion([
+    { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" },
+    { id: "older", version: "1.3.1", releasedAt: "2026-03-18" },
+  ])?.id).toBe("latest");
+  expect(newestGameVersion(undefined)).toBeUndefined();
 });
