@@ -161,14 +161,17 @@ the planner creates exactly 54 on the newest released patch and 6 on older relea
 configured Board ratio away from zero. Votes and comments are intentionally uneven and therefore
 vary in total with the seed.
 
-The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckles, Amy), **30% other Sonic characters**, and **10% guests**. These are fictional editorial weights, not measured player popularity. Regular authors experiment around their favorites; occasional authors contribute one or two builds. Reader selection favors active members and character fans, but affinity changes attention rather than approval. Popular characters can have poorly received experiments, and guests can have well-received builds. Samples include 40/1, 3/0, 1/0, 20/40, tied scores, and unvoted builds.
+The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckles, Amy), **30% other Sonic characters**, and **10% guests**. These are fictional editorial weights, not measured player popularity. Authors have small preferred machine pools and recurring gadget themes (rings, drifting, items, recovery, starts/finishes, and air tricks). Titles and descriptions use the actual resolved setup. Attention is uneven, including overlooked builds and mixed reactions. The `sonic-speed` fixture is explicitly featured: it uses Sonic and the newest patch, with 65 positive votes from distinct non-owner demo accounts in a fresh plan. This does not change application ranking rules or represent real player approval.
 
 The pure planner in `backend/scripts/CommunityDemoPlan.ps1` consumes a canonically ordered catalog
 snapshot. The live runner proves that the API is loopback, the healthy PostgreSQL service comes
 from this repository's `compose.yaml` and is bound to loopback, and Flyway has applied every
 checked-in migration. It then validates all IDs, machine families, required parts, patch IDs,
 Gadget Plate layouts, text constraints, and remix ordering before any write. Timestamps remain
-server-generated because the public API has no fixture-only timestamp override.
+server-generated because the public API has no fixture-only timestamp override. Live validation
+also checks the selected components against `/stats/catalog`; missing values cause a preflight
+failure rather than being replaced with invented values. Historical catalog values retain the
+repository's documented limitations.
 
 All demo accounts use the local-only password `RingLabDemo!2026`:
 
@@ -187,8 +190,17 @@ generator-managed build whose current managed fields still match that fingerprin
 become conflicts. Votes and comments already recorded by the fixture are not recreated after a
 manual removal. Unrelated accounts, builds, votes, and comments are retained. Legacy records are
 adopted only when one exact reserved owner/title match exists and the creation/update timestamps
-prove that the build was never edited through the application. Edited, renamed, ambiguous, or
+indicate no edit through the application. This cannot detect direct SQL edits that preserve timestamps.
+The apply step verifies account ownership and rechecks the previewed content. Edited, renamed, ambiguous, or
 missing legacy records become conflicts. Legacy votes and comments are preserved during adoption.
+Existing remix origins remain unchanged because the edit API treats them as immutable.
+
+Apply stores an ignored community snapshot next to the state file before mutation. It journals
+existing build updates before sending them, so an interrupted update can be reconciled on rerun.
+Fingerprints use a fixed field order and remain stable between PowerShell processes. Keep the state
+file with the local database. `-PromoteFeatured` explicitly permits adding missing fixture votes
+to the Sonic entry during legacy refresh; it never flips an existing vote. Recorded votes removed
+manually are not re-added. Without that switch, legacy engagement remains untouched.
 
 Account creation uses the loopback-only `/api/dev-fixtures/demo-accounts` resource. That resource
 is absent from production builds, accepts only reserved `ringlab_demo_*@example.test` identities,
@@ -218,6 +230,9 @@ $plan = .\backend\scripts\SeedDemoData.ps1 -Preview `
 .\backend\scripts\SeedDemoData.ps1 -Refresh
 .\backend\scripts\SeedDemoData.ps1 -Refresh -Apply
 
+# Also add the featured Sonic fixture's missing demo votes, without replacing existing votes.
+.\backend\scripts\SeedDemoData.ps1 -Refresh -PromoteFeatured -Apply
+
 # Pure PowerShell planner tests and the isolated-database bootstrap integration check.
 .\backend\scripts\SeedDemoData.Tests.ps1
 cd backend
@@ -231,7 +246,7 @@ accept optional `gameVersionId` (UUID or null); responses include `gameVersion` 
 Explore's Patch filter sends `gameVersionId` and filters in PostgreSQL before pagination.
 V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (2025-12-03).
 Existing builds remain versionless; the optional demo seeder assigns a repeatable mix to demo builds.
-For a fresh demo plan, 90% use the newest patch and 10% are distributed evenly across the older
+For a fresh demo plan, 90% use the newest patch and 10% are distributed randomly across the older
 patches. The four known versions currently have independent rows containing the same base stats;
 future migrations may change one version without affecting the others.
 

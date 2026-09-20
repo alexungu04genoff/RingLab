@@ -88,9 +88,10 @@ function BuildPartIcon({ part, label, abbreviation }: {
   label: string;
   abbreviation: string;
 }) {
-  const tooltip = `${label}: ${part.sourceMachineName}`;
+  const typeLabel = racingTypeLabel(part.racingType);
+  const tooltip = `${label} · ${typeLabel}: ${part.sourceMachineName}`;
   return (
-    <span className="card-part-icon" tabIndex={0} aria-label={tooltip}>
+    <span className={`card-part-icon ${racingTypeClass(part.racingType)}`} tabIndex={0} aria-label={tooltip}>
       <Artwork item={{
         id: part.sourceMachineId,
         name: part.sourceMachineName,
@@ -136,9 +137,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
             <span aria-hidden="true">i</span>
             <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
           </span>
-          <span aria-hidden="true"> · </span>
           <span className="upvote-count">↑ {build.upvotes}</span>
-          <span aria-hidden="true"> · </span>
           <span className="downvote-count">↓ {build.downvotes}</span>
         </span>
         <span className="card-parts" aria-label="Machine parts">

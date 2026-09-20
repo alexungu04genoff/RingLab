@@ -62,6 +62,21 @@ try{
   Assert-True (@($plan.builds|Where-Object {$_.family -eq 'BOARD' -and $_.description -match '(?i)tire'}).Count -eq 0) 'Board text mentions tires'
   Assert-True (@($plan.builds|Where-Object {$_.stock -and $_.description -match '(?i)mixed'}).Count -eq 0) 'Stock text says mixed'
   Assert-True (@($plan.builds|Where-Object remixedFromKey).Count -gt 0) 'No real remix provenance'
+  $featured=@($plan.builds|Where-Object key -eq 'sonic-speed')[0]
+  Assert-True ($featured.racerName -ceq 'Sonic the Hedgehog') 'Featured build must use Sonic'
+  Assert-True ($featured.gameVersionId -eq $plan.newestVersion.id) 'Featured build must use newest patch'
+  $featuredVotes=@($plan.votes|Where-Object build -eq $featured.key)
+  Assert-True ($featuredVotes.Count -eq 65 -and @($featuredVotes|Where-Object value -ne 1).Count -eq 0) 'Featured demo reception must be 65 positive fixture votes'
+  Assert-True (@($featuredVotes.user|Sort-Object -Unique).Count -eq 65) 'Featured fixture repeats voters'
+  Assert-True (@($featuredVotes|Where-Object user -eq $featured.owner).Count -eq 0) 'Featured fixture self-votes'
+  foreach($build in $plan.builds){
+    $front=@($parts|Where-Object id -eq $build.frontPartId)[0]
+    $rear=@($parts|Where-Object id -eq $build.rearPartId)[0]
+    Assert-True ($front.sourceMachineFamily -eq $rear.sourceMachineFamily) "Mixed families: $($build.key)"
+    Assert-True ($build.legacyTitle) "Missing legacy lookup: $($build.key)"
+    Assert-True ($build.title -ne $build.legacyTitle) 'Generated title still uses presentation/legacy wording'
+  }
+  Assert-True (@($plan.builds|ForEach-Object{$_.gadgetIds -join ','}|Sort-Object -Unique).Count -gt 2) 'All builds repeat a single gadget loadout'
   foreach($build in $plan.builds){Assert-True (Test-GadgetPlateFit @($build.gadgetIds|ForEach-Object{$id=$_;($gadgets|Where-Object id -eq $id).slotCost})) "Invalid gadget layout: $($build.key)"}
   Assert-True (!(Test-GadgetPlateFit @(2,2,2))) 'Invalid 2+2+2 plate was accepted'
   Assert-True ((Get-DemoRefreshDecision '' '' 'new') -eq 'add') 'Missing fixture was not added'
@@ -81,6 +96,15 @@ try{
   $broken.parts=@($broken.parts|Where-Object sourceMachineFamily -ne 'BOARD')
   $brokenPath="$snapshot-broken";$broken|ConvertTo-Json -Depth 10|Set-Content $brokenPath
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing Extreme Gear catalog accepted'
+  $badFamily=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
+  foreach($part in $badFamily.parts|Where-Object type -eq 'REAR'){$part.sourceMachineFamily='INVALID'}
+  $badFamily|ConvertTo-Json -Depth 10|Set-Content $brokenPath
+  Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Invalid cross-family parts passed full plan validation'
+  $missingStats=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
+  $missingStats|Add-Member NoteProperty stats @{}
+  foreach($version in $versions){$missingStats.stats[$version.id]=[pscustomobject]@{racers=[pscustomobject]@{};machineParts=[pscustomobject]@{}}}
+  $missingStats|ConvertTo-Json -Depth 10|Set-Content $brokenPath
+  Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing stats were silently treated as usable numbers'
   Remove-Item -LiteralPath $brokenPath
 }finally{Remove-Item -LiteralPath $snapshot -ErrorAction SilentlyContinue}
 Write-Host 'PASS: independent catalog, deterministic planning, seed variation, release-date patch selection, 54/6 distribution, Standard/Board rules, text consistency, remix provenance, plate validation, offline safety, and unsafe-target refusal.'

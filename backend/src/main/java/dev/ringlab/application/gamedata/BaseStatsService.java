@@ -47,16 +47,16 @@ public class BaseStatsService {
   }
 
   public BuildStats buildBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
-    if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
-    requireVersion(version);
+    if (version != null) requireVersion(version);
     if (racer != null && game.findRacer(racer).isEmpty()) throw NotFoundException.missing("Racer");
     var frontPart = requirePart(front, MachinePartType.FRONT);
     var rearPart = requirePart(rear, MachinePartType.REAR);
     var tirePart = requirePart(tire, MachinePartType.TIRE);
-    var family = requireCompatibleFamilies(frontPart, rearPart, tirePart);
+    var family = MachineCompatibility.requireCompatible(game, frontPart, rearPart, tirePart);
     if (family == MachineFamily.BOARD && tirePart != null) {
       throw new ValidationException("Board builds do not use a tire part");
     }
+    if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
     var character = value(racers, racer);
@@ -84,17 +84,4 @@ public class BaseStatsService {
     return part;
   }
 
-  private MachineFamily requireCompatibleFamilies(MachinePart... parts) {
-    MachineFamily family = null;
-    for (var part : parts) {
-      if (part == null) continue;
-      var partFamily = game.findMachine(part.sourceMachineId())
-          .orElseThrow(() -> NotFoundException.missing("Source machine")).family();
-      if (family != null && family != partFamily) {
-        throw new ValidationException("All machine parts must belong to the same machine family");
-      }
-      family = partFamily;
-    }
-    return family;
-  }
 }

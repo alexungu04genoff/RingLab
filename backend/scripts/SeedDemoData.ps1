@@ -1,5 +1,5 @@
 param(
-  [string]$BaseUrl='http://localhost:8080',
+  [string]$BaseUrl='http://127.0.0.1:8080',
   [string]$CatalogSnapshotPath,
   [string]$ExportCatalogSnapshot,
   [string]$StatePath=(Join-Path $PSScriptRoot '../.ringlab-demo-state.json'),
@@ -10,6 +10,7 @@ param(
   [switch]$Preview,
   [switch]$ValidateOnly,
   [switch]$Refresh,
+  [switch]$PromoteFeatured,
   [switch]$Apply
 )
 $ErrorActionPreference='Stop'
@@ -37,19 +38,24 @@ function Invoke-RingLabApi {
       $retryAfter=1
       if($_.Exception.Response.Headers.RetryAfter.Delta){$retryAfter=[Math]::Ceiling($_.Exception.Response.Headers.RetryAfter.Delta.TotalSeconds)}
       elseif($_.Exception.Response.Headers.Contains('Retry-After')){[void][int]::TryParse([string]$_.Exception.Response.Headers.GetValues('Retry-After')[0],[ref]$retryAfter)}
-      Start-Sleep -Seconds ([Math]::Min(60,[Math]::Max(1,$retryAfter)))
+      if($retryAfter -gt 120){throw 'API rate limit requires more than two minutes; stop and rerun later.'}
+      $remaining=[Math]::Max(1,$retryAfter)
+      while($remaining -gt 0){$wait=[Math]::Min(60,$remaining);Start-Sleep -Seconds $wait;$remaining-=$wait}
     }
   }
 }
 
 function Get-LiveCatalog {
-  [pscustomobject]@{
+  $catalog=[pscustomobject]@{
     racers=Invoke-RingLabApi GET '/racers'
     machines=Invoke-RingLabApi GET '/machines'
     parts=Invoke-RingLabApi GET '/machine-parts'
     gadgets=Invoke-RingLabApi GET '/gadgets'
     versions=Invoke-RingLabApi GET '/game-versions'
+    stats=@{}
   }
+  foreach($version in $catalog.versions){$catalog.stats[[string]$version.id]=Invoke-RingLabApi GET "/stats/catalog?gameVersionId=$($version.id)"}
+  $catalog
 }
 
 function Assert-LocalDevelopmentDatabase {
@@ -61,7 +67,11 @@ function Assert-LocalDevelopmentDatabase {
     $process=Get-CimInstance Win32_Process -Filter "ProcessId=$($listener.OwningProcess)"
     $expected=(Join-Path $root 'backend\target\ringlab-dev.jar')
     if(!$process.CommandLine -or $process.CommandLine -notlike "*$expected*"){throw "Port $port is not served by this checkout's Quarkus development application."}
+    $connections=@(Get-NetTCPConnection -OwningProcess $listener.OwningProcess -RemotePort 5432 -State Established -ErrorAction SilentlyContinue)
+    if(!$connections.Count -or @($connections|Where-Object RemoteAddress -notin @('127.0.0.1','::1')).Count){throw 'Cannot verify a loopback database connection from the running backend.'}
   }
+  $dockerHost=& docker context inspect --format '{{.Endpoints.docker.Host}}'
+  if($LASTEXITCODE -ne 0 -or $dockerHost -notlike 'npipe://*'){throw 'Demo writes require the local Windows Docker engine.'}
   $compose=Join-Path $root 'compose.yaml'
   if(!(Test-Path $compose)){throw 'Local compose.yaml was not found.'}
   $json=& docker compose -f $compose ps postgres --format json 2>&1
@@ -89,12 +99,18 @@ function Assert-Plan($Plan,$Catalog) {
     if($b.family -eq 'BOARD' -and $b.description -match '(?i)tires?'){$errors+="$($b.key): Board description mentions a tire"}
     if($b.stock -and $b.description -match '(?i)mixed'){$errors+="$($b.key): stock description says mixed"}
     if($b.remixedFromKey -and !$buildKeys.ContainsKey($b.remixedFromKey)){$errors+="$($b.key): remix parent does not precede child"}
+    if($Catalog.stats){
+      $versionStats=if($Catalog.stats -is [System.Collections.IDictionary]){$Catalog.stats[[string]$b.gameVersionId]}else{$Catalog.stats.PSObject.Properties[[string]$b.gameVersionId].Value}
+      $values=@($versionStats.racers.PSObject.Properties[[string]$b.racerId].Value)
+      foreach($id in @($b.frontPartId,$b.rearPartId,$b.tirePartId)|Where-Object{$_}){$values+= $versionStats.machineParts.PSObject.Properties[[string]$id].Value}
+      foreach($value in $values){foreach($name in @('speed','acceleration','handling','power','boost')){if($null -eq $value -or $null -eq $value.$name){$errors+="$($b.key): catalog stats are unavailable for a selected component ($name)";break}}}
+    }
   }
   if($errors.Count){throw "Demo plan validation failed:`n - $($errors-join"`n - ")"}
 }
 
 function Get-Request($Build,$BuildIds) {
-  @{title=$Build.title;description=$Build.description;racerId=$Build.racerId;frontPartId=$Build.frontPartId;rearPartId=$Build.rearPartId;tirePartId=$Build.tirePartId;gameVersionId=$Build.gameVersionId;remixedFromBuildId=if($Build.remixedFromKey){$BuildIds[$Build.remixedFromKey]}else{$null};gadgetIds=@($Build.gadgetIds)}
+  [ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racerId;frontPartId=$Build.frontPartId;rearPartId=$Build.rearPartId;tirePartId=$Build.tirePartId;gameVersionId=$Build.gameVersionId;remixedFromBuildId=if($Build.remixedFromKey){$BuildIds[$Build.remixedFromKey]}else{$null};gadgetIds=@($Build.gadgetIds)}
 }
 
 function Get-Fingerprint($Value) {
@@ -103,7 +119,7 @@ function Get-Fingerprint($Value) {
 }
 
 function Get-ActualRequest($Build) {
-  @{title=$Build.title;description=$Build.description;racerId=$Build.racer.id;frontPartId=$Build.frontPart.id;rearPartId=$Build.rearPart.id;tirePartId=if($Build.tirePart){$Build.tirePart.id}else{$null};gameVersionId=if($Build.gameVersion){$Build.gameVersion.id}else{$null};remixedFromBuildId=if($Build.remixedFrom){$Build.remixedFrom.id}else{$null};gadgetIds=@($Build.gadgets.id)}
+  [ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racer.id;frontPartId=$Build.frontPart.id;rearPartId=$Build.rearPart.id;tirePartId=if($Build.tirePart){$Build.tirePart.id}else{$null};gameVersionId=if($Build.gameVersion){$Build.gameVersion.id}else{$null};remixedFromBuildId=if($Build.remixedFrom){$Build.remixedFrom.id}else{$null};gadgetIds=@($Build.gadgets.id)}
 }
 
 function Read-State {
@@ -124,7 +140,8 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
   $latest=$Plan.newestVersion.version
   Write-Host "Plan: $($Plan.users.Count) users, $($Plan.builds.Count) builds, $($Plan.votes.Count) votes, $($Plan.comments.Count) comments."
   Write-Host "Patches: $(@($Plan.builds|Where-Object version -eq $latest).Count) newest ($latest), $(@($Plan.builds|Where-Object version -ne $latest).Count) older."
-  Write-Host "Families: $(@($Plan.builds|Where-Object family -eq 'STANDARD').Count) Standard, $(@($Plan.builds|Where-Object family -eq 'BOARD').Count) Extreme Gear. Setups: $(@($Plan.builds|Where-Object stock).Count) stock, $(@($Plan.builds|Where-Object {!$_.stock}).Count) mixed, $(@($Plan.builds|Where-Object remixedFromKey).Count) remixes."
+  Write-Host "Families: $(@($Plan.builds|Where-Object family -eq 'STANDARD').Count) Standard, $(@($Plan.builds|Where-Object family -eq 'BOARD').Count) Extreme Gear. Setups: $(@($Plan.builds|Where-Object stock).Count) stock, $(@($Plan.builds|Where-Object {!$_.stock}).Count) mixed."
+  Write-Host "Fresh-plan remix origins: $(@($Plan.builds|Where-Object remixedFromKey).Count). Refresh preserves each existing build's immutable origin."
   if($Actions){foreach($group in ($Actions|Group-Object action|Sort-Object Name)){$count=if($group.Name -eq 'retain-manual'){($group.Group|Measure-Object count -Sum).Sum}else{$group.Count};Write-Host "Refresh $($group.Name): $count"}}
   if($WholeBuilds){$known=@($WholeBuilds|Where-Object gameVersion);$wholeLatest=@($known|Where-Object {$_.gameVersion.version -eq $latest}).Count;Write-Host "Whole database: $($WholeBuilds.Count) builds; $wholeLatest newest and $($known.Count-$wholeLatest) older among versioned builds."}
 }
@@ -148,17 +165,17 @@ if($ValidateOnly){Show-Summary $plan $null $null;Write-Host 'Live validation com
 
 $state=Read-State;$allBuilds=@(Get-AllBuilds);$stateByKey=@{};foreach($record in @($state.builds)){$stateByKey[$record.key]=$record}
 $legacyMatches=@{}
-foreach($b in $plan.builds){$legacyMatches[$b.key]=@($allBuilds|Where-Object {$_.title -ceq $b.title -and $_.author.username -ceq "ringlab_demo_$($b.owner)"})}
+foreach($b in $plan.builds){$legacyMatches[$b.key]=@($allBuilds|Where-Object {$_.title -ceq $b.legacyTitle -and $_.author.username -ceq "ringlab_demo_$($b.owner)"})}
 $legacyDatasetPresent=@($legacyMatches.Values|Where-Object {$_.Count -eq 1}).Count -ge [Math]::Min(10,$plan.builds.Count)
 $actions=@();$buildIds=@{}
 foreach($b in $plan.builds){
   $record=$stateByKey[$b.key];$actual=$null
-  if($record){try{$actual=Invoke-RingLabApi GET "/builds/$($record.id)"}catch{}}
+  if($record){$actual=@($allBuilds|Where-Object id -eq $record.id)|Select-Object -First 1}
   if(!$actual){
     $matches=@($legacyMatches[$b.key])
     if($matches.Count -eq 1){
       $actual=$matches[0];$buildIds[$b.key]=[string]$actual.id
-      if(Test-DemoLegacyAdoptable $matches.Count $actual.createdAt $actual.updatedAt){$actions+=[pscustomobject]@{key=$b.key;action='update';reason='unambiguous unedited legacy fixture';id=$actual.id;legacy=$true}}
+      if(Test-DemoLegacyAdoptable $matches.Count $actual.createdAt $actual.updatedAt){$actions+=[pscustomobject]@{key=$b.key;action='update';reason='legacy candidate; exact account and content rechecked before apply';id=$actual.id;legacy=$true;before=(Get-Fingerprint (Get-ActualRequest $actual))}}
       else{$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='legacy fixture was edited after creation';id=$actual.id}}
       continue
     }
@@ -169,37 +186,72 @@ foreach($b in $plan.builds){
     continue
   }
   $buildIds[$b.key]=[string]$actual.id;$actualFingerprint=Get-Fingerprint (Get-ActualRequest $actual)
-  if($actualFingerprint -ne $record.fingerprint){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fields were edited';id=$actual.id};continue}
+  if($actual.author.username -cne "ringlab_demo_$($b.owner)") {throw "Fixture owner mismatch: $($b.key)"}
+  if($actualFingerprint -ne $record.fingerprint -and $actualFingerprint -ne $record.pendingFingerprint){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fields were edited';id=$actual.id};continue}
   $desired=Get-Request $b $buildIds;$desiredFingerprint=Get-Fingerprint $desired
-  $actions+=[pscustomobject]@{key=$b.key;action=if($desiredFingerprint -eq $actualFingerprint){'retain'}else{'update'};reason='trusted managed record';id=$actual.id}
+  # Remix origin is immutable in BuildService.edit. Never claim that refresh adds provenance.
+  $desired.remixedFromBuildId=if($actual.remixedFrom){$actual.remixedFrom.id}else{$null}
+  $desiredFingerprint=Get-Fingerprint $desired
+  $actions+=[pscustomobject]@{key=$b.key;action=if($desiredFingerprint -eq $actualFingerprint){'retain'}else{'update'};reason='trusted managed record';id=$actual.id;before=$actualFingerprint}
 }
 $manualCount=@($allBuilds|Where-Object {$id=[string]$_.id;$id -notin @($actions.id|ForEach-Object{[string]$_})}).Count
 $actions+=[pscustomobject]@{key='(unrelated/manual builds)';action='retain-manual';reason='outside fixture ownership';id=$null;count=$manualCount}
 Show-Summary $plan $actions $allBuilds
 foreach($conflict in @($actions|Where-Object action -eq 'conflict')){Write-Warning "$($conflict.key): $($conflict.reason)"}
+if($PromoteFeatured){Write-Host 'Featured Sonic: add missing votes from 65 reserved fixture voters; preserve all existing votes. This is fictional demo engagement.'}
 if(!$Apply){Write-Host 'Preview only. Add -Apply to perform the displayed additions/updates; use -Refresh -Apply for an explicit refresh.';return [pscustomobject]@{plan=$plan;actions=$actions}}
 
+# Compare the API identities with the proven local database before any mutation.
+$sql="select json_build_object('builds',(select coalesce(json_agg(b),'[]') from builds b),'gadgets',(select coalesce(json_agg(g),'[]') from build_gadgets g),'votes',(select coalesce(json_agg(v),'[]') from votes v),'comments',(select coalesce(json_agg(c),'[]') from comments c));"
+$beforeJson=& docker compose -f $database.compose exec -T postgres psql -U ringlab -d ringlab -Atc $sql
+if($LASTEXITCODE -ne 0){throw 'Could not read the verified local database before apply.'}
+$before=$beforeJson | ConvertFrom-Json
+if(Compare-Object @($before.builds.id|Sort-Object) @($allBuilds.id|Sort-Object)){throw 'API builds do not match the verified local database. Refusing writes.'}
+foreach($action in $actions|Where-Object action -eq 'update'){
+  $row=@($before.builds|Where-Object id -eq $action.id)[0]
+  $api=@($allBuilds|Where-Object id -eq $action.id)[0]
+  if($row.author_id -ne $api.author.id -or $row.title -cne $api.title -or $row.description -cne $api.description){throw "API/database content mismatch for $($action.key)."}
+}
+$backupPath="$StatePath.before-$([datetime]::UtcNow.ToString('yyyyMMddTHHmmssfff')).json"
+$beforeJson | Set-Content -LiteralPath $backupPath -Encoding utf8
+Write-Host "Saved local community snapshot: $backupPath"
 $bootstrap=Invoke-RingLabApi POST '/dev-fixtures/demo-accounts' @{accounts=@($plan.users|Select-Object key,username,email);password=$DemoPassword}
 $sessions=@{};foreach($entry in (ConvertTo-DemoArray $bootstrap)){$sessions[$entry.key]=$entry.session}
 foreach($b in $plan.builds){
   $action=@($actions|Where-Object key -eq $b.key)[0];if($action.action -in @('conflict','retain')){continue}
   $request=Get-Request $b $buildIds
+  if($action.action -eq 'update'){
+    if(!$Refresh){continue}
+    $current=Invoke-RingLabApi GET "/builds/$($action.id)"
+    if($current.author.id -ne $sessions[$b.owner].user.id -or (Get-Fingerprint (Get-ActualRequest $current)) -ne $action.before){throw "Concurrent edit or ownership conflict for $($b.key); stopping without overwriting it."}
+    $request.remixedFromBuildId=if($current.remixedFrom){$current.remixedFrom.id}else{$null}
+    $previous=@($state.builds|Where-Object key -eq $b.key)|Select-Object -First 1
+    $preserveEngagement=[bool]($action.legacy -or $previous.preserveEngagement)
+    $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{
+      key=$b.key;id=[string]$current.id;fingerprint=$action.before
+      pendingFingerprint=(Get-Fingerprint $request);preserveEngagement=$preserveEngagement
+    }
+    Save-State $state
+  } else {$preserveEngagement=$false}
   if($action.action -eq 'add'){$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh){continue};$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
   $buildIds[$b.key]=[string]$actual.id;$fingerprint=Get-Fingerprint (Get-ActualRequest $actual)
-  $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint}
-  if($action.legacy){
-    $state.votes=@($state.votes)+@($plan.votes|Where-Object build -eq $b.key|Select-Object -Expand key)
-    $state.comments=@($state.comments)+@($plan.comments|Where-Object build -eq $b.key|Select-Object -Expand key)
-  }
+  $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint;preserveEngagement=$preserveEngagement}
   Save-State $state
+  Write-Host "Saved fixture $($b.key)."
 }
 foreach($vote in $plan.votes){
   if($vote.key -in @($state.votes)){continue};if(!$buildIds.ContainsKey($vote.build)){continue}
+  if(@($actions|Where-Object {$_.key -eq $vote.build -and $_.action -eq 'conflict'}).Count){continue}
+  $record=@($state.builds|Where-Object key -eq $vote.build)|Select-Object -First 1
+  if(!$record -or ($record.preserveEngagement -and !($PromoteFeatured -and $vote.build -eq 'sonic-speed'))){continue}
   $current=Invoke-RingLabApi GET "/builds/$($buildIds[$vote.build])/vote" $null $sessions[$vote.user].token
-  if($current.myVote -eq 0){Invoke-RingLabApi PUT "/builds/$($buildIds[$vote.build])/vote" @{value=$vote.value} $sessions[$vote.user].token|Out-Null;$state.votes=@($state.votes)+$vote.key;Save-State $state}
+  if($current.myVote -eq 0){Invoke-RingLabApi PUT "/builds/$($buildIds[$vote.build])/vote" @{value=$vote.value} $sessions[$vote.user].token|Out-Null}
+  $state.votes=@($state.votes)+$vote.key;Save-State $state
 }
 foreach($comment in $plan.comments){
   if($comment.key -in @($state.comments)){continue};if(!$buildIds.ContainsKey($comment.build)){continue}
+  $record=@($state.builds|Where-Object key -eq $comment.build)|Select-Object -First 1
+  if(!$record -or $record.preserveEngagement -or @($actions|Where-Object {$_.key -eq $comment.build -and $_.action -eq 'conflict'}).Count){continue}
   $existing=Invoke-RingLabApi GET "/builds/$($buildIds[$comment.build])/comments?page=0&size=50"
   if(!(@(ConvertTo-DemoArray $existing.items)|Where-Object {$_.authorId -eq $sessions[$comment.user].user.id -and $_.text -ceq $comment.text})){Invoke-RingLabApi POST "/builds/$($buildIds[$comment.build])/comments" @{text=$comment.text} $sessions[$comment.user].token|Out-Null}
   $state.comments=@($state.comments)+$comment.key;Save-State $state

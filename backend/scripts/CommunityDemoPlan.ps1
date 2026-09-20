@@ -60,7 +60,9 @@ function Get-CommunityDemoPlan {
   if(!$standards.Count){throw 'Catalog has no complete STANDARD machine.'};if($BoardRatio -gt 0 -and !$boards.Count){throw 'Catalog has no complete BOARD / Extreme Gear machine.'}
 
   $mainNames=@('Sonic the Hedgehog','Shadow the Hedgehog','Miles "Tails" Prower','Amy Rose','Knuckles the Echidna')
-  $guestNames=@('Joker','Mega Man','SpongeBob SquarePants','Pac-Man','Ichiban Kasuga','Steve','Alex','Creeper')
+  $guestNames=@('Joker','Mega Man','SpongeBob SquarePants','PAC-MAN','Ichiban Kasuga','Steve','Alex','Creeper',
+    'AiAi','Arle','Axel','Blinky','Donatello','Goro Majima (Captain Majima)','Hatsune Miku','Leonardo',
+    'Michelangelo','NiGHTS','Patrick Star','Proto Man','Raphael','Red')
   $main=@($racers | Where-Object name -in $mainNames);$other=@($racers | Where-Object {$_.name -notin $mainNames -and $_.name -notin $guestNames});$guests=@($racers | Where-Object name -in $guestNames)
   if(!$main.Count){$main=$racers};if(!$other.Count){$other=$main};if(!$guests.Count){$guests=$other}
   $authors=@('amy','tails','shadow','sonic','knuckles','rouge','cream','blaze','silver','vector','blueblur','ultimatefan','rosegrid','metalhead','chaotix','eggman','bigfan','phantom','megafan','crossover')
@@ -115,27 +117,60 @@ function Get-CommunityDemoPlan {
   $boardCount=if($boards.Count){[Math]::Round($BuildCount*$BoardRatio,[MidpointRounding]::AwayFromZero)}else{0}
   $boardIndexes=@((Invoke-DemoShuffle (0..($BuildCount-1)) $random)|Select-Object -First $boardCount)
   $olderCount=[Math]::Round($BuildCount*.10,[MidpointRounding]::AwayFromZero);if($olderCount -lt 1){$olderCount=1}
-  $olderIndexes=@((Invoke-DemoShuffle (0..($BuildCount-1)) $random)|Select-Object -First $olderCount);$latest=$versions[0];$older=@($versions|Select-Object -Skip 1)
+  $olderIndexes=@((Invoke-DemoShuffle @(0..($BuildCount-1) | Where-Object { $blueprints[$_].key -ne 'sonic-speed' }) $random)|Select-Object -First $olderCount);$latest=$versions[0];$older=@($versions|Select-Object -Skip 1)
+  # These themes use catalog names and costs, never assumed effects or stat bonuses.
+  $themes=@(
+    @{ label='ring route'; names=@('Ring Engine','Ring Doubler','Route Planner Bounty','Ring Mercy','130 Ring Limit','Ring Evolution') },
+    @{ label='drift practice'; names=@('Ultimate Charge','Perfect Charge Boost','Drift Charge Kit','Friction Drift','Spin Drift','Drift Spinner Kit') },
+    @{ label='item options'; names=@('Inventory Swap','Item Keeper','Item Stock Plus','Lucky Pair','Attack Item Chance UP','Defense Item Chance UP') },
+    @{ label='recovery notes'; names=@('Quick Recovery','Damage Mercy','Crash Pads','Item Mercy','Substitute Item','Damage Evolution') },
+    @{ label='start and finish'; names=@('Starting Boost Bounty','Invincible Start','Quick Starter','Strong Finish','Slow Starter','Invincible Finish') },
+    @{ label='air tricks'; names=@('Ultimate Air Trick','Perfect Landing','Ace Pilot Kit','Extended Slipstream','Sea Dog Kit','All-Rounder Kit') }
+  )
+  $profiles=@{}
+  for($i=0; $i -lt $authors.Count; $i++) {
+    $profiles[$authors[$i]]=@{
+      theme=$themes[$i % $themes.Count]
+      STANDARD=@(Invoke-DemoShuffle $standards $random | Select-Object -First 3)
+      BOARD=@(Invoke-DemoShuffle $boards $random | Select-Object -First 3)
+    }
+  }
   $builds=@()
   foreach($b in $blueprints){
-    $family=if($b.ordinal -in $boardIndexes){'BOARD'}else{'STANDARD'};$pool=if($family -eq 'BOARD'){$boards}else{$standards}
+    $family=if($b.ordinal -in $boardIndexes){'BOARD'}else{'STANDARD'}
+    $profile=$profiles[$b.owner]
+    $pool=if($random.NextDouble() -lt .78){@($profile[$family])}elseif($family -eq 'BOARD'){$boards}else{$standards}
     $fm=$pool[$random.Next($pool.Count)];$mixed=$random.NextDouble() -lt .38;$rm=if($mixed -and $pool.Count -gt 1){@($pool | Where-Object id -ne $fm.id)[$random.Next($pool.Count-1)]}else{$fm};$tm=if($family -eq 'STANDARD' -and $mixed -and $pool.Count -gt 1 -and $random.NextDouble() -lt .5){$pool[$random.Next($pool.Count)]}else{$fm}
     $front=@($byMachine[[string]$fm.id] | Where-Object type -eq 'FRONT')[0];$rear=@($byMachine[[string]$rm.id] | Where-Object type -eq 'REAR')[0];$tire=if($family -eq 'STANDARD'){@($byMachine[[string]$tm.id] | Where-Object type -eq 'TIRE')[0]}else{$null}
     $group=if($b.ordinal -lt [Math]::Round($BuildCount*.60)){$main}elseif($b.ordinal -lt [Math]::Round($BuildCount*.90)){$other}else{$guests}
     $fav=@($favorites[$b.owner] | ForEach-Object{$wanted=$_;$group | Where-Object name -ceq $wanted} | Where-Object{$_});$racer=if($fav.Count -and $random.NextDouble() -lt .82){$fav[$random.Next($fav.Count)]}else{$group[$random.Next($group.Count)]}
-    $selected=@();foreach($g in (Invoke-DemoShuffle $gadgets $random)){$trial=@($selected+$g);if($trial.Count -le 4 -and (Test-GadgetPlateFit @($trial.slotCost))){$selected=$trial};if($selected.Count -ge 2 -and $random.NextDouble() -lt .45){break}}
+    if($b.key -eq 'sonic-speed') {
+      $sonic=@($racers | Where-Object name -CEQ 'Sonic the Hedgehog')
+      if($sonic.Count -ne 1){throw 'Featured fixture sonic-speed requires one canonical Sonic the Hedgehog racer.'}
+      $racer=$sonic[0]
+    }
+    $preferred=@($gadgets | Where-Object name -in $profile.theme.names)
+    $candidates=@(Invoke-DemoShuffle $preferred $random)+@(Invoke-DemoShuffle @($gadgets | Where-Object name -notin $profile.theme.names) $random)
+    $selected=@();foreach($g in $candidates){$trial=@($selected+$g);if($trial.Count -le 4 -and (Test-GadgetPlateFit @($trial.slotCost))){$selected=$trial};if($selected.Count -ge 2 -and $random.NextDouble() -lt .45){break}}
     $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest};$stock=$fm.id -eq $rm.id -and ($family -eq 'BOARD' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
     $setup=if($family -eq 'BOARD'){if($stock){"A straightforward $($fm.name) Extreme Gear setup."}else{"An Extreme Gear mix using the $($fm.name) front and $($rm.name) rear."}}else{if($stock){"A straightforward stock $($fm.name) setup."}else{"A mixed Standard setup with $($fm.name), $($rm.name), and $($tm.name) parts."}}
-    $tone=@('I keep coming back to this one.','Still deciding whether this becomes my regular setup.','A small experiment I wanted to save.','This feels like a useful variation on my usual pick.','Any thoughts on the gadget order?')[$random.Next(5)]
-    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$b.title;description="$setup $tone";racerId=$racer.id;racerName=$racer.name;family=$family;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
+    $tone=@('I keep coming back to this one.','Still deciding whether this becomes my regular setup.','A small experiment I wanted to save.','Any thoughts on the gadget order?','Keeping a spare setup for next time.','Nothing ambitious today; just saving my current picks.')[$random.Next(6)]
+    $title=@("$($racer.name): $($profile.theme.label)","An evening with $($racer.name)","$($fm.name), take two","$($racer.name) and a garage experiment","A spare $($family.ToLowerInvariant()) setup","Trying $($selected[0].name)")[$random.Next(6)]
+    if($b.key -eq 'sonic-speed'){$title='Sonic — my regular garage pick'}
+    $description="$setup $tone"
+    if($b.ordinal % 3 -ne 0){$description+=" Keeping $($selected[0].name) with $($selected[1].name) for this version of the loadout."}
+    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;racerId=$racer.id;racerName=$racer.name;family=$family;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
   }
   $votes=@();$comments=@()
   foreach($b in $builds){
     $roll=$random.Next(100)
     $attention=if($roll -lt 22){0}elseif($roll -lt 62){$random.Next(1,5)}elseif($roll -lt 90){$random.Next(5,14)}else{$random.Next(18,36)}
     $candidates=@(Invoke-DemoShuffle @($users | Where-Object key -ne $b.owner) $random)
+    # A visible Sonic entry is an explicit editorial fixture, not a ranking rule.
+    if($b.key -eq 'sonic-speed'){$attention=65}
     for($i=0;$i -lt [Math]::Min($attention,$candidates.Count);$i++){
       $down=if($roll -ge 84 -and $roll -lt 92){.45}else{.12}
+      if($b.key -eq 'sonic-speed'){$down=0}
       $votes+=[pscustomobject]@{key="vote/$($candidates[$i].key)/$($b.key)";user=$candidates[$i].key;build=$b.key;value=if($random.NextDouble() -lt $down){-1}else{1}}
     }
     $cc=if(!$attention){0}elseif($random.NextDouble() -lt .5){0}else{[Math]::Min(4,1+$random.Next([Math]::Max(1,[Math]::Min(4,$attention))))}

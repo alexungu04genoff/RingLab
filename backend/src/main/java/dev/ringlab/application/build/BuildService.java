@@ -15,6 +15,7 @@ import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.application.validation.ProfanityPolicy;
+import dev.ringlab.application.gamedata.MachineCompatibility;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.port.out.VoteRepository;
@@ -109,14 +110,14 @@ public class BuildService {
     requireRacer(d.racerId());
     var front = requirePart(d.frontPartId(), MachinePartType.FRONT);
     var rear = requirePart(d.rearPartId(), MachinePartType.REAR);
-    var family = requireSameFamily(front, rear);
+    var family = MachineCompatibility.requireCompatible(game, front, rear);
     if (family == MachineFamily.BOARD) {
       if (d.tirePartId() != null) {
         throw new ValidationException("Board builds do not use a tire part");
       }
     } else {
       var tire = requirePart(d.tirePartId(), MachinePartType.TIRE);
-      requireSameFamily(front, tire);
+      MachineCompatibility.requireCompatible(game, front, tire);
     }
     if (d.gameVersionId() == null) {
       throw new ValidationException("Select a game version / patch", "gameVersionId");
@@ -140,21 +141,6 @@ public class BuildService {
       throw new ValidationException("Expected " + expectedType + " part, got " + part.type());
     }
     return part;
-  }
-
-  private MachineFamily requireSameFamily(MachinePart first, MachinePart second) {
-    var firstFamily = sourceFamily(first);
-    var secondFamily = sourceFamily(second);
-    if (firstFamily != secondFamily) {
-      throw new ValidationException("All machine parts must belong to the same machine family");
-    }
-    return firstFamily;
-  }
-
-  private MachineFamily sourceFamily(MachinePart part) {
-    return game.findMachine(part.sourceMachineId())
-        .orElseThrow(() -> new ValidationException("Unknown source machine ID"))
-        .family();
   }
 
   private void validateGadgets(List<UUID> gadgetIds) {
