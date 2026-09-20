@@ -156,6 +156,8 @@ it("renders a safe invalid Gadget Plate status with an accessible validation inf
     gadgets: [{ id: "invalid", name: "Invalid", description: null, slotCost: 4, imagePath: null }],
   };
   const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+  expect(details).toContain("INVALID SETUP");
+  expect(details).toContain("Gadgets: invalid cost: Invalid");
   expect(details).toContain('class="gadget-plate-status invalid"');
   expect(details).toContain("invalid cost: Invalid");
   expect(details).toContain('class="gadget-info"');

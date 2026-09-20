@@ -1,4 +1,4 @@
-import type { BuildDraft, Gadget, RacingType, MachinePart, MachinePartType } from "./types";
+import type { Build, BuildDraft, Gadget, RacingType, MachinePart, MachinePartType } from "./types";
 import { requiredMachineSlots } from "./machineComposition";
 
 export function toggleGadget(ids: string[], id: string): string[] {
@@ -74,6 +74,36 @@ export function gadgetPlateStatus(gadgets: Array<Gadget | undefined>): GadgetPla
       ? `Gadget Plate · valid · ${totalCost} / 6 slots`
       : "Gadget Plate · combination does not fit",
   };
+}
+
+export function savedMachineSetupError(
+  build: Pick<Build, "frontPart" | "rearPart" | "tirePart">,
+): string {
+  const machineType = build.frontPart.racingType;
+  if (!machineType) return "Machine-part compatibility cannot be verified.";
+  if (build.frontPart.type !== "FRONT") return "The stored front part has the wrong slot type.";
+  if (build.rearPart.type !== "REAR" || build.rearPart.racingType !== machineType) {
+    return `Rear parts do not match the ${machineType.toLowerCase()} front.`;
+  }
+  if (machineType === "BOOST") {
+    return build.tirePart ? "Boost setups cannot include tires." : "";
+  }
+  if (!build.tirePart) return `${machineType.toLowerCase()} setups require tires.`;
+  if (build.tirePart.type !== "TIRE" || build.tirePart.racingType !== machineType) {
+    return `Tires do not match the ${machineType.toLowerCase()} front.`;
+  }
+  return "";
+}
+
+export function savedBuildSetupIssues(
+  build: Pick<Build, "frontPart" | "rearPart" | "tirePart" | "gadgets">,
+): string[] {
+  const issues: string[] = [];
+  const machineIssue = savedMachineSetupError(build);
+  if (machineIssue) issues.push(machineIssue);
+  const plate = gadgetPlateStatus(build.gadgets);
+  if (!plate.valid) issues.push(plate.summary.replace("Gadget Plate · ", "Gadgets: "));
+  return issues;
 }
 
 function canFitGadget(

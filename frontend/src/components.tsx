@@ -5,6 +5,7 @@ import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
 import { machineTypeLabel } from "./machineComposition";
+import { savedBuildSetupIssues } from "./buildForm";
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
@@ -120,6 +121,7 @@ export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
 export function BuildCard({ build, versions = [] }: { build: Build; versions?: GameVersion[] }) {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
+  const setupIssues = savedBuildSetupIssues(build);
   return (
     <Link
       to={`/builds/${build.id}`}
@@ -152,6 +154,8 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
       <div className="card-body">
         <div className="card-kicker">
           <span className="eyebrow">{build.racer.name}</span>
+          {setupIssues.length > 0 && <span className="invalid-setup-badge"
+            aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
         </div>
         <h2>{build.title}</h2>
         <BuildCardStats build={build} />

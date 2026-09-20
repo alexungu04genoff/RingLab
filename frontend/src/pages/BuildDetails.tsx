@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import { hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
 import { BuildStats } from "../BaseStats";
-import { gadgetPlateStatus } from "../buildForm";
+import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
@@ -76,6 +76,7 @@ function BuildDetailsContent() {
       </>
     );
   const plateStatus = gadgetPlateStatus(b.gadgets);
+  const setupIssues = savedBuildSetupIssues(b);
   const versionAge = patchAge(b.gameVersion, versions.data || []);
   const shareBuild = b;
   const shareVoteSummary = vote ?? shareBuild;
@@ -115,6 +116,10 @@ function BuildDetailsContent() {
               Remixed from <Link to={`/builds/${b.remixedFrom.id}`}>{b.remixedFrom.title}</Link>
             </p>
           )}
+          {setupIssues.length > 0 && <div className="invalid-setup-notice" role="note">
+            <strong>INVALID SETUP</strong>
+            <span>{setupIssues.join(" ")}</span>
+          </div>}
         </div>
         <div className="actions">
           {user ? (

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, machineSetupError, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "./buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, machineSetupError, moveGadget, savedBuildSetupIssues, stockMachineSources, switchMachineType, toggleGadget } from "./buildForm";
 import { machineTypes, requiredMachineSlots } from "./machineComposition";
-import type { BuildDraft, Gadget, MachinePart } from "./types";
+import type { Build, BuildDraft, Gadget, MachinePart } from "./types";
 describe("ordered gadget selection", () => {
   it("preserves selection order when adding and removing gadgets", () => {
     expect(toggleGadget(["b", "a"], "c")).toEqual(["b", "a", "c"]);
@@ -98,6 +98,24 @@ it("rejects duplicate, unknown, missing, and out-of-range gadget data", () => {
     .toBe("Gadget Plate · invalid cost: Invalid");
   expect(gadgetPlateStatus([gadget("a", "One", 1), gadget("b", "Two", 2)]).summary)
     .toBe("Gadget Plate · valid · 3 / 6 slots");
+});
+
+it("identifies invalid saved machine and gadget setups without rejecting their display", () => {
+  const part = (type: MachinePart["type"], racingType: MachinePart["racingType"]): MachinePart => ({
+    id: `${racingType}-${type}`, type, sourceMachineId: `${racingType}-machine`,
+    sourceMachineName: `${racingType} machine`, sourceMachineImagePath: null, racingType,
+  });
+  const build = {
+    frontPart: part("FRONT", "SPEED"), rearPart: part("REAR", "SPEED"),
+    tirePart: part("TIRE", "ACCELERATION"),
+    gadgets: [gadget("a", "First", 3), gadget("b", "Second", 3), gadget("c", "Third", 1)],
+  } as Pick<Build, "frontPart" | "rearPart" | "tirePart" | "gadgets">;
+
+  expect(savedBuildSetupIssues(build)).toEqual([
+    "Tires do not match the speed front.",
+    "Gadgets: combination does not fit",
+  ]);
+  expect(savedBuildSetupIssues({ ...build, tirePart: part("TIRE", "SPEED"), gadgets: [] })).toEqual([]);
 });
 
 it("applies all stock parts while preserving other fields and permits a later individual change", () => {

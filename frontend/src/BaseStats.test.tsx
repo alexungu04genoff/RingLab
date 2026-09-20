@@ -169,6 +169,7 @@ it("shows calculated stats with a compatibility warning on cards and build detai
   render(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   expect(await screen.findByText("17.5")).toBeTruthy();
   expect(screen.getByRole("note").textContent).toContain("Stats are calculated from the selected parts");
+  expect(screen.getByText("INVALID SETUP")).toBeTruthy();
 });
 
 it("reports preview errors and discards stale responses on selection changes", async () => {
