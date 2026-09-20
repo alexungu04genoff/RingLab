@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import { ComponentsIcon } from "./icons";
 import { buildStatsPath, statNames, statPresentation } from "./stats";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
@@ -141,6 +140,9 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
           <span className="upvote-count">↑ {build.upvotes}</span>
           <span className="downvote-count">↓ {build.downvotes}</span>
         </span>
+        <span className={`type-badge machine-type racing-type ${racingTypeClass(build.frontPart.racingType)}`}>
+          {build.frontPart.racingType ?? "UNKNOWN"}
+        </span>
         <span className="card-parts" aria-label="Machine parts">
           <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
           <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
@@ -150,13 +152,6 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
       <div className="card-body">
         <div className="card-kicker">
           <span className="eyebrow">{build.racer.name}</span>
-          <span className="machine-name">
-            <ComponentsIcon />
-            <span>{machineTypeLabel(build.frontPart.racingType)} · {build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
-              (!build.tirePart || build.frontPart.sourceMachineId === build.tirePart.sourceMachineId)
-                ? build.frontPart.sourceMachineName
-                : "Mixed machine"}</span>
-          </span>
         </div>
         <h2>{build.title}</h2>
         <BuildCardStats build={build} />

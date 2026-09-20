@@ -60,7 +60,9 @@ it("disables machine selectors until a type is chosen and keeps gadgets separate
 it.each([false, true])("renders stock or mixed details and compact cards (mixed=%s)", (mixed) => {
   build = mixed ? { ...stock, rearPart: part("REAR", "Speedster Lightning") } : stock;
   const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
-  expect(card).toContain(mixed ? "Mixed machine" : "Dark Reaper");
+  expect(card).not.toContain('class="machine-name"');
+  expect(card).toContain('class="type-badge machine-type racing-type racing-type-speed"');
+  expect(card).toContain(">SPEED</span>");
   expect(card).toContain('aria-label="Front · Speed: Dark Reaper"');
   expect(card).toContain('aria-label="Rear · Speed:');
   expect(card).toContain('aria-label="Tires · Speed: Dark Reaper"');
@@ -96,6 +98,9 @@ it("renders Board setups with two parts and no fake tire", () => {
 
   expect(card).toContain('aria-label="Front · Boost: Board source"');
   expect(card).toContain('aria-label="Rear · Boost: Board source"');
+  expect(card).toContain('class="type-badge machine-type racing-type racing-type-boost"');
+  expect(card).toContain(">BOOST</span>");
+  expect(card).not.toContain("Extreme Gear");
   expect(card).not.toContain('aria-label="Tires:');
   expect(details).toContain("Boost · Extreme Gear parts by source machine");
   expect(details).not.toContain("Boards use front and rear parts only; they do not use tires.");
