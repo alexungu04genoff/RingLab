@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import { buildStatsPath, statNames, statPresentation } from "./stats";
+import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "./stats";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
 import { useLoad } from "./useLoad";
 import { machineTypeLabel } from "./machineComposition";
@@ -186,7 +186,8 @@ function BuildCardStats({ build }: { build: Build }) {
   if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
   if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
   if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
-  return <dl className="card-stats" aria-label="Base stats">
+  const warning = buildStatsWarning(build);
+  return <><dl className="card-stats" aria-label="Base stats">
     {statNames.map((name) => {
       const { value, hasBreakdown, label, width, characterWidth, machineWidth }
         = statPresentation(name, result.data, result.data);
@@ -200,7 +201,7 @@ function BuildCardStats({ build }: { build: Build }) {
         </span>
       </div>;
     })}
-  </dl>;
+  </dl>{warning && <p className="card-stats-warning" role="note">⚠ {warning}</p>}</>;
 }
 export function isStockSetup(build: Pick<Build, "frontPart" | "rearPart" | "tirePart">) {
   return build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&

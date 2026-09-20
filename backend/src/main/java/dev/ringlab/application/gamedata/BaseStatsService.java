@@ -5,7 +5,6 @@ import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.gamedata.BaseStats;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.MachineComposition;
-import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.port.out.BaseStatsRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -49,10 +48,9 @@ public class BaseStatsService {
   public BuildStats buildBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
     if (version != null) requireVersion(version);
     if (racer != null && game.findRacer(racer).isEmpty()) throw NotFoundException.missing("Racer");
-    var frontPart = requirePart(front, MachinePartType.FRONT);
-    var rearPart = requirePart(rear, MachinePartType.REAR);
-    var tirePart = requirePart(tire, MachinePartType.TIRE);
-    var machineType = MachineCompatibility.requireCompatible(game, frontPart, rearPart, tirePart);
+    requirePart(front, MachinePartType.FRONT);
+    requirePart(rear, MachinePartType.REAR);
+    requirePart(tire, MachinePartType.TIRE);
     if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
@@ -60,7 +58,7 @@ public class BaseStatsService {
     var contributions = new java.util.ArrayList<BaseStats>();
     contributions.add(value(parts, front));
     contributions.add(value(parts, rear));
-    if (machineType == null || MachineComposition.requiredSlots(machineType).contains(MachinePartType.TIRE)) contributions.add(value(parts, tire));
+    if (tire != null) contributions.add(value(parts, tire));
     var machine = BaseStats.sum(contributions);
     return new BuildStats(BaseStats.sum(List.of(character, machine)), character, machine);
   }
@@ -74,11 +72,10 @@ public class BaseStatsService {
     if (game.findGameVersion(version).isEmpty()) throw NotFoundException.missing("Game version");
   }
 
-  private MachinePart requirePart(UUID id, MachinePartType type) {
-    if (id == null) return null;
+  private void requirePart(UUID id, MachinePartType type) {
+    if (id == null) return;
     var part = game.findMachinePart(id).orElseThrow(() -> NotFoundException.missing("Machine part"));
     if (part.type() != type) throw new ValidationException("Incorrect machine part type");
-    return part;
   }
 
 }

@@ -74,7 +74,7 @@ class BaseStatsServiceTest {
   }
 
   @Test
-  void boardStatsSumFrontAndRearWithoutInventingATireContribution() {
+  void boardStatsSumSelectedPartsWithoutInventingATireContribution() {
     catalog.machineType = RacingType.BOOST;
     catalog.catalogParts.removeIf(part -> part.type() == MachinePartType.TIRE);
     racers.put(racer, ones());
@@ -87,8 +87,9 @@ class BaseStatsServiceTest {
     assertEquals(new BigDecimal("3"), breakdown.total().speed());
     assertEquals(new BigDecimal("2"), service.catalog(version).machines().get(machine).speed());
     catalog.catalogParts.add(new MachinePart(tire, machine, MachinePartType.TIRE));
-    assertThrows(ValidationException.class,
-        () -> service.buildBreakdown(version, racer, front, rear, tire));
+    parts.put(tire, ones());
+    assertEquals(new BigDecimal("3"),
+        service.buildBreakdown(version, racer, front, rear, tire).machine().speed());
   }
 
   private class Catalog implements GameDataRepository {
@@ -115,15 +116,18 @@ class BaseStatsServiceTest {
   }
 
   @Test
-  void partialDraftsRejectKnownTypeConflictsEvenWithoutAPatch() {
+  void statsRemainAvailableForLegacyTypeConflicts() {
     UUID other = UUID.randomUUID();
     catalog.extraMachines.add(new Machine(other, "Giganto Liner", RacingType.ACCELERATION, null));
     UUID otherRear = UUID.randomUUID();
     catalog.catalogParts.add(new MachinePart(otherRear, other, MachinePartType.REAR));
-    assertThrows(ValidationException.class, () -> service.build(version, racer, front, otherRear, null));
-    assertThrows(ValidationException.class, () -> service.build(null, racer, front, otherRear, null));
+    racers.put(racer, ones());
+    parts.put(front, ones());
+    parts.put(otherRear, ones());
+    assertEquals(new BigDecimal("3"), service.build(version, racer, front, otherRear, null).speed());
+    assertEquals(BaseStats.UNKNOWN, service.build(null, racer, front, otherRear, null));
     assertEquals(BaseStats.UNKNOWN, service.build(version, racer, null, otherRear, null));
     catalog.machineType = null;
-    assertThrows(ValidationException.class, () -> service.build(version, racer, front, null, null));
+    assertEquals(BaseStats.UNKNOWN, service.build(version, racer, front, null, null));
   }
 }

@@ -1,9 +1,19 @@
-import type { BaseStats, BuildDraft } from "./types";
+import type { BaseStats, Build, BuildDraft } from "./types";
 
 export const statNames = ["speed", "acceleration", "handling", "power", "boost"] as const;
 export type StatName = typeof statNames[number];
 
 export type StatsBreakdown = { character: BaseStats; machine: BaseStats };
+
+export function buildStatsWarning(build: Pick<Build, "frontPart" | "rearPart" | "tirePart">) {
+  const machineType = build.frontPart.racingType;
+  const incompatible = machineType == null || build.rearPart.racingType !== machineType ||
+    (build.tirePart != null && build.tirePart.racingType !== machineType) ||
+    (machineType === "BOOST" ? build.tirePart != null : build.tirePart == null);
+  return incompatible
+    ? "This machine setup is not compatible. Stats are calculated from the selected parts and may not reflect a valid in-game setup."
+    : null;
+}
 
 export function statPresentation(name: StatName, stats?: BaseStats, breakdown?: StatsBreakdown) {
   const value = stats?.[name];

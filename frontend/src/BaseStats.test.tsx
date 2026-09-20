@@ -145,6 +145,32 @@ it("shows compact version-aware stat bars on build cards", async () => {
   );
 });
 
+it("shows calculated stats with a compatibility warning on cards and build details", async () => {
+  const fetch = vi.fn().mockImplementation(() =>
+    Promise.resolve(new Response(JSON.stringify(breakdown))));
+  vi.stubGlobal("fetch", fetch);
+  const machinePart = (type: MachinePart["type"], racingType: MachinePart["racingType"]): MachinePart => ({
+    id: type, type, sourceMachineId: `${racingType}-machine`, sourceMachineName: "Machine",
+    sourceMachineImagePath: null, racingType,
+  });
+  const build = { id: "legacy-build", title: "Mixed build", description: "",
+    author: { id: "u", username: "driver" },
+    racer: { id: "r", name: "Shadow", racingType: "SPEED", imagePath: null },
+    frontPart: machinePart("FRONT", "SPEED"), rearPart: machinePart("REAR", "SPEED"),
+    tirePart: machinePart("TIRE", "ACCELERATION"), gameVersion: version, remixedFrom: null,
+    gadgets: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
+    score: 0, upvotes: 0, downvotes: 0 } satisfies Build;
+
+  const detail = render(<BuildStats build={build} />);
+  expect(await screen.findByRole("progressbar", { name: "Speed: 17.5" })).toBeTruthy();
+  expect(screen.getByRole("note").textContent).toContain("Stats are calculated from the selected parts");
+  detail.unmount();
+
+  render(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
+  expect(await screen.findByText("17.5")).toBeTruthy();
+  expect(screen.getByRole("note").textContent).toContain("Stats are calculated from the selected parts");
+});
+
 it("reports preview errors and discards stale responses on selection changes", async () => {
   let resolveOld!: (value: Response) => void;
   const fetch = vi.fn().mockImplementation((url: string) => {

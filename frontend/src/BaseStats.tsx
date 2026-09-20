@@ -1,7 +1,7 @@
 import type { BaseStats, Build, BuildDraft, BuildStatsResult, GameVersion } from "./types";
 import { useLoad } from "./useLoad";
 import { ErrorNotice } from "./components";
-import { buildStatsPath, statNames, statPresentation } from "./stats";
+import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "./stats";
 import type { StatsBreakdown } from "./stats";
 
 export { buildStatsPath } from "./stats";
@@ -10,9 +10,9 @@ const statMaximum = 100;
 type StatsDraft = Pick<BuildDraft,
   "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineType">;
 export function StatsBlock({ stats, version, title = "Base stats", breakdown,
-  missingVersionMessage = "Select a game version to see stats." }: {
+  missingVersionMessage = "Select a game version to see stats.", warning }: {
   stats?: BaseStats; version: string | null; title?: string; breakdown?: StatsBreakdown;
-  missingVersionMessage?: string;
+  missingVersionMessage?: string; warning?: string | null;
 }) {
   const known = statNames.filter((name) => stats?.[name] != null).length;
   return <section className="base-stats" aria-label={title}>
@@ -20,6 +20,7 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
     {!version ? <p>{missingVersionMessage}</p> : <>
       <p className="muted">{known === 0 ? `Stats unavailable for Ver. ${version}`
         : `Ver. ${version}${known < 5 ? " · Partial stats" : ""}`}</p>
+      {warning && <p className="stats-compatibility-warning" role="note">{warning}</p>}
       {breakdown && known > 0 && <div className="stat-legend" aria-label="Stat bar breakdown">
         <span><i className="character-swatch" />Character</span>
         <span><i className="machine-swatch" />Machine</span>
@@ -52,20 +53,24 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   </section>;
 }
 
-function StatsRequest({ path, version }: { path: string; version: string | null }) {
+function StatsRequest({ path, version, warning }: {
+  path: string; version: string | null; warning?: string | null;
+}) {
   const result = useLoad<BuildStatsResult>(path);
   return <div className="base-stats-request">
     {path && result.loading ? <p role="status">Loading base stats…</p>
       : result.error ? <ErrorNotice message={`Could not load base stats: ${result.error}`} />
-        : <StatsBlock stats={result.data} version={version} breakdown={result.data} />}
+        : <StatsBlock stats={result.data} version={version} breakdown={result.data} warning={warning} />}
     <p className="muted">Base stats only. Gadget effects are not included.</p>
   </div>;
 }
 
-export function DraftStats({ draft, version }: { draft: StatsDraft; version: GameVersion | null }) {
+export function DraftStats({ draft, version, warning }: {
+  draft: StatsDraft; version: GameVersion | null; warning?: string | null;
+}) {
   const path = buildStatsPath(draft);
   // Remount on selection changes so an earlier response cannot flash as the new setup's stats.
-  return <StatsRequest key={path} path={path} version={version?.version ?? null} />;
+  return <StatsRequest key={path} path={path} version={version?.version ?? null} warning={warning} />;
 }
 
 export function BuildStats({ build }: { build: Build }) {
@@ -75,5 +80,6 @@ export function BuildStats({ build }: { build: Build }) {
   return <DraftStats draft={{ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
     rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null,
-    machineType: build.frontPart.racingType }} version={build.gameVersion} />;
+    machineType: build.frontPart.racingType }} version={build.gameVersion}
+    warning={buildStatsWarning(build)} />;
 }
