@@ -125,7 +125,7 @@ public abstract class ApiContract {
   }
 
   @Test
-  void catalogBackedCompositionKeepsMikuIndependentAndRejectsGigantoRear() {
+  void catalogBackedCompositionRejectsInvalidBuildsButCalculatesLegacyStats() {
     var author = register();
     List<Map<String, Object>> machines = given().get("/api/machines").as(List.class);
     String power = (String) machines.stream().filter(m -> "Goromaru".equals(m.get("name"))).findFirst().orElseThrow().get("id");
@@ -144,7 +144,8 @@ public abstract class ApiContract {
     given().queryParam("gameVersionId", body.get("gameVersionId"))
         .queryParam("frontPartId", body.get("frontPartId"))
         .queryParam("rearPartId", body.get("rearPartId"))
-        .get("/api/stats/build").then().statusCode(400);
+        .get("/api/stats/build").then().statusCode(200)
+        .body("machine.speed", notNullValue());
   }
 
   @Test
