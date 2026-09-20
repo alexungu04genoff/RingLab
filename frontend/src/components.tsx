@@ -138,7 +138,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
         <span className="card-parts" aria-label="Machine parts">
           <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
           <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
-          <BuildPartIcon part={build.tirePart} label="Tires" abbreviation="T" />
+          {build.tirePart && <BuildPartIcon part={build.tirePart} label="Tires" abbreviation="T" />}
         </span>
       </div>
       <div className="card-body">
@@ -146,8 +146,8 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
           <span className="eyebrow">{build.racer.name}</span>
           <span className="machine-name">
             <ComponentsIcon />
-            <span>{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
-              build.frontPart.sourceMachineId === build.tirePart.sourceMachineId
+            <span>{build.frontPart.sourceMachineFamily === "BOARD" ? "Board · " : ""}{build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
+              (!build.tirePart || build.frontPart.sourceMachineId === build.tirePart.sourceMachineId)
                 ? build.frontPart.sourceMachineName
                 : "Mixed machine"}</span>
           </span>
@@ -180,7 +180,7 @@ export function BuildCard({ build, versions = [] }: { build: Build; versions?: G
 function BuildCardStats({ build }: { build: Build }) {
   const path = buildStatsPath({ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
-    rearPartId: build.rearPart.id, tirePartId: build.tirePart.id });
+    rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null });
   const result = useLoad<BuildStatsResult>(path);
   if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
   if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
@@ -209,7 +209,7 @@ function BuildCardStats({ build }: { build: Build }) {
 }
 export function isStockSetup(build: Pick<Build, "frontPart" | "rearPart" | "tirePart">) {
   return build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
-    build.frontPart.sourceMachineId === build.tirePart.sourceMachineId;
+    (!build.tirePart || build.frontPart.sourceMachineId === build.tirePart.sourceMachineId);
 }
 
 export function MachineSetup({ build, compact = false, differences }: {
@@ -218,19 +218,24 @@ export function MachineSetup({ build, compact = false, differences }: {
   differences?: Partial<Record<MachinePart["type"], boolean>>;
 }) {
   const stockSetup = isStockSetup(build);
+  const family = build.frontPart.sourceMachineFamily;
+  const setupParts: Array<[string, MachinePart]> = [
+    ["FRONT", build.frontPart], ["REAR", build.rearPart],
+    ...(build.tirePart ? [["TIRES", build.tirePart] as [string, MachinePart]] : []),
+  ];
   return (
     <div className={`machine-setup ${compact ? "compact-machine-setup" : ""}`}>
       <div className="machine-setup-heading">
         <div>
           <div className="eyebrow">MACHINE SETUP</div>
-          <h2>Parts by source machine</h2>
+          <h2>{family === "BOARD" ? "Board parts by source machine" : "Parts by source machine"}</h2>
         </div>
         <span className={`setup-indicator ${stockSetup ? "stock-setup" : "mixed-setup"}`}>
           {stockSetup ? "Stock setup" : "Mixed setup"}
         </span>
       </div>
       <div className="machine-setup-grid">
-        {([ ["FRONT", build.frontPart], ["REAR", build.rearPart], ["TIRES", build.tirePart] ] as const)
+        {setupParts
           .map(([label, part]) => (
             <article className={`machine-part-card ${differences?.[part.type] ? "different" : ""}`}
               data-difference={differences?.[part.type] ? `${label} part` : undefined} key={label}>
@@ -248,6 +253,7 @@ export function MachineSetup({ build, compact = false, differences }: {
             </article>
           ))}
       </div>
+      {family === "BOARD" && <p className="muted board-note">Boards use front and rear parts only; they do not use tires.</p>}
     </div>
   );
 }

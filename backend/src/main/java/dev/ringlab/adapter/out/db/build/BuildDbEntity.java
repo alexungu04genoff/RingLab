@@ -27,7 +27,7 @@ public class BuildDbEntity {
   @Column(name = "rear_part_id", nullable = false)
   public UUID rearPartId;
 
-  @Column(name = "tire_part_id", nullable = false)
+  @Column(name = "tire_part_id")
   public UUID tirePartId;
 
   @Column(name = "game_version_id")

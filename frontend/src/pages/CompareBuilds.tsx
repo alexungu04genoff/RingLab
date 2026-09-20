@@ -20,7 +20,8 @@ export function buildDiff(left: Build, right: Build) {
     patch: left.gameVersion?.id !== right.gameVersion?.id,
     front: left.frontPart.id !== right.frontPart.id,
     rear: left.rearPart.id !== right.rearPart.id,
-    tires: left.tirePart.id !== right.tirePart.id,
+    family: left.frontPart.sourceMachineFamily !== right.frontPart.sourceMachineFamily,
+    tires: left.tirePart?.id !== right.tirePart?.id,
     composition: isStockSetup(left) !== isStockSetup(right),
     plate: gadgetPlateStatus(left.gadgets).totalCost !== gadgetPlateStatus(right.gadgets).totalCost,
     gadgetAt: (index: number) => left.gadgets[index]?.id !== right.gadgets[index]?.id,
@@ -138,7 +139,7 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
       </DiffValue>
       <DiffValue different={diff.patch} label="Patch"><span className="eyebrow">GAME VERSION / PATCH</span>
         <strong>{build.gameVersion ? `Ver. ${build.gameVersion.version}` : "Unspecified"}</strong></DiffValue>
-      <DiffValue different={diff.composition} label="Machine composition"><MachineSetup build={build} compact
+      <DiffValue different={diff.composition || diff.family} label="Machine composition"><MachineSetup build={build} compact
         differences={{ FRONT: diff.front, REAR: diff.rear, TIRE: diff.tires }} /></DiffValue>
       <section className="panel">
         <BuildStats build={build} />

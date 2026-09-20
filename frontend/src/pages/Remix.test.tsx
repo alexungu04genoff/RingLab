@@ -13,7 +13,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type.toLowerCase(), type, sourceMachineId: "machine", sourceMachineName: "Speedster",
-  sourceMachineImagePath: null, racingType: "SPEED",
+  sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
 });
 const source: Build = {
   id: "source", title: "Original route", description: "Keep this setup note",
@@ -44,11 +44,21 @@ it("copies only editable configuration and preserves gadget order", () => {
     title: "Remix of Original route",
     description: "Keep this setup note",
     racerId: "racer", frontPartId: "front", rearPartId: "rear", tirePartId: "tire",
+    machineFamily: "STANDARD",
     gameVersionId: "version", remixedFromBuildId: "source", gadgetIds: ["second", "first"],
   });
   expect(draftFromRemix(source)).not.toHaveProperty("author");
   expect(draftFromRemix(source)).not.toHaveProperty("score");
   expect(draftFromRemix(source)).not.toHaveProperty("comments");
+});
+
+it("preserves a Board family and its absent tire when remixing", () => {
+  const boardPart = (type: "FRONT" | "REAR"): MachinePart => ({
+    ...part(type), sourceMachineFamily: "BOARD",
+  });
+  const board = { ...source, frontPart: boardPart("FRONT"), rearPart: boardPart("REAR"), tirePart: null };
+
+  expect(draftFromRemix(board)).toMatchObject({ machineFamily: "BOARD", tirePartId: null });
 });
 
 it("offers authenticated remix action and links provenance to its source", () => {

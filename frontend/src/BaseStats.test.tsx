@@ -10,7 +10,7 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const complete: BaseStats = { speed: 17.5, acceleration: 0, handling: 12, power: 9, boost: 8 };
 const calculated: BaseStats = { ...complete, acceleration: 5 };
 const draft: BuildDraft = { title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
-  tirePartId: "t", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
+  tirePartId: "t", machineFamily: "STANDARD", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
 const version = { id: "v", version: "1.3.1", releasedAt: "2026-03-18" };
 const catalog: StatsCatalog = { gameVersionId: "v",
   racers: { r: { speed: 5, acceleration: 2, handling: 3, power: 1, boost: 2 } },
@@ -45,6 +45,15 @@ it("shows character and machine contributions separately from the total", () => 
   expect(screen.getByRole("progressbar", { name: "Speed: 17.5" }).querySelectorAll(".stat-fill")).toHaveLength(2);
 });
 
+it("calculates Board stats from front and rear without requiring a tire", () => {
+  const boardDraft = { ...draft, machineFamily: "BOARD" as const, tirePartId: null };
+  const breakdown = calculateStatsBreakdown(boardDraft, catalog);
+
+  expect(breakdown?.machine.speed).toBe(8);
+  expect(buildStatsPath(boardDraft)).toBe(
+    "/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b");
+});
+
 it("renders a missing historical record as unavailable", () => {
   render(<StatsBlock version="1.3.1" />);
   expect(screen.getByText("Stats unavailable for Ver. 1.3.1")).toBeTruthy();
@@ -62,7 +71,8 @@ it("requires an explicit version and does not make a preview request without one
 
 it("explains missing versions on saved builds without suggesting a nonexistent selector", () => {
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
-    sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" });
+    sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
+    racingType: "SPEED", sourceMachineFamily: "STANDARD" });
   const build = { racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),
     gameVersion: null } as Build;
@@ -83,7 +93,7 @@ it("requests backend totals for the selected components and excludes gadgets", a
   expect(fetch.mock.calls.some(([url]) => url === "/api/stats/catalog?gameVersionId=v")).toBe(true);
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
   expect(screen.getByText(/Gadget effects are not included/)).toBeTruthy();
-  expect(buildStatsPath({ ...draft, tirePartId: "" })).not.toContain("tirePartId");
+  expect(buildStatsPath({ ...draft, tirePartId: null })).not.toContain("tirePartId");
 });
 
 it("shows compact version-aware stat bars on build cards", async () => {
@@ -94,7 +104,8 @@ it("shows compact version-aware stat bars on build cards", async () => {
   })));
   vi.stubGlobal("fetch", fetch);
   const machinePart = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
-    sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" });
+    sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
+    racingType: "SPEED", sourceMachineFamily: "STANDARD" });
   const build = { id: "build", title: "Fast build", description: "", author: { id: "u", username: "driver" },
     racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),

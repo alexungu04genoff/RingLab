@@ -6,6 +6,7 @@ import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachineFamily;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.Racer;
@@ -17,7 +18,7 @@ class GameDataResponseTest {
   @Test
   void unverifiedTypesRemainNullWithoutPreventingCatalogResponses() {
     var racer = new Racer(UUID.randomUUID(), "Sample Racer", null, "/assets/racers/sample-racer.png");
-    var machine = new Machine(UUID.randomUUID(), "Sample Machine", null, null);
+    var machine = new Machine(UUID.randomUUID(), "Sample Machine", null, null, MachineFamily.STANDARD);
     var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.FRONT);
 
     var racerResponse = RacerResponse.from(racer);
@@ -38,7 +39,7 @@ class GameDataResponseTest {
   void verifiedTypesKeepTheirExistingTransportValues() {
     for (var type : RacingType.values()) {
       var racer = new Racer(UUID.randomUUID(), "Racer", type, null);
-      var machine = new Machine(UUID.randomUUID(), "Machine", type, null);
+      var machine = new Machine(UUID.randomUUID(), "Machine", type, null, MachineFamily.STANDARD);
       var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.TIRE);
 
       assertEquals(type.name(), RacerResponse.from(racer).racingType());
@@ -50,9 +51,11 @@ class GameDataResponseTest {
   @Test
   void machinePartIncludesSourceMachineArtwork() {
     var machine = new Machine(
-        UUID.randomUUID(), "Dark Reaper", RacingType.SPEED, "/assets/machines/dark-reaper.png");
+        UUID.randomUUID(), "Dark Reaper", RacingType.SPEED, "/assets/machines/dark-reaper.png",
+        MachineFamily.STANDARD);
     var part = new MachinePart(UUID.randomUUID(), machine.id(), MachinePartType.REAR);
 
     assertEquals(machine.imagePath(), MachinePartResponse.from(part, machine).sourceMachineImagePath());
+    assertEquals(MachineFamily.STANDARD, MachinePartResponse.from(part, machine).sourceMachineFamily());
   }
 }

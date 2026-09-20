@@ -7,6 +7,8 @@ import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.MachineFamily;
+import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.application.ForbiddenException;
@@ -105,9 +107,17 @@ public class BuildService {
     profanity.requireClean(d.title(), "title");
     profanity.requireClean(d.description(), "description");
     requireRacer(d.racerId());
-    requirePart(d.frontPartId(), MachinePartType.FRONT);
-    requirePart(d.rearPartId(), MachinePartType.REAR);
-    requirePart(d.tirePartId(), MachinePartType.TIRE);
+    var front = requirePart(d.frontPartId(), MachinePartType.FRONT);
+    var rear = requirePart(d.rearPartId(), MachinePartType.REAR);
+    var family = requireSameFamily(front, rear);
+    if (family == MachineFamily.BOARD) {
+      if (d.tirePartId() != null) {
+        throw new ValidationException("Board builds do not use a tire part");
+      }
+    } else {
+      var tire = requirePart(d.tirePartId(), MachinePartType.TIRE);
+      requireSameFamily(front, tire);
+    }
     if (d.gameVersionId() == null) {
       throw new ValidationException("Select a game version / patch", "gameVersionId");
     }
@@ -122,13 +132,29 @@ public class BuildService {
     if (game.findRacer(id).isEmpty()) throw new ValidationException("Unknown racer ID");
   }
 
-  private void requirePart(UUID id, MachinePartType expectedType) {
+  private MachinePart requirePart(UUID id, MachinePartType expectedType) {
     if (id == null) throw new ValidationException("Missing " + expectedType + " part ID");
     var part = game.findMachinePart(id)
         .orElseThrow(() -> new ValidationException("Unknown " + expectedType + " part ID"));
     if (part.type() != expectedType) {
       throw new ValidationException("Expected " + expectedType + " part, got " + part.type());
     }
+    return part;
+  }
+
+  private MachineFamily requireSameFamily(MachinePart first, MachinePart second) {
+    var firstFamily = sourceFamily(first);
+    var secondFamily = sourceFamily(second);
+    if (firstFamily != secondFamily) {
+      throw new ValidationException("All machine parts must belong to the same machine family");
+    }
+    return firstFamily;
+  }
+
+  private MachineFamily sourceFamily(MachinePart part) {
+    return game.findMachine(part.sourceMachineId())
+        .orElseThrow(() -> new ValidationException("Unknown source machine ID"))
+        .family();
   }
 
   private void validateGadgets(List<UUID> gadgetIds) {

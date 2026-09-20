@@ -76,6 +76,7 @@ public abstract class ApiContract {
             "frontPartId", partId(ids("machines").getLast(), "FRONT"),
             "rearPartId", partId(ids("machines").getLast(), "REAR"),
             "tirePartId", partId(ids("machines").getLast(), "TIRE"),
+            "gameVersionId", ids("game-versions").getFirst(),
             "gadgetIds",
             List.of(gadgets.get(3), gadgets.get(1))));
   }
@@ -206,11 +207,14 @@ public abstract class ApiContract {
         allOf(
             hasEntry("name", "Dark Reaper"),
             hasEntry("racingType", "SPEED"),
+            hasEntry("family", "STANDARD"),
             not(hasKey("description")),
             not(hasKey("slotCost"))));
     assertThat(
         gadget, allOf(hasKey("description"), hasKey("slotCost"), not(hasKey("racingType"))));
-    assertThat(machinePart, hasEntry("sourceMachineImagePath", "/assets/machines/dark-reaper.png"));
+    assertThat(machinePart, allOf(
+        hasEntry("sourceMachineImagePath", "/assets/machines/dark-reaper.png"),
+        hasEntry("sourceMachineFamily", "STANDARD")));
     request(null).body(draft()).post("/api/builds").then().statusCode(401);
   }
 

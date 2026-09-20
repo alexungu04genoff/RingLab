@@ -2,6 +2,7 @@ package dev.ringlab.adapter.out.db.gamedata;
 
 import jakarta.persistence.*;
 import dev.ringlab.domain.gamedata.RacingType;
+import dev.ringlab.domain.gamedata.MachineFamily;
 import java.util.UUID;
 
 @Entity
@@ -18,4 +19,8 @@ public class MachineDbEntity {
 
   @Column(name = "image_path")
   public String imagePath;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 20)
+  public MachineFamily family;
 }

@@ -20,7 +20,6 @@ public record Build(
   public Build {
     Objects.requireNonNull(frontPartId);
     Objects.requireNonNull(rearPartId);
-    Objects.requireNonNull(tirePartId);
     gadgetIds = List.copyOf(gadgetIds);
   }
 }

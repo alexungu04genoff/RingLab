@@ -13,7 +13,7 @@ public record BuildRequest(
     @NotNull UUID racerId,
     @NotNull UUID frontPartId,
     @NotNull UUID rearPartId,
-    @NotNull UUID tirePartId,
+    UUID tirePartId,
     UUID gameVersionId,
     UUID remixedFromBuildId,
     @NotNull List<@NotNull UUID> gadgetIds) {

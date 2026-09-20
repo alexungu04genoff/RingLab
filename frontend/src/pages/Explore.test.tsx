@@ -144,7 +144,7 @@ it("builds active chips from URL filters and represents a non-default sort", () 
   const chips = activeExploreFilterChips(
     new URLSearchParams("search=sonic&racerId=r1&machineId=m1&gameVersionId=v1&sort=score"),
     [{ id: "r1", name: "Amy Rose", racingType: "SPEED", imagePath: null }],
-    [{ id: "m1", name: "Dark Reaper", racingType: "SPEED", imagePath: null }],
+    [{ id: "m1", name: "Dark Reaper", racingType: "SPEED", imagePath: null, family: "STANDARD" }],
     [{ id: "v1", version: "1.4.1", releasedAt: "2026-06-23" }],
     false,
   );

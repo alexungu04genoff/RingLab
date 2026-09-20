@@ -1,4 +1,4 @@
-import type { BuildDraft, Gadget, MachinePart, MachinePartType } from "./types";
+import type { BuildDraft, Gadget, MachineFamily, MachinePart, MachinePartType } from "./types";
 
 export function toggleGadget(ids: string[], id: string): string[] {
   return ids.includes(id) ? ids.filter((value) => value !== id) : [...ids, id];
@@ -93,7 +93,11 @@ export function stockMachineSources(parts: MachinePart[]): MachinePart[] {
   const bySource = new Map<string, MachinePart[]>();
   parts.forEach((part) => bySource.set(part.sourceMachineId, [...(bySource.get(part.sourceMachineId) ?? []), part]));
   return [...bySource.values()]
-    .filter((sourceParts) => new Set(sourceParts.map((part) => part.type)).size === 3)
+    .filter((sourceParts) => {
+      const types = new Set(sourceParts.map((part) => part.type));
+      return types.has("FRONT") && types.has("REAR")
+        && (sourceParts[0].sourceMachineFamily === "BOARD" || types.has("TIRE"));
+    })
     .map((sourceParts) => sourceParts[0])
     .sort((a, b) => a.sourceMachineName.localeCompare(b.sourceMachineName));
 }
@@ -104,9 +108,15 @@ export function applyStockMachine(draft: BuildDraft, parts: MachinePart[], sourc
   const frontPartId = partId("FRONT");
   const rearPartId = partId("REAR");
   const tirePartId = partId("TIRE");
-  return frontPartId && rearPartId && tirePartId
-    ? { ...draft, frontPartId, rearPartId, tirePartId }
+  const family = parts.find((part) => part.sourceMachineId === sourceMachineId)?.sourceMachineFamily;
+  return frontPartId && rearPartId && family && (family === "BOARD" || tirePartId)
+    ? { ...draft, machineFamily: family, frontPartId, rearPartId,
+      tirePartId: family === "BOARD" ? null : tirePartId! }
     : draft;
+}
+
+export function switchMachineFamily(draft: BuildDraft, family: MachineFamily): BuildDraft {
+  return { ...draft, machineFamily: family, frontPartId: "", rearPartId: "", tirePartId: null };
 }
 export function moveGadget(
   ids: string[],

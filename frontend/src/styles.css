@@ -945,6 +945,9 @@ footer {
 .editor-main label + label {
   margin-top: 20px;
 }
+.editor-main label + div + label {
+  margin-top: 20px;
+}
 .step {
   font-size: 12px;
   color: var(--accent);
@@ -2322,15 +2325,17 @@ hr {
   background: transparent;
 }
 .typed-option { color: var(--racing-type-color, var(--text)); }
-.preview-parts { padding: 10px; }
+.preview-item:has(.preview-parts) { display: flex; flex-direction: column; }
+.preview-parts { display: flex; flex: 1; flex-direction: column; justify-content: center; padding: 10px; }
 .preview-parts > div { display: grid; grid-template-columns: 38px 52px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 0; }
 .preview-parts > div > span { color: var(--muted); font-size: 9px; font-weight: 800; text-transform: uppercase; }
 .preview-parts .artwork { width: 52px; height: 42px; margin: 0; }
+.preview-parts .artwork img { object-fit: contain; object-position: center; }
 .preview-parts strong { padding: 0; font-size: 11px; }
 .gadget-search { margin-bottom: 14px; }
-.gadget-option { align-items: flex-start; gap: 12px; }
-.gadget-option input { align-self: center; }
+.gadget-option { align-items: center; gap: 12px; }
 .gadget-option .artwork { width: 64px; height: 64px; flex: 0 0 64px; }
+.gadget-option .artwork img { object-fit: contain; object-position: center; }
 .gadget-option-copy { min-width: 0; display: grid; gap: 3px; line-height: 1.35; }
 .gadget-option-copy small { color: var(--accent); }
 .gadget-option-copy > span { color: var(--muted); font-size: 11px; }
@@ -2601,3 +2606,33 @@ nav,
 .hero-machine-setup .setup-indicator,
 .hero-machine-setup .machine-part-slot { font-size: 10px; }
 .hero-machine-setup .machine-part-card .part-type { font-size: 10px; }
+.machine-family-choice {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+
+.machine-family-choice legend {
+  margin-bottom: 0.5rem;
+  font-weight: 700;
+}
+
+.machine-family-choice label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0;
+}
+
+.machine-family-choice input {
+  width: auto;
+  margin: 0;
+}
+
+.board-note {
+  margin: 0.75rem 0 0;
+}

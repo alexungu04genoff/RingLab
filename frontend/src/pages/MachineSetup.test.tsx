@@ -14,6 +14,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
 const part = (type: MachinePart["type"], source = "Dark Reaper"): MachinePart => ({
   id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,
   sourceMachineImagePath: `/assets/machines/${source.toLowerCase().replaceAll(" ", "-")}.png`, racingType: "SPEED",
+  sourceMachineFamily: "STANDARD",
 });
 const stock: Build = {
   id: "build", title: "My setup", description: "", author: { id: "author", username: "driver" },
@@ -85,6 +86,23 @@ it.each([false, true])("renders stock or mixed details and compact cards (mixed=
   expect(details).toContain("Valid · 1 / 6 slots");
   expect(details).toContain("Gadgets <span class=\"muted\">· 1</span>");
   expect(details).toContain('aria-live="polite">39</strong>');
+});
+
+it("renders Board setups with two parts and no fake tire", () => {
+  const boardPart = (type: "FRONT" | "REAR"): MachinePart => ({
+    ...part(type, "Board source"), sourceMachineFamily: "BOARD",
+  });
+  build = { ...stock, frontPart: boardPart("FRONT"), rearPart: boardPart("REAR"), tirePart: null };
+
+  const card = renderToStaticMarkup(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
+  const details = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);
+
+  expect(card).toContain('aria-label="Front: Board source"');
+  expect(card).toContain('aria-label="Rear: Board source"');
+  expect(card).not.toContain('aria-label="Tires:');
+  expect(details).toContain("Board parts by source machine");
+  expect(details).toContain("Boards use front and rear parts only; they do not use tires.");
+  expect(details).not.toContain(">TIRES<");
 });
 
 it("requires a version selector with an explicit missing-patch warning", () => {

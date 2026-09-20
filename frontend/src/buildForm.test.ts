@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, toggleGadget } from "./buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, switchMachineFamily, toggleGadget } from "./buildForm";
 import type { BuildDraft, Gadget, MachinePart } from "./types";
 describe("ordered gadget selection", () => {
   it("preserves selection order when adding and removing gadgets", () => {
@@ -74,12 +74,30 @@ it("rejects duplicate, unknown, missing, and out-of-range gadget data", () => {
 it("applies all stock parts while preserving other fields and permits a later individual change", () => {
   const parts: MachinePart[] = (["FRONT", "REAR", "TIRE"] as const).map((type) => ({
     id: `stock-${type}`, type, sourceMachineId: "stock", sourceMachineName: "Stock",
-    sourceMachineImagePath: null, racingType: "SPEED",
+    sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
   }));
   const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "racer",
     frontPartId: "old-front", rearPartId: "old-rear", tirePartId: "old-tire",
-    gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
+    machineFamily: "STANDARD", gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
   const stocked = applyStockMachine(draft, parts, "stock");
   expect(stocked).toEqual({ ...draft, frontPartId: "stock-FRONT", rearPartId: "stock-REAR", tirePartId: "stock-TIRE" });
   expect({ ...stocked, rearPartId: "custom-rear" }).toMatchObject({ frontPartId: "stock-FRONT", rearPartId: "custom-rear", tirePartId: "stock-TIRE" });
+});
+
+it("applies a complete Board stock setup without a tire and clears incompatible selections", () => {
+  const parts: MachinePart[] = (["FRONT", "REAR"] as const).map((type) => ({
+    id: `board-${type}`, type, sourceMachineId: "board", sourceMachineName: "Board",
+    sourceMachineImagePath: null, racingType: "HANDLING", sourceMachineFamily: "BOARD",
+  }));
+  const draft: BuildDraft = { title: "Keep", description: "", racerId: "racer",
+    frontPartId: "front", rearPartId: "rear", tirePartId: "tire", machineFamily: "STANDARD",
+    gameVersionId: "version", remixedFromBuildId: null, gadgetIds: [] };
+
+  expect(stockMachineSources(parts)).toHaveLength(1);
+  expect(applyStockMachine(draft, parts, "board")).toMatchObject({
+    machineFamily: "BOARD", frontPartId: "board-FRONT", rearPartId: "board-REAR", tirePartId: null,
+  });
+  expect(switchMachineFamily(draft, "BOARD")).toMatchObject({
+    machineFamily: "BOARD", frontPartId: "", rearPartId: "", tirePartId: null,
+  });
 });

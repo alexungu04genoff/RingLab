@@ -4,7 +4,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, ApiError, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, toggleGadget } from "../buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, moveGadget, stockMachineSources, switchMachineFamily, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer } from "../types";
 
@@ -14,7 +14,8 @@ const partSlots = [
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
 const emptyDraft = (): BuildDraft => ({
-  title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: "",
+  title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: null,
+  machineFamily: "STANDARD",
   gameVersionId: null, remixedFromBuildId: null, gadgetIds: [],
 });
 export function draftFromRemix(build: Build): BuildDraft {
@@ -24,7 +25,8 @@ export function draftFromRemix(build: Build): BuildDraft {
     racerId: build.racer.id,
     frontPartId: build.frontPart.id,
     rearPartId: build.rearPart.id,
-    tirePartId: build.tirePart.id,
+    tirePartId: build.tirePart?.id ?? null,
+    machineFamily: build.frontPart.sourceMachineFamily,
     gameVersionId: build.gameVersion?.id ?? null,
     remixedFromBuildId: build.id,
     gadgetIds: build.gadgets.map((gadget) => gadget.id),
@@ -76,7 +78,8 @@ export function BuildEditor() {
           racerId: b.racer.id,
           frontPartId: b.frontPart.id,
           rearPartId: b.rearPart.id,
-          tirePartId: b.tirePart.id,
+          tirePartId: b.tirePart?.id ?? null,
+          machineFamily: b.frontPart.sourceMachineFamily,
           gameVersionId: b.gameVersion?.id ?? null,
           remixedFromBuildId: b.remixedFrom?.id ?? null,
           gadgetIds: b.gadgets.map((g) => g.id),
@@ -123,6 +126,7 @@ export function BuildEditor() {
     .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId));
   const plateStatus = gadgetPlateStatus(selectedGadgets);
   const canSubmit = allowed && (!id || (loadedBuild?.id === id && loadedBuild.authorId === user?.id));
+  const activePartSlots = partSlots.filter((slot) => draft.machineFamily === "STANDARD" || slot.type !== "TIRE");
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -132,7 +136,7 @@ export function BuildEditor() {
         <div>
           <div className="eyebrow accent">THE GARAGE</div>
           <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
-          <p>One racer. Front, rear and tires. Your gadget combination.</p>
+          <p>One racer. A Standard machine or Board. Your gadget combination.</p>
         </div>
       </div>
       <ErrorNotice
@@ -155,9 +159,10 @@ export function BuildEditor() {
               setError("");
               setFieldErrors({});
               try {
+                const { machineFamily: _machineFamily, ...request } = draft;
                 const b = await api<Build>(
                   id ? `/builds/${id}` : "/builds",
-                  json(id ? "PUT" : "POST", draft),
+                  json(id ? "PUT" : "POST", request),
                 );
                 navigate(`/builds/${b.id}`);
               } catch (e) {
@@ -227,6 +232,20 @@ export function BuildEditor() {
                 <h2>
                   <span className="step">02</span> Racer & machine
                 </h2>
+                <fieldset className="machine-family-choice">
+                  <legend>Machine family</legend>
+                  {(["STANDARD", "BOARD"] as const).map((family) => (
+                    <label key={family}>
+                      <input type="radio" name="machineFamily" value={family}
+                        checked={draft.machineFamily === family}
+                        onChange={() => {
+                          setStockSourceId("");
+                          setDraft((current) => switchMachineFamily(current, family));
+                        }} />
+                      {family === "STANDARD" ? "Standard" : "Board"}
+                    </label>
+                  ))}
+                </fieldset>
                 <label className="stock-machine-control">
                   Use stock machine
                   <select value={stockSourceId} onChange={(e) => {
@@ -234,7 +253,8 @@ export function BuildEditor() {
                     if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
                   }}>
                     <option value="">Choose a complete stock setup</option>
-                    {stockMachineSources(parts.data ?? []).map((part) => (
+                    {stockMachineSources(parts.data ?? []).filter((part) =>
+                      part.sourceMachineFamily === draft.machineFamily).map((part) => (
                       <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName}</option>
                     ))}
                   </select>
@@ -259,14 +279,15 @@ export function BuildEditor() {
                       </span>
                     )}
                   </div>
-                  {partSlots.map((slot) => {
+                  {activePartSlots.map((slot) => {
                     const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
                     return <label key={slot.key} className="part-select">
                       {slot.label}
-                      <select required value={draft[slot.key]}
+                      <select required value={draft[slot.key] ?? ""}
                         onChange={(e) => field(slot.key, e.target.value)}>
                         <option value="">Choose a source machine</option>
-                        {parts.data?.filter((part) => part.type === slot.type).map((part) => (
+                        {parts.data?.filter((part) => part.type === slot.type
+                          && part.sourceMachineFamily === draft.machineFamily).map((part) => (
                           <option key={part.id} value={part.id}
                             className={`typed-option ${racingTypeClass(part.racingType)}`}>
                             {part.sourceMachineName} · ● {racingTypeLabel(part.racingType)}
@@ -285,7 +306,9 @@ export function BuildEditor() {
                   })}
                 </div>
                 <p className="muted">
-                  Choose each component from any stock machine.
+                  {draft.machineFamily === "BOARD"
+                    ? "Boards use front and rear parts only; they do not use tires."
+                    : "Standard machines use front, rear and tire parts."}
                 </p>
               </section>
               <section className="panel">
@@ -354,7 +377,7 @@ export function BuildEditor() {
                 <section className="preview-item">
                   <span className="preview-label">Machine setup</span>
                   <div className="preview-parts">
-                    {partSlots.map((slot) => (
+                    {activePartSlots.map((slot) => (
                       <div key={slot.key}>
                         {(() => {
                           const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
@@ -366,6 +389,7 @@ export function BuildEditor() {
                       </div>
                     ))}
                   </div>
+                  {draft.machineFamily === "BOARD" && <p className="muted board-note">Boards do not use tires.</p>}
                 </section>
               </div>
               <h3>Gadgets · {draft.gadgetIds.length}</h3>

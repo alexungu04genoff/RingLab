@@ -368,6 +368,9 @@ foreach ($racer in $racers) {
 }
 $partIds = @{}
 foreach ($part in $parts) {
+  # The current demo plan intentionally contains only Standard builds. Future Board catalog
+  # entries must not be mistaken for three-part Standard machines.
+  if ($part.sourceMachineFamily -eq "BOARD") { continue }
   [void]($partIds["$($part.sourceMachineName)/$($part.type)"] = $part.id)
 }
 $gadgetIds = @{}

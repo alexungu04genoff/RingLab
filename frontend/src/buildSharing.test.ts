@@ -6,9 +6,9 @@ const build: Build = {
   id: "internal-build-id", title: "Amy is still my first pick", description: "Do not share this description.",
   author: { id: "internal-author-id", username: "amy-fan" },
   racer: { id: "racer-id", name: "Amy Rose", racingType: "SPEED", imagePath: null },
-  frontPart: { id: "front-id", type: "FRONT", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
-  rearPart: { id: "rear-id", type: "REAR", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
-  tirePart: { id: "tire-id", type: "TIRE", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED" },
+  frontPart: { id: "front-id", type: "FRONT", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
+  rearPart: { id: "rear-id", type: "REAR", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
+  tirePart: { id: "tire-id", type: "TIRE", sourceMachineId: "machine-id", sourceMachineName: "Speedster Lightning", sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD" },
   gameVersion: { id: "version-id", version: "1.4.1", releasedAt: "2026-06-23" },
   remixedFrom: null,
   gadgets: [
@@ -52,4 +52,16 @@ it("handles an unspecified patch, unknown costs, and no gadgets without inventin
 
   const empty = formatBuildForSharing({ ...build, gadgets: [] }, "https://ringlab.example/builds/build-id");
   expect(empty).toContain("**Gadgets**\nNone");
+});
+
+it("shares a Board without inventing a tire", () => {
+  const board = {
+    ...build,
+    frontPart: { ...build.frontPart, sourceMachineFamily: "BOARD" as const },
+    rearPart: { ...build.rearPart, sourceMachineFamily: "BOARD" as const },
+    tirePart: null,
+  };
+  const text = formatBuildForSharing(board, "https://ringlab.example/builds/board");
+  expect(text).toContain("Family: Board");
+  expect(text).toContain("Tires: Not used by Boards");
 });

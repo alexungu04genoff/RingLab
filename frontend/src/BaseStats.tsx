@@ -7,7 +7,7 @@ export { buildStatsPath } from "./stats";
 
 const statMaximum = 100;
 type StatsDraft = Pick<BuildDraft,
-  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId">;
+  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineFamily">;
 type StatsBreakdown = { character: BaseStats; machine: BaseStats };
 
 function statLabel(name: typeof statNames[number]) {
@@ -23,11 +23,13 @@ function sumStats(values: Array<BaseStats | undefined>): BaseStats {
 }
 
 export function calculateStatsBreakdown(draft: StatsDraft, catalog?: StatsCatalog): StatsBreakdown | undefined {
-  if (!catalog || !draft.racerId || !draft.frontPartId || !draft.rearPartId || !draft.tirePartId) return undefined;
+  if (!catalog || !draft.racerId || !draft.frontPartId || !draft.rearPartId
+      || (draft.machineFamily === "STANDARD" && !draft.tirePartId)) return undefined;
+  const partIds = [draft.frontPartId, draft.rearPartId,
+    ...(draft.machineFamily === "STANDARD" && draft.tirePartId ? [draft.tirePartId] : [])];
   return {
     character: catalog.racers?.[draft.racerId] ?? sumStats([undefined]),
-    machine: sumStats([draft.frontPartId, draft.rearPartId, draft.tirePartId]
-      .map((id) => catalog.machineParts?.[id])),
+    machine: sumStats(partIds.map((id) => catalog.machineParts?.[id])),
   };
 }
 
@@ -105,5 +107,6 @@ export function BuildStats({ build }: { build: Build }) {
   }
   return <DraftStats draft={{ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
-    rearPartId: build.rearPart.id, tirePartId: build.tirePart.id }} version={build.gameVersion} />;
+    rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null,
+    machineFamily: build.frontPart.sourceMachineFamily }} version={build.gameVersion} />;
 }

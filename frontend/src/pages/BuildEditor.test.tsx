@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../api";
@@ -9,7 +9,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
 vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine",
-  sourceMachineImagePath: null, racingType: "SPEED",
+  sourceMachineImagePath: null, racingType: "SPEED", sourceMachineFamily: "STANDARD",
 });
 const buildA: Build = {
   id: "A", title: "Build A draft", description: "A description", author: { id: "owner", username: "alex" },
@@ -76,6 +76,31 @@ it("shows title-cased, color-coded type dots in racer and machine-part dropdowns
     expect(option.textContent).toContain("● Speed");
     expect(option.classList.contains("racing-type-speed")).toBe(true);
   });
+});
+
+it("switches to Board parts and removes the tire selector", async () => {
+  const boardParts: MachinePart[] = (["FRONT", "REAR"] as const).map((type) => ({
+    ...part(type), id: `board-${type}`, sourceMachineId: "board", sourceMachineName: "Board",
+    sourceMachineFamily: "BOARD",
+  }));
+  vi.mocked(api).mockImplementation(async (path) => {
+    if (path === "/racers") return [buildA.racer];
+    if (path === "/machine-parts") return [...boardParts, buildA.frontPart, buildA.rearPart, buildA.tirePart];
+    if (path === "/game-versions") return [latestVersion];
+    return [];
+  });
+  render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
+    <Route path="/builds/new" element={<BuildEditor />} />
+  </Routes></MemoryRouter>);
+  await waitFor(() => expect(screen.getByLabelText("Board")).toBeTruthy());
+  fireEvent.click(screen.getByLabelText("Board"));
+
+  expect(screen.getByLabelText("Front")).toBeTruthy();
+  expect(screen.getByLabelText("Rear")).toBeTruthy();
+  expect(screen.queryByLabelText("Tires")).toBeNull();
+  expect(screen.getAllByText("Boards use front and rear parts only; they do not use tires.").length)
+    .toBeGreaterThan(0);
+  expect(within(screen.getByLabelText("Front")).getByRole("option", { name: /Board/ })).toBeTruthy();
 });
 
 it.each(["title", "description"])("shows %s validation beside its input and clears it on editing", async (field) => {

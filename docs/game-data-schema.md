@@ -1,6 +1,6 @@
 # Game-data schema
 
-This is the implemented relational shape after Flyway V16. It shows the game catalog and the
+This is the implemented relational shape after Flyway V25. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
 
 ```mermaid
@@ -23,6 +23,7 @@ erDiagram
         varchar name UK
         varchar racing_type "nullable enum"
         varchar image_path "nullable"
+        varchar family "STANDARD, BOARD"
     }
     RACER_STATS {
         uuid racer_id PK,FK
@@ -70,7 +71,7 @@ erDiagram
         uuid racer_id FK
         uuid front_part_id FK
         uuid rear_part_id FK
-        uuid tire_part_id FK
+        uuid tire_part_id FK "nullable for BOARD"
         uuid game_version_id FK "nullable"
     }
     BUILD_GADGETS {
@@ -95,13 +96,19 @@ equal. These remain separate database rows, so a future patch can supply changed
 altering historical builds. Blank and missing rows remain unknown. Future imports must use new
 migrations, never modify earlier migrations. No 1.3.2 balance snapshot is seeded.
 
-Base build stats sum racer + front + rear + tire per field; any unknown contribution makes only
-that resulting field unknown. Stock-machine totals sum the three parts and are never stored as an
+Base build stats sum racer + front + rear and, for Standard machines, tire per field; any unknown
+contribution makes only that resulting field unknown. Standard stock-machine totals sum three
+parts, while Board totals sum two; totals are never stored as an
 independent value. Builds with no version have no assumed baseline. Missing stats do not affect
 build validity or publishing. Base stats and gadget-modified/effective stats are distinct concepts;
 numerical gadget effects are intentionally outside this implementation. Gadget
 metadata is a current snapshot; it is not version-aware even though some costs and effects changed
 between patches.
+
+`MachineFamily` is authoritative source-machine metadata. All catalog rows existing before V25 are
+migrated to `STANDARD`; no Board catalog identities or statistics are invented. A Board may be
+added later with FRONT and REAR rows only. The application requires every selected part to share
+one family and rejects both a missing Standard tire and any tire supplied for a Board.
 
 ## Focused improvements
 

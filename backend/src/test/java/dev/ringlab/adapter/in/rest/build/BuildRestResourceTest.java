@@ -30,7 +30,7 @@ class BuildRestResourceTest {
   void deletedOptionalSourceMapsToNullForDetailAndList() {
     UUID id = UUID.randomUUID();
     UUID source = UUID.randomUUID();
-    Build remix = new Build(id, "Remix", "", id, id, id, id, id, null, source,
+    Build remix = new Build(id, "Remix", "", id, id, id, id, null, null, source,
         List.of(), Instant.EPOCH, Instant.EPOCH);
     BuildRepository repository = new BuildRepository() {
       public Optional<Build> find(UUID requested) {
@@ -68,9 +68,11 @@ class BuildRestResourceTest {
     assertEquals(3, page.items().getFirst().score());
     assertEquals(0, votes.calls);
     assertNull(page.items().getFirst().remixedFrom());
+    assertNull(page.items().getFirst().tirePart());
 
     var detail = resource.get(id);
     assertNull(detail.remixedFrom());
+    assertNull(detail.tirePart());
     assertEquals(-1, detail.score());
     assertEquals(1, votes.calls);
     assertThrows(dev.ringlab.application.NotFoundException.class, () -> resource.get(source));
@@ -84,7 +86,7 @@ class BuildRestResourceTest {
       return Optional.of(new MachinePart(id, id, MachinePartType.FRONT));
     }
     public Optional<Machine> findMachine(UUID requested) {
-      return Optional.of(new Machine(id, "Machine", RacingType.SPEED, null));
+      return Optional.of(new Machine(id, "Machine", RacingType.SPEED, null, MachineFamily.STANDARD));
     }
     public List<GameVersion> listGameVersions() { return List.of(); }
     public Optional<GameVersion> findGameVersion(UUID requested) { return Optional.empty(); }

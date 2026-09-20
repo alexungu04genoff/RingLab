@@ -10,6 +10,7 @@ import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachineFamily;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.Racer;
@@ -345,7 +346,10 @@ class BuildServiceTest {
   void acceptsMixedSourcesAndEditsOnePartIndependently() {
     var old = service.create(authorId, draft("Stock"));
     UUID mixedRear = UUID.randomUUID();
-    gameData.parts.put(mixedRear, new MachinePart(mixedRear, UUID.randomUUID(), MachinePartType.REAR));
+    UUID mixedMachine = UUID.randomUUID();
+    gameData.machines.put(mixedMachine,
+        new Machine(mixedMachine, "Other", RacingType.SPEED, null, MachineFamily.STANDARD));
+    gameData.parts.put(mixedRear, new MachinePart(mixedRear, mixedMachine, MachinePartType.REAR));
     var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
         tirePartId, gameVersionId, null, List.of(gadgetId));
     var created = service.create(authorId, mixed);
@@ -355,6 +359,50 @@ class BuildServiceTest {
     assertEquals(mixedRear, edited.rearPartId());
     assertEquals(old.tirePartId(), edited.tirePartId());
     assertEquals(List.of(gadgetId), edited.gadgetIds());
+  }
+
+  @Test
+  void boardBuildUsesFrontAndRearWithoutTires() {
+    UUID boardMachine = UUID.randomUUID();
+    UUID secondBoardMachine = UUID.randomUUID();
+    UUID boardFront = UUID.randomUUID();
+    UUID boardRear = UUID.randomUUID();
+    gameData.machines.put(boardMachine,
+        new Machine(boardMachine, "Board", RacingType.HANDLING, null, MachineFamily.BOARD));
+    gameData.machines.put(secondBoardMachine,
+        new Machine(secondBoardMachine, "Other Board", RacingType.SPEED, null, MachineFamily.BOARD));
+    gameData.parts.put(boardFront, new MachinePart(boardFront, boardMachine, MachinePartType.FRONT));
+    gameData.parts.put(boardRear, new MachinePart(boardRear, secondBoardMachine, MachinePartType.REAR));
+
+    var draft = new BuildService.Draft("Board", "", racerId, boardFront, boardRear,
+        null, gameVersionId, null, List.of());
+    var created = service.create(authorId, draft);
+
+    assertNull(created.tirePartId());
+    assertEquals(boardFront, created.frontPartId());
+    assertEquals(boardRear, created.rearPartId());
+  }
+
+  @Test
+  void rejectsMissingStandardTireBoardTireAndMixedFamilies() {
+    assertThrows(ValidationException.class, () -> service.create(authorId,
+        new BuildService.Draft("Standard", "", racerId, frontPartId, rearPartId,
+            null, gameVersionId, null, List.of())));
+
+    UUID boardMachine = UUID.randomUUID();
+    UUID boardFront = UUID.randomUUID();
+    UUID boardRear = UUID.randomUUID();
+    gameData.machines.put(boardMachine,
+        new Machine(boardMachine, "Board", RacingType.HANDLING, null, MachineFamily.BOARD));
+    gameData.parts.put(boardFront, new MachinePart(boardFront, boardMachine, MachinePartType.FRONT));
+    gameData.parts.put(boardRear, new MachinePart(boardRear, boardMachine, MachinePartType.REAR));
+
+    assertThrows(ValidationException.class, () -> service.create(authorId,
+        new BuildService.Draft("Board with tires", "", racerId, boardFront, boardRear,
+            tirePartId, gameVersionId, null, List.of())));
+    assertThrows(ValidationException.class, () -> service.create(authorId,
+        new BuildService.Draft("Mixed", "", racerId, frontPartId, boardRear,
+            tirePartId, gameVersionId, null, List.of())));
   }
 
   @Test
@@ -587,7 +635,7 @@ class BuildServiceTest {
 
     private GameDataStub(UUID racerId, UUID machineId, UUID gadgetId) {
       racers.put(racerId, new Racer(racerId, "Racer", RacingType.SPEED, null));
-      machines.put(machineId, new Machine(machineId, "Machine", RacingType.BOOST, null));
+      machines.put(machineId, new Machine(machineId, "Machine", RacingType.BOOST, null, MachineFamily.STANDARD));
       gadgets.put(gadgetId, new Gadget(gadgetId, "Gadget", null, 1, null));
     }
 

@@ -1,11 +1,13 @@
 package dev.ringlab.adapter.in.rest.gamedata.response;
 
 import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachineFamily;
 import java.util.UUID;
 
-public record MachineResponse(UUID id, String name, String racingType, String imagePath) {
+public record MachineResponse(UUID id, String name, String racingType, String imagePath, MachineFamily family) {
   public static MachineResponse from(Machine machine) {
     return new MachineResponse(
-        machine.id(), machine.name(), machine.racingType() == null ? null : machine.racingType().name(), machine.imagePath());
+        machine.id(), machine.name(), machine.racingType() == null ? null : machine.racingType().name(),
+        machine.imagePath(), machine.family());
   }
 }

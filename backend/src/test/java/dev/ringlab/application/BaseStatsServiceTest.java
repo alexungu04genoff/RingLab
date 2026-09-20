@@ -73,7 +73,26 @@ class BaseStatsServiceTest {
     assertThrows(ValidationException.class, () -> service.build(version, racer, rear, rear, tire));
   }
 
+  @Test
+  void boardStatsSumFrontAndRearWithoutInventingATireContribution() {
+    catalog.family = MachineFamily.BOARD;
+    catalog.catalogParts.removeIf(part -> part.type() == MachinePartType.TIRE);
+    racers.put(racer, ones());
+    parts.put(front, ones());
+    parts.put(rear, ones());
+
+    var breakdown = service.buildBreakdown(version, racer, front, rear, null);
+
+    assertEquals(new BigDecimal("2"), breakdown.machine().speed());
+    assertEquals(new BigDecimal("3"), breakdown.total().speed());
+    assertEquals(new BigDecimal("2"), service.catalog(version).machines().get(machine).speed());
+    catalog.catalogParts.add(new MachinePart(tire, machine, MachinePartType.TIRE));
+    assertThrows(ValidationException.class,
+        () -> service.buildBreakdown(version, racer, front, rear, tire));
+  }
+
   private class Catalog implements GameDataRepository {
+    MachineFamily family = MachineFamily.STANDARD;
     final List<MachinePart> catalogParts = new ArrayList<>(List.of(
         new MachinePart(front, machine, MachinePartType.FRONT),
         new MachinePart(rear, machine, MachinePartType.REAR),
@@ -82,7 +101,7 @@ class BaseStatsServiceTest {
     public Optional<GameVersion> findGameVersion(UUID id) { return listGameVersions().stream().filter(v -> v.id().equals(id)).findFirst(); }
     public List<Racer> listRacers() { return List.of(new Racer(racer, "Racer", RacingType.SPEED, null)); }
     public Optional<Racer> findRacer(UUID id) { return listRacers().stream().filter(r -> r.id().equals(id)).findFirst(); }
-    public List<Machine> listMachines() { return List.of(new Machine(machine, "Machine", RacingType.SPEED, null)); }
+    public List<Machine> listMachines() { return List.of(new Machine(machine, "Machine", RacingType.SPEED, null, family)); }
     public Optional<Machine> findMachine(UUID id) { return listMachines().stream().filter(m -> m.id().equals(id)).findFirst(); }
     public List<MachinePart> listMachineParts() { return catalogParts; }
     public Optional<MachinePart> findMachinePart(UUID id) { return catalogParts.stream().filter(p -> p.id().equals(id)).findFirst(); }

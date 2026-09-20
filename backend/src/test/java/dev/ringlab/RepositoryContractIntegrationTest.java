@@ -35,6 +35,36 @@ class RepositoryContractIntegrationTest {
 
   @Test
   @TestTransaction
+  void boardBuildWithNullTireRoundTripsUpdatesAndDeletes() {
+    User author = user();
+    Build standard = build(author.id(), "Board", null);
+    Build board = new Build(standard.id(), standard.title(), standard.description(), author.id(),
+        standard.racerId(), standard.frontPartId(), standard.rearPartId(), null,
+        standard.gameVersionId(), null, standard.gadgetIds(), standard.createdAt(), standard.updatedAt());
+
+    builds.save(board);
+    em.flush();
+    em.clear();
+    assertEquals(board, builds.find(board.id()).orElseThrow());
+    UUID sourceMachine = game.findMachinePart(board.frontPartId()).orElseThrow().sourceMachineId();
+    assertTrue(candidateIds(builds.searchCandidates(
+        new BuildRepository.Filter(null, null, sourceMachine, author.id(), null))).contains(board.id()));
+
+    Build updated = new Build(board.id(), "Updated Board", board.description(), author.id(),
+        board.racerId(), board.frontPartId(), board.rearPartId(), null, board.gameVersionId(),
+        null, board.gadgetIds(), board.createdAt(), board.updatedAt().plusSeconds(1));
+    builds.save(updated);
+    em.flush();
+    em.clear();
+    assertEquals(updated, builds.find(board.id()).orElseThrow());
+
+    builds.delete(board.id());
+    em.flush();
+    assertTrue(builds.find(board.id()).isEmpty());
+  }
+
+  @Test
+  @TestTransaction
   void deletingBuildRemovesRelationsAndClearsOnlyRemixProvenance() {
     User author = user();
     Build source = build(author.id(), "Source", null);

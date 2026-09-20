@@ -44,6 +44,7 @@ public class BuildRestResource {
   }
 
   private MachinePartResponse partItem(UUID id) {
+    if (id == null) return null;
     var part = game.findMachinePart(id).orElseThrow();
     return MachinePartResponse.from(part, game.findMachine(part.sourceMachineId()).orElseThrow());
   }

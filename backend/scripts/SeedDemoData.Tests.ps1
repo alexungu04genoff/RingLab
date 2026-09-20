@@ -67,7 +67,7 @@ $state.failNextComment = $true
 $state.catalogRacers = @($plan.Builds.Racer | Sort-Object -Unique | ForEach-Object { [pscustomobject]@{ id = $_; name = $_ } })
 $state.catalogParts = @(
   foreach ($name in @(($plan.Builds.Machine + $plan.Builds.RearMachine) | Sort-Object -Unique)) {
-    foreach ($type in @('FRONT', 'REAR', 'TIRE')) { [pscustomobject]@{ id = "$name/$type"; sourceMachineName = $name; type = $type } }
+    foreach ($type in @('FRONT', 'REAR', 'TIRE')) { [pscustomobject]@{ id = "$name/$type"; sourceMachineName = $name; type = $type; sourceMachineFamily = 'STANDARD' } }
   }
 )
 function Invoke-RestMethod {
