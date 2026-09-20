@@ -76,7 +76,7 @@ function Get-CommunityDemoPlan {
   $wilsonFixtures=[ordered]@{
     cornering=[pscustomobject]@{title='[Wilson Demo] Small perfect sample — 3↑ 0↓';upvotes=3;downvotes=0;description='This pair demonstrates how sample size affects Wilson confidence.'}
     items=[pscustomobject]@{title='[Wilson Demo] Large near-perfect sample — 40↑ 1↓';upvotes=40;downvotes=1;description='This pair demonstrates how sample size affects Wilson confidence.'}
-    route=[pscustomobject]@{title='[Wilson Demo] Same score, cleaner reception — 15↑ 0↓';upvotes=15;downvotes=0;description='This build has the same net score as another demo case but a cleaner approval ratio.'}
+    'community-shadow-2'=[pscustomobject]@{title='[Wilson Demo] Same score, cleaner reception — 15↑ 0↓';upvotes=15;downvotes=0;description='This build has the same net score as another demo case but a cleaner approval ratio.'}
     acceleration=[pscustomobject]@{title='[Wilson Demo] Same score, divided reception — 25↑ 10↓';upvotes=25;downvotes=10;description='This build has the same net score as another demo case but more divided reception.'}
     recovery=[pscustomobject]@{title='[Wilson Demo] Clean small sample — 8↑ 0↓';upvotes=8;downvotes=0;description='This build shows a positive result supported by a small clean sample.'}
     boost=[pscustomobject]@{title='[Wilson Demo] Bigger but controversial — 40↑ 20↓';upvotes=40;downvotes=20;description='This build shows how a larger but divided sample compares within the positive-score group.'}
