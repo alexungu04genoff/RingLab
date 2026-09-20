@@ -19,22 +19,30 @@ class MachineCompositionMigrationIntegrationTest {
     try {
       migrate(schema, "26");
       String before;
-      try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-        sql.execute("SET LOCAL search_path TO " + schema);
-        sql.execute("INSERT INTO users(id,username,email,created_at) VALUES ('00000000-0000-4000-8000-000000000027','upgrade','upgrade@test.invalid',now())");
-        sql.execute("INSERT INTO builds(id,title,description,author_id,racer_id,front_part_id,rear_part_id,tire_part_id,created_at,updated_at) "
-            + "SELECT m.id,m.name,'preserve','00000000-0000-4000-8000-000000000027',(SELECT id FROM racers LIMIT 1),f.id,r.id,t.id,now(),now() FROM machines m "
-            + "JOIN machine_parts f ON f.source_machine_id=m.id AND f.part_type='FRONT' "
-            + "JOIN machine_parts r ON r.source_machine_id=m.id AND r.part_type='REAR' "
-            + "LEFT JOIN machine_parts t ON t.source_machine_id=m.id AND t.part_type='TIRE'");
-        before = snapshot(sql);
+      try (var connection = dataSource.getConnection()) {
+        connection.setSchema(schema);
+        try (var sql = connection.createStatement()) {
+          sql.execute("INSERT INTO users(id,username,email,created_at) VALUES ('00000000-0000-4000-8000-000000000027','upgrade','upgrade@test.invalid',now())");
+          sql.execute("INSERT INTO builds(id,title,description,author_id,racer_id,front_part_id,rear_part_id,tire_part_id,created_at,updated_at) "
+              + "SELECT m.id,m.name,'preserve','00000000-0000-4000-8000-000000000027',(SELECT id FROM racers LIMIT 1),f.id,r.id,t.id,now(),now() FROM machines m "
+              + "JOIN machine_parts f ON f.source_machine_id=m.id AND f.part_type='FRONT' "
+              + "JOIN machine_parts r ON r.source_machine_id=m.id AND r.part_type='REAR' "
+              + "LEFT JOIN machine_parts t ON t.source_machine_id=m.id AND t.part_type='TIRE'");
+          before = snapshot(sql);
+        } finally {
+          connection.setSchema("public");
+        }
       }
       migrate(schema, "27");
-      try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-        sql.execute("SET LOCAL search_path TO " + schema);
-        assertEquals(before, snapshot(sql));
-        assertEquals("0", value(sql, "SELECT count(*) FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='machines' AND column_name='family'"));
-        assertEquals("YES", value(sql, "SELECT is_nullable FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='builds' AND column_name='tire_part_id'"));
+      try (var connection = dataSource.getConnection()) {
+        connection.setSchema(schema);
+        try (var sql = connection.createStatement()) {
+          assertEquals(before, snapshot(sql));
+          assertEquals("0", value(sql, "SELECT count(*) FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='machines' AND column_name='family'"));
+          assertEquals("YES", value(sql, "SELECT is_nullable FROM information_schema.columns WHERE table_schema='" + schema + "' AND table_name='builds' AND column_name='tire_part_id'"));
+        } finally {
+          connection.setSchema("public");
+        }
       }
     } finally { clean(schema); }
   }
@@ -50,9 +58,13 @@ class MachineCompositionMigrationIntegrationTest {
       String schema = schema();
       try {
         migrate(schema, "26");
-        try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
-          sql.execute("SET LOCAL search_path TO " + schema);
-          sql.execute(corrupt);
+        try (var connection = dataSource.getConnection()) {
+          connection.setSchema(schema);
+          try (var sql = connection.createStatement()) {
+            sql.execute(corrupt);
+          } finally {
+            connection.setSchema("public");
+          }
         }
         assertThrows(org.flywaydb.core.api.FlywayException.class, () -> migrate(schema, "27"));
         try (var connection = dataSource.getConnection(); var sql = connection.createStatement()) {
