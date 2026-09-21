@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import { Artwork, ItemSelect } from "./components";
+import { BrowserRouter } from "react-router-dom";
+import { Artwork, ItemSelect, SiteFooter } from "./components";
 import type { Racer } from "./types";
 
 const racer: Racer = {
@@ -29,4 +30,16 @@ it("keeps unknown-type entries selectable alongside known racing types", () => {
   );
   expect(html).toContain('<option value="blinky" class="typed-option racing-type-unknown">Blinky · ● Unknown</option>');
   expect(html).toContain('<option value="sonic" class="typed-option racing-type-speed">Sonic · ● Speed</option>');
+});
+
+it("credits Meohong visibly and links the documented sources", () => {
+  const html = renderToStaticMarkup(
+    <BrowserRouter><SiteFooter /></BrowserRouter>,
+  );
+
+  expect(html).toContain("With thanks to Meohong");
+  expect(html).toContain('href="https://www.srcgadgetbuilder.com/"');
+  expect(html).toContain("Special thanks to Meohong, creator of");
+  expect(html).toContain('href="https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds"');
+  expect(html).toContain('href="https://w.atwiki.jp/sonicracingcw/"');
 });

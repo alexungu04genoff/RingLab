@@ -12,6 +12,7 @@ import { AccountPage } from "./pages/AccountPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
 import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
+import { SiteFooter } from "./components";
 import "./styles.css";
 function App() {
   const { user, logout, loading } = useAuth();
@@ -110,13 +111,7 @@ function App() {
           />
         </Routes>
       </main>
-      <footer>
-        <span className="brand footer-brand">
-          RING<span>LAB</span>
-        </span>
-        <span>A CrossWorlds community build lab · Educational project</span>
-        <Link className="footer-collection-link" to="/game-data"><LibraryIcon /> Game collection ↗</Link>
-      </footer>
+      <SiteFooter />
     </>
   );
 }

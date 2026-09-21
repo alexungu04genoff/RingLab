@@ -6,6 +6,41 @@ import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart
 import { useLoad } from "./useLoad";
 import { machineTypeLabel } from "./machineComposition";
 import { savedBuildSetupIssues } from "./buildForm";
+import { LibraryIcon } from "./icons";
+
+const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
+const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";
+const japaneseCrossWorldsWikiUrl = "https://w.atwiki.jp/sonicracingcw/";
+
+export function SiteFooter() {
+  return (
+    <footer>
+      <span className="brand footer-brand">
+        RING<span>LAB</span>
+      </span>
+      <span className="footer-project">A CrossWorlds community build lab · Educational project</span>
+      <span className="footer-thanks">
+        With thanks to Meohong — <a href={srcGadgetBuilderUrl} target="_blank" rel="noreferrer">SRC Gadget Builder</a>
+      </span>
+      <details className="footer-credits">
+        <summary>Data sources &amp; credits</summary>
+        <div className="footer-credit-content">
+          <p>
+            Special thanks to Meohong, creator of <a href={srcGadgetBuilderUrl} target="_blank" rel="noreferrer">SRC Gadget Builder</a>, for explaining character and machine stat calculations, clarifying how gadget effects are handled, and sharing guidance on data sources.
+          </p>
+          <p>
+            RingLab&apos;s catalog and artwork references include the <a href={sonicFandomCrossWorldsUrl} target="_blank" rel="noreferrer">Sonic Fandom Wiki — Sonic Racing: CrossWorlds</a>.
+          </p>
+          <p>
+            Community reference: <a href={japaneseCrossWorldsWikiUrl} target="_blank" rel="noreferrer">Japanese Sonic Racing: CrossWorlds Wiki</a>.
+          </p>
+        </div>
+      </details>
+      <Link className="footer-collection-link" to="/game-data"><LibraryIcon /> Game collection ↗</Link>
+    </footer>
+  );
+}
+
 export function ErrorNotice({ message }: { message: string }) {
   return message ? (
     <div className="error" role="alert">
