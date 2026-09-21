@@ -20,7 +20,7 @@ export function SiteFooter() {
       </span>
       <span className="footer-project">A CrossWorlds community build lab · Educational project</span>
       <span className="footer-thanks">
-        With thanks to Meohong — <a href={srcGadgetBuilderUrl} target="_blank" rel="noreferrer">SRC Gadget Builder</a>
+        With thanks to <strong>Meohong</strong> — <a href={srcGadgetBuilderUrl} target="_blank" rel="noreferrer">SRC Gadget Builder</a>
       </span>
       <details className="footer-credits">
         <summary>Data sources &amp; credits</summary>

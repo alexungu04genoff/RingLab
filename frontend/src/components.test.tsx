@@ -37,7 +37,7 @@ it("credits Meohong visibly and links the documented sources", () => {
     <BrowserRouter><SiteFooter /></BrowserRouter>,
   );
 
-  expect(html).toContain("With thanks to Meohong");
+  expect(html).toContain("With thanks to <strong>Meohong</strong>");
   expect(html).toContain('href="https://www.srcgadgetbuilder.com/"');
   expect(html).toContain("Special thanks to Meohong, creator of");
   expect(html).toContain('href="https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds"');

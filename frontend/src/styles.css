@@ -1010,23 +1010,28 @@ footer {
   color: var(--accent);
 }
 .footer-thanks {
+  font-size: 15px;
+  font-weight: 600;
   white-space: nowrap;
 }
 .footer-credits {
   flex-basis: 100%;
-  font-size: 11px;
+  font-size: 14px;
 }
 .footer-credits summary {
   cursor: pointer;
+  font-weight: 600;
   width: fit-content;
 }
 .footer-credit-content {
   max-width: 760px;
-  padding-top: 9px;
-  line-height: 1.5;
+  padding-top: 14px;
+  font-size: 13px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
 }
 .footer-credit-content p {
-  margin: 0 0 7px;
+  margin: 0 0 10px;
 }
 .footer-credit-content p:last-child {
   margin-bottom: 0;
