@@ -85,6 +85,17 @@ npm run dev
 
 Open **http://localhost:5173**. Vite forwards `/api` to the backend at localhost:8080. Swagger UI is available in development at **http://localhost:8080/q/swagger-ui**; the OpenAPI document is at `/q/openapi`.
 
+To keep local development running after Windows logon and wake-from-sleep, register the included
+per-user scheduled task once:
+
+```powershell
+.\Register-RingLab-AutoStart.ps1
+```
+
+The task runs the normal launcher in hidden, idempotent mode, does not open a browser, and writes
+backend/frontend logs under `%LOCALAPPDATA%\RingLab\logs`. It reuses healthy services instead of
+starting duplicates. Remove it later with `.\Register-RingLab-AutoStart.ps1 -Unregister`.
+
 For `https://dev.ringlabgarage.com`, reuse the existing Cloudflare Tunnel route to
 `http://127.0.0.1:5173`. Vite explicitly allows this hostname and requires port 5173
 instead of silently choosing another port. Its `/api` proxy targets local Quarkus

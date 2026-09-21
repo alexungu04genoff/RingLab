@@ -111,6 +111,21 @@ Describe "Start-RingLab launcher" {
     }
 
     Context "service detection and readiness" {
+        It "starts a background service with hidden output logs" {
+            Mock New-Item {}
+            Mock Start-Process {}
+
+            Start-RingLabBackgroundProcess -Name "RingLab frontend" `
+                -WorkingDirectory "C:\RingLab\frontend" -CommandPath "npm.cmd" `
+                -CommandArguments @("run", "dev")
+
+            Assert-MockCalled Start-Process -Times 1 -ParameterFilter {
+                $WindowStyle -eq "Hidden" -and
+                $RedirectStandardOutput -like "*ringlab-frontend.log" -and
+                $RedirectStandardError -like "*ringlab-frontend-error.log"
+            }
+        }
+
         It "reports backend failure even when the frontend is healthy" {
             Mock Test-PostgresHealthy { $true }
             Mock Test-RacerEndpoint {

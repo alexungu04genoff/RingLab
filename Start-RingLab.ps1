@@ -1,6 +1,8 @@
 [CmdletBinding()]
 param(
     [switch]$SkipMain,
+    [switch]$Background,
+    [switch]$SkipBrowser,
     [int]$DockerTimeoutSeconds = 120,
     [int]$PostgresTimeoutSeconds = 90,
     [int]$ApplicationTimeoutSeconds = 180
@@ -118,12 +120,22 @@ function Get-DockerDesktopPath {
 }
 
 function Start-DockerDesktop {
-    param([Parameter(Mandatory = $true)][string]$DockerDesktopPath)
-    Start-Process -FilePath $DockerDesktopPath | Out-Null
+    param(
+        [Parameter(Mandatory = $true)][string]$DockerDesktopPath,
+        [switch]$RunInBackground
+    )
+    $startParameters = @{ FilePath = $DockerDesktopPath }
+    if ($RunInBackground) {
+        $startParameters.WindowStyle = "Hidden"
+    }
+    Start-Process @startParameters | Out-Null
 }
 
 function Ensure-DockerReady {
-    param([int]$TimeoutSeconds = 120)
+    param(
+        [int]$TimeoutSeconds = 120,
+        [switch]$RunInBackground
+    )
 
     $docker = Get-RequiredCommandPath "docker.exe"
     $compose = Invoke-NativeCommand -FilePath $docker -ArgumentList @("compose", "version")
@@ -143,7 +155,7 @@ function Ensure-DockerReady {
     }
 
     Write-Host "Docker engine is unavailable. Starting Docker Desktop..."
-    Start-DockerDesktop -DockerDesktopPath $desktop
+    Start-DockerDesktop -DockerDesktopPath $desktop -RunInBackground:$RunInBackground
     $ready = Wait-ForCondition -TimeoutSeconds $TimeoutSeconds -PollSeconds 2 -Probe {
         Test-DockerEngineReady -DockerPath $docker
     }
@@ -410,18 +422,51 @@ function Start-RingLabTerminal {
     ) | Out-Null
 }
 
+function Start-RingLabBackgroundProcess {
+    param(
+        [Parameter(Mandatory = $true)][string]$Name,
+        [Parameter(Mandatory = $true)][string]$WorkingDirectory,
+        [Parameter(Mandatory = $true)][string]$CommandPath,
+        [Parameter(Mandatory = $true)][string[]]$CommandArguments
+    )
+
+    $logDirectory = Join-Path $env:LOCALAPPDATA "RingLab\logs"
+    New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
+    $logName = $Name.ToLowerInvariant().Replace(" ", "-")
+    Start-Process -FilePath $CommandPath -WorkingDirectory $WorkingDirectory `
+        -ArgumentList $CommandArguments -WindowStyle Hidden `
+        -RedirectStandardOutput (Join-Path $logDirectory "$logName.log") `
+        -RedirectStandardError (Join-Path $logDirectory "$logName-error.log") | Out-Null
+}
+
 function Start-Backend {
-    param([Parameter(Mandatory = $true)][string]$BackendPath)
+    param(
+        [Parameter(Mandatory = $true)][string]$BackendPath,
+        [switch]$RunInBackground
+    )
     $maven = Get-RequiredCommandPath "mvn.cmd"
+    if ($RunInBackground) {
+        Start-RingLabBackgroundProcess -Name "RingLab backend" -WorkingDirectory $BackendPath `
+            -CommandPath $maven -CommandArguments @("quarkus:dev")
+        return
+    }
     Start-RingLabTerminal -Title "RingLab backend" -WorkingDirectory $BackendPath `
         -CommandPath $maven -CommandArguments @("quarkus:dev")
 }
 
 function Start-Frontend {
-    param([Parameter(Mandatory = $true)][string]$FrontendPath)
+    param(
+        [Parameter(Mandatory = $true)][string]$FrontendPath,
+        [switch]$RunInBackground
+    )
     $npm = Get-RequiredCommandPath "npm.cmd"
     if (-not (Test-Path -LiteralPath (Join-Path $FrontendPath "node_modules") -PathType Container)) {
         throw "Frontend dependencies are missing. Run 'npm ci' in '$FrontendPath', then rerun .\Start-RingLab.ps1."
+    }
+    if ($RunInBackground) {
+        Start-RingLabBackgroundProcess -Name "RingLab frontend" -WorkingDirectory $FrontendPath `
+            -CommandPath $npm -CommandArguments @("run", "dev")
+        return
     }
     Start-RingLabTerminal -Title "RingLab frontend" -WorkingDirectory $FrontendPath `
         -CommandPath $npm -CommandArguments @("run", "dev")
@@ -513,7 +558,7 @@ function Start-RingLabDevelopment {
     Write-Host "=== RingLab Local Development ===" -ForegroundColor Cyan
 
     Write-Host "`n[1/6] Checking local Docker Desktop..."
-    $docker = Ensure-DockerReady -TimeoutSeconds $DockerTimeoutSeconds
+    $docker = Ensure-DockerReady -TimeoutSeconds $DockerTimeoutSeconds -RunInBackground:$Background
 
     Write-Host "`n[2/6] Starting local PostgreSQL from compose.yaml..."
     Ensure-PostgresReady -DockerPath $docker -TimeoutSeconds $PostgresTimeoutSeconds
@@ -526,10 +571,10 @@ function Start-RingLabDevelopment {
     Write-Host "`n[4/6] Starting or reusing RingLab services..."
     Ensure-DevelopmentService -Name "RingLab backend" -Port 8080 `
         -HealthCheck { Test-RacerEndpoint -Uri "http://127.0.0.1:8080/api/racers" } `
-        -StartAction { Start-Backend -BackendPath $backend } | Out-Null
+        -StartAction { Start-Backend -BackendPath $backend -RunInBackground:$Background } | Out-Null
     Ensure-DevelopmentService -Name "RingLab frontend" -Port 5173 `
         -HealthCheck { Test-RingLabFrontend -Uri "http://127.0.0.1:5173/" } `
-        -StartAction { Start-Frontend -FrontendPath $frontend } | Out-Null
+        -StartAction { Start-Frontend -FrontendPath $frontend -RunInBackground:$Background } | Out-Null
 
     Write-Host "`n[5/6] Verifying database, backend, frontend, and proxy..."
     $composePath = Join-Path $script:RepositoryRoot "compose.yaml"
@@ -544,11 +589,15 @@ function Start-RingLabDevelopment {
         Write-Host "Local and public development ready." -ForegroundColor Green
         Write-Host "Local:  http://localhost:5173"
         Write-Host "Public: https://dev.ringlabgarage.com"
-        Start-Process "https://dev.ringlabgarage.com" | Out-Null
+        if (-not $SkipBrowser) {
+            Start-Process "https://dev.ringlabgarage.com" | Out-Null
+        }
     }
     else {
         Write-Warning "Local development ready; public dev unavailable. $($public.Detail)"
-        Start-Process "http://localhost:5173" | Out-Null
+        if (-not $SkipBrowser) {
+            Start-Process "http://localhost:5173" | Out-Null
+        }
     }
 }
 
