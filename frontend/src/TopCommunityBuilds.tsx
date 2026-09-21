@@ -65,7 +65,7 @@ export function TopCommunityBuilds({ versions = [] }: { versions?: GameVersion[]
     <p role="status" aria-live="polite">{copyFeedback}</p>
     {snapshot && (snapshot.items.length ? <ol className="top-community-grid">
       {snapshot.items.map(item => <li key={item.build.id}>
-        <BuildCard build={item.build} versions={versions} stats={item.stats} compact rank={item.rank} />
+        <BuildCard build={item.build} versions={versions} stats={item.stats} rank={item.rank} />
       </li>)}
     </ol> : <p>No eligible community builds yet.</p>)}
   </section>;

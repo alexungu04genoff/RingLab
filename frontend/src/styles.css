@@ -733,8 +733,9 @@ main:has(.explore-hero) {
 .top-community-rank {
   position: absolute;
   z-index: 3;
-  top: 9px;
-  left: 9px;
+  top: auto;
+  bottom: 11px;
+  left: 15px;
   padding: 4px 7px;
   border-radius: 5px;
   background: #10141fe6;
@@ -742,23 +743,12 @@ main:has(.explore-hero) {
   font-size: 13px;
   font-weight: 900;
 }
-.build-card-compact { min-height: 142px; flex-direction: row; }
-.build-card-compact .card-art { flex: 0 0 41%; height: auto; min-height: 140px; }
-.build-card-compact .card-art > .artwork { border-radius: 9px 0 0 9px; }
-.build-card-compact .card-art .artwork.portrait img { object-position: center top; }
-.build-card-compact .card-art > .type-badge,
-.build-card-compact .machine-type,
-.build-card-compact .card-parts { display: none; }
-.build-card-compact .score { top: auto; right: auto; bottom: 9px; left: 9px; gap: 4px; padding: 4px 6px; font-size: 11px; }
-.build-card-compact .card-body { min-width: 0; padding: 15px 16px; }
-.build-card-compact .card-body h2 { margin: 5px 0 13px; font-size: 17px; }
-.build-card-compact .card-meta { padding-top: 11px; }
-.build-card-compact .card-meta > span:first-child { font-size: 11px; }
-.build-card-compact .card-meta time { display: none; }
+.top-community .tags { position: relative; }
+.top-community .tags > .card-gadget-icon { position: static; }
+.top-community .card-gadget-icon [role="tooltip"] { max-width: min(240px, 100%); }
 @media (max-width: 1100px) { .top-community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) {
   .top-community-grid { grid-template-columns: minmax(0, 1fr); }
-  .build-card-compact .card-art { flex-basis: 38%; }
 }
 .card-stat { min-width: 0; --stat-color: var(--accent); }
 .card-stat > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }

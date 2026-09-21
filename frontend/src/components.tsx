@@ -121,8 +121,8 @@ export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
   );
 }
 
-export function BuildCard({ build, versions = [], stats, compact = false, rank }: {
-  build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; compact?: boolean; rank?: number;
+export function BuildCard({ build, versions = [], stats, rank }: {
+  build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; rank?: number;
 }) {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
@@ -131,7 +131,7 @@ export function BuildCard({ build, versions = [], stats, compact = false, rank }
     <Link
       to={`/builds/${build.id}`}
       state={{ from: browseOrigin(location.pathname, location.search) }}
-      className={`build-card${compact ? " build-card-compact" : ""}`}
+      className="build-card"
     >
       <div className="card-art">
         {rank != null && <span className="top-community-rank" aria-label={`Rank ${rank}`}>#{rank}</span>}
@@ -164,14 +164,14 @@ export function BuildCard({ build, versions = [], stats, compact = false, rank }
             aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
         </div>
         <h2>{build.title}</h2>
-        {!compact && (stats ? <BuildCardStatsContent build={build} stats={stats} /> : <BuildCardStats build={build} />)}
-        {!compact && <div className="tags">
+        {stats ? <BuildCardStatsContent build={build} stats={stats} /> : <BuildCardStats build={build} />}
+        <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
             <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
           ))}
           {build.gadgets.length > CARD_GADGET_LIMIT && <span>+{build.gadgets.length - CARD_GADGET_LIMIT}</span>}
           {build.gadgets.length === 0 && <span>No gadgets</span>}
-        </div>}
+        </div>
         <div className="card-meta">
           <span>@{build.author.username}</span>
           {build.gameVersion ? (

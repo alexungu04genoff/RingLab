@@ -60,8 +60,8 @@ it("keeps one showcase request across every filter, preference, sort and page ch
   await screen.findByText("Top snapshot winner");
   expect(screen.getByText("Overall best rated · All patches")).toBeTruthy();
   expect(screen.getByLabelText("Rank 1")).toBeTruthy();
-  expect(screen.getByRole("region", { name: "Top 3 community builds" }).querySelector(".build-card-compact")).toBeTruthy();
-  expect(document.querySelector(".build-grid .build-card-compact")).toBeNull();
+  expect(within(screen.getByRole("region", { name: "Top 3 community builds" }))
+    .getByLabelText("Base stats")).toBeTruthy();
   expect(topCalls()).toHaveLength(1);
   expect(topCalls()[0][1]).toMatchObject({ anonymous: true, credentials: "omit", cache: "no-cache" });
   expect(vi.mocked(api).mock.calls.some(([path]) =>
