@@ -37,10 +37,10 @@ An empty Discord result is still a valid message:
 
 ## Selection and eligibility
 
-Selection calls the production `BuildRanking` Best Rated comparator: positive, neutral, negative
-score groups; descending Wilson lower bound within each group; descending net score; descending
-creation timestamp; ascending textual UUID. No separate ranking formula exists in the frontend,
-REST resource, database or Discord formatter.
+Selection calls the production `BuildRanking` Best Rated comparator: descending full-precision Wilson
+lower bound; at Wilson zero only, unrated before downvoted and fewer downvotes first; descending
+creation timestamp for otherwise equal evidence; ascending textual UUID. No separate ranking formula
+exists in the frontend, REST resource, database or Discord formatter.
 
 All public builds, racers, authors and patches in the current environment are candidates. Before
 taking three, skip titles beginning exactly (case sensitive, no trimming) with:

@@ -78,14 +78,16 @@ class CommunitySelectionTest {
     assertEquals(2, statsReads);
   }
 
-  @Test void canonicalComparatorDeterminesTiesAndSignGroups() {
-    build("Negative", 20, 40, tire, List.of());
-    build("Neutral", 0, 0, tire, List.of());
-    build("Tie a", 8, 0, tire, List.of());
-    build("Tie b", 8, 0, tire, List.of());
+  @Test void topThreeUsesTheSameCanonicalBestRatedOrderAsNormalBrowsing() {
+    var fiveDown = build("Five down", 0, 5, tire, List.of());
+    var oneDown = build("One down", 0, 1, tire, List.of());
+    var unrated = build("Unrated", 0, 0, tire, List.of());
+    var positive = build("Positive", 8, 0, tire, List.of());
     var expected = builds.values().stream().map(b -> new BuildRanking.Candidate(b.id(), b.createdAt()))
         .sorted(BuildRanking.comparator(BuildSort.BEST_RATED, votes)).limit(3).map(BuildRanking.Candidate::id).toList();
+    assertEquals(List.of(positive.id(), unrated.id(), oneDown.id()), expected);
     assertEquals(expected, service().select().items().stream().map(e -> e.build().id()).toList());
+    assertFalse(expected.contains(fiveDown.id()));
   }
 
   @Test void emptyAndBoostAndFewerThanThree() {

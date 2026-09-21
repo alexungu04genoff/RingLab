@@ -79,6 +79,24 @@ class BuildServiceTest {
   }
 
   @Test
+  void normalBestRatedListingUsesCanonicalWilsonZeroEvidenceOrder() {
+    Instant base = Instant.parse("2026-01-01T00:00:00Z");
+    Build fiveDownNewest = rankedBuild("five down", base.plusSeconds(4));
+    Build unratedOld = rankedBuild("unrated old", base.plusSeconds(1));
+    Build oneDown = rankedBuild("one down", base.plusSeconds(3));
+    Build unratedNew = rankedBuild("unrated new", base.plusSeconds(2));
+    builds.searchResults = List.of(fiveDownNewest, unratedOld, oneDown, unratedNew);
+    votes.summaries.put(fiveDownNewest.id(), new VoteSummary(0, 5));
+    votes.summaries.put(oneDown.id(), new VoteSummary(0, 1));
+
+    var page = service.list(new BuildService.Query(
+        new BuildRepository.Filter(null, null, null, null, null),
+        BuildSort.BEST_RATED, 0, 4));
+
+    assertEquals(List.of(unratedNew, unratedOld, oneDown, fiveDownNewest), page.items());
+  }
+
+  @Test
   void listingRestoresRankedOrderAndSkipsMissingBulkHydrationResults() {
     Instant base = Instant.parse("2026-01-01T00:00:00Z");
     Build oldest = rankedBuild("oldest", base);

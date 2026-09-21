@@ -23,14 +23,10 @@ public final class BuildRanking {
     if (sort == BuildSort.SCORE) return score;
 
     return Comparator
-        .comparingInt((Candidate candidate) -> signGroup(summary(candidate, summaries).score())).reversed()
+        .comparingDouble((Candidate candidate) -> wilsonScore(candidate, summaries)).reversed()
         .thenComparing(
-            Comparator.comparingDouble((Candidate candidate) -> {
-              VoteSummary summary = summary(candidate, summaries);
-              return WilsonScore.lowerBound(summary.upvotes(), summary.downvotes());
-            }).reversed())
-        .thenComparing(
-            Comparator.comparingLong((Candidate candidate) -> summary(candidate, summaries).score()).reversed())
+            Comparator.comparingLong((Candidate candidate) ->
+                zeroScoreEvidence(candidate, summaries)).reversed())
         .thenComparing(newest);
   }
 
@@ -38,7 +34,16 @@ public final class BuildRanking {
     return summaries.getOrDefault(candidate.id(), new VoteSummary(0, 0));
   }
 
-  private static int signGroup(long score) {
-    return Long.compare(score, 0);
+  private static double wilsonScore(Candidate candidate, Map<UUID, VoteSummary> summaries) {
+    VoteSummary summary = summary(candidate, summaries);
+    return WilsonScore.lowerBound(summary.upvotes(), summary.downvotes());
+  }
+
+  private static long zeroScoreEvidence(
+      Candidate candidate, Map<UUID, VoteSummary> summaries) {
+    VoteSummary summary = summary(candidate, summaries);
+    return WilsonScore.lowerBound(summary.upvotes(), summary.downvotes()) == 0.0
+        ? -summary.downvotes()
+        : 0;
   }
 }

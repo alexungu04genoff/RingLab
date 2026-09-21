@@ -192,7 +192,7 @@ function BuildDetailsContent() {
                       COMMUNITY SCORE
                       <span className="score-help" tabIndex={0} aria-label="How Best rated works">
                         <span aria-hidden="true">i</span>
-                        <span role="tooltip">Best rated shows positive-score builds first, then neutral, then negative. Within each group, builds with more consistently positive votes rank higher.</span>
+                        <span role="tooltip">Best rated uses Wilson vote confidence. Newer builds win exact confidence ties; at zero confidence, unrated builds rank above downvoted builds.</span>
                       </span>
                     </div>
                     <strong className="big-score" aria-live="polite">

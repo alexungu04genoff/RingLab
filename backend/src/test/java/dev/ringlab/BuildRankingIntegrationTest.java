@@ -51,7 +51,7 @@ class BuildRankingIntegrationTest {
     var down = build(author, racer, machine, "down", 0, 1, 8);
     em.flush();
 
-    var rated = List.of(strong, perfect, good, eight, tiny, zero, poor, down);
+    var rated = List.of(strong, perfect, good, eight, tiny, poor, zero, down);
     assertEquals(rated, ids(author, "rated", 0, 50));
     assertEquals(rated, buildResource.list(null, null, null, author, null, false, "rated", 0, 50)
         .items().stream().map(response -> response.id()).toList());
@@ -122,7 +122,7 @@ class BuildRankingIntegrationTest {
 
   @Test
   @TestTransaction
-  void signBucketsPrecedeWilsonAndRawScoreBreaksEqualWilsonTies() {
+  void fullPrecisionWilsonPrecedesFreshnessAndZeroUsesNegativeEvidence() {
     UUID author = user();
     UUID racer = game.listRacers().getFirst().id();
     UUID machine = game.listMachines().getFirst().id();
@@ -133,7 +133,7 @@ class BuildRankingIntegrationTest {
     var oneDown = build(author, racer, machine, "one down", 0, 1, 5);
     var twoDown = build(author, racer, machine, "two down newer", 0, 2, 6);
     em.flush();
-    assertEquals(List.of(positive, balanced, empty, negative, oneDown, twoDown),
+    assertEquals(List.of(balanced, negative, positive, empty, oneDown, twoDown),
         ids(author, "rated", 0, 50));
   }
 

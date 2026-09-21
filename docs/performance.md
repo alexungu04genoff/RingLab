@@ -359,8 +359,8 @@ two; the remaining candidates are unchanged and require separate evidence and re
 
 The first two are the smallest low-risk changes. A browse/read projection is likely more valuable than
 a generic repository framework because it directly removes measured irrelevant hydration. Any smarter
-large-scale retrieval must prove unchanged sign buckets, Wilson calculation, score/creation/UUID ties,
-and pagination before adoption.
+large-scale retrieval must prove unchanged Wilson calculation, Wilson-zero evidence handling,
+creation/UUID ties, and pagination before adoption.
 
 ## Suspicious observations that were insignificant or inconclusive
 

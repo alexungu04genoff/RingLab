@@ -10,36 +10,75 @@ import org.junit.jupiter.api.Test;
 
 class BuildRankingTest {
   @Test
-  void bestRatedPreservesSignConfidenceAndTieBreakPolicy() {
-    Build tiny = build("00000000-0000-0000-0000-000000000005", 5);
-    Build eight = build("00000000-0000-0000-0000-000000000004", 4);
-    Build good = build("00000000-0000-0000-0000-000000000003", 3);
-    Build perfect = build("00000000-0000-0000-0000-000000000002", 2);
-    Build strong = build("00000000-0000-0000-0000-000000000001", 1);
-    Build positive = build("00000000-0000-0000-0000-000000000006", 6);
-    Build balanced = build("00000000-0000-0000-0000-000000000007", 7);
-    Build empty = build("00000000-0000-0000-0000-000000000008", 8);
-    Build negative = build("00000000-0000-0000-0000-000000000009", 9);
-    Build oneDown = build("00000000-0000-0000-0000-000000000010", 10);
-    Build twoDown = build("00000000-0000-0000-0000-000000000011", 11);
-    Map<UUID, VoteSummary> facts = Map.ofEntries(
-        Map.entry(strong.id(), new VoteSummary(40, 1)),
-        Map.entry(perfect.id(), new VoteSummary(20, 0)),
-        Map.entry(good.id(), new VoteSummary(30, 5)),
-        Map.entry(eight.id(), new VoteSummary(8, 0)),
-        Map.entry(tiny.id(), new VoteSummary(3, 0)),
-        Map.entry(positive.id(), new VoteSummary(1, 0)),
-        Map.entry(balanced.id(), new VoteSummary(20, 20)),
-        Map.entry(negative.id(), new VoteSummary(20, 40)),
-        Map.entry(oneDown.id(), new VoteSummary(0, 1)),
-        Map.entry(twoDown.id(), new VoteSummary(0, 2)));
+  void higherFullPrecisionWilsonWinsRegardlessOfDate() {
+    Build higherOld = build("00000000-0000-0000-0000-000000000001", 1);
+    Build lowerNew = build("00000000-0000-0000-0000-000000000002", 2);
+    Map<UUID, VoteSummary> facts = Map.of(
+        higherOld.id(), new VoteSummary(40, 1),
+        lowerNew.id(), new VoteSummary(20, 1));
 
-    List<BuildRanking.Candidate> actual = candidates(twoDown, empty, tiny, negative, strong,
-        balanced, perfect, positive, good, oneDown, eight);
-    actual.sort(BuildRanking.comparator(BuildSort.BEST_RATED, facts));
+    assertBestRatedOrder(facts, List.of(higherOld.id(), lowerNew.id()), lowerNew, higherOld);
+  }
 
-    assertEquals(List.of(strong, perfect, good, eight, tiny, positive,
-        balanced, empty, negative, oneDown, twoDown).stream().map(Build::id).toList(), ids(actual));
+  @Test
+  void equalNonZeroWilsonUsesNewestFirst() {
+    Build old = build("00000000-0000-0000-0000-000000000001", 1);
+    Build newest = build("00000000-0000-0000-0000-000000000002", 2);
+    Map<UUID, VoteSummary> facts = Map.of(
+        old.id(), new VoteSummary(8, 2), newest.id(), new VoteSummary(8, 2));
+
+    assertBestRatedOrder(facts, List.of(newest.id(), old.id()), old, newest);
+  }
+
+  @Test
+  void unratedWilsonZeroRanksAboveNegativeEvidence() {
+    Build unrated = build("00000000-0000-0000-0000-000000000001", 1);
+    Build downvoted = build("00000000-0000-0000-0000-000000000002", 2);
+    Map<UUID, VoteSummary> facts = Map.of(downvoted.id(), new VoteSummary(0, 1));
+
+    assertBestRatedOrder(facts, List.of(unrated.id(), downvoted.id()), downvoted, unrated);
+  }
+
+  @Test
+  void lessNegativeWilsonZeroRanksFirst() {
+    Build oneDown = build("00000000-0000-0000-0000-000000000001", 1);
+    Build fiveDownNewer = build("00000000-0000-0000-0000-000000000002", 2);
+    Map<UUID, VoteSummary> facts = Map.of(
+        oneDown.id(), new VoteSummary(0, 1), fiveDownNewer.id(), new VoteSummary(0, 5));
+
+    assertBestRatedOrder(facts, List.of(oneDown.id(), fiveDownNewer.id()), fiveDownNewer, oneDown);
+  }
+
+  @Test
+  void unratedWilsonZeroUsesNewestFirst() {
+    Build old = build("00000000-0000-0000-0000-000000000001", 1);
+    Build newest = build("00000000-0000-0000-0000-000000000002", 2);
+
+    assertBestRatedOrder(Map.of(), List.of(newest.id(), old.id()), old, newest);
+  }
+
+  @Test
+  void equivalentVoteStateAndTimestampUsesUuidAsDeterministicFinalTieBreak() {
+    Build second = build("00000000-0000-0000-0000-000000000002", 1);
+    Build first = build("00000000-0000-0000-0000-000000000001", 1);
+    Map<UUID, VoteSummary> facts = Map.of(
+        first.id(), new VoteSummary(3, 1), second.id(), new VoteSummary(3, 1));
+
+    assertBestRatedOrder(facts, List.of(first.id(), second.id()), second, first);
+  }
+
+  @Test
+  void equalRoundedDisplayScoreStillUsesFullPrecisionWilson() {
+    Build higherOld = build("00000000-0000-0000-0000-000000000001", 1);
+    Build lowerNew = build("00000000-0000-0000-0000-000000000002", 2);
+    VoteSummary higher = new VoteSummary(16, 0);
+    VoteSummary lower = new VoteSummary(38, 3);
+    assertEquals(
+        Math.round(WilsonScore.lowerBound(higher.upvotes(), higher.downvotes()) * 100),
+        Math.round(WilsonScore.lowerBound(lower.upvotes(), lower.downvotes()) * 100));
+
+    assertBestRatedOrder(Map.of(higherOld.id(), higher, lowerNew.id(), lower),
+        List.of(higherOld.id(), lowerNew.id()), lowerNew, higherOld);
   }
 
   @Test
@@ -72,5 +111,12 @@ class BuildRankingTest {
 
   private List<UUID> ids(List<BuildRanking.Candidate> candidates) {
     return candidates.stream().map(BuildRanking.Candidate::id).toList();
+  }
+
+  private void assertBestRatedOrder(
+      Map<UUID, VoteSummary> facts, List<UUID> expected, Build... unordered) {
+    List<BuildRanking.Candidate> actual = candidates(unordered);
+    actual.sort(BuildRanking.comparator(BuildSort.BEST_RATED, facts));
+    assertEquals(expected, ids(actual));
   }
 }
