@@ -27,12 +27,15 @@ public class CommunitySelectionService {
   public CommunitySnapshot select() {
     var candidates = builds.searchCandidates(new BuildRepository.Filter(null, null, null, null, null));
     var summaries = votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());
-    var ranked = candidates.stream().sorted(BuildRanking.comparator(BuildSort.BEST_RATED, summaries)).toList();
+    var versions = index(game.listGameVersions(), v -> v.id());
+    var releaseDates = versions.values().stream().collect(Collectors.toMap(
+        v -> v.id(), v -> v.releasedAt()));
+    var ranked = candidates.stream().sorted(
+        BuildRanking.comparator(BuildSort.BEST_RATED, summaries, releaseDates)).toList();
     var racers = index(game.listRacers(), r -> r.id());
     var machines = index(game.listMachines(), m -> m.id());
     var parts = index(game.listMachineParts(), p -> p.id());
     var gadgets = index(game.listGadgets(), g -> g.id());
-    var versions = index(game.listGameVersions(), v -> v.id());
     var racerStats = new HashMap<UUID, Map<UUID, BaseStats>>();
     var partStats = new HashMap<UUID, Map<UUID, BaseStats>>();
     var names = new HashMap<UUID, String>();

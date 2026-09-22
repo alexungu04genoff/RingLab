@@ -96,7 +96,7 @@ class ArchitectureTest {
         double score() { return WilsonScore.lowerBound(3, 0); }
     }
     static class CanonicalPolicy {
-        Object comparator() { return BuildRanking.comparator(BuildSort.NEWEST, Map.of()); }
+        Object comparator() { return BuildRanking.comparator(BuildSort.NEWEST, Map.of(), Map.of()); }
     }
     static class LocalSorting {
         Object sort(List<String> values) { return values.stream().sorted().toList(); }

@@ -2,6 +2,7 @@ package dev.ringlab.domain.build.ranking;
 
 import dev.ringlab.domain.vote.VoteSummary;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.UUID;
@@ -9,10 +10,12 @@ import java.util.UUID;
 public final class BuildRanking {
   private BuildRanking() {}
 
-  public record Candidate(UUID id, Instant createdAt) {}
+  public record Candidate(UUID id, Instant createdAt, UUID gameVersionId) {
+    public Candidate(UUID id, Instant createdAt) { this(id, createdAt, null); }
+  }
 
   public static Comparator<Candidate> comparator(
-      BuildSort sort, Map<UUID, VoteSummary> summaries) {
+      BuildSort sort, Map<UUID, VoteSummary> summaries, Map<UUID, LocalDate> releaseDates) {
     Comparator<Candidate> newest = Comparator.comparing(Candidate::createdAt).reversed()
         .thenComparing(candidate -> candidate.id().toString());
     if (sort == BuildSort.NEWEST) return newest;
@@ -24,6 +27,9 @@ public final class BuildRanking {
 
     return Comparator
         .comparingDouble((Candidate candidate) -> wilsonScore(candidate, summaries)).reversed()
+        .thenComparing(Comparator.comparing(
+            (Candidate candidate) -> releaseDate(candidate, releaseDates),
+            Comparator.nullsFirst(Comparator.<LocalDate>naturalOrder())).reversed())
         .thenComparing(
             Comparator.comparingLong((Candidate candidate) ->
                 zeroScoreEvidence(candidate, summaries)).reversed())
@@ -32,6 +38,10 @@ public final class BuildRanking {
 
   private static VoteSummary summary(Candidate candidate, Map<UUID, VoteSummary> summaries) {
     return summaries.getOrDefault(candidate.id(), new VoteSummary(0, 0));
+  }
+
+  private static LocalDate releaseDate(Candidate candidate, Map<UUID, LocalDate> releaseDates) {
+    return candidate.gameVersionId() == null ? null : releaseDates.get(candidate.gameVersionId());
   }
 
   private static double wilsonScore(Candidate candidate, Map<UUID, VoteSummary> summaries) {

@@ -139,6 +139,32 @@ class BuildRankingIntegrationTest {
 
   @Test
   @TestTransaction
+  void bestRatedApiUsesReleaseDatesBeforeWilsonZeroEvidenceAndBeforePagination() {
+    UUID author = user();
+    UUID racer = game.listRacers().getFirst().id();
+    UUID machine = game.listMachines().getFirst().id();
+    var versions = game.listGameVersions();
+    UUID newestVersion = versions.getFirst().id();
+    UUID olderVersion = versions.getLast().id();
+    var olderUnrated = build(author, racer, machine, "qa patch older unrated", 0, 0, 4, olderVersion);
+    var newerDown = build(author, racer, machine, "qa patch newer down", 0, 1, 3, newestVersion);
+    var newerUnrated = build(author, racer, machine, "qa patch newer unrated", 0, 0, 2, newestVersion);
+    var olderNegative = build(author, racer, machine, "qa patch older negative", 20, 40, 1, olderVersion);
+    em.flush();
+
+    var expected = List.of(olderNegative, newerUnrated, newerDown, olderUnrated);
+    assertEquals(expected, buildResource.list("qa patch", null, null, author, null, false,
+        "rated", 0, 50).items().stream().map(response -> response.id()).toList());
+    assertEquals(expected.subList(0, 2), list("qa patch", null, null, author, null,
+        BuildSort.BEST_RATED, 0, 2).items().stream().map(Build::id).toList());
+    assertEquals(expected.subList(2, 4), list("qa patch", null, null, author, null,
+        BuildSort.BEST_RATED, 1, 2).items().stream().map(Build::id).toList());
+    assertEquals(List.of(olderNegative, olderUnrated), list("qa patch", null, null,
+        author, olderVersion, BuildSort.BEST_RATED, 0, 50).items().stream().map(Build::id).toList());
+  }
+
+  @Test
+  @TestTransaction
   void summariesAndResponsesReflectAddingSwitchingAndRemovingVotes() {
     UUID author = user();
     UUID id = build(author, game.listRacers().getFirst().id(),
@@ -260,6 +286,11 @@ class BuildRankingIntegrationTest {
 
   private UUID build(UUID author, UUID racer, UUID machine, String title,
       int up, int down, int age) {
+    return build(author, racer, machine, title, up, down, age, null);
+  }
+
+  private UUID build(UUID author, UUID racer, UUID machine, String title,
+      int up, int down, int age, UUID versionId) {
     var entity = new BuildDbEntity();
     entity.id = UUID.randomUUID();
     entity.authorId = author;
@@ -269,6 +300,7 @@ class BuildRankingIntegrationTest {
     entity.tirePartId = part(machine, "TIRE");
     entity.title = title;
     entity.description = "Ranking test";
+    entity.gameVersionId = versionId;
     entity.createdAt = Instant.parse("2026-01-01T00:00:00Z").plusSeconds(age);
     entity.updatedAt = entity.createdAt;
     em.persist(entity);

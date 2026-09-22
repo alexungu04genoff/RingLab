@@ -12,6 +12,7 @@ param(
   [switch]$Refresh,
   [switch]$ProfessorDemoOnly,
   [switch]$PromoteFeatured,
+  [switch]$SetRankingTimestamps,
   [switch]$Apply
 )
 $ErrorActionPreference='Stop'
@@ -85,6 +86,21 @@ function Assert-LocalDevelopmentDatabase {
   [pscustomobject]@{compose=$compose;requiredMigration=$required;appliedMigration=[int]$applied}
 }
 
+function Set-LocalFixtureTimestamp($Database,[string]$BuildId,[string]$OwnerId,[string]$CaseTime,[string]$CreatedAt,[string]$UpdatedAt) {
+  if($BuildId -notmatch '^[0-9a-fA-F-]{36}$' -or $OwnerId -notmatch '^[0-9a-fA-F-]{36}$' -or
+      $CaseTime -notmatch '^2026-09-(17|18|19)T12:00:00Z$') {
+    throw 'Refusing an invalid fixture-only timestamp update.'
+  }
+  $created=[datetimeoffset]::Parse($CreatedAt).ToUniversalTime().ToString('o')
+  $updated=[datetimeoffset]::Parse($UpdatedAt).ToUniversalTime().ToString('o')
+  # Exact original timestamps prevent a concurrent edit from being retimestamped.
+  $sql="UPDATE builds SET created_at = '$CaseTime'::timestamptz, updated_at = '$CaseTime'::timestamptz WHERE id = '$BuildId'::uuid AND author_id = '$OwnerId'::uuid AND created_at = '$created'::timestamptz AND updated_at = '$updated'::timestamptz RETURNING id;"
+  $changed=@(& docker compose -f $Database.compose exec -T postgres psql -X -q -U ringlab -d ringlab -Atc $sql)
+  if($LASTEXITCODE -ne 0 -or $changed.Count -ne 1 -or $changed[0] -ne $BuildId) {
+    throw "Fixture-only timestamp update failed for manifest build $BuildId."
+  }
+}
+
 function Assert-Plan($Plan,$Catalog) {
   $errors=@();$buildKeys=@{};$partById=@{};$versionIds=@{};$gadgetById=@{}
   foreach($p in (ConvertTo-DemoArray $Catalog.parts)){$partById[[string]$p.id]=$p};foreach($v in (ConvertTo-DemoArray $Catalog.versions)){$versionIds[[string]$v.id]=$true};foreach($g in (ConvertTo-DemoArray $Catalog.gadgets)){$gadgetById[[string]$g.id]=$g}
@@ -102,6 +118,7 @@ function Assert-Plan($Plan,$Catalog) {
     $costs=@();$seen=@{};foreach($id in $b.gadgetIds){if($seen.ContainsKey([string]$id)){$errors+="$($b.key): duplicate gadget"};$seen[[string]$id]=$true;$g=$gadgetById[[string]$id];if(!$g -or $null -eq $g.slotCost){$errors+="$($b.key): unknown gadget cost"}else{$costs+=[int]$g.slotCost}}
     if(!(Test-GadgetPlateFit $costs)){$errors+="$($b.key): gadgets do not fit the 2x3 plate"}
     if($b.machineType -eq 'BOOST' -and $b.description -match '(?i)tires?'){$errors+="$($b.key): Boost description mentions a tire"}
+    if($b.caseTime -and [datetime]::Parse($b.caseTime) -gt [datetime]::Parse($Plan.referenceTime)){$errors+="$($b.key): fixed timestamp is after the plan reference time"}
     if($b.stock -and $b.description -match '(?i)mixed'){$errors+="$($b.key): stock description says mixed"}
     if($b.remixedFromKey -and !$buildKeys.ContainsKey($b.remixedFromKey)){$errors+="$($b.key): remix parent does not precede child"}
     if($Catalog.stats){
@@ -158,6 +175,7 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
 
 Assert-LoopbackUrl $BaseUrl
 if($ProfessorDemoOnly -and !$Refresh){throw 'ProfessorDemoOnly requires -Refresh so existing managed records receive the normal conflict checks.'}
+if($SetRankingTimestamps -and !$Refresh){throw 'SetRankingTimestamps requires -Refresh and the normal managed-record conflict checks.'}
 if($Preview){
   if(!$CatalogSnapshotPath){throw 'Offline preview requires -CatalogSnapshotPath. Use -ExportCatalogSnapshot with live read-only validation first.'}
   $catalog=Get-Content -Raw -LiteralPath $CatalogSnapshotPath|ConvertFrom-Json
@@ -198,6 +216,9 @@ foreach($b in $plan.builds){
   }
   $buildIds[$b.key]=[string]$actual.id;$actualFingerprint=Get-Fingerprint (Get-ActualRequest $actual)
   if($actual.author.username -cne "ringlab_demo_$($b.owner)") {throw "Fixture owner mismatch: $($b.key)"}
+  if($b.caseTime -and $record.caseTime -and $actual.createdAt -ne $record.caseTime){
+    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture timestamp changed';id=$actual.id};continue
+  }
   if($actualFingerprint -ne $record.fingerprint -and $actualFingerprint -ne $record.pendingFingerprint){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fields were edited';id=$actual.id};continue}
   if($ProfessorDemoOnly){
     $desired=Get-ActualRequest $actual
@@ -222,6 +243,7 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind)){
 }
 foreach($conflict in @($actions|Where-Object action -eq 'conflict')){Write-Warning "$($conflict.key): $($conflict.reason)"}
 if($PromoteFeatured){Write-Host 'Featured Sonic: add missing votes from 65 reserved fixture voters; preserve all existing votes. This is fictional demo engagement.'}
+if($SetRankingTimestamps){Write-Host 'Fixed ranking timestamps: update only trusted manifest-owned ranking fixtures with exact current timestamp checks.'}
 if(!$Apply){Write-Host 'Preview only. Add -Apply to perform the displayed additions/updates; use -Refresh -Apply for an explicit refresh.';return [pscustomobject]@{plan=$plan;actions=$actions}}
 
 # Compare the API identities with the proven local database before any mutation.
@@ -269,9 +291,25 @@ foreach($b in $plan.builds){
   } else {$preserveEngagement=$false}
   if($action.action -eq 'add'){$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh){continue};$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
   $buildIds[$b.key]=[string]$actual.id;$fingerprint=Get-Fingerprint (Get-ActualRequest $actual)
-  $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint;preserveEngagement=$preserveEngagement}
+  $storedCaseTime=if($action.action -eq 'add'){$null}else{$previous.caseTime}
+  $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint;preserveEngagement=$preserveEngagement;caseTime=$storedCaseTime}
   Save-State $state
   Write-Host "Saved fixture $($b.key)."
+}
+if($SetRankingTimestamps){
+  foreach($b in @($plan.builds|Where-Object caseTime)){
+    $action=@($actions|Where-Object key -eq $b.key)[0]
+    if($action.action -eq 'conflict'){continue}
+    $record=@($state.builds|Where-Object key -eq $b.key)|Select-Object -First 1
+    if(!$record -or [string]$record.id -ne [string]$buildIds[$b.key]){throw "No trusted manifest record for $($b.key)."}
+    $current=Invoke-RingLabApi GET "/builds/$($record.id)"
+    if($current.author.id -ne $sessions[$b.owner].user.id -or (Get-Fingerprint (Get-ActualRequest $current)) -ne $record.fingerprint){throw "Fixture changed before timestamp update: $($b.key)."}
+    if($current.createdAt -eq $b.caseTime){continue}
+    Set-LocalFixtureTimestamp $database ([string]$record.id) ([string]$current.author.id) $b.caseTime ([string]$current.createdAt) ([string]$current.updatedAt)
+    $record|Add-Member -NotePropertyName caseTime -NotePropertyValue $b.caseTime -Force
+    Save-State $state
+    Write-Host "Set fixed ranking timestamp for $($b.key)."
+  }
 }
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
   $action=@($actions|Where-Object key -eq $fixture.key)[0]

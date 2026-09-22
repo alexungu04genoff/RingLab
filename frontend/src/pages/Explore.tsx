@@ -426,7 +426,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           }}
         />
         <label>
-          <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated uses Wilson vote confidence. Newer builds win exact confidence ties; at zero confidence, unrated builds rank above downvoted builds.</span></span></span>
+          <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span></span></span>
           <select
             value={sort}
             onChange={(e) => {

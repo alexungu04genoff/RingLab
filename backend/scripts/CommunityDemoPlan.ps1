@@ -74,16 +74,27 @@ function Get-CommunityDemoPlan {
   $legacyTitles=@('[DEMO] Cornering Showcase','[DEMO] Item Control Practice','[DEMO] Ring Route Session','[DEMO] Acceleration Lab','[DEMO] Power Recovery Run','[DEMO] Boost Timing Notes','[DEMO] Dark Reaper Sprint','[DEMO] Consistent Finish Plan','[DEMO] Drift Line Routine','[DEMO] Starting Grid Notes','[DEMO] Night Circuit Notes','[DEMO] Speedster Session','[DEMO] Boost Route Notes','[DEMO] Balanced Start','[DEMO] Power Lineup','[DEMO] Steady Lap Plan','[DEMO] Ring Collection Notes')
   $legacyOwners=@('amy','amy','amy','tails','tails','tails','shadow','shadow','amy','tails','shadow','sonic','sonic','sonic','knuckles','knuckles','knuckles')
   $wilsonFixtures=[ordered]@{
-    cornering=[pscustomobject]@{title='[Wilson Demo] Small perfect sample — 3↑ 0↓';upvotes=3;downvotes=0;description='This pair demonstrates how sample size affects Wilson confidence.'}
-    items=[pscustomobject]@{title='[Wilson Demo] Large near-perfect sample — 40↑ 1↓';upvotes=40;downvotes=1;description='This pair demonstrates how sample size affects Wilson confidence.'}
-    'community-shadow-2'=[pscustomobject]@{title='[Wilson Demo] Same score, cleaner reception — 15↑ 0↓';upvotes=15;downvotes=0;description='This build has the same net score as another demo case but a cleaner approval ratio.'}
-    acceleration=[pscustomobject]@{title='[Wilson Demo] Same score, divided reception — 25↑ 10↓';upvotes=25;downvotes=10;description='This build has the same net score as another demo case but more divided reception.'}
-    recovery=[pscustomobject]@{title='[Wilson Demo] Clean small sample — 8↑ 0↓';upvotes=8;downvotes=0;description='This build shows a positive result supported by a small clean sample.'}
-    boost=[pscustomobject]@{title='[Wilson Demo] Bigger but controversial — 40↑ 20↓';upvotes=40;downvotes=20;description='This build shows how a larger but divided sample compares within the positive-score group.'}
-    shadow=[pscustomobject]@{title='[Wilson Demo] No votes yet';upvotes=0;downvotes=0;description='This build demonstrates the unrated zero-score case.'}
-    finish=[pscustomobject]@{title='[Wilson Demo] Even split — 5↑ 5↓';upvotes=5;downvotes=5;description='This build demonstrates an evenly divided zero-score case.'}
-    'amy-drift'=[pscustomobject]@{title='[Wilson Demo] Negative reception — 20↑ 40↓';upvotes=20;downvotes=40;description='This build demonstrates a substantial sample in the negative-score group.'}
-    'tails-grid'=[pscustomobject]@{title='[Wilson Demo] Downvotes only — 0↑ 8↓';upvotes=0;downvotes=8;description='This build demonstrates a uniformly negative sample.'}
+    cornering=[pscustomobject]@{title='[Wilson Demo] rlqa-w01 wilson — 3↑ 0↓ small sample';upvotes=3;downvotes=0;description='Compare rlqa-w01 with rlqa-w02: Wilson confidence uses sample size.'}
+    items=[pscustomobject]@{title='[Wilson Demo] rlqa-w02 wilson — 40↑ 1↓ large sample';upvotes=40;downvotes=1;description='Compare rlqa-w02 with rlqa-w01: larger near-perfect sample.'}
+    'community-shadow-2'=[pscustomobject]@{title='[Wilson Demo] rlqa-w03 wilson — 15↑ 0↓ clean';upvotes=15;downvotes=0;description='Compare rlqa-w03 with rlqa-w04: equal net score, different evidence.'}
+    acceleration=[pscustomobject]@{title='[Wilson Demo] rlqa-w04 wilson — 25↑ 10↓ divided';upvotes=25;downvotes=10;description='Compare rlqa-w04 with rlqa-w03: equal net score, different evidence.'}
+    recovery=[pscustomobject]@{title='[Wilson Demo] rlqa-w05 wilson — 16↑ 0↓ near rounded tie';upvotes=16;downvotes=0;description='Wilson is about 0.80639, above rlqa-w06 despite both rounding to 0.81.'}
+    boost=[pscustomobject]@{title='[Wilson Demo] rlqa-w06 wilson — 38↑ 3↓ near rounded tie';upvotes=38;downvotes=3;description='Wilson is about 0.80572, below rlqa-w05 despite both rounding to 0.81.'}
+    shadow=[pscustomobject]@{title='[Wilson Demo] rlqa-w07 wilson — 0↑ 0↓ unrated';upvotes=0;downvotes=0;description='An unrated Wilson-zero example.'}
+    finish=[pscustomobject]@{title='[Wilson Demo] rlqa-w08 wilson — 5↑ 5↓ split';upvotes=5;downvotes=5;description='An even split still has positive Wilson confidence.'}
+    'amy-drift'=[pscustomobject]@{title='[Wilson Demo] rlqa-w09 wilson negative — 20↑ 40↓';upvotes=20;downvotes=40;description='Net negative with positive Wilson confidence can outrank an unrated build.'}
+    'tails-grid'=[pscustomobject]@{title='[Wilson Demo] rlqa-w10 wilson negative — 0↑ 8↓';upvotes=0;downvotes=8;description='Downvotes only produce Wilson zero.'}
+  }
+  $rankingFixtures=[ordered]@{
+    'community-amy-1'=[pscustomobject]@{title='[Wilson Demo] rlqa-n01 negative — 0↑ 0↓';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-amy-2'=[pscustomobject]@{title='[Wilson Demo] rlqa-n02 negative — 0↑ 1↓';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-amy-3'=[pscustomobject]@{title='[Wilson Demo] rlqa-n03 negative — 0↑ 5↓';upvotes=0;downvotes=5;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-tails-1'=[pscustomobject]@{title='[Version Demo] rlqa-p01 patch — newer 0↑ 1↓';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-tails-2'=[pscustomobject]@{title='[Version Demo] rlqa-p02 patch — older 0↑ 0↓';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='oldest'}
+    'community-shadow-1'=[pscustomobject]@{title='[DEMO] rlqa-t01 timestamp — older submission';upvotes=8;downvotes=2;caseTime='2026-09-17T12:00:00Z';patch='latest'}
+    'community-shadow-3'=[pscustomobject]@{title='[DEMO] rlqa-t02 timestamp — newer submission';upvotes=8;downvotes=2;caseTime='2026-09-19T12:00:00Z';patch='latest'}
+    'community-sonic-1'=[pscustomobject]@{title='[DEMO] rlqa-d01 timestamp — same-time ID tie';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-sonic-2'=[pscustomobject]@{title='[DEMO] rlqa-d02 timestamp — same-time ID tie';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
   }
   # The Explore UI requests 20 comments per page. These totals expose exact page boundaries.
   $commentFixtures=[ordered]@{
@@ -175,22 +186,27 @@ function Get-CommunityDemoPlan {
     $preferred=@($gadgets | Where-Object name -in $profile.theme.names)
     $candidates=@(Invoke-DemoShuffle $preferred $random)+@(Invoke-DemoShuffle @($gadgets | Where-Object name -notin $profile.theme.names) $random)
     $selected=@();foreach($g in $candidates){$trial=@($selected+$g);if($trial.Count -le 4 -and (Test-GadgetPlateFit @($trial.slotCost))){$selected=$trial};if($selected.Count -ge 2 -and $random.NextDouble() -lt .45){break}}
-    $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest};$stock=$fm.id -eq $rm.id -and ($machineType -eq 'BOOST' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
+    $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest}
+    if($rankingFixtures.Contains($b.key)){$version=if($rankingFixtures[$b.key].patch -eq 'oldest'){$versions[-1]}else{$latest}}
+    $stock=$fm.id -eq $rm.id -and ($machineType -eq 'BOOST' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
     $setup=if($machineType -eq 'BOOST'){if($stock){"A straightforward $($fm.name) Extreme Gear setup."}else{"An Extreme Gear mix using the $($fm.name) front and $($rm.name) rear."}}else{if($stock){"A straightforward stock $($fm.name) setup."}else{"A mixed $machineType setup with $($fm.name), $($rm.name), and $($tm.name) parts."}}
     $tone=@('I keep coming back to this one.','Still deciding whether this becomes my regular setup.','A small experiment I wanted to save.','Any thoughts on the gadget order?','Keeping a spare setup for next time.','Nothing ambitious today; just saving my current picks.')[$random.Next(6)]
     $title=@("$($racer.name): $($profile.theme.label)","An evening with $($racer.name)","$($fm.name), take two","$($racer.name) and a garage experiment","A spare $($machineType.ToLowerInvariant()) setup","Trying $($selected[0].name)")[$random.Next(6)]
     if($b.key -eq 'sonic-speed'){$title='Sonic — my regular garage pick'}
     $description="$setup $tone"
     if($b.ordinal % 3 -ne 0){$description+=" Keeping $($selected[0].name) with $($selected[1].name) for this version of the loadout."}
-    $fixtureKind=$null;$targetUpvotes=$null;$targetDownvotes=$null;$targetComments=$null
+    $fixtureKind=$null;$targetUpvotes=$null;$targetDownvotes=$null;$targetComments=$null;$caseTime=$null
     if($wilsonFixtures.Contains($b.key)){
       $fixture=$wilsonFixtures[$b.key];$fixtureKind='WILSON';$title=$fixture.title
       $description="$($fixture.description) $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes
+    } elseif($rankingFixtures.Contains($b.key)) {
+      $fixture=$rankingFixtures[$b.key];$fixtureKind='WILSON';$title=$fixture.title
+      $description="Controlled ranking case $($b.key). $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes;$caseTime=$fixture.caseTime
     } elseif($commentFixtures.Contains($b.key)) {
       $fixture=$commentFixtures[$b.key];$fixtureKind='COMMENT';$title=$fixture.title
       $description="$($fixture.description) $setup";$targetComments=$fixture.comments
     }
-    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
+    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;caseTime=$caseTime;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
   }
   $votes=@();$comments=@()
   foreach($b in $builds){

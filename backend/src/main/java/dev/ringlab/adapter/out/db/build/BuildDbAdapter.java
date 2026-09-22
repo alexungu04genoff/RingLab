@@ -42,7 +42,8 @@ public class BuildDbAdapter implements BuildRepository {
     CriteriaQuery<BuildRanking.Candidate> itemQuery = criteriaBuilder.createQuery(BuildRanking.Candidate.class);
     Root<BuildDbEntity> itemRoot = itemQuery.from(BuildDbEntity.class);
     itemQuery.select(criteriaBuilder.construct(
-        BuildRanking.Candidate.class, itemRoot.get("id"), itemRoot.get("createdAt")));
+        BuildRanking.Candidate.class, itemRoot.get("id"), itemRoot.get("createdAt"),
+        itemRoot.get("gameVersionId")));
     itemQuery.where(filters(criteriaBuilder, itemQuery, itemRoot, filter).toArray(Predicate[]::new));
     return em.createQuery(itemQuery).getResultList();
   }

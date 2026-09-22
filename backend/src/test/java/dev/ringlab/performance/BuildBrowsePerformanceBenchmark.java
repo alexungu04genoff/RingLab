@@ -234,7 +234,7 @@ class BuildBrowsePerformanceBenchmark {
       List<BuildRanking.Candidate> candidates = buildRepository.searchCandidates(
           new BuildRepository.Filter(null, null, null, null, null));
       List<BuildRanking.Candidate> ranked = candidates.stream()
-          .sorted(BuildRanking.comparator(BuildSort.NEWEST, Map.of()))
+          .sorted(BuildRanking.comparator(BuildSort.NEWEST, Map.of(), Map.of()))
           .toList();
       List<UUID> pageIds = ranked.subList(0, Math.min(PAGE_SIZE, ranked.size())).stream()
           .map(BuildRanking.Candidate::id).toList();

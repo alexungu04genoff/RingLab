@@ -14,7 +14,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class CommunitySelectionTest {
   final UUID racer = UUID.randomUUID(), machine = UUID.randomUUID(), front = UUID.randomUUID(),
-      rear = UUID.randomUUID(), tire = UUID.randomUUID(), patch = UUID.randomUUID(), author = UUID.randomUUID();
+      rear = UUID.randomUUID(), tire = UUID.randomUUID(), patch = UUID.randomUUID(),
+      oldPatch = UUID.randomUUID(), author = UUID.randomUUID();
   final Map<UUID, Build> builds = new LinkedHashMap<>();
   final Map<UUID, VoteSummary> votes = new HashMap<>();
   final Map<UUID, MachinePart> parts = new HashMap<>(Map.of(
@@ -26,8 +27,13 @@ class CommunitySelectionTest {
   int statsReads;
 
   Build build(String title, long up, long down, UUID selectedTire, List<UUID> selectedGadgets) {
+    return build(title, up, down, selectedTire, selectedGadgets, patch);
+  }
+
+  Build build(String title, long up, long down, UUID selectedTire,
+      List<UUID> selectedGadgets, UUID version) {
     var b = new Build(UUID.randomUUID(), title, "Description", author, racer, front, rear,
-        selectedTire, patch, null, selectedGadgets, Instant.EPOCH, Instant.EPOCH);
+        selectedTire, version, null, selectedGadgets, Instant.EPOCH, Instant.EPOCH);
     builds.put(b.id(), b);
     votes.put(b.id(), new VoteSummary(up, down));
     return b;
@@ -37,7 +43,8 @@ class CommunitySelectionTest {
     var repository = stub(BuildRepository.class, (name, args) -> switch (name) {
       case "searchCandidates" -> {
         assertEquals(new BuildRepository.Filter(null, null, null, null, null), args[0]);
-        yield builds.values().stream().map(b -> new BuildRanking.Candidate(b.id(), b.createdAt())).toList();
+        yield builds.values().stream().map(b -> new BuildRanking.Candidate(
+            b.id(), b.createdAt(), b.gameVersionId())).toList();
       }
       case "findAll" -> { assertTrue(((Collection<?>) args[0]).size() <= 50);
         yield builds.values().stream().filter(b -> ((Collection<?>) args[0]).contains(b.id())).toList(); }
@@ -48,7 +55,8 @@ class CommunitySelectionTest {
       case "listMachines" -> List.copyOf(machines.values());
       case "listMachineParts" -> List.copyOf(parts.values());
       case "listGadgets" -> List.copyOf(gadgets.values());
-      case "listGameVersions" -> List.of(new GameVersion(patch, "1.4.1", LocalDate.of(2026, 6, 23)));
+      case "listGameVersions" -> List.of(new GameVersion(patch, "1.4.1", LocalDate.of(2026, 6, 23)),
+          new GameVersion(oldPatch, "1.10.0", LocalDate.of(2026, 3, 18)));
       default -> throw new AssertionError("Unexpected catalog lookup: " + name);
     });
     var voteRepository = stub(VoteRepository.class, (name, args) -> {
@@ -84,10 +92,23 @@ class CommunitySelectionTest {
     var unrated = build("Unrated", 0, 0, tire, List.of());
     var positive = build("Positive", 8, 0, tire, List.of());
     var expected = builds.values().stream().map(b -> new BuildRanking.Candidate(b.id(), b.createdAt()))
-        .sorted(BuildRanking.comparator(BuildSort.BEST_RATED, votes)).limit(3).map(BuildRanking.Candidate::id).toList();
+        .sorted(BuildRanking.comparator(BuildSort.BEST_RATED, votes, Map.of())).limit(3).map(BuildRanking.Candidate::id).toList();
     assertEquals(List.of(positive.id(), unrated.id(), oneDown.id()), expected);
     assertEquals(expected, service().select().items().stream().map(e -> e.build().id()).toList());
     assertFalse(expected.contains(fiveDown.id()));
+  }
+
+  @Test void topThreeAppliesPatchChronologyAndStillExcludesControlledDemos() {
+    build("[Wilson Demo] very popular", 100, 0, tire, List.of(), patch);
+    var oldUnrated = build("Old unrated", 0, 0, tire, List.of(), oldPatch);
+    var newDown = build("New one down", 0, 1, tire, List.of(), patch);
+    var newUnrated = build("New unrated", 0, 0, tire, List.of(), patch);
+    var oldNegative = build("Old negative with upvotes", 20, 40, tire, List.of(), oldPatch);
+
+    assertEquals(List.of(oldNegative.id(), newUnrated.id(), newDown.id()),
+        service().select().items().stream().map(entry -> entry.build().id()).toList());
+    assertFalse(service().select().items().stream()
+        .anyMatch(entry -> entry.build().id().equals(oldUnrated.id())));
   }
 
   @Test void emptyAndBoostAndFewerThanThree() {

@@ -7,6 +7,7 @@ import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.Gadget;
+import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.gamedata.MachineComposition;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
@@ -22,6 +23,7 @@ import dev.ringlab.port.out.VoteRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
@@ -80,8 +82,12 @@ public class BuildService {
     var summaries = query.sort() == BuildSort.NEWEST
         ? Map.<UUID, VoteSummary>of()
         : votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());
+    Map<UUID, LocalDate> releaseDates = query.sort() == BuildSort.BEST_RATED
+        ? game.listGameVersions().stream().collect(java.util.stream.Collectors.toMap(
+            GameVersion::id, GameVersion::releasedAt))
+        : Map.of();
     List<BuildRanking.Candidate> ranked = candidates.stream()
-        .sorted(BuildRanking.comparator(query.sort(), summaries))
+        .sorted(BuildRanking.comparator(query.sort(), summaries, releaseDates))
         .toList();
     long offset = (long) query.page() * query.size();
     if (offset >= ranked.size()) return new Page(List.of(), ranked.size(), Map.of());

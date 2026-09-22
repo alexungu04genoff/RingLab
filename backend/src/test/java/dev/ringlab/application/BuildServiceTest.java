@@ -97,6 +97,35 @@ class BuildServiceTest {
   }
 
   @Test
+  void bestRatedUsesPatchChronologyBeforeZeroEvidenceAndPaginatesGlobally() {
+    UUID newerPatch = gameVersionId;
+    UUID olderPatch = UUID.randomUUID();
+    gameData.versions.put(newerPatch,
+        new GameVersion(newerPatch, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
+    gameData.versions.put(olderPatch,
+        new GameVersion(olderPatch, "1.10.0", java.time.LocalDate.of(2026, 3, 18)));
+    Instant base = Instant.parse("2026-01-01T00:00:00Z");
+    Build oldUnrated = rankedBuild("old patch unrated", base.plusSeconds(3), olderPatch);
+    Build newOneDown = rankedBuild("new patch down", base.plusSeconds(1), newerPatch);
+    Build newUnrated = rankedBuild("new patch unrated", base, newerPatch);
+    Build oldNegativeWithUpvotes = rankedBuild("old patch negative", base, olderPatch);
+    builds.searchResults = List.of(oldUnrated, newOneDown, oldNegativeWithUpvotes, newUnrated);
+    votes.summaries.put(newOneDown.id(), new VoteSummary(0, 1));
+    votes.summaries.put(oldNegativeWithUpvotes.id(), new VoteSummary(20, 40));
+    var filter = new BuildRepository.Filter(null, null, null, null, null);
+
+    var first = service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 0, 2));
+    var second = service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 1, 2));
+
+    assertEquals(4, first.total());
+    assertEquals(List.of(oldNegativeWithUpvotes, newUnrated), first.items());
+    assertEquals(List.of(newOneDown, oldUnrated), second.items());
+    assertEquals(List.of(oldNegativeWithUpvotes, oldUnrated), service.list(new BuildService.Query(
+        new BuildRepository.Filter(null, null, null, null, olderPatch),
+        BuildSort.BEST_RATED, 0, 2)).items());
+  }
+
+  @Test
   void listingRestoresRankedOrderAndSkipsMissingBulkHydrationResults() {
     Instant base = Instant.parse("2026-01-01T00:00:00Z");
     Build oldest = rankedBuild("oldest", base);
@@ -133,8 +162,12 @@ class BuildServiceTest {
   }
 
   private Build rankedBuild(String title, Instant createdAt) {
+    return rankedBuild(title, createdAt, null);
+  }
+
+  private Build rankedBuild(String title, Instant createdAt, UUID versionId) {
     return new Build(UUID.randomUUID(), title, "", authorId, racerId, frontPartId,
-        rearPartId, tirePartId, null, null, List.of(), createdAt, createdAt);
+        rearPartId, tirePartId, versionId, null, List.of(), createdAt, createdAt);
   }
 
   @Test
@@ -632,8 +665,12 @@ class BuildServiceTest {
     @Override
     public List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> searchCandidates(Filter filter) {
       List<Build> results = searchResults == null ? List.copyOf(saved.values()) : searchResults;
-      return results.stream().map(build ->
-          new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(build.id(), build.createdAt())).toList();
+      return results.stream()
+          .filter(build -> filter.gameVersionId() == null
+              || filter.gameVersionId().equals(build.gameVersionId()))
+          .map(build ->
+          new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(
+              build.id(), build.createdAt(), build.gameVersionId())).toList();
     }
 
     @Override

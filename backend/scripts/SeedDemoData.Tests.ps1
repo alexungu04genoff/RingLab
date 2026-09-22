@@ -73,14 +73,28 @@ try{
   Assert-True (@($featuredVotes|Where-Object user -eq $featured.owner).Count -eq 0) 'Featured fixture self-votes'
   $wilson=@($plan.builds|Where-Object fixtureKind -eq 'WILSON')
   $commentDemos=@($plan.builds|Where-Object fixtureKind -eq 'COMMENT')
-  Assert-True ($wilson.Count -eq 10) 'Expected 10 Wilson demonstration fixtures'
+  Assert-True ($wilson.Count -eq 19) 'Expected 19 controlled ranking fixtures'
   Assert-True ($commentDemos.Count -eq 6) 'Expected 6 comment pagination fixtures'
-  Assert-True (@($wilson|Where-Object {$_.title -cnotlike '[[]Wilson Demo[]]*'}).Count -eq 0) 'Wilson fixture lacks the exact title prefix'
+  Assert-True (@($wilson|Where-Object {$_.title -cnotmatch '^\[(Wilson|Version) Demo\]|^\[DEMO\]'}).Count -eq 0) 'Ranking fixture lacks a controlled title prefix'
   Assert-True (@($commentDemos|Where-Object {$_.title -cnotlike '[[]Comment Demo[]]*'}).Count -eq 0) 'Comment fixture lacks the exact title prefix'
   Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]Pagination Demo[]]*'}).Count -eq 0) 'Current fixture still uses the Pagination Demo prefix'
-  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 0) 'Current fixture still uses the old DEMO prefix'
-  Assert-True (@($plan.builds|Where-Object {$_.title -like '*demo*'}).Count -eq 16) 'Demo title search does not find all controlled fixtures'
-  Assert-True (@($plan.builds|Where-Object {$_.title -like '*wilson*'}).Count -eq 10) 'Wilson title search does not find exactly 10 fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 4) 'Timestamp and ID fixtures should use the controlled DEMO prefix'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*demo*'}).Count -eq 25) 'Demo title search does not find all controlled fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*wilson*'}).Count -eq 13) 'Wilson title search does not find exactly 13 fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*negative*'}).Count -eq 5) 'Negative title search does not find the controlled group'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*patch*'}).Count -eq 2) 'Patch title search does not find the controlled pair'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*timestamp*'}).Count -eq 4) 'Timestamp title search does not find the controlled groups'
+  foreach($caseId in @('rlqa-w01','rlqa-w02','rlqa-w03','rlqa-w04','rlqa-w05','rlqa-w06','rlqa-w07','rlqa-w08','rlqa-w09','rlqa-w10','rlqa-n01','rlqa-n02','rlqa-n03','rlqa-p01','rlqa-p02','rlqa-t01','rlqa-t02','rlqa-d01','rlqa-d02')){
+    Assert-True (@($plan.builds|Where-Object title -like "*$caseId*").Count -eq 1) "Scenario ID $caseId is not uniquely searchable"
+  }
+  $n01=@($plan.builds|Where-Object title -like '*rlqa-n01*')[0];$n02=@($plan.builds|Where-Object title -like '*rlqa-n02*')[0];$n03=@($plan.builds|Where-Object title -like '*rlqa-n03*')[0]
+  Assert-True ($n01.gameVersionId -eq $n02.gameVersionId -and $n02.gameVersionId -eq $n03.gameVersionId -and $n01.caseTime -eq $n02.caseTime -and $n02.caseTime -eq $n03.caseTime) 'Negative evidence group does not hold patch and timestamp equal'
+  $p01=@($plan.builds|Where-Object title -like '*rlqa-p01*')[0];$p02=@($plan.builds|Where-Object title -like '*rlqa-p02*')[0]
+  Assert-True ([datetime]$p01.releasedAt -gt [datetime]$p02.releasedAt -and $p01.caseTime -eq $p02.caseTime) 'Patch group does not isolate chronology'
+  $t01=@($plan.builds|Where-Object title -like '*rlqa-t01*')[0];$t02=@($plan.builds|Where-Object title -like '*rlqa-t02*')[0]
+  Assert-True ($t01.gameVersionId -eq $t02.gameVersionId -and [datetime]$t01.caseTime -lt [datetime]$t02.caseTime) 'Timestamp group does not isolate creation time'
+  $d01=@($plan.builds|Where-Object title -like '*rlqa-d01*')[0];$d02=@($plan.builds|Where-Object title -like '*rlqa-d02*')[0]
+  Assert-True ($d01.gameVersionId -eq $d02.gameVersionId -and $d01.caseTime -eq $d02.caseTime) 'ID group does not hold patch and timestamp equal'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*comment*'}).Count -eq 6) 'Comment title search does not find exactly 6 fixtures'
   Assert-True ($featured.fixtureKind -eq $null -and $featured.title -notmatch '(?i)demo') 'Featured Sonic build was renamed as a demo fixture'
   foreach($build in $wilson){
@@ -95,7 +109,7 @@ try{
     Assert-True (@($plan.comments|Where-Object build -eq $build.key).Count -eq $build.targetComments) "Wrong planned comment total: $($build.key)"
     Assert-True ($build.title -match "[[]Comment Demo[]] $($build.targetComments) comments") "Comment title count disagrees with the plan: $($build.key)"
   }
-  Assert-True (@($repeat.builds|Where-Object fixtureKind).Count -eq 16) 'Deterministic rerun duplicated or dropped controlled fixtures'
+  Assert-True (@($repeat.builds|Where-Object fixtureKind).Count -eq 25) 'Deterministic rerun duplicated or dropped controlled fixtures'
   foreach($build in $plan.builds){
     $front=@($parts|Where-Object id -eq $build.frontPartId)[0]
     $rear=@($parts|Where-Object id -eq $build.rearPartId)[0]
@@ -117,6 +131,7 @@ try{
   $renamed=$plan.builds[0].PSObject.Copy();$renamed.title='A renamed generated title'
   Assert-True ($renamed.key -eq $plan.builds[0].key) 'Title change altered stable fixture identity'
   Assert-Fails {&$seeder -BaseUrl 'https://example.com' -Preview -CatalogSnapshotPath $snapshot} 'Remote target accepted'
+  Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $snapshot -SetRankingTimestamps} 'Timestamp override accepted without refresh'
 
   $broken=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
   $broken.machines=@($broken.machines|Where-Object racingType -ne 'BOOST')
@@ -134,4 +149,4 @@ try{
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $brokenPath} 'Missing stats were silently treated as usable numbers'
   Remove-Item -LiteralPath $brokenPath
 }finally{Remove-Item -LiteralPath $snapshot -ErrorAction SilentlyContinue}
-Write-Host 'PASS: deterministic community planning, 10 Wilson demos, 6 comment demos, search discoverability, authoritative fixture counts, Standard/Board rules, remix provenance, plate validation, offline safety, and unsafe-target refusal.'
+Write-Host 'PASS: deterministic community planning, 19 ranking demos, 6 comment demos, case search, patch and timestamp isolation, Standard/Board rules, remix provenance, plate validation, offline safety, and unsafe-target refusal.'
