@@ -59,4 +59,20 @@ class SteamNewsAdapterTest {
             new SteamNewsResponse.NewsItem("1", "Title", "javascript:alert(1)", 1700000000L)))), 2486820);
     assertThrows(ExternalServiceUnavailableException.class, () -> unsafe.latest(5));
   }
+
+  @Test
+  void limitsBeforeConvertingItemsAndKeepsMalformedItemsWithinTheFailureBoundary() {
+    var valid = new SteamNewsResponse.NewsItem("1", "Title", "https://example.test/news", 1700000000L);
+    for (var invalid : java.util.Arrays.asList(
+        (SteamNewsResponse.NewsItem) null,
+        new SteamNewsResponse.NewsItem(null, "Title", "https://example.test/news", 1700000000L),
+        new SteamNewsResponse.NewsItem("2", "Title", null, 1700000000L),
+        new SteamNewsResponse.NewsItem("2", "Title", "https://example.test/news", Long.MAX_VALUE))) {
+      var adapter = new SteamNewsAdapter((appId, count, maxLength) ->
+          new SteamNewsResponse(new SteamNewsResponse.AppNews(java.util.Arrays.asList(valid, invalid))), 2486820);
+      assertEquals(List.of("1"), adapter.latest(1).stream().map(item -> item.id()).toList());
+      var error = assertThrows(ExternalServiceUnavailableException.class, () -> adapter.latest(2));
+      assertEquals("News unavailable", error.getMessage());
+    }
+  }
 }

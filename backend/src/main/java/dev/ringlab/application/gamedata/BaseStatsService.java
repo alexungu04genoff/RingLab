@@ -3,6 +3,9 @@ package dev.ringlab.application.gamedata;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.gamedata.BaseStats;
+import dev.ringlab.domain.gamedata.BaseStatsBreakdown;
+import dev.ringlab.domain.gamedata.Machine;
+import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.MachineComposition;
 import dev.ringlab.port.out.BaseStatsRepository;
@@ -22,7 +25,6 @@ public class BaseStatsService {
 
   public record Catalog(UUID gameVersionId, Map<UUID, BaseStats> racers,
                         Map<UUID, BaseStats> machineParts, Map<UUID, BaseStats> machines) {}
-  public record BuildStats(BaseStats total, BaseStats character, BaseStats machine) {}
 
   public Catalog catalog(UUID version) {
     requireVersion(version);
@@ -31,13 +33,18 @@ public class BaseStatsService {
     Map<UUID, BaseStats> machines = new HashMap<>();
     var catalogParts = game.listMachineParts();
     for (var machine : game.listMachines()) {
-      var contributions = catalogParts.stream().filter(p -> p.sourceMachineId().equals(machine.id()))
-          .map(p -> parts.getOrDefault(p.id(), BaseStats.UNKNOWN)).toList();
-      int expectedParts = machine.racingType() == null ? 0 : MachineComposition.requiredSlots(machine.racingType()).size();
-      machines.put(machine.id(), contributions.size() == expectedParts
-          ? BaseStats.sum(contributions) : BaseStats.UNKNOWN);
+      machines.put(machine.id(), stockMachineStats(machine, catalogParts, parts));
     }
     return new Catalog(version, Map.copyOf(racers), Map.copyOf(parts), Map.copyOf(machines));
+  }
+
+  private BaseStats stockMachineStats(
+      Machine machine, List<MachinePart> catalogParts, Map<UUID, BaseStats> parts) {
+    var contributions = catalogParts.stream().filter(part -> part.sourceMachineId().equals(machine.id()))
+        .map(part -> parts.getOrDefault(part.id(), BaseStats.UNKNOWN)).toList();
+    int expectedParts = machine.racingType() == null
+        ? 0 : MachineComposition.requiredSlots(machine.racingType()).size();
+    return contributions.size() == expectedParts ? BaseStats.sum(contributions) : BaseStats.UNKNOWN;
   }
 
   /** No selected version means no calculation and no fallback to the latest patch. */
@@ -45,32 +52,16 @@ public class BaseStatsService {
     return buildBreakdown(version, racer, front, rear, tire).total();
   }
 
-  public BuildStats buildBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
+  public BaseStatsBreakdown buildBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
     if (version != null) requireVersion(version);
     if (racer != null && game.findRacer(racer).isEmpty()) throw NotFoundException.missing("Racer");
     requirePart(front, MachinePartType.FRONT);
     requirePart(rear, MachinePartType.REAR);
     requirePart(tire, MachinePartType.TIRE);
-    if (version == null) return new BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN);
+    if (version == null) return BaseStatsBreakdown.UNKNOWN;
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
-    return calculate(racer, front, rear, tire, racers, parts);
-  }
-
-  /** Shared calculation for validated selections, including a preloaded snapshot catalog. */
-  public static BuildStats calculate(UUID racer, UUID front, UUID rear, UUID tire,
-      Map<UUID, BaseStats> racers, Map<UUID, BaseStats> parts) {
-    var character = value(racers, racer);
-    var contributions = new java.util.ArrayList<BaseStats>();
-    contributions.add(value(parts, front));
-    contributions.add(value(parts, rear));
-    if (tire != null) contributions.add(value(parts, tire));
-    var machine = BaseStats.sum(contributions);
-    return new BuildStats(BaseStats.sum(List.of(character, machine)), character, machine);
-  }
-
-  private static BaseStats value(Map<UUID, BaseStats> values, UUID id) {
-    return id == null ? BaseStats.UNKNOWN : values.getOrDefault(id, BaseStats.UNKNOWN);
+    return BaseStatsBreakdown.calculate(racer, front, rear, tire, racers, parts);
   }
 
   private void requireVersion(UUID version) {

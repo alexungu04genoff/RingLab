@@ -3,20 +3,13 @@ package dev.ringlab.application.build;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
-import dev.ringlab.domain.gamedata.Gadget;
 import dev.ringlab.domain.gamedata.GameVersion;
-import dev.ringlab.domain.gamedata.MachineComposition;
-import dev.ringlab.domain.gamedata.MachinePart;
-import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
-import dev.ringlab.application.validation.ProfanityPolicy;
-import dev.ringlab.application.gamedata.MachineCompatibility;
 import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.port.out.VoteRepository;
@@ -24,7 +17,6 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.transaction.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,7 +51,7 @@ public class BuildService {
   private final BuildRepository builds;
   private final GameDataRepository game;
   private final VoteRepository votes;
-  private final ProfanityPolicy profanity;
+  private final BuildDraftValidator drafts;
 
   public Build get(UUID id) {
     if (id == null) throw new ValidationException("Missing build ID");
@@ -72,20 +64,12 @@ public class BuildService {
   }
 
   public Page list(Query query) {
-    if (query == null || query.filter() == null || query.sort() == null)
-      throw new ValidationException("Missing build query, filter or sort");
-    if (query.page() < 0 || query.size() < 1 || query.size() > 50)
-      throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
-    if (query.filter().search() != null && query.filter().search().length() > 120)
-      throw new ValidationException("Search must be at most 120 characters");
+    validateQuery(query);
     List<BuildRanking.Candidate> candidates = builds.searchCandidates(query.filter());
     var summaries = query.sort() == BuildSort.NEWEST
         ? Map.<UUID, VoteSummary>of()
         : votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());
-    Map<UUID, LocalDate> releaseDates = query.sort() == BuildSort.BEST_RATED
-        ? game.listGameVersions().stream().collect(java.util.stream.Collectors.toMap(
-            GameVersion::id, GameVersion::releasedAt))
-        : Map.of();
+    Map<UUID, LocalDate> releaseDates = releaseDates(query.sort());
     List<BuildRanking.Candidate> ranked = candidates.stream()
         .sorted(BuildRanking.comparator(query.sort(), summaries, releaseDates))
         .toList();
@@ -94,141 +78,89 @@ public class BuildService {
     int from = (int) offset;
     int to = (int) Math.min(offset + query.size(), ranked.size());
     List<UUID> pageIds = ranked.subList(from, to).stream().map(BuildRanking.Candidate::id).toList();
+    List<Build> items = hydrateInRankedOrder(pageIds);
+    return new Page(items, ranked.size(), pageSummaries(query.sort(), items, summaries));
+  }
+
+  private void validateQuery(Query query) {
+    if (query == null || query.filter() == null || query.sort() == null)
+      throw new ValidationException("Missing build query, filter or sort");
+    if (query.page() < 0 || query.size() < 1 || query.size() > 50)
+      throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
+    if (query.filter().search() != null && query.filter().search().length() > 120)
+      throw new ValidationException("Search must be at most 120 characters");
+  }
+
+  private Map<UUID, LocalDate> releaseDates(BuildSort sort) {
+    return sort == BuildSort.BEST_RATED
+        ? game.listGameVersions().stream().collect(java.util.stream.Collectors.toMap(
+            GameVersion::id, GameVersion::releasedAt))
+        : Map.of();
+  }
+
+  private List<Build> hydrateInRankedOrder(List<UUID> pageIds) {
     Map<UUID, Build> hydratedById = new HashMap<>();
     for (Build build : builds.findAll(pageIds)) hydratedById.put(build.id(), build);
-    List<Build> items = pageIds.stream().map(hydratedById::get)
-        .filter(java.util.Objects::nonNull).toList();
-    Map<UUID, VoteSummary> pageSummaries = query.sort() == BuildSort.NEWEST
+    return pageIds.stream().map(hydratedById::get).filter(java.util.Objects::nonNull).toList();
+  }
+
+  private Map<UUID, VoteSummary> pageSummaries(
+      BuildSort sort, List<Build> items, Map<UUID, VoteSummary> summaries) {
+    return sort == BuildSort.NEWEST
         ? votes.summaries(items.stream().map(Build::id).toList())
         : items.stream().filter(build -> summaries.containsKey(build.id()))
             .collect(java.util.stream.Collectors.toMap(Build::id, build -> summaries.get(build.id())));
-    return new Page(items, ranked.size(), pageSummaries);
-  }
-
-  private void validate(Draft d) {
-    if (d == null) throw new ValidationException("Missing build draft");
-    if (d.title() == null || d.title().isBlank() || d.title().length() > 120)
-      throw new ValidationException("Title must be nonblank and at most 120 characters", "title");
-    if (d.description() == null || d.description().length() > 10000)
-      throw new ValidationException("Description is required and must be at most 10000 characters", "description");
-    profanity.requireClean(d.title(), "title");
-    profanity.requireClean(d.description(), "description");
-    requireRacer(d.racerId());
-    var front = requirePart(d.frontPartId(), MachinePartType.FRONT);
-    var rear = requirePart(d.rearPartId(), MachinePartType.REAR);
-    var machineType = MachineCompatibility.requireCompatible(game, front, rear);
-    if (!MachineComposition.requiredSlots(machineType).contains(MachinePartType.TIRE)) {
-      if (d.tirePartId() != null) {
-        throw new ValidationException("Boost machines do not use a tire part");
-      }
-    } else {
-      var tire = requirePart(d.tirePartId(), MachinePartType.TIRE);
-      MachineCompatibility.requireCompatible(game, front, tire);
-    }
-    if (d.gameVersionId() == null) {
-      throw new ValidationException("Select a game version / patch", "gameVersionId");
-    }
-    if (game.findGameVersion(d.gameVersionId()).isEmpty()) {
-      throw new ValidationException("Unknown game version ID");
-    }
-    validateGadgets(d.gadgetIds());
-  }
-
-  private void requireRacer(UUID id) {
-    if (id == null) throw new ValidationException("Missing racer ID");
-    if (game.findRacer(id).isEmpty()) throw new ValidationException("Unknown racer ID");
-  }
-
-  private MachinePart requirePart(UUID id, MachinePartType expectedType) {
-    if (id == null) throw new ValidationException("Missing " + expectedType + " part ID");
-    var part = game.findMachinePart(id)
-        .orElseThrow(() -> new ValidationException("Unknown " + expectedType + " part ID"));
-    if (part.type() != expectedType) {
-      throw new ValidationException("Expected " + expectedType + " part, got " + part.type());
-    }
-    return part;
-  }
-
-  private void validateGadgets(List<UUID> gadgetIds) {
-    if (gadgetIds == null || gadgetIds.stream().anyMatch(java.util.Objects::isNull))
-      throw new ValidationException("Gadget IDs are required and must not contain null");
-    if (new HashSet<>(gadgetIds).size() != gadgetIds.size()) {
-      throw new ValidationException("Duplicate gadget ID");
-    }
-
-    List<Integer> slotCosts = gadgetIds.stream()
-        .map(this::requireGadget)
-        .map(this::requireValidSlotCost)
-        .toList();
-    if (!GadgetPlate.canFit(slotCosts)) {
-      throw new ValidationException("Selected gadgets do not fit the 2x3 Gadget Plate");
-    }
-  }
-
-  private Gadget requireGadget(UUID id) {
-    return game.findGadget(id)
-        .orElseThrow(() -> new ValidationException("Unknown gadget ID"));
-  }
-
-  private int requireValidSlotCost(Gadget gadget) {
-    if (gadget.slotCost() == null) {
-      throw new ValidationException("Gadget slot cost is unknown: " + gadget.name());
-    }
-    if (gadget.slotCost() < 1 || gadget.slotCost() > GadgetPlate.ROW_CAPACITY) {
-      throw new ValidationException("Gadget slot cost is invalid: " + gadget.name());
-    }
-    return gadget.slotCost();
   }
 
   @Transactional
-  public Build create(UUID author, Draft d) {
+  public Build create(UUID author, Draft draft) {
     if (author == null) throw new ValidationException("Missing author ID");
-    validate(d);
-    if (d.remixedFromBuildId() != null && builds.find(d.remixedFromBuildId()).isEmpty()) {
+    drafts.validate(draft);
+    if (draft.remixedFromBuildId() != null && builds.find(draft.remixedFromBuildId()).isEmpty()) {
       throw new ValidationException("Unknown remix source build ID");
     }
     var now = Instant.now();
-    var b =
+    var build =
         new Build(
             UUID.randomUUID(),
-            d.title().trim(),
-            d.description(),
+            draft.title().trim(),
+            draft.description(),
             author,
-            d.racerId(),
-            d.frontPartId(),
-            d.rearPartId(),
-            d.tirePartId(),
-            d.gameVersionId(),
-            d.remixedFromBuildId(),
-            d.gadgetIds(),
+            draft.racerId(),
+            draft.frontPartId(),
+            draft.rearPartId(),
+            draft.tirePartId(),
+            draft.gameVersionId(),
+            draft.remixedFromBuildId(),
+            draft.gadgetIds(),
             now,
             now);
-    builds.save(b);
-    return b;
+    builds.save(build);
+    return build;
   }
 
   @Transactional
-  public Build edit(UUID id, UUID actor, Draft d) {
-    var old = get(id);
-    ForbiddenException.requireOwner(old.authorId(), actor);
-    validate(d);
-    var b =
+  public Build edit(UUID id, UUID actor, Draft draft) {
+    var existing = get(id);
+    ForbiddenException.requireOwner(existing.authorId(), actor);
+    drafts.validate(draft);
+    var build =
         new Build(
             id,
-            d.title().trim(),
-            d.description(),
-            old.authorId(),
-            d.racerId(),
-            d.frontPartId(),
-            d.rearPartId(),
-            d.tirePartId(),
-            d.gameVersionId(),
-            old.remixedFromBuildId(),
-            d.gadgetIds(),
-            old.createdAt(),
+            draft.title().trim(),
+            draft.description(),
+            existing.authorId(),
+            draft.racerId(),
+            draft.frontPartId(),
+            draft.rearPartId(),
+            draft.tirePartId(),
+            draft.gameVersionId(),
+            existing.remixedFromBuildId(),
+            draft.gadgetIds(),
+            existing.createdAt(),
             Instant.now());
-    builds.save(b);
-    return b;
+    builds.save(build);
+    return build;
   }
 
   @Transactional

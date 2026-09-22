@@ -33,12 +33,25 @@ public class ExternalAuthService {
       return users.byId(existing.get().userId())
           .orElseThrow(() -> new AuthenticationException("Account unavailable"));
 
+    return createAccount(verified);
+  }
+
+  private User createAccount(VerifiedExternalIdentity verified) {
     String email = verified.email().toLowerCase(Locale.ROOT);
     if (users.exists("", email))
       throw new AlreadyExistsException(
           "An account already exists with this email. Sign in with your username and password, "
               + "then link Google from your account page.");
 
+    String username = availableUsername(email);
+    Instant now = Instant.now();
+    var user = new User(UUID.randomUUID(), username, email, null, now, now);
+    users.create(user);
+    identities.create(new ExternalIdentity(user.id(), verified.provider(), verified.subject(), now));
+    return user;
+  }
+
+  private String availableUsername(String email) {
     String base = email.substring(0, email.indexOf('@')).replaceAll("[^a-z0-9_]", "");
     if (base.length() < 3) base = "user_" + base;
     base = base.substring(0, Math.min(base.length(), 21));
@@ -49,11 +62,7 @@ public class ExternalAuthService {
       username = base + "_" + UUID.randomUUID().toString().substring(0, 8);
     }
     profanity.requireClean(username);
-    Instant now = Instant.now();
-    var user = new User(UUID.randomUUID(), username, email, null, now, now);
-    users.create(user);
-    identities.create(new ExternalIdentity(user.id(), verified.provider(), verified.subject(), now));
-    return user;
+    return username;
   }
 
   @Transactional

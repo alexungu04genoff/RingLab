@@ -123,6 +123,28 @@ class ExternalAuthServiceTest {
     assertTrue(identities.values.isEmpty());
   }
 
+  @Test
+  void usernameCollisionLimitFailsBeforeCreatingEitherRecord() {
+    int[] lookups = {0};
+    var occupied = new User(UUID.randomUUID(), "occupied", "other@example.test", "hash", Instant.EPOCH);
+    var unavailable = new Users() {
+      @Override public Optional<User> byUsername(String username) {
+        lookups[0]++;
+        return Optional.of(occupied);
+      }
+    };
+    var service = new ExternalAuthService(credential ->
+        new VerifiedExternalIdentity("GOOGLE", "subject", "alex@example.test", "Alex"),
+        identities, unavailable, profanity);
+
+    var error = assertThrows(AlreadyExistsException.class, () -> service.login("credential"));
+
+    assertEquals("Could not reserve a username. Please try again.", error.getMessage());
+    assertEquals(11, lookups[0]);
+    assertTrue(unavailable.values.isEmpty());
+    assertTrue(identities.values.isEmpty());
+  }
+
   private static class Users implements UserRepository {
     final Map<UUID, User> values = new LinkedHashMap<>();
     public Optional<User> byId(UUID id) { return Optional.ofNullable(values.get(id)); }

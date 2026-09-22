@@ -3,6 +3,7 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
+import dev.ringlab.application.build.BuildDraftValidator;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.Vote;
@@ -48,7 +49,7 @@ class BuildServiceTest {
         new GameVersion(gameVersionId, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
     votes = new EmptyVoteRepository();
     profanity = new StubProfanityPolicy();
-    service = new BuildService(builds, gameData, votes, profanity);
+    service = new BuildService(builds, gameData, votes, new BuildDraftValidator(gameData, profanity));
   }
 
   @Test
@@ -367,6 +368,28 @@ class BuildServiceTest {
             () -> service.edit(old.id(), UUID.randomUUID(), draft("Updated")));
 
     assertEquals("Only the author may change this resource", error.getMessage());
+    assertNull(builds.lastSaved);
+  }
+
+  @Test
+  void ownershipAndDraftValidationKeepTheirErrorPrecedence() {
+    Build old = existingBuild();
+    builds.saved.put(old.id(), old);
+    assertThrows(ForbiddenException.class, () -> service.edit(old.id(), UUID.randomUUID(), null));
+    assertEquals("Missing author ID",
+        assertThrows(ValidationException.class, () -> service.create(null, null)).getMessage());
+
+    var invalidTitle = new BuildService.Draft(" ", null, null, null, null, null, null, null, null);
+    var titleError = assertThrows(ValidationException.class, () -> service.create(authorId, invalidTitle));
+    assertEquals("Title must be nonblank and at most 120 characters", titleError.getMessage());
+    assertEquals("title", titleError.field());
+
+    var invalidVersionAndGadgets = new BuildService.Draft("Valid", "", racerId, frontPartId,
+        rearPartId, tirePartId, null, UUID.randomUUID(), List.of(UUID.randomUUID()));
+    var versionError = assertThrows(ValidationException.class,
+        () -> service.create(authorId, invalidVersionAndGadgets));
+    assertEquals("Select a game version / patch", versionError.getMessage());
+    assertEquals("gameVersionId", versionError.field());
     assertNull(builds.lastSaved);
   }
 

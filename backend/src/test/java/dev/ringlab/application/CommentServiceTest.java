@@ -31,7 +31,7 @@ class CommentServiceTest {
     comments = new InMemoryCommentRepository();
     profanity = new StubProfanityPolicy();
     service = new CommentService(
-        comments, new BuildService(builds, null, new EmptyVoteRepository(), profanity), profanity);
+        comments, new BuildService(builds, null, new EmptyVoteRepository(), null), profanity);
   }
 
   @Test

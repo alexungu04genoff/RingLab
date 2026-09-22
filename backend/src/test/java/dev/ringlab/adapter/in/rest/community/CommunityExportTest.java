@@ -3,7 +3,6 @@ package dev.ringlab.adapter.in.rest.community;
 import dev.ringlab.adapter.in.rest.build.response.*;
 import dev.ringlab.adapter.in.rest.gamedata.response.*;
 import dev.ringlab.application.community.*;
-import dev.ringlab.application.gamedata.BaseStatsService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.vote.VoteSummary;
@@ -36,7 +35,7 @@ class CommunityExportTest {
       entries.add(new CommunitySnapshot.Entry(b, "author", racer, new CommunitySnapshot.Part(front, source),
           new CommunitySnapshot.Part(rear, source), null, null,
           List.of(new Gadget(UUID.randomUUID(), "😀".repeat(1000), null, 1, null)), new VoteSummary(3, 1),
-          new BaseStatsService.BuildStats(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null));
+          new BaseStatsBreakdown(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null));
     }
     var snapshot = new CommunitySnapshot(UUID.randomUUID(), Instant.EPOCH, entries);
     var response = TopBuildsResponse.from(snapshot, new CommunityPublicUrls("http://localhost:5173", "http://localhost:5173"));

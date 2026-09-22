@@ -74,6 +74,17 @@ class BaseStatsServiceTest {
   }
 
   @Test
+  void validatesReferencesEvenWithoutAVersionAndResolvesVersionFirst() {
+    assertEquals("Game version not found", assertThrows(NotFoundException.class,
+        () -> service.build(UUID.randomUUID(), UUID.randomUUID(), rear, front, null)).getMessage());
+    assertEquals("Racer not found", assertThrows(NotFoundException.class,
+        () -> service.build(null, UUID.randomUUID(), rear, front, null)).getMessage());
+    assertEquals("Incorrect machine part type", assertThrows(ValidationException.class,
+        () -> service.build(null, racer, rear, front, null)).getMessage());
+    assertEquals(0, reads);
+  }
+
+  @Test
   void boardStatsSumSelectedPartsWithoutInventingATireContribution() {
     catalog.machineType = RacingType.BOOST;
     catalog.catalogParts.removeIf(part -> part.type() == MachinePartType.TIRE);

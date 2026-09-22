@@ -20,7 +20,7 @@ dev.ringlab/
 
 ## Boundaries
 
-- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType`, `MachineFamily`, and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Machine` owns its Standard/Board family; `Build` snapshots its ordered gadget list. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
+- **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Machine` owns its racing type; `MachineComposition` defines required slots; `Build` snapshots its ordered gadget list. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions for validation, authentication, existing resources, forbidden operations, missing resources, and unavailable external services; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser parses the verified JWT subject as a UUID, verifies that the RingLab user still exists, and treats a missing account as unavailable authentication. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
@@ -69,7 +69,7 @@ shared limiter such as Redis or rate limiting at a trusted edge, neither of whic
 current single-instance design. Cloudflare/network protection is complementary; the REST filter is
 not presented as volumetric DDoS prevention.
 
-Application services own input validity as well as orchestration. AuthService validates private input records with the existing Jakarta Validator, preserving the same username/email/password constraints as REST without depending on REST DTOs. Login preserves legacy credential acceptance, including whitespace passwords, and never trims passwords. BuildService and CommentService explicitly validate text, null inputs and pagination bounds. REST Bean Validation remains an early transport check; no HTTP types flow inward.
+Application services own input validity as well as orchestration. AuthService validates private input records with the existing Jakarta Validator, preserving the same username/email/password constraints as REST without depending on REST DTOs. Login preserves legacy credential acceptance, including whitespace passwords, and never trims passwords. BuildService delegates draft text, references, composition, patch and gadget validation to BuildDraftValidator; it retains query validation, ownership and persistence orchestration. CommentService explicitly validates text, null inputs and pagination bounds. REST Bean Validation remains an early transport check; no HTTP types flow inward.
 
 Outbound method documentation specifies literal search, any-part source-machine matching, comment/version ordering, vote absence/bulk-summary conventions and atomic replacement. UserDbAdapter translates only PostgreSQL uniqueness violations for the Flyway username/email constraints; unrelated failures reach the safe unexpected-error boundary.
 
@@ -82,7 +82,7 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 `GET /api/news` returns an array of `{id, title, url, publishedAt}` response DTOs. The typed Quarkus REST Client uses the public Steam News v2 endpoint, with configurable `STEAM_BASE_URL` and `STEAM_APP_ID` (default 2486820), 2-second connection and 3-second read timeouts. Network, HTTP, and malformed-response failures become a semantic external-service-unavailable error, which the REST mapper exposes as the safe 503 `News unavailable` response; logs omit external bodies. No retries, caching, persistence, or synchronization are used. Explore loads news independently and shows a secondary panel with titles, dates, and original links, stacking below builds on smaller screens. It omits article contents entirely, so HTML/BBCode is never rendered; empty and unavailable news leave build browsing usable.
 
-`vote` and `comment` call BuildService to verify that their target build exists. Build responses use auth and game-data queries to assemble public author/loadout details. Build detail responses obtain their vote summary through VoteService; list responses reuse page vote summaries supplied by BuildService after ranking. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
+`vote` and `comment` call BuildService to verify that their target build exists. BuildResponseAssembler in the REST adapter uses auth and game-data queries to assemble public author/loadout details. BuildRestResource retains routes, transport validation, actor lookup and service calls. Build detail responses obtain their vote summary through VoteService; list responses reuse page vote summaries supplied by BuildService after ranking. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
 
 ## Mapping and flow
 
@@ -91,7 +91,10 @@ historical contributions through the flat `BaseStatsRepository` port. `BaseStats
 two fixed parameterized SQL queries against Flyway V16's normalized tables; no generic query
 framework, runtime external source, or duplicated machine totals are introduced. Decimal values
 use `BigDecimal` in the JDK-only `BaseStats` domain record. Its sum operation is the canonical
-calculation for Standard four-component builds, Board three-component builds, and stock machines. An unknown field
+arithmetic for four-component builds, BOOST three-component builds, and stock machines.
+`BaseStatsBreakdown.calculate` composes character/machine/total values from supplied maps;
+both preview and community selection use it without depending on another application service.
+BaseStatsService retains version/reference checks and names stock assembly in `stockMachineStats`. An unknown field
 propagates to only that field's total. Missing rows are fully unknown, never zero.
 
 `GET /api/stats/catalog?gameVersionId=…` returns version-specific racer and part maps (absent rows
@@ -161,7 +164,7 @@ there is no authentication cookie established by a cross-site form submission.
 
 MapStruct generates entity/domain mappings for users, builds, comments, and the five game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
-`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, gadgets, and game versions, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit DTOs. Machine responses expose `family`; machine-part responses expose `sourceMachineFamily` with the source ID/name, artwork, and racing type. Artwork is not duplicated into `machine_parts`. Build requests keep `frontPartId`, `rearPartId`, and nullable `tirePartId`; responses keep the same shape and return `tirePart: null` for Boards.
+`GameDataDbAdapter` and `GameDataDbMapper` remain combined for racers, source machines, machine parts, gadgets, and game versions, with strongly typed list/find methods in `GameDataRepository`. `findMachine` resolves part source metadata. The REST layer uses explicit DTOs. Machine responses expose `racingType`; machine-part responses expose the source ID/name, artwork and racing type. Artwork is not duplicated into `machine_parts`. Build requests keep `frontPartId`, `rearPartId`, and nullable `tirePartId`; responses keep the same shape and return `tirePart: null` for BOOST machines.
 
 Create-build flow:
 
@@ -170,7 +173,7 @@ React form → POST /api/builds with bearer JWT
   → Quarkus verifies signature, issuer, expiry, and role
   → BuildRequest Bean Validation
   → BuildService.create(actor UUID, Draft)
-  → GameDataRepository validates IDs independently
+  → BuildDraftValidator validates the draft through GameDataRepository and domain rules
   → Build domain record → BuildRepository → MapStruct → JPA
   → transaction commit in PostgreSQL
   → response DTO with public author, loadout, timestamps, score
@@ -188,7 +191,7 @@ Edit/delete flows load the existing record and compare the authenticated actor t
 
 `users`, `racers`, `machines`, `machine_parts`, `gadgets`, `builds`, `votes`, and `comments` use UUID primary keys. `build_gadgets` uses `(build_id, position)` as its primary key: it is an ordered collection entry, not an independently addressable entity. Foreign keys enforce valid references. Build deletion cascades its collection, votes, and comments. User deletion is not implemented.
 
-`Machine` is catalog/source-machine metadata and owns a `MachineFamily` (`STANDARD` or `BOARD`). `MachinePartType` remains FRONT, REAR, or TIRE. Standard builds require all three slots; Board builds require FRONT and REAR and prohibit a tire. BuildService resolves every part's source machine and requires one family, while still allowing mixed source machines inside that family. V25 introduces the family column and nullable tire reference; V26 classifies the verified Extreme Gear machines as Boards and removes only their obsolete generated tire rows. Gadgets remain an independent ordered configuration validated by `GadgetPlate`.
+`Machine` is catalog/source-machine metadata with a `RacingType`. `MachinePartType` remains FRONT, REAR, or TIRE. `BuildDraftValidator` delegates source-machine compatibility to `MachineCompatibility` and required slots to `MachineComposition`: BOOST uses FRONT/REAR and prohibits a tire; other types require all three slots. Mixed source machines are allowed only when their known racing types match, independently of the racer's type. V27 replaces the earlier family classification with this racing-type policy. Gadgets remain an independent ordered configuration validated by `GadgetPlate`.
 
 Explore's compact “Uses parts from” filter retains the `machineId` query parameter as a source-machine ID. It matches front OR rear OR nullable tire source, so Board builds remain discoverable.
 
@@ -196,7 +199,7 @@ Votes have a unique `(user_id, build_id)` constraint and a −1/+1 check. Postgr
 
 Comment listings are paginated in PostgreSQL in deterministic `createdAt`, then `id` order. The REST response includes `items`, `total`, `page`, and `size`, allowing the client to navigate page boundaries without inferring them from the number of returned comments.
 
-Browse queries filter candidates in PostgreSQL through `BuildDbAdapter` and its JPA Criteria predicate helper. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. The adapter projects only `BuildRanking.Candidate(id, createdAt)` for every match, without loading full build entities or ordered gadget collections. `VoteDbAdapter` supplies raw upvote/downvote summaries for all candidate IDs when SCORE or BEST_RATED needs them; NEWEST defers its summary query until after pagination. `BuildService` applies the selected canonical domain ranking, paginates globally, bulk-loads only the selected page through `BuildRepository.findAll`, and reconstructs the final list in ranked ID order because persistence result order is unspecified. The maximum page size remains 50 at the REST boundary. Persistence therefore owns filtering and fact retrieval but no Wilson, sign-bucket, sorting, tie-break, or pagination policy. Collection/detail assembly uses straightforward bounded lookups, so response-enrichment query count grows with page size; batching remains a separately measurable future optimization. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
+Browse queries filter candidates in PostgreSQL through `BuildDbAdapter` and its JPA Criteria predicate helper. Search uses `locate(lower(title), lowercasedSearch)`, so user input remains a literal substring rather than SQL or `LIKE` wildcard syntax. The adapter projects only `BuildRanking.Candidate(id, createdAt, gameVersionId)` for every match, without loading full build entities or ordered gadget collections. `VoteDbAdapter` supplies raw upvote/downvote summaries for all candidate IDs when SCORE or BEST_RATED needs them; NEWEST defers its summary query until after pagination. `BuildService` applies the selected canonical domain ranking, paginates globally, bulk-loads only the selected page through `BuildRepository.findAll`, and reconstructs the final list in ranked ID order because persistence result order is unspecified. The maximum page size remains 50 at the REST boundary. Persistence therefore owns filtering and fact retrieval but no Wilson, sign-bucket, sorting, tie-break, or pagination policy. Collection/detail assembly uses straightforward bounded lookups, so response-enrichment query count grows with page size; batching remains a separately measurable future optimization. There is no optimistic-lock version field: simultaneous edits by the same author use last-write-wins semantics.
 
 Flyway V1 defines schema; V2 defines the supplied game dataset, and V3 assigns stable local artwork paths to the six supplied racers. Hibernate runs schema validation. V6 expands the catalog to 53 racers, 27 source machines and 81 parts, retaining existing IDs and adding official local artwork paths. V10 fills the known racer and machine types from the user-approved Sonic Wiki catalog and expands the released machine inventory to 63 source machines and 189 parts. No fake application users enter migrations.
 
@@ -232,13 +235,31 @@ V4 creates three explicitly identified parts per seeded machine, backfills old b
 
 Build ranking is a domain/application policy. The REST adapter translates the public `newest`, `score`, and `rated` query values into typed `BuildSort` values. `BuildRanking` defines every ordering: newest uses creation time descending then UUID ascending; score uses raw score descending followed by those ties; best rated uses the full-precision Wilson lower bound descending, catalog release date descending (known dates before unspecified legacy versions), fewer downvotes when Wilson is zero, creation time descending, then UUID ascending. A newer-patch downvote-only build can therefore outrank an older-patch unrated build when both have Wilson zero. `WilsonScore` is the single pure-Java canonical implementation using z = 1.96 (approximately 95% confidence), including the zero-vote case. Sample size therefore matters: 40 upvotes and 1 downvote rank above 3 upvotes and no downvotes. Persistence projects only build ID, creation time, and version ID; application services load catalog release dates in one lookup, without per-build queries. The adapters do not interpret ranking modes. Ranking happens before pagination in `BuildService`. Wilson remains internal to ordering; the visible community score is still upvotes minus downvotes, and no ranking values are cached or exposed.
 
+## Community selection responsibilities
+
+`CommunitySelectionService.select` owns the REQUIRES_NEW transaction, global
+ranking, 50-candidate hydration batches and early termination after three eligible
+builds. It creates one package-private `CommunitySnapshotAssembler` per selection.
+That object preloads the catalog, delegates eligibility to `CommunityEligibility`,
+and assembles snapshot entries with per-selection author and per-version stats maps.
+It is not a CDI bean or shared cache. All lookups remain inside the selection
+transaction, and `CommunitySnapshotCache` publishes the immutable snapshot only
+after the transaction returns successfully. Cache lifetime and synchronization
+are unchanged.
+
+The write validator, showcase eligibility and incomplete stats preview deliberately
+remain separate policies. They reuse `MachineCompatibility`, `MachineComposition`,
+`GadgetPlate` and `BaseStats.sum` only where the same rule applies.
+
+See [the code walkthrough](code-walkthrough.md) for IDE entry points and behavior tests.
+
 ## Frontend
 
 `GameVersion` is persistent game-data catalog metadata (`id`, plain version string, release date).
 V5 seeds the four supplied official versions and adds a nullable `Build.gameVersionId` foreign key.
-There is no default or backfill: existing builds remain versionless and editing may add, change,
-or clear a version. BuildService rejects unknown non-null IDs with a validation exception, mapped
-to 400 by REST. The catalog endpoint
+Legacy stored builds may remain versionless, but creating or editing requires a selected
+known version. BuildDraftValidator rejects a missing version with the `gameVersionId` field
+identifier and rejects unknown IDs with a validation exception, mapped to 400 by REST. The catalog endpoint
 `GET /api/game-versions` lists release dates newest first; build responses contain a small nested
 `gameVersion` DTO or null. Explore's optional `gameVersionId` predicate filters candidates in PostgreSQL
 before application ranking/pagination and composes with existing filters and all three sorts.

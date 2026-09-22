@@ -2,25 +2,14 @@ package dev.ringlab.adapter.in.rest.build;
 
 import lombok.RequiredArgsConstructor;
 
-import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.community.CommunitySnapshotCache;
-import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildSort;
-import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
-import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
-import dev.ringlab.adapter.in.rest.build.response.RemixSourceResponse;
-import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
-import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
-import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
-import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.BuildRepository;
-import dev.ringlab.port.out.GameDataRepository;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
-import dev.ringlab.application.vote.VoteService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -35,49 +24,9 @@ import java.util.*;
 public class BuildRestResource {
 
   private final BuildService builds;
-  private final AuthService users;
-  private final GameDataRepository game;
-  private final VoteService votes;
+  private final BuildResponseAssembler responses;
   private final CurrentUser actor;
   private final CommunitySnapshotCache communitySnapshots;
-
-  private RacerResponse racerItem(UUID id) {
-    return RacerResponse.from(game.findRacer(id).orElseThrow());
-  }
-
-  private MachinePartResponse partItem(UUID id) {
-    if (id == null) return null;
-    var part = game.findMachinePart(id).orElseThrow();
-    return MachinePartResponse.from(part, game.findMachine(part.sourceMachineId()).orElseThrow());
-  }
-
-  private GadgetResponse gadgetItem(UUID id) {
-    return GadgetResponse.from(game.findGadget(id).orElseThrow());
-  }
-
-  private BuildResponse response(Build b) {
-    return response(b, votes.summary(b.id()));
-  }
-
-  private BuildResponse response(Build b, VoteSummary summary) {
-    var author = users.current(b.authorId());
-    var remixSource = builds.remixSource(b).orElse(null);
-    return new BuildResponse(
-        b.id(),
-        b.title(),
-        b.description(),
-        new AuthorResponse(author.id(), author.username()),
-        racerItem(b.racerId()),
-        partItem(b.frontPartId()),
-        partItem(b.rearPartId()),
-        partItem(b.tirePartId()),
-        b.gameVersionId() == null ? null : GameVersionResponse.from(game.findGameVersion(b.gameVersionId()).orElseThrow()),
-        remixSource == null ? null : new RemixSourceResponse(remixSource.id(), remixSource.title()),
-        b.gadgetIds().stream().map(this::gadgetItem).toList(),
-        b.createdAt(),
-        b.updatedAt(),
-        summary.score(), summary.upvotes(), summary.downvotes());
-  }
 
   @GET
   public BuildPageResponse list(
@@ -104,27 +53,27 @@ public class BuildRestResource {
         new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds),
         buildSort, page, size));
     return new BuildPageResponse(
-        result.items().stream().map(build -> response(build, result.summary(build.id()))).toList(),
+        result.items().stream().map(build -> responses.assemble(build, result.summary(build.id()))).toList(),
         result.total(), page, size);
   }
 
   @GET
   @Path("{id}")
   public BuildResponse get(@PathParam("id") UUID id) {
-    return response(builds.get(id));
+    return responses.assemble(builds.get(id));
   }
 
   @POST
   @RolesAllowed("user")
   public BuildResponse create(@Valid @NotNull BuildRequest r) {
-    return response(builds.create(actor.id(), r.draft()));
+    return responses.assemble(builds.create(actor.id(), r.draft()));
   }
 
   @PUT
   @Path("{id}")
   @RolesAllowed("user")
   public BuildResponse edit(@PathParam("id") UUID id, @Valid @NotNull BuildRequest r) {
-    return response(builds.edit(id, actor.id(), r.draft()));
+    return responses.assemble(builds.edit(id, actor.id(), r.draft()));
   }
 
   @DELETE

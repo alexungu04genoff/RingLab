@@ -1,6 +1,5 @@
 package dev.ringlab.application.community;
 
-import dev.ringlab.application.gamedata.BaseStatsService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.vote.VoteSummary;
@@ -14,7 +13,7 @@ public record CommunitySnapshot(UUID revision, Instant snapshotAt, List<Entry> i
   public record Part(MachinePart part, Machine source) {}
   public record Entry(Build build, String authorName, Racer racer, Part front, Part rear,
                       Part tire, GameVersion patch, List<Gadget> gadgets, VoteSummary votes,
-                      BaseStatsService.BuildStats stats, Build remixSource) {
+                      BaseStatsBreakdown stats, Build remixSource) {
     public Entry { gadgets = List.copyOf(gadgets); }
   }
 }

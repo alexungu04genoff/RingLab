@@ -25,6 +25,12 @@ class CommunitySelectionTest {
   final Map<UUID, Machine> machines = new HashMap<>(Map.of(machine, new Machine(machine, "Test", RacingType.SPEED, null)));
   final Map<UUID, Gadget> gadgets = new HashMap<>();
   int statsReads;
+  int authorReads;
+  int hydrationBatches;
+  String authorName = "ringlab_demo_tails";
+  final Set<UUID> missingBuilds = new HashSet<>();
+  final Map<UUID, Map<UUID, BaseStats>> racerStats = new HashMap<>();
+  final Map<UUID, Map<UUID, BaseStats>> partStats = new HashMap<>();
 
   Build build(String title, long up, long down, UUID selectedTire, List<UUID> selectedGadgets) {
     return build(title, up, down, selectedTire, selectedGadgets, patch);
@@ -47,7 +53,10 @@ class CommunitySelectionTest {
             b.id(), b.createdAt(), b.gameVersionId())).toList();
       }
       case "findAll" -> { assertTrue(((Collection<?>) args[0]).size() <= 50);
-        yield builds.values().stream().filter(b -> ((Collection<?>) args[0]).contains(b.id())).toList(); }
+        hydrationBatches++;
+        yield builds.values().stream().filter(b -> ((Collection<?>) args[0]).contains(b.id()))
+            .filter(b -> !missingBuilds.contains(b.id())).toList(); }
+      case "find" -> Optional.ofNullable(builds.get(args[0]));
       default -> throw new AssertionError(name);
     });
     var game = stub(GameDataRepository.class, (name, args) -> switch (name) {
@@ -64,9 +73,17 @@ class CommunitySelectionTest {
     });
     var users = stub(UserRepository.class, (name, args) -> {
       assertEquals("byId", name);
-      return Optional.of(new User(author, "ringlab_demo_tails", "private@test", "secret", Instant.EPOCH));
+      authorReads++;
+      return Optional.of(new User(author, authorName, "private@test", "secret", Instant.EPOCH));
     });
-    var stats = stub(BaseStatsRepository.class, (name, args) -> { statsReads++; return Map.of(); });
+    var stats = stub(BaseStatsRepository.class, (name, args) -> {
+      statsReads++;
+      return switch (name) {
+        case "racerStats" -> racerStats.getOrDefault(args[0], Map.of());
+        case "machinePartStats" -> partStats.getOrDefault(args[0], Map.of());
+        default -> throw new AssertionError(name);
+      };
+    });
     return new CommunitySelectionService(repository, voteRepository, game, users, stats);
   }
 
@@ -84,6 +101,8 @@ class CommunitySelectionTest {
     assertEquals("ringlab_demo_tails", result.items().getFirst().authorName());
     assertNull(result.items().getFirst().stats().total().speed());
     assertEquals(2, statsReads);
+    assertEquals(1, authorReads);
+    assertEquals(2, hydrationBatches);
   }
 
   @Test void topThreeUsesTheSameCanonicalBestRatedOrderAsNormalBrowsing() {
@@ -91,9 +110,7 @@ class CommunitySelectionTest {
     var oneDown = build("One down", 0, 1, tire, List.of());
     var unrated = build("Unrated", 0, 0, tire, List.of());
     var positive = build("Positive", 8, 0, tire, List.of());
-    var expected = builds.values().stream().map(b -> new BuildRanking.Candidate(b.id(), b.createdAt()))
-        .sorted(BuildRanking.comparator(BuildSort.BEST_RATED, votes, Map.of())).limit(3).map(BuildRanking.Candidate::id).toList();
-    assertEquals(List.of(positive.id(), unrated.id(), oneDown.id()), expected);
+    var expected = List.of(positive.id(), unrated.id(), oneDown.id());
     assertEquals(expected, service().select().items().stream().map(e -> e.build().id()).toList());
     assertFalse(expected.contains(fiveDown.id()));
   }
@@ -120,6 +137,61 @@ class CommunitySelectionTest {
     assertEquals(1, result.items().size());
     assertEquals(b.id(), result.items().getFirst().build().id());
     assertNull(result.items().getFirst().tire());
+  }
+
+  @Test void stopsHydratingAfterThreeEligibleBuildsAndReloadsLookupsOnNextSelection() {
+    for (int i = 0; i < 120; i++) build("Eligible " + i, 1, 0, tire, List.of());
+    var selection = service();
+    var first = selection.select();
+    assertEquals(3, first.items().size());
+    assertEquals(1, hydrationBatches);
+    assertEquals(1, authorReads);
+    assertEquals(2, statsReads);
+    authorName = "renamed";
+    var second = selection.select();
+    assertEquals(2, hydrationBatches);
+    assertEquals(2, authorReads);
+    assertEquals(4, statsReads);
+    assertEquals("renamed", second.items().getFirst().authorName());
+    assertEquals("ringlab_demo_tails", first.items().getFirst().authorName());
+    assertThrows(UnsupportedOperationException.class, () -> first.items().clear());
+  }
+
+  @Test void skipsMissingHydrationAndUnknownVersionsButKeepsVersionlessBuilds() {
+    var missing = build("Deleted during selection", 100, 0, tire, List.of());
+    missingBuilds.add(missing.id());
+    build("Unknown version", 80, 0, tire, List.of(), UUID.randomUUID());
+    var legacy = build("Legacy", 2, 0, tire, List.of(), null);
+    var result = service().select();
+    assertEquals(List.of(legacy.id()), result.items().stream().map(e -> e.build().id()).toList());
+    assertNull(result.items().getFirst().patch());
+    assertEquals(BaseStats.UNKNOWN, result.items().getFirst().stats().total());
+    assertEquals(0, statsReads);
+  }
+
+  @Test void entriesUseTheirOwnVersionPreserveGadgetOrderAndResolveRemixSource() {
+    var firstGadget = UUID.randomUUID();
+    var secondGadget = UUID.randomUUID();
+    gadgets.put(firstGadget, new Gadget(firstGadget, "First", null, 1, null));
+    gadgets.put(secondGadget, new Gadget(secondGadget, "Second", null, 2, null));
+    var one = new BaseStats(java.math.BigDecimal.ONE, java.math.BigDecimal.ONE,
+        java.math.BigDecimal.ONE, java.math.BigDecimal.ONE, java.math.BigDecimal.ONE);
+    racerStats.put(patch, Map.of(racer, one));
+    partStats.put(patch, Map.of(front, one, rear, one, tire, one));
+    var parent = build("Parent", 4, 0, tire, List.of(), oldPatch);
+    var draft = build("Remix", 8, 0, tire, List.of(secondGadget, firstGadget));
+    var remix = new Build(draft.id(), draft.title(), draft.description(), draft.authorId(),
+        racer, front, rear, tire, patch, parent.id(), draft.gadgetIds(), draft.createdAt(), draft.updatedAt());
+    builds.put(remix.id(), remix);
+    var result = service().select();
+    var entry = result.items().getFirst();
+    assertEquals(remix, entry.build());
+    assertEquals(parent, entry.remixSource());
+    assertEquals(List.of(secondGadget, firstGadget), entry.gadgets().stream().map(Gadget::id).toList());
+    assertEquals(new java.math.BigDecimal("4"), entry.stats().total().speed());
+    assertEquals(BaseStats.UNKNOWN, result.items().get(1).stats().total());
+    assertEquals(4, statsReads);
+    assertEquals(1, authorReads);
   }
 
   @Test void exactDemoPrefixesOnly() {
