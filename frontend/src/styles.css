@@ -225,8 +225,9 @@ main:has(.explore-hero) {
 .explore-hero {
   min-height: 132px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 480px;
+  grid-template-columns: minmax(0, 1fr) 650px;
   align-items: center;
+  margin-bottom: 8px;
 }
 .hero-copy {
   position: relative;
@@ -255,8 +256,8 @@ main:has(.explore-hero) {
 .hero-racers {
   position: relative;
   z-index: -1;
-  width: 480px;
-  height: 117px;
+  width: 650px;
+  height: 165px;
   overflow-x: clip;
   overflow-y: visible;
   pointer-events: none;
@@ -264,36 +265,53 @@ main:has(.explore-hero) {
 .hero-racer {
   position: absolute;
   top: 0;
-  width: 150px;
-  height: 117px;
+  width: 206px;
+  height: 165px;
   filter: drop-shadow(0 8px 10px #0009);
 }
 .hero-racer:nth-child(1) {
   left: 0;
-  z-index: 5;
+  z-index: 1;
 }
 .hero-racer:nth-child(2) {
-  left: 90px;
-  z-index: 4;
+  left: 125px;
+  z-index: 2;
 }
 .hero-racer:nth-child(3) {
-  left: 180px;
+  left: 250px;
   z-index: 3;
 }
 .hero-racer:nth-child(4) {
-  left: 270px;
-  z-index: 2;
+  left: 375px;
+  z-index: 4;
 }
 .hero-racer:nth-child(5) {
-  left: 360px;
-  z-index: 1;
+  left: 500px;
+  z-index: 5;
 }
 .hero-racer .artwork {
   background: transparent;
   overflow: visible;
 }
 .hero-racer .artwork.portrait img {
-  mask-image: linear-gradient(to bottom, #000 55%, #000b 75%, transparent 100%);
+  -webkit-mask-image:
+    linear-gradient(to right,
+      #000 0 45%,
+      rgb(0 0 0 / 95%) 58%,
+      rgb(0 0 0 / 70%) 72%,
+      rgb(0 0 0 / 20%) 86%,
+      transparent 100%),
+    linear-gradient(to bottom, #000 55%, #000b 75%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right,
+      #000 0 45%,
+      rgb(0 0 0 / 95%) 58%,
+      rgb(0 0 0 / 70%) 72%,
+      rgb(0 0 0 / 20%) 86%,
+      transparent 100%),
+    linear-gradient(to bottom, #000 55%, #000b 75%, transparent 100%);
+  mask-composite: intersect;
 }
 .eyebrow {
   font-size: 10px;
@@ -741,14 +759,39 @@ main:has(.explore-hero) {
   line-height: 1.4;
 }
 .top-community { margin: 0 0 24px; }
-.top-community .section-heading { flex-wrap: wrap; gap: 12px 18px; margin: 18px 0 12px; }
-.top-community-title-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px 12px; }
+.top-community .section-heading {
+  position: relative;
+  z-index: 1;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 6px 0 12px;
+}
+.top-community-title-line {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 5px 12px;
+  text-shadow: 0 1px 2px #000, 0 0 12px #080b12, 0 0 22px #080b12;
+}
 .top-community-title-line > span,
 .top-community-title-line > small { color: var(--muted); }
 .top-community-title-line > span::before,
 .top-community-title-line > small::before { content: "·"; margin-right: 12px; }
 .top-community-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.top-community-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; list-style: none; margin: 14px 0 0; padding: 0; }
+.top-community-actions button {
+  box-shadow: 0 12px 54px #000f, 0 0 36px #000e;
+  text-shadow: 0 1px 2px #000;
+}
+.top-community-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 22px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
 .top-community-grid > li { min-width: 0; display: flex; flex-direction: column; }
 .top-community-grid .build-card { flex: 1; }
 .top-community-rank {
