@@ -258,7 +258,7 @@ main:has(.explore-hero) {
   position: relative;
   z-index: -1;
   width: 650px;
-  height: 165px;
+  height: 157px;
   overflow-x: clip;
   overflow-y: visible;
   pointer-events: none;
@@ -266,8 +266,8 @@ main:has(.explore-hero) {
 .hero-racer {
   position: absolute;
   top: 0;
-  width: 206px;
-  height: 165px;
+  width: 196px;
+  height: 157px;
   filter: drop-shadow(0 8px 10px #0009);
 }
 .hero-racer:nth-child(1) {
@@ -738,7 +738,7 @@ main:has(.explore-hero) {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px 14px;
-  margin: 19px 0 18px;
+  margin: 9px 0 18px;
 }
 .card-stats.unavailable {
   display: block;
@@ -987,6 +987,7 @@ main:has(.explore-hero) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 15px;
   text-align: left;
 }
 .card-meta time { flex: 0 0 auto; white-space: nowrap; }
@@ -2197,8 +2198,8 @@ hr {
 }
 @media (min-width: 1201px) and (max-width: 1400px) {
   .explore-hero { grid-template-columns: minmax(0, 1fr) 540px; }
-  .hero-racers { width: 540px; height: 140px; }
-  .hero-racer { width: 175px; height: 140px; }
+  .hero-racers { width: 540px; height: 133px; }
+  .hero-racer { width: 166px; height: 133px; }
   .hero-racer:nth-child(2) { left: 105px; }
   .hero-racer:nth-child(3) { left: 210px; }
   .hero-racer:nth-child(4) { left: 315px; }
