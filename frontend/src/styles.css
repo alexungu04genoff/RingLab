@@ -221,12 +221,15 @@ main:has(.explore-hero) {
   margin: 0;
 }
 .explore-hero {
+  isolation: isolate;
   min-height: 132px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 480px;
   align-items: center;
 }
 .hero-copy {
+  position: relative;
+  z-index: 1;
   min-width: 0;
 }
 .hero-copy > p {
@@ -250,6 +253,7 @@ main:has(.explore-hero) {
 }
 .hero-racers {
   position: relative;
+  z-index: 0;
   width: 480px;
   height: 117px;
   overflow: hidden;
@@ -449,6 +453,7 @@ main:has(.explore-hero) {
   gap: 23px;
 }
 .build-card {
+  container-type: inline-size;
   display: flex;
   flex-direction: column;
   border: 1px solid var(--border);
@@ -466,14 +471,36 @@ main:has(.explore-hero) {
 .build-card:has(.score-help:hover),
 .build-card:has(.score-help:focus) { position: relative; z-index: 2; }
 .card-art {
-  height: 145px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 145px;
+  padding: 13px 13px 11px 15px;
   position: relative;
   overflow: visible;
   border-radius: 9px 9px 0 0;
 }
 .card-art > .artwork {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   border-radius: 9px 9px 0 0;
+}
+.card-art-heading {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-equipment {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  margin-top: auto;
 }
 .artwork {
   background:
@@ -537,21 +564,12 @@ main:has(.explore-hero) {
   background-color: #283a37;
 }
 .type-badge {
-  position: absolute;
-  top: 13px;
-  left: 15px;
   background: #0c101ac9;
   padding: 5px 9px;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 1px;
   border-radius: 3px;
-}
-.machine-type {
-  top: auto;
-  left: auto;
-  right: 13px;
-  bottom: 69px;
 }
 .racing-type {
   border: 1px solid currentColor;
@@ -590,12 +608,11 @@ main:has(.explore-hero) {
   background: #202633;
 }
 .score {
-  position: absolute;
-  right: 14px;
-  top: 13px;
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  margin-left: auto;
   font-size: 14px;
   font-weight: 750;
   background: #10141fbc;
@@ -612,9 +629,6 @@ main:has(.explore-hero) {
 .upvote-count { color: #73df8b; }
 .downvote-count { color: #ff8877; }
 .card-parts {
-  position: absolute;
-  right: 13px;
-  bottom: 11px;
   display: flex;
   gap: 5px;
   padding: 4px;
@@ -743,9 +757,6 @@ main:has(.explore-hero) {
   font-size: 13px;
   font-weight: 900;
 }
-.top-community .tags { position: relative; }
-.top-community .tags > .card-gadget-icon { position: static; }
-.top-community .card-gadget-icon [role="tooltip"] { max-width: min(240px, 100%); }
 @media (max-width: 1100px) { .top-community-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 720px) {
   .top-community-grid { grid-template-columns: minmax(0, 1fr); }
@@ -754,6 +765,12 @@ main:has(.explore-hero) {
 .card-stat > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
 .card-stat dt { min-width: 0; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .1px; text-transform: uppercase; white-space: nowrap; }
 .card-stat dd { margin: 0; color: #eef5ff; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
+@container (max-width: 420px) {
+  .card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container (max-width: 340px) {
+  .card-stat > div { flex-direction: column; gap: 2px; }
+}
 .card-stat-track { display: flex; height: 6px; overflow: hidden; border-radius: 999px; background: #0d131d; }
 .card-stat-track > span { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
 .card-stat-track > .card-stat-character-fill { flex: 0 0 auto; border-radius: 999px 0 0 999px; background: color-mix(in srgb, var(--stat-color) 35%, #e8f6ff); }
@@ -870,21 +887,36 @@ main:has(.explore-hero) {
   opacity: 1;
   transform: translateY(0);
 }
+/* Anchor card tooltips to the row so later gadgets cannot widen the page. */
+.build-card .tags { position: relative; }
+.build-card .tags > .card-gadget-icon { position: static; }
+.build-card .card-gadget-icon [role="tooltip"] { max-width: min(240px, 100%); }
 .card-meta {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
   border-top: 1px solid var(--border);
   padding-top: 14px;
   margin-top: auto;
   font-size: 12px;
   color: var(--muted);
+  text-align: center;
 }
 .card-meta > span:first-child,
 .card-meta time { font-size: 14px; }
-.card-meta > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.card-meta > span:first-child {
+  flex: 1 1 60px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.card-meta time { flex: 0 0 auto; white-space: nowrap; }
 .card-meta .patch-badge {
+  flex: 0 0 auto;
   border-radius: 4px;
   padding: 4px 7px;
   background: #252c38;
@@ -2088,6 +2120,19 @@ hr {
     padding-top: 58px;
   }
 }
+@media (max-width: 1200px) {
+  .explore-hero {
+    min-height: 0;
+    grid-template-columns: minmax(0, 1fr);
+    text-align: center;
+  }
+  .hero-title-row {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .hero-title-row h1 { white-space: normal; }
+  .hero-racers { display: none; }
+}
 @media (max-width: 1000px) {
   .navbar {
     gap: 25px;
@@ -2097,9 +2142,6 @@ hr {
   }
   .filters {
     grid-template-columns: 1fr 1fr;
-  }
-  .explore-hero {
-    grid-template-columns: minmax(0, 1fr) 350px;
   }
   .hero-title-row {
     gap: 14px;
@@ -2246,20 +2288,6 @@ hr {
   .hero-game-logo {
     width: 150px;
   }
-  .explore-hero {
-    min-height: 0;
-    display: flex;
-  }
-  .hero-title-row {
-    flex-wrap: wrap;
-  }
-  .hero-title-row h1 {
-    flex-basis: calc(100% - 134px);
-    white-space: normal;
-  }
-  .hero-racers {
-    display: none;
-  }
   .filters {
     padding: 14px;
     gap: 13px;
@@ -2278,13 +2306,6 @@ hr {
   }
   .card-body h2 {
     font-size: 17px;
-  }
-  .card-art {
-    height: 120px;
-  }
-  .card-meta {
-    flex-direction: column;
-    gap: 4px;
   }
   .editor,
   .detail-grid,
@@ -2396,7 +2417,6 @@ hr {
   }
 }
 @media (max-width: 420px) {
-  .build-grid,
   .gadget-options {
     grid-template-columns: 1fr;
   }
@@ -2406,12 +2426,6 @@ hr {
   .preview-item .artwork,
   .preview-placeholder {
     height: 120px;
-  }
-  .card-art {
-    height: 150px;
-  }
-  .card-meta {
-    flex-direction: row;
   }
   .account {
     font-size: 11px;
@@ -2488,8 +2502,9 @@ hr {
   .explore-content.news-hidden .build-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .latest-news { position: static; margin-top: 0; }
 }
-@media (max-width: 420px) {
-  .explore-content.news-hidden .build-grid { grid-template-columns: minmax(0, 1fr); }
+@media (max-width: 720px) {
+  .build-grid,
+  .explore-content.news-hidden .build-grid,
   .explore-content .build-grid {
     grid-template-columns: minmax(0, 1fr);
   }

@@ -171,26 +171,30 @@ export function BuildCard({ build, versions = [], stats, rank }: {
       <div className="card-art">
         {rank != null && <span className="top-community-rank" aria-label={`Rank ${rank}`}>#{rank}</span>}
         <Artwork item={build.racer} portrait />
-        <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
-          {build.racer.racingType ?? "Unknown"}
-        </span>
-        <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
-          <span className="community-score">Score {build.score}</span>
-          <span className="score-help" tabIndex={0} aria-label="How Best rated works">
-            <span aria-hidden="true">i</span>
-            <span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span>
+        <div className="card-art-heading">
+          <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
+            {build.racer.racingType ?? "Unknown"}
           </span>
-          <span className="upvote-count">↑ {build.upvotes}</span>
-          <span className="downvote-count">↓ {build.downvotes}</span>
-        </span>
-        <span className={`type-badge machine-type racing-type ${racingTypeClass(build.frontPart.racingType)}`}>
-          {build.frontPart.racingType ?? "UNKNOWN"}
-        </span>
-        <span className="card-parts" aria-label="Machine parts">
-          <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
-          <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
-          {build.tirePart && <BuildPartIcon part={build.tirePart} label="Tires" abbreviation="T" />}
-        </span>
+          <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
+            <span className="community-score">Score {build.score}</span>
+            <span className="score-help" tabIndex={0} aria-label="How Best rated works">
+              <span aria-hidden="true">i</span>
+              <span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span>
+            </span>
+            <span className="upvote-count">↑ {build.upvotes}</span>
+            <span className="downvote-count">↓ {build.downvotes}</span>
+          </span>
+        </div>
+        <div className="card-equipment">
+          <span className={`type-badge machine-type racing-type ${racingTypeClass(build.frontPart.racingType)}`}>
+            {build.frontPart.racingType ?? "UNKNOWN"}
+          </span>
+          <span className="card-parts" aria-label="Machine parts">
+            <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
+            <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
+            {build.tirePart && <BuildPartIcon part={build.tirePart} label="Tires" abbreviation="T" />}
+          </span>
+        </div>
       </div>
       <div className="card-body">
         <div className="card-kicker">
@@ -208,7 +212,7 @@ export function BuildCard({ build, versions = [], stats, rank }: {
           {build.gadgets.length === 0 && <span>No gadgets</span>}
         </div>
         <div className="card-meta">
-          <span>@{build.author.username}</span>
+          <span title={`@${build.author.username}`}>@{build.author.username}</span>
           {build.gameVersion ? (
             <span className={`patch-badge patch-${versionAge}`}>
               Ver. {build.gameVersion.version}
@@ -216,7 +220,7 @@ export function BuildCard({ build, versions = [], stats, rank }: {
           ) : (
             <span className="patch-badge patch-unspecified">Patch unspecified</span>
           )}
-          <time>{date(build.createdAt)}</time>
+          <time dateTime={build.createdAt}>{date(build.createdAt)}</time>
         </div>
       </div>
     </Link>
