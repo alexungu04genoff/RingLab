@@ -252,6 +252,7 @@ main:has(.explore-hero) {
   margin: 0;
   min-width: 0;
   white-space: nowrap;
+  text-shadow: 0 4px 10px #000, 0 0 36px #000, 0 0 70px #000;
 }
 .hero-racers {
   position: relative;
@@ -774,9 +775,26 @@ main:has(.explore-hero) {
   text-shadow: 0 1px 2px #000, 0 0 12px #080b12, 0 0 22px #080b12;
 }
 .top-community-title-line > span,
-.top-community-title-line > small { color: var(--muted); }
+.top-community-title-line > small {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid #ffffff18;
+  border-radius: 7px;
+  background: #10141fe6;
+  color: var(--muted);
+  font-size: 16px;
+  font-weight: inherit;
+  line-height: 1.25;
+  box-shadow: 0 5px 18px #000a;
+}
 .top-community-title-line > span::before,
-.top-community-title-line > small::before { content: "·"; margin-right: 12px; }
+.top-community-title-line > small::before {
+  position: absolute;
+  left: -8px;
+  content: "·";
+}
 .top-community-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .top-community-actions button {
   box-shadow: 0 12px 54px #000f, 0 0 36px #000e;
@@ -2173,6 +2191,15 @@ hr {
   main {
     padding-top: 58px;
   }
+}
+@media (min-width: 1201px) and (max-width: 1400px) {
+  .explore-hero { grid-template-columns: minmax(0, 1fr) 540px; }
+  .hero-racers { width: 540px; height: 140px; }
+  .hero-racer { width: 175px; height: 140px; }
+  .hero-racer:nth-child(2) { left: 105px; }
+  .hero-racer:nth-child(3) { left: 210px; }
+  .hero-racer:nth-child(4) { left: 315px; }
+  .hero-racer:nth-child(5) { left: 420px; }
 }
 @media (max-width: 1200px) {
   .explore-hero {
