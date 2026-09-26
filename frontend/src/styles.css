@@ -368,6 +368,11 @@ main:has(.explore-hero) {
 .search button {
   padding: 0 14px;
 }
+.search input,
+.search button {
+  height: 44px;
+  border-radius: 7px;
+}
 .filters input,
 .filters select,
 .filters .search button {
@@ -560,9 +565,15 @@ nav { flex-wrap: wrap; }
 .comparison-tray-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .comparison-tray-message { flex-basis: 100%; margin: 0; color: var(--muted); }
 @media (max-width: 600px) {
-  .comparison-tray { top: 8px; max-height: calc(100vh - 16px); overflow-y: auto; }
-  .comparison-tray li { display: grid; grid-template-columns: 38px minmax(0, 1fr); gap: 6px 10px; }
-  .comparison-tray li > button { grid-column: 2; justify-self: start; }
+  .comparison-tray.panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 10px; top: 8px; max-height: 35svh; overflow-y: auto; }
+  .comparison-tray > strong { font-size: 14px; }
+  .comparison-tray > ul { grid-column: 1 / -1; display: grid; gap: 4px; }
+  .comparison-tray li { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 8px; }
+  .comparison-tray .artwork { width: 32px; height: 32px; }
+  .comparison-selection-title { font-size: 14px; line-height: 1.35; }
+  .comparison-tray button { min-height: 44px; padding: 6px 9px; }
+  .comparison-tray-actions { grid-column: 2; grid-row: 1; gap: 6px; }
+  .comparison-tray-message { grid-column: 1 / -1; }
 }
 .build-card:has(.score-help:hover),
 .build-card:has(.score-help:focus) { position: relative; z-index: 2; }
@@ -668,6 +679,8 @@ nav { flex-wrap: wrap; }
   border-radius: 3px;
 }
 .racing-type {
+  white-space: nowrap;
+  flex-shrink: 0;
   border: 1px solid currentColor;
   border-radius: 999px;
   font-weight: 800;
@@ -2155,10 +2168,6 @@ hr {
 }
 .stock-machine-card { min-width: 0; }
 .collection-machines > div { min-width: 0; }
-@media (max-width: 380px) {
-  .machine-collection-item { flex-wrap: wrap; }
-  .machine-collection-item .collection-copy { flex-basis: 100%; }
-}
 .part-stats-trigger { display: block; margin-top: 12px; font-size: 12px; padding: 8px 10px; }
 .machine-stats-disclosure {
   margin-top: 10px;
@@ -2396,31 +2405,50 @@ hr {
     gap: 16px;
   }
   .navbar {
-    padding: 16px 20px;
-    gap: 14px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    padding: 10px 18px;
+    gap: 6px 12px;
   }
   .brand {
     font-size: 21px;
   }
   .account {
-    order: 1;
-    margin-left: auto;
+    display: contents;
   }
+  .navbar > .brand { grid-column: 1; grid-row: 1; }
+  .account > :first-child { grid-column: 1; grid-row: 2; justify-self: start; }
+  .account > :nth-child(2) { grid-column: 2; grid-row: 1; justify-self: end; min-width: 0; overflow-wrap: anywhere; }
+  .account > :nth-child(3) { grid-column: 2; grid-row: 2; justify-self: end; }
+  .account > a, .account > button { min-height: 44px; display: inline-flex; align-items: center; }
   .account .button {
     padding: 8px 11px;
   }
   nav {
-    order: 2;
-    flex-basis: 100%;
-    justify-content: center;
-    gap: 16px;
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 12px;
     border-top: 1px solid var(--border);
     padding-top: 4px;
   }
   nav a {
-    padding: 9px 0;
-    font-size: 12px;
+    min-height: 44px;
+    padding: 6px 0;
+    font-size: 14px;
   }
+  .card-kicker { align-items: flex-start; }
+  .card-kicker > .eyebrow { flex-basis: 100%; }
+  .card-actions { margin-left: 0; flex-wrap: nowrap; }
+  .card-actions .compare-toggle, .card-actions .save-build { min-height: 44px; padding: 8px 10px; border-radius: 7px; }
+  .card-actions .save-build { min-width: 44px; }
+  .card-actions .ui-icon { margin: 0; }
+  .collection-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 8px; }
+  .collection-tabs button { min-height: 48px; padding: 8px; line-height: 1.3; }
+  .collection-tabs .ui-icon { flex-shrink: 0; }
+  .machine-collection-item { gap: 12px; }
+  .machine-collection-item .artwork { width: 96px; height: 88px; flex-basis: 96px; }
+  .machine-collection-item h2 { overflow-wrap: normal; }
   main {
     padding: 29px 18px 45px;
   }
@@ -2725,7 +2753,7 @@ hr {
 .machine-part-card { display: flex; align-items: center; min-width: 0; gap: 10px; padding: 9px; border: 1px solid var(--border); border-radius: 6px; background: #12171f; }
 .machine-part-card .artwork { width: 78px; height: 62px; flex: 0 0 78px; }
 .machine-part-copy { min-width: 0; flex: 1; }
-.machine-part-card strong, .machine-part-card .part-type { display: block; overflow-wrap: anywhere; }
+.machine-part-card strong { display: block; overflow-wrap: normal; }
 .machine-part-card strong { font-size: 14px; }
 .machine-part-card .part-type { width: fit-content; margin-top: 5px; padding: 2px 6px; font-size: 9px; }
 .machine-part-slot { flex: 0 0 auto; color: #d2d8e5; font-size: 11px; letter-spacing: 1.2px; text-align: right; }
@@ -2754,7 +2782,13 @@ hr {
 @media (max-width: 700px) {
   .machine-setup-grid, .detail-gadgets { grid-template-columns: 1fr; }
   .hero-machine-setup .machine-setup-grid { grid-template-columns: 1fr; }
-  .machine-setup-heading { align-items: flex-start; }
+  .machine-setup-heading { align-items: flex-start; flex-wrap: wrap; gap: 8px; padding: 14px 14px 0; }
+  .machine-setup-grid { padding: 12px 14px 14px; }
+  .machine-part-card { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px 10px; }
+  .machine-part-card .artwork { width: 62px; height: 54px; }
+  .machine-part-copy { grid-column: 2; }
+  .machine-part-slot { grid-column: 1; text-align: left; }
+  .machine-part-card.different::after { grid-column: 2; justify-self: end; }
   .gadget-heading { align-items: flex-start; flex-wrap: wrap; }
 }
 
