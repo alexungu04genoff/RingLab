@@ -147,6 +147,7 @@ header {
   margin: auto;
   min-height: 86px;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 50px;
   padding: 15px 28px;
@@ -207,6 +208,7 @@ main {
   padding: 46px 28px 60px;
 }
 main:has(.explore-hero) {
+  isolation: isolate;
   max-width: 1704px;
   padding-top: 30px;
 }
@@ -221,7 +223,6 @@ main:has(.explore-hero) {
   margin: 0;
 }
 .explore-hero {
-  isolation: isolate;
   min-height: 132px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 480px;
@@ -253,10 +254,12 @@ main:has(.explore-hero) {
 }
 .hero-racers {
   position: relative;
-  z-index: 0;
+  z-index: -1;
   width: 480px;
   height: 117px;
-  overflow: hidden;
+  overflow-x: clip;
+  overflow-y: visible;
+  pointer-events: none;
 }
 .hero-racer {
   position: absolute;
@@ -287,6 +290,10 @@ main:has(.explore-hero) {
 }
 .hero-racer .artwork {
   background: transparent;
+  overflow: visible;
+}
+.hero-racer .artwork.portrait img {
+  mask-image: linear-gradient(to bottom, #000 55%, #000b 75%, transparent 100%);
 }
 .eyebrow {
   font-size: 10px;
@@ -710,7 +717,7 @@ main:has(.explore-hero) {
 }
 .card-stats {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px 14px;
   margin: 19px 0 18px;
 }
@@ -761,12 +768,14 @@ main:has(.explore-hero) {
 @media (max-width: 720px) {
   .top-community-grid { grid-template-columns: minmax(0, 1fr); }
 }
-.card-stat { min-width: 0; --stat-color: var(--accent); }
+.card-stat { grid-column: span 2; min-width: 0; --stat-color: var(--accent); }
 .card-stat > div { display: flex; align-items: baseline; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
 .card-stat dt { min-width: 0; color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .1px; text-transform: uppercase; white-space: nowrap; }
 .card-stat dd { margin: 0; color: #eef5ff; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 @container (max-width: 420px) {
-  .card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .card-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card-stats .card-stat.stat-power { grid-column: span 2; }
+  .card-stats .card-stat.stat-boost { grid-column: 2 / span 2; }
 }
 @container (max-width: 340px) {
   .card-stat > div { flex-direction: column; gap: 2px; }
@@ -778,8 +787,8 @@ main:has(.explore-hero) {
 .card-stat-track.unknown { background: repeating-linear-gradient(135deg, #171e2a, #171e2a 3px, #111722 3px, #111722 6px); }
 .card-stat.stat-acceleration { --stat-color: #f1c75b; }
 .card-stat.stat-handling { --stat-color: #e767d1; }
-.card-stat.stat-power { --stat-color: #ff7868; }
-.card-stat.stat-boost { --stat-color: #73df8b; }
+.card-stat.stat-power { grid-column: 2 / span 2; --stat-color: #ff7868; }
+.card-stat.stat-boost { grid-column: 4 / span 2; --stat-color: #73df8b; }
 .card-kicker {
   display: flex;
   align-items: center;
@@ -821,9 +830,10 @@ main:has(.explore-hero) {
   letter-spacing: .6px;
 }
 .tags {
-  display: grid;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  justify-content: center;
   gap: 5px;
   min-height: 52px;
 }
@@ -837,7 +847,8 @@ main:has(.explore-hero) {
 }
 .tags > .card-gadget-icon {
   position: relative;
-  width: 100%;
+  flex: 0 0 calc((100% - 25px) / 6);
+  width: auto;
   height: auto;
   aspect-ratio: 1;
   padding: 0;
@@ -2239,7 +2250,6 @@ hr {
     gap: 16px;
   }
   .navbar {
-    flex-wrap: wrap;
     padding: 16px 20px;
     gap: 14px;
   }
