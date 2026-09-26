@@ -10,6 +10,7 @@ import { machineTypeLabel } from "./machineComposition";
 import { savedBuildSetupIssues } from "./buildForm";
 import { LibraryIcon } from "./icons";
 import { CompareToggle } from "./BuildComparison";
+import { SaveBuildButton } from "./SavedBuilds";
 
 const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
 const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";
@@ -101,7 +102,8 @@ export const browseOrigin = (pathname: string, search: string) => `${pathname}${
 export function buildDetailsOrigin(from: unknown) {
   return typeof from === "string" &&
     (from === "/" || from.startsWith("/?") ||
-      from === "/my-builds" || from.startsWith("/my-builds?"))
+      from === "/my-builds" || from.startsWith("/my-builds?") ||
+      from === "/saved-builds" || from.startsWith("/saved-builds?"))
     ? from
     : "/";
 }
@@ -186,7 +188,10 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
           <span className="eyebrow">{build.racer.name}</span>
           {setupIssues.length > 0 && <span className="invalid-setup-badge"
             aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
-          <CompareToggle build={build} />
+          <div className="card-actions">
+            <CompareToggle build={build} />
+            <SaveBuildButton build={build} />
+          </div>
         </div>
         <h2><Link to={`/builds/${build.id}`} state={{ from: browseOrigin(location.pathname, location.search) }}>{build.title}</Link></h2>
         <CardStats build={build} stats={stats} pageStats={pageStats} />

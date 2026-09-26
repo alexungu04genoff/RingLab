@@ -11,7 +11,7 @@ dev.ringlab/
   domain/{auth,build,comment,gamedata,news,vote}/
   application/{auth,build,comment,gamedata,news,validation,vote}/
   port/out/
-    {User,Build,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
+    {User,Build,SavedBuild,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
   adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
@@ -19,6 +19,19 @@ dev.ringlab/
 ```
 
 ## Boundaries
+
+Private bookmarks follow the same boundaries: `SavedBuildRestResource` obtains the
+actor through `CurrentUser`, calls `SavedBuildService`, and assembles normal live
+build responses with a separate `savedAt`. `SavedBuildRepository` is a flat outbound
+port; `SavedBuildDbAdapter` owns PostgreSQL upsert, database pagination, literal
+catalog search, and uniqueness/cascade handling. It does not change public ranking
+or snapshot models. See [Saved Builds](saved-builds.md) for the contract.
+
+The frontend `SavedBuildsProvider` batches visible status IDs and shares confirmed
+state across cards/details. Its inner provider and consumers are keyed by user and
+session generation, aborting obsolete requests on replacement. Saved data is not
+stored in public snapshots or browser persistence. Comparison remains separate
+ephemeral state and survives navigation within a session.
 
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Machine` owns its racing type; `MachineComposition` defines required slots; `Build` snapshots its ordered gadget list. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions for validation, authentication, existing resources, forbidden operations, missing resources, and unavailable external services; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.

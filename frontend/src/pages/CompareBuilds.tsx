@@ -165,7 +165,8 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
 
 export function CompareBuilds() {
   const location = useLocation();
-  const backToBrowse = <Link className="back" to={buildDetailsOrigin(location.state?.from)}>← Back to Explore</Link>;
+  const origin = buildDetailsOrigin(location.state?.from);
+  const backToBrowse = <Link className="back" to={origin}>← Back to {origin.startsWith("/saved-builds") ? "Saved Builds" : "Explore"}</Link>;
   const [params] = useSearchParams();
   const leftId = params.get("left") ?? "";
   const rightId = params.get("right") ?? "";

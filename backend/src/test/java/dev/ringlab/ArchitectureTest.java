@@ -64,9 +64,15 @@ class ArchitectureTest {
                 for (var call : type.getMethodCallsFromSelf()) {
                     String owner = call.getTarget().getOwner().getName();
                     String method = call.getTarget().getName();
+                    // Private bookmark chronology is database pagination, not public build ranking.
+                    // This exception permits only Criteria ordering in this adapter; ranking policy
+                    // dependencies, comparators and local sorting remain forbidden everywhere.
+                    boolean bookmarkChronology = type.getName().equals(
+                            "dev.ringlab.adapter.out.db.build.SavedBuildDbAdapter")
+                            && owner.equals("jakarta.persistence.criteria.CriteriaQuery") && method.equals("orderBy");
                     if (owner.equals(BuildRanking.class.getName())
                             || owner.equals(Comparator.class.getName())
-                            || Set.of("sort", "sorted", "orderBy").contains(method)) {
+                            || (Set.of("sort", "sorted", "orderBy").contains(method) && !bookmarkChronology)) {
                         events.add(SimpleConditionEvent.violated(type, call.getDescription()));
                     }
                 }

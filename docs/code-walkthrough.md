@@ -3,6 +3,33 @@
 Use these paths in order for a short thesis demonstration. All names refer to
 implemented code. Tests can be opened beside the use case and run from IntelliJ.
 
+## Private Saved Builds
+
+1. `frontend/src/SavedBuilds.tsx`: `SaveBuildButton` registers a visible build ID.
+   The provider deduplicates IDs in batches of at most 50, then sends an authenticated
+   PUT or DELETE only after an explicit click. Pending controls share state; failures
+   preserve the last confirmed value and expose retry. Signed-out links return to
+   the build after normal login without saving automatically.
+2. `adapter/in/rest/build/SavedBuildRestResource`: all four routes require the user
+   role. `CurrentUser.id()` selects the actor; a client-supplied userId is irrelevant.
+3. `application/build/SavedBuildService`: saving first verifies the live build exists;
+   removing calls only the bookmark repository. Listing hydrates one bounded page
+   with `BuildRepository.findAll`, then restores bookmark chronology.
+4. `port/out/SavedBuildRepository` and `adapter/out/db/build/SavedBuildDbAdapter`:
+   PostgreSQL `ON CONFLICT DO NOTHING` preserves the first timestamp under concurrent
+   saves. V28's composite primary key enforces uniqueness and both foreign keys
+   cascade. Only the source-build foreign-key violation maps to build-not-found.
+5. The private list reuses `BuildResponseAssembler` and `BaseStatsService.buildPage`.
+   Author credit and canonical patch stats remain those of the live build. The
+   response includes private/no-store headers; no bookmark fields enter the public
+   community snapshot.
+6. `frontend/src/pages/SavedBuildsPage.tsx`: authenticated list, search/patch filters,
+   bookmark dates, pagination reconciliation, existing cards and shared comparison.
+   Safe browse-origin handling recognizes `/saved-builds` and its query string.
+
+Run `SavedBuildServiceTest`, `SavedBuildIntegrationTest`, and the bookmark contract
+in `ApiContract` alongside `SavedBuilds.test.tsx` and `SavedBuildsPage.test.tsx`.
+
 ## Google sign-in and existing accounts
 
 Follow `AuthRestResource.google` into

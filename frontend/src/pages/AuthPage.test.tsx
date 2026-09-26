@@ -52,6 +52,16 @@ it("exchanges the GIS credential and accepts only the normal RingLab session", a
   expect(sessionStorage.getItem("google-credential")).toBeNull();
 });
 
+it.each(["https://example.test", "//example.test", "/\\example.test", "/\n/example.test"])("rejects unsafe login return %s", async from => {
+  vi.mocked(api).mockResolvedValue(session);
+  render(<MemoryRouter initialEntries={[{ pathname: "/login", state: { from } }]}><Routes>
+    <Route path="/login" element={<AuthPage />} /><Route path="/" element={<p>Safe home destination</p>} />
+  </Routes></MemoryRouter>);
+  await userEvent.click(await screen.findByRole("button", { name: "Continue with Google" }));
+  await screen.findByText("Safe home destination");
+  expect(vi.mocked(api).mock.calls.every(([path]) => !path.startsWith("/saved-builds"))).toBe(true);
+});
+
 it("shows an email conflict without accepting a session and allows a retry", async () => {
   vi.mocked(api).mockRejectedValueOnce(new Error("Sign in with your username and password, then link Google from your account page.")).mockResolvedValueOnce(session);
   page(true);

@@ -18,6 +18,7 @@ it.each([
   "/api/builds?search=%25%5F&excludeId=winner",
   "/api/auth/login", "/api/auth/google/link", "/api/racers",
   "/api/community/top-builds", "/api/stats/build?gameVersionId=patch",
+  "/api/saved-builds", "/api/saved-builds/status?buildId=one", "/api/saved-builds/one",
 ])("preserves public API forwarding for %s", (url) => {
   expect(publicApiProxy["/api"].bypass({ url })).toBeUndefined();
 });

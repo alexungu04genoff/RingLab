@@ -124,6 +124,14 @@ Development connection overrides: `DB_URL`, `DB_USER`, `DB_PASSWORD`. `FRONTEND_
 
 ## API rate limiting
 
+Private bookmarks are available under **Saved Builds**, separately from My Builds
+and comparison selection. See [Saved Builds API and verification](docs/saved-builds.md)
+for the authenticated contract, migration and session-isolation behavior.
+
+For isolated local verification, set `RINGLAB_API_TARGET=http://127.0.0.1:8082`
+before starting Vite on a separate port. The default proxy remains port 8080 and
+the route allowlist still blocks `/api/dev-fixtures`.
+
 The Quarkus REST boundary applies an in-memory token bucket before API calls reach application
 services. The initial full bucket allows a normal UI page to make a short burst. Defaults are:
 

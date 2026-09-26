@@ -6,6 +6,7 @@ import java.util.regex.Pattern;
 
 enum RequestRateLimitPolicy {
   GENERAL_READ(IdentityScope.CLIENT_IP),
+  SAVED_READ(IdentityScope.AUTHENTICATED_USER),
   BUILD_LIST(IdentityScope.CLIENT_IP),
   NEWS(IdentityScope.CLIENT_IP),
   LOGIN(IdentityScope.CLIENT_IP),
@@ -59,6 +60,10 @@ enum RequestRateLimitPolicy {
     }
     if (method.equals("GET") && path.equals("/api/news")) {
       return Optional.of(NEWS);
+    }
+    if ((method.equals("GET") || method.equals("HEAD"))
+        && (path.equals("/api/saved-builds") || path.startsWith("/api/saved-builds/"))) {
+      return Optional.of(SAVED_READ);
     }
     if (method.equals("POST") && path.equals("/api/builds")) {
       return Optional.of(BUILD_CREATION);

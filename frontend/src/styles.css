@@ -516,6 +516,22 @@ main:has(.explore-hero) {
   white-space: nowrap;
 }
 .compare-toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+.card-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.card-actions:empty { display: none; }
+.card-actions .compare-toggle { margin-left: 0; }
+.save-build { min-height: 32px; padding: 5px 8px; gap: 4px; font-size: 12px; }
+.save-build .ui-icon { width: 17px; height: 17px; }
+.save-build[aria-pressed="true"] { color: var(--accent); border-color: var(--accent); }
+.save-build-control { display: inline-flex; align-items: center; position: relative; }
+.save-build-error { position: absolute; top: 100%; right: 0; width: 180px; z-index: 40; padding: 8px; border: 1px solid var(--border); border-radius: 5px; background: #101319; font-size: 12px; }
+.saved-filters { display: flex; flex-wrap: wrap; align-items: end; gap: 16px; }
+.saved-filters .search { flex: 1 1 280px; }
+.saved-filters label { min-width: 0; }
+.saved-filters select { width: 100%; }
+.saved-card { display: flex; flex-direction: column; min-width: 0; }
+.saved-card > .build-card { flex: 1; }
+.saved-date { font-size: 13px; margin: 0 0 8px; color: var(--muted); }
+nav { flex-wrap: wrap; }
 .compare-toggle:disabled {
   border-color: #303642;
   background: #1b2029;
@@ -2772,8 +2788,17 @@ hr {
 }
 .compare-combobox [role="option"].active { background: var(--accent-selected); }
 .compare-combobox [role="option"] span { color: var(--muted); font-size: 11px; font-weight: 400; }
-.compare-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.compare-column { min-width: 0; }
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 24px;
+}
+.compare-column {
+  display: grid;
+  grid-row: span 8;
+  grid-template-rows: subgrid;
+  min-width: 0;
+}
 .compare-side-label {
   margin-bottom: 9px;
   color: var(--accent);

@@ -20,6 +20,7 @@ class RateLimitSettings {
     var configuredRules =
         new EnumMap<RequestRateLimitPolicy, RateLimitRule>(RequestRateLimitPolicy.class);
     configuredRules.put(RequestRateLimitPolicy.GENERAL_READ, rule(config, "general"));
+    configuredRules.put(RequestRateLimitPolicy.SAVED_READ, rule(config, "general"));
     configuredRules.put(RequestRateLimitPolicy.BUILD_LIST, rule(config, "build-list"));
     configuredRules.put(RequestRateLimitPolicy.NEWS, rule(config, "news"));
     configuredRules.put(RequestRateLimitPolicy.LOGIN, rule(config, "login"));

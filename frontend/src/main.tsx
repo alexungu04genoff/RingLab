@@ -11,7 +11,9 @@ import { ResendVerificationPage } from "./pages/ResendVerificationPage";
 import { AccountPage } from "./pages/AccountPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
-import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
+import { BookmarkIcon, CompassIcon, HammerIcon, LibraryIcon } from "./icons";
+import { SavedBuildsProvider } from "./SavedBuilds";
+import { SavedBuildsPage } from "./pages/SavedBuildsPage";
 import { SiteFooter } from "./components";
 import { BuildComparisonProvider } from "./BuildComparison";
 import "./styles.css";
@@ -34,6 +36,7 @@ function App() {
             </NavLink>
             <NavLink to="/game-data"><LibraryIcon /> Game Collection</NavLink>
             <NavLink to="/my-builds"><HammerIcon /> My Builds</NavLink>
+            <NavLink to="/saved-builds"><BookmarkIcon /> Saved Builds</NavLink>
           </nav>
           <div className="account">
             <Link className="button primary" to="/builds/new">
@@ -61,6 +64,7 @@ function App() {
       </header>
       <main id="main">
         <Routes>
+          <Route path="/saved-builds" element={<RequireAuth><SavedBuildsPage /></RequireAuth>} />
           <Route path="/" element={<Explore key="all" />} />
           <Route
             path="/my-builds"
@@ -120,7 +124,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <BuildComparisonProvider><App /></BuildComparisonProvider>
+        <SavedBuildsProvider><BuildComparisonProvider><App /></BuildComparisonProvider></SavedBuildsProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

@@ -57,7 +57,7 @@ public class BuildDbAdapter implements BuildRepository {
     return em.createQuery(query).getResultList().stream().map(mapper::toDomain).toList();
   }
 
-  private List<Predicate> filters(
+  static List<Predicate> filters(
       CriteriaBuilder criteriaBuilder, CriteriaQuery<?> query, Root<BuildDbEntity> build, Filter filter) {
     List<Predicate> predicates = new ArrayList<>();
     if (!filter.excludedIds().isEmpty()) {
@@ -115,7 +115,7 @@ public class BuildDbAdapter implements BuildRepository {
     return predicates;
   }
 
-  private Predicate literalContains(CriteriaBuilder criteriaBuilder, Expression<String> value, String search) {
+  private static Predicate literalContains(CriteriaBuilder criteriaBuilder, Expression<String> value, String search) {
     return criteriaBuilder.greaterThan(criteriaBuilder.locate(criteriaBuilder.lower(value), search), 0);
   }
 

@@ -1,7 +1,11 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import { loadEnv } from "vite";
 import { publicApiProxy } from "./devApiProxy";
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const target = loadEnv(mode, ".", "RINGLAB_").RINGLAB_API_TARGET;
+  const proxy = { "/api": { ...publicApiProxy["/api"], ...(target ? { target } : {}) } };
+  return {
   plugins: [react()],
   test: {
     environment: "jsdom",
@@ -23,7 +27,8 @@ export default defineConfig({
     port: 5173,
     strictPort: true,
     allowedHosts: ["dev.ringlabgarage.com"],
-    proxy: publicApiProxy,
+    proxy,
   },
-  preview: { proxy: publicApiProxy },
+  preview: { proxy },
+  };
 });

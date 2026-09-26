@@ -45,7 +45,7 @@ export function useAuthForm(register: boolean) {
         if (!isCurrent()) return;
         accept(session);
         const from = location.state?.from;
-        navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//")
+        navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//") && !/[\\\x00-\x20]/.test(from)
           ? from : "/");
       }
     } catch (exception) {

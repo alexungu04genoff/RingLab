@@ -10,6 +10,57 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 public abstract class ApiContract {
+  @Test
+  void privateSavedBuildsRemainLiveAndDoNotAffectTheSource() {
+    var author = register(); var saver = register(); var stranger = register();
+    var body = draft();
+    String id = request(author.token()).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+    var before = request(null).get("/api/builds/"+id).asString();
+    for (String path : List.of("/api/saved-builds", "/api/saved-builds/status?buildId="+id))
+      request(null).get(path).then().statusCode(401);
+    request(null).put("/api/saved-builds/"+id).then().statusCode(401);
+    request(null).delete("/api/saved-builds/"+id).then().statusCode(401);
+    String savedAt = request(saver.token()).body(Map.of("userId",stranger.id()))
+        .put("/api/saved-builds/"+id+"?userId="+stranger.id()).then().statusCode(200)
+        .header("Cache-Control",containsString("no-store")).extract().path("savedAt");
+    request(saver.token()).put("/api/saved-builds/"+id).then().statusCode(200).body("savedAt",equalTo(savedAt));
+    request(stranger.token()).get("/api/saved-builds?userId="+saver.id()).then().statusCode(200).body("total",equalTo(0));
+    request(saver.token()).queryParam("buildId",id).queryParam("buildId",UUID.randomUUID().toString())
+        .get("/api/saved-builds/status").then().statusCode(200).header("Cache-Control",containsString("private"))
+        .body("savedIds",contains(id));
+    request(stranger.token()).queryParam("buildId",id).get("/api/saved-builds/status").then().statusCode(200).body("savedIds",empty());
+    request(saver.token()).get("/api/saved-builds/status").then().statusCode(200).body("savedIds",empty());
+    String batch = String.join("&buildId=", java.util.stream.IntStream.range(0,51).mapToObj(i -> UUID.randomUUID().toString()).toList());
+    request(saver.token()).get("/api/saved-builds/status?buildId="+batch).then().statusCode(400);
+    request(saver.token()).put("/api/saved-builds/"+UUID.randomUUID()).then().statusCode(404);
+    request(saver.token()).put("/api/saved-builds/not-a-uuid").then().statusCode(400);
+    request(saver.token()).get("/api/saved-builds?page=-1").then().statusCode(400);
+    request(stranger.token()).delete("/api/saved-builds/"+id+"?userId="+saver.id()).then().statusCode(204);
+    var savedPage = request(saver.token()).get("/api/saved-builds").then().statusCode(200).body("total",equalTo(1))
+        .header("Cache-Control",containsString("no-store"))
+        .body("items[0].build.id",equalTo(id)).body("items[0].build.author.id",equalTo(author.id()))
+        .body("items[0].savedAt",equalTo(savedAt)).body("statsByBuildId.size()",equalTo(1)).extract().jsonPath();
+    var statsParams = new HashMap<String,Object>();
+    for (String field : List.of("racerId","frontPartId","rearPartId","tirePartId","gameVersionId")) statsParams.put(field,body.get(field));
+    var canonical = request(null).queryParams(statsParams).get("/api/stats/build").then().statusCode(200).extract().jsonPath().getMap("$");
+    assertThat(savedPage.getMap("statsByBuildId").get(id),equalTo(canonical));
+    assertThat(request(null).get("/api/builds/"+id).asString(),equalTo(before));
+    body.put("title","Updated live saved build");
+    request(author.token()).body(body).put("/api/builds/"+id).then().statusCode(200);
+    request(saver.token()).get("/api/saved-builds?search=Updated live").then().statusCode(200)
+        .body("items[0].build.title",equalTo("Updated live saved build")).body("items[0].savedAt",equalTo(savedAt));
+    request(saver.token()).get("/api/saved-builds?search=missing-title").then().statusCode(200).body("total",equalTo(0));
+    request(saver.token()).delete("/api/saved-builds/"+id).then().statusCode(204);
+    request(saver.token()).delete("/api/saved-builds/"+id).then().statusCode(204);
+    request(null).get("/api/builds/"+id).then().statusCode(200).body("score",equalTo(0));
+    request(author.token()).put("/api/saved-builds/"+id).then().statusCode(200);
+    request(author.token()).delete("/api/builds/"+id).then().statusCode(204);
+    request(author.token()).get("/api/saved-builds").then().statusCode(200).body("total",equalTo(0));
+    request(author.token()).delete("/api/saved-builds/"+id).then().statusCode(204);
+    String snapshot=request(null).get("/api/community/top-builds").then().statusCode(200).extract().asString();
+    assertThat(snapshot,not(containsString("savedAt")));
+    assertThat(snapshot,not(containsString("isSaved")));
+  }
   record Account(String token, String id, String username, String email) {}
 
   private RequestSpecification request(String token) {

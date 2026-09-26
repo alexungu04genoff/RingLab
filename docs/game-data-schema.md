@@ -1,7 +1,12 @@
 # Game-data schema
 
-This is the implemented relational shape after Flyway V27. It shows the game catalog and the
+This is the implemented relational shape after Flyway V28. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
+
+V28's private `saved_builds` relation cascades on both user and source-build deletion.
+Its composite primary key preserves one bookmark per user/build; database-generated
+timestamps and a chronology index support private saved-order pagination. See
+[Saved Builds](saved-builds.md) for the full constraints and API behavior.
 
 ```mermaid
 erDiagram
@@ -17,6 +22,13 @@ erDiagram
     MACHINE_PARTS ||--o{ BUILDS : tire_part
     BUILDS ||--o{ BUILD_GADGETS : orders
     GADGETS ||--o{ BUILD_GADGETS : selected_as
+    USERS ||--o{ SAVED_BUILDS : privately_saves
+    BUILDS ||--o{ SAVED_BUILDS : bookmarked_as
+    SAVED_BUILDS {
+        uuid user_id PK,FK
+        uuid build_id PK,FK
+        timestamptz saved_at "server generated"
+    }
 
     RACERS {
         uuid id PK

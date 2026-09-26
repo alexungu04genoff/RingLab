@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { SaveBuildButton } from "../SavedBuilds";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
@@ -103,7 +104,7 @@ function BuildDetailsContent() {
           <div className="detail-context">
             <div className="eyebrow accent">COMMUNITY BUILD</div>
             <Link className="detail-back" to={origin}>
-              ← {origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
+              ← {origin.startsWith("/saved-builds") ? "Saved Builds" : origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
             </Link>
           </div>
           <h1>{b.title}</h1>
@@ -122,6 +123,7 @@ function BuildDetailsContent() {
           </div>}
         </div>
         <div className="actions">
+          <SaveBuildButton build={b} />
           {user ? (
             <Link className="button" to={`/builds/new?remixFrom=${encodeURIComponent(b.id)}`}>
               Remix this build

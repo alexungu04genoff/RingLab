@@ -4,7 +4,7 @@ export function isPublicApiRequest(url: string): boolean {
   const path = url.split("?")[0];
   if (!path.startsWith("/api/") || /[%\\;]/.test(path)) return false;
   const normalized = new URL(path, "http://localhost").pathname;
-  return /^\/api\/(auth|builds|comments|racers|machines|machine-parts|gadgets|game-versions|stats|news|community)(\/|$)/.test(normalized);
+  return /^\/api\/(auth|builds|saved-builds|comments|racers|machines|machine-parts|gadgets|game-versions|stats|news|community)(\/|$)/.test(normalized);
 }
 
 export const publicApiProxy = {
