@@ -262,6 +262,16 @@ main:has(.explore-hero) {
   overflow-x: clip;
   overflow-y: visible;
   pointer-events: none;
+  -webkit-mask-image: linear-gradient(to right,
+    #000 0 80%,
+    rgb(0 0 0 / 90%) 86%,
+    rgb(0 0 0 / 50%) 93%,
+    transparent 100%);
+  mask-image: linear-gradient(to right,
+    #000 0 80%,
+    rgb(0 0 0 / 90%) 86%,
+    rgb(0 0 0 / 50%) 93%,
+    transparent 100%);
 }
 .hero-racer {
   position: absolute;
