@@ -14,6 +14,18 @@ describe("HTTP client contract", () => {
     setToken(null);
     vi.clearAllMocks();
   });
+  it.each(["new-session", "old-session"])("does not expire a later accepted session (%s)", async (replacement) => {
+    let finish!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+    setToken("old-session");
+    const request = api("/auth/me");
+    const rejected = expect(request).rejects.toMatchObject({ status: 401 });
+    setToken(replacement);
+    finish(new Response(null, { status: 401 }));
+    await rejected;
+    expect(storage.get("ringlab-token")).toBe(replacement);
+    expect(window.dispatchEvent).not.toHaveBeenCalled();
+  });
   it("sends the JWT and JSON body and handles empty deletion responses", async () => {
     const fetchMock = vi
       .fn()

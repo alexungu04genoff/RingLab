@@ -3,6 +3,43 @@
 Use these paths in order for a short thesis demonstration. All names refer to
 implemented code. Tests can be opened beside the use case and run from IntelliJ.
 
+## Google sign-in and existing accounts
+
+Follow `AuthRestResource.google` into
+[ExternalAuthService.login](../backend/src/main/java/dev/ringlab/application/auth/ExternalAuthService.java).
+The Google adapter verifies the token before any account lookup or write. An existing
+provider/subject link takes precedence over email. Otherwise, an exact verified Gmail
+match may link to an already-verified RingLab account; other collisions require an
+authenticated link. The existing account is returned unchanged, preserving ownership.
+
+For a new account, [ExternalAccountRegistration](../backend/src/main/java/dev/ringlab/application/auth/ExternalAccountRegistration.java)
+selects a readable available username and creates a passwordless user. The parent
+service creates the provider link in the same transaction. It then returns a domain
+`User`; only REST creates the JWT and response DTO. Neither class stores request data
+in bean fields.
+
+**Tests:** `ExternalAuthServiceTest` checks both accepted and rejected linking cases,
+`GoogleIdentityVerificationAdapterTest` checks signed credentials, and
+`GoogleAuthIntegrationTest` checks persistence and the REST session boundary.
+
+On the frontend, `AuthPage` delegates submissions to `useAuthForm`. The hook ignores
+abandoned requests and responses belonging to an older session. `BuildEditor` delegates
+source loading to `useBuildDraft`, so edit/remix navigation and draft conversion can
+be read separately from the form layout.
+
+For local registration, follow `AuthService.register` into
+[EmailVerificationService.issueVerification](../backend/src/main/java/dev/ringlab/application/auth/EmailVerificationService.java).
+The account and token digest share the registration transaction. `verifyEmail` locks
+and consumes the token; `resendVerification` replaces it only for an unverified local
+account. `AuthRestResource` sends the email after the service transaction completes.
+`AuthServiceTest` exercises these collaborating services with in-memory repositories,
+including expiry, single use, resend invalidation and the local login verification gate.
+
+Explore separates its searchable control in `SearchableFilter` from URL/preference
+rules in `exploreFilters.ts`. The page retains loading, navigation and layout. Use
+`SearchableFilter.test.tsx` for keyboard selection and cancellation, and
+`ExploreNavigation.test.tsx` for stale preferences and removing a saved sort.
+
 ## 1. Save or edit a build: the complete boundary crossing
 
 Start at [BuildRestResource.create/edit](../backend/src/main/java/dev/ringlab/adapter/in/rest/build/BuildRestResource.java).

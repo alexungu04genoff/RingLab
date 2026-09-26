@@ -32,7 +32,8 @@ class GoogleAuthIntegrationTest {
   public static class OfflineVerifier implements ExternalIdentityVerifier {
     public VerifiedExternalIdentity verify(String credential) {
       if (!credential.startsWith("test-")) throw new AuthenticationException("Invalid Google credential");
-      return new VerifiedExternalIdentity("GOOGLE", credential, credential + "@example.test", "Test user");
+      String emailDomain = credential.startsWith("test-gmail-") ? "@gmail.com" : "@example.test";
+      return new VerifiedExternalIdentity("GOOGLE", credential, credential + emailDomain, "Test user");
     }
   }
 
@@ -82,6 +83,53 @@ class GoogleAuthIntegrationTest {
     assertThrows(PersistenceException.class, () -> em.createNativeQuery(
         "insert into external_identities(user_id, provider, provider_subject, created_at) values (:id, 'GOOGLE', 'subject', current_timestamp)")
         .setParameter("id", id).executeUpdate());
+  }
+
+  @Test
+  void gmailLoginKeepsExistingAccountAndPersistsItsIdentityLink() {
+    String credential = "test-gmail-" + UUID.randomUUID();
+    var local = new User(UUID.randomUUID(), "gmail_" + UUID.randomUUID().toString().substring(0, 16),
+        credential + "@gmail.com", "existing-password-hash", Instant.EPOCH);
+    QuarkusTransaction.requiringNew().run(() -> users.create(local));
+    try {
+      String token = given().contentType("application/json").body(Map.of("credential", credential))
+          .post("/api/auth/google").then().statusCode(200)
+          .body("user.id", equalTo(local.id().toString()))
+          .body("user.username", equalTo(local.username()))
+          .body("user.passwordHash", nullValue()).extract().path("token");
+      given().auth().oauth2(token).get("/api/auth/me").then().statusCode(200)
+          .body("id", equalTo(local.id().toString()));
+      QuarkusTransaction.requiringNew().run(() -> {
+        assertEquals(local, users.byId(local.id()).orElseThrow());
+        assertEquals(local.id(), identities.find("GOOGLE", credential).orElseThrow().userId());
+        assertEquals(1L, em.createQuery("select count(u) from UserDbEntity u where u.email = :email", Long.class)
+            .setParameter("email", local.email()).getSingleResult());
+      });
+    } finally {
+      QuarkusTransaction.requiringNew().run(() -> em.createQuery("delete UserDbEntity where id = :id")
+          .setParameter("id", local.id()).executeUpdate());
+    }
+  }
+
+  @Test
+  void unverifiedGmailConflictExplainsRecoveryWithoutLinkingOrChangingTheAccount() {
+    String credential = "test-gmail-" + UUID.randomUUID();
+    var local = new User(UUID.randomUUID(), "gmail_" + UUID.randomUUID().toString().substring(0, 16),
+        credential + "@gmail.com", "existing-password-hash", null, Instant.EPOCH);
+    QuarkusTransaction.requiringNew().run(() -> users.create(local));
+    try {
+      given().contentType("application/json").body(Map.of("credential", credential))
+          .post("/api/auth/google").then().statusCode(409)
+          .body("message", equalTo("An unverified account already uses this Gmail address. "
+              + "Resend the verification email, open its link, then try Google again."));
+      QuarkusTransaction.requiringNew().run(() -> {
+        assertEquals(local, users.byId(local.id()).orElseThrow());
+        assertTrue(identities.find("GOOGLE", credential).isEmpty());
+      });
+    } finally {
+      QuarkusTransaction.requiringNew().run(() -> em.createQuery("delete UserDbEntity where id = :id")
+          .setParameter("id", local.id()).executeUpdate());
+    }
   }
 
   @Test

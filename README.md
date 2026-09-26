@@ -213,7 +213,11 @@ file with the local database. `-PromoteFeatured` explicitly permits adding missi
 to the Sonic entry during legacy refresh; it never flips an existing vote. Recorded votes removed
 manually are not re-added. Without that switch, legacy engagement remains untouched.
 
-Account creation uses the loopback-only `/api/dev-fixtures/demo-accounts` resource. That resource
+Account creation connects directly to Quarkus's loopback-only `/api/dev-fixtures/demo-accounts`
+resource, normally on port 8080. Vite development and preview proxies allow only public API
+routes and return 404 for fixture paths, including encoded/traversal variants. This prevents
+the public development tunnel from inheriting the proxy's loopback access. Do not add a
+different public proxy that forwards fixture routes. That resource
 is absent from production builds, accepts only reserved `ringlab_demo_*@example.test` identities,
 creates already-verified fixture accounts without sending email, and refuses conflicting email or
 password ownership. Normal registration, verification, login, and rate limiting are unchanged.
@@ -253,10 +257,10 @@ mvn "-Dtest=DemoAccountBootstrapIntegrationTest" test
 ## Migrations and persistence
 
 `GET /api/game-versions` lists the persistent patch catalog newest first. Build create/edit requests
-accept optional `gameVersionId` (UUID or null); responses include `gameVersion` metadata or null.
+require a known `gameVersionId` UUID; legacy responses may still contain `gameVersion: null`.
 Explore's Patch filter sends `gameVersionId` and filters in PostgreSQL before pagination.
 V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (2025-12-03).
-Existing builds remain versionless; the optional demo seeder assigns a repeatable mix to demo builds.
+Legacy builds can remain versionless until edited; the optional demo seeder assigns a repeatable mix to demo builds.
 For a fresh demo plan, 90% use the newest patch and 10% are distributed randomly across the older
 patches. The four known versions currently have independent rows containing the same base stats;
 future migrations may change one version without affecting the others.
@@ -413,9 +417,9 @@ All endpoints are under `/api`; request and response bodies are JSON. IDs are UU
 | POST | `/builds/{id}/comments` | Signed in |
 | DELETE | `/comments/{id}` | Comment author |
 
-`GET /api/machines` includes each source machine's `family` (`STANDARD` or `BOARD`). `GET /api/machine-parts` returns family-appropriate components—FRONT/REAR/TIRE for Standard and FRONT/REAR for Board—with source-machine metadata including `sourceMachineFamily`. `Machine` remains source/catalog metadata; machine parts and gadgets are separate systems.
+`GET /api/machines` includes each source machine's `racingType`. `GET /api/machine-parts` returns FRONT/REAR for BOOST and FRONT/REAR/TIRE for other machine types, with source-machine identity, name, artwork and racing type. V27 removes the old machine-family column. `Machine` remains source/catalog metadata; machine parts and gadgets are separate systems.
 
-Build listing: `search` (literal case-insensitive title substring), `racerId`, `machineId`, `authorId`, `sort=newest|score|rated`, zero-based `page`, and `size` (1–50, default 12). `machineId` means “uses at least one part sourced from this stock machine.” Response: `{items,total,page,size}`. Ties use creation time then ID. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
+Build listing: `search` (literal case-insensitive substring across titles, racers, source machines and gadgets), `racerId`, `machineId`, `authorId`, `gameVersionId`, `sort=newest|score|rated` (default rated), zero-based `page`, and `size` (1–50, default 12). `machineId` means “uses at least one part sourced from this stock machine.” Up to three repeated `excludeId` UUIDs pin exclusions to the displayed Top 3; otherwise `excludeTop=true` excludes the server's current snapshot. Response: `{items,total,page,size}`. Ranking tie-breaks are described below. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
 
 PostgreSQL returns all filtered build candidates and raw vote counts. Domain `BuildRanking` and `WilsonScore` define ranking; `BuildService` ranks globally before pagination and derives the total from the candidate set. BEST_RATED uses full-precision Wilson confidence descending, actual patch release date descending (unspecified last), fewer downvotes at Wilson zero, creation time descending, then UUID ascending. This intentionally loads all matching candidates into memory. Comments remain paginated in PostgreSQL, with creation time ascending then UUID ascending.
 
@@ -432,15 +436,16 @@ Build request:
   "racerId": "UUID from GET /api/racers",
   "frontPartId": "UUID from GET /api/machine-parts with type FRONT",
   "rearPartId": "UUID from GET /api/machine-parts with type REAR",
-  "tirePartId": "UUID with type TIRE for STANDARD, or null for BOARD",
+  "tirePartId": "UUID with type TIRE for non-BOOST machines, or null for BOOST",
+  "gameVersionId": "UUID from GET /api/game-versions",
   "gadgetIds": ["UUID from GET /api/gadgets"]
 }
 ```
 
-Vote body: `{"value":1}` or `{"value":-1}`. Comment body: `{"text":"Nice setup"}`. Business errors return `{message}`; validation errors include Quarkus's `violations` array.
+Vote body: `{"value":1}` or `{"value":-1}`. Comment body: `{"text":"Nice setup"}`. Business errors return `{message}` or `{message,field}` for field-specific validation; transport validation may return Quarkus's `violations` array.
 
 ## Assets and intentional scope
 
 Artwork lives in `frontend/public/assets/racers/`, `frontend/public/assets/machines/`, and `frontend/public/assets/gadgets/`. V6–V9 assign local paths; V9 uses the user-approved Sonic Wiki as the sole presentation-artwork source. The [source ledger](docs/game-data-sources.md) keeps that presentation choice distinct from first-party catalog evidence. The UI displays an initials placeholder when a local image is absent or fails. New racing types remain unknown until verified; no game statistics are inferred from artwork.
 
-A build contains one racer and one machine family: Standard requires FRONT + REAR + TIRE, while Board requires FRONT + REAR and no tire. Each `MachinePart` originates from a source `Machine`; parts may come from different source machines only when their family matches. BuildService enforces these rules. Gadgets remain separate and ordered; BuildService also validates current costs and the two-row, three-slot Gadget Plate. Base stats are patch-aware and sum the racer plus the selected family-appropriate parts; gadget effects are not included.
+A build contains one racer and compatible machine parts: BOOST requires FRONT + REAR and no tire; other racing types require FRONT + REAR + TIRE. Each `MachinePart` originates from a source `Machine`; parts may come from different source machines only when their known racing types match. Racer type is independent. BuildService delegates these checks to BuildDraftValidator. Gadgets remain separate and ordered; the validator checks current costs and the two-row, three-slot Gadget Plate. Base stats are patch-aware and sum the racer plus selected parts; gadget effects are not included.

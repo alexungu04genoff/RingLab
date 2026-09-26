@@ -18,11 +18,27 @@ import org.junit.jupiter.api.Test;
 
 class BuildRestResourceTest {
   @Test
+  void explicitExclusionsUseDisplayedWinnersWithoutReadingTheCurrentSnapshot() {
+    var winner = UUID.randomUUID();
+    var builds = new BuildService(null, null, null, null) {
+      @Override public Page list(Query query) {
+        assertEquals(Set.of(winner), query.filter().excludedIds());
+        assertEquals(2, query.page());
+        return new Page(List.of(), 24);
+      }
+    };
+    // A null cache also ensures explicit exclusions never consult a later server snapshot.
+    var resource = new BuildRestResource(builds, null, null, null);
+    var page = resource.list(null, null, null, null, null, true, List.of(winner), "rated", 2, 12);
+    assertEquals(24, page.total());
+    assertEquals(2, page.page());
+  }
+  @Test
   void defaultsPublicBuildListingToBestRated() throws NoSuchMethodException {
     var list = BuildRestResource.class.getDeclaredMethod("list", String.class, UUID.class,
-        UUID.class, UUID.class, UUID.class, boolean.class, String.class, int.class, int.class);
+        UUID.class, UUID.class, UUID.class, boolean.class, List.class, String.class, int.class, int.class);
 
-    assertEquals("rated", list.getParameters()[6].getAnnotation(DefaultValue.class).value());
+    assertEquals("rated", list.getParameters()[7].getAnnotation(DefaultValue.class).value());
   }
 
   @Test
@@ -62,7 +78,7 @@ class BuildRestResourceTest {
     var votes = new CountingVoteService();
     var responses = new BuildResponseAssembler(builds, users, new Catalog(id), votes);
     var resource = new BuildRestResource(builds, responses, null, null);
-    var page = resource.list(null, null, null, null, null, false, "newest", 0, 12);
+    var page = resource.list(null, null, null, null, null, false, List.of(), "newest", 0, 12);
     assertEquals(1, page.total());
     assertEquals(id, page.items().getFirst().id());
     assertEquals(3, page.items().getFirst().score());

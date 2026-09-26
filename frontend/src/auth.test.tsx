@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -15,6 +15,21 @@ function page() {
 }
 beforeEach(() => { setToken("valid-token"); });
 afterEach(() => { cleanup(); setToken(null); vi.unstubAllGlobals(); });
+
+it.each([200, 401])("ignores an old bootstrap response (%s) after accepting another session", async (status) => {
+  let finish!: (response: Response) => void;
+  vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+  function Controls() {
+    const auth = useAuth();
+    return <><button onClick={() => auth.accept({ token: "new-session", user: { ...currentUser, username: "new-user" } })}>Accept session</button>
+      <p>{auth.user?.username}</p></>;
+  }
+  render(<AuthProvider><Controls /></AuthProvider>);
+  await userEvent.click(screen.getByRole("button", { name: "Accept session" }));
+  await act(async () => finish(new Response(status === 200 ? JSON.stringify(currentUser) : null, { status })));
+  expect(screen.getByText("new-user")).toBeTruthy();
+  expect(sessionStorage.getItem("ringlab-token")).toBe("new-session");
+});
 
 it("clears a rejected session and redirects only for 401", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 401 })));

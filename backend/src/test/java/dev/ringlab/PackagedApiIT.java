@@ -8,4 +8,12 @@ import io.quarkus.test.common.QuarkusTestResource;
 @TestProfile(PackagedApiTestProfile.class)
 @QuarkusTestResource(value = VerificationMailResource.class, restrictToAnnotatedClass = true)
 @QuarkusTestResource(value = JwtKeysTestResource.class, restrictToAnnotatedClass = true)
-public class PackagedApiIT extends ApiContract {}
+public class PackagedApiIT extends ApiContract {
+  @org.junit.jupiter.api.Test
+  void productionDoesNotExposeDevelopmentFixtures() {
+    io.restassured.RestAssured.given().contentType(io.restassured.http.ContentType.JSON)
+        .body("{}")
+        .post("/api/dev-fixtures/demo-accounts")
+        .then().statusCode(404);
+  }
+}

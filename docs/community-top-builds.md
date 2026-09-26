@@ -59,9 +59,14 @@ disqualify a build. Checks never repair or write a legacy build. Catalog/DB fail
 to the existing safe server-error mapper, rather than becoming an empty leaderboard.
 
 Normal `/api/builds` searches do not use the controlled-demo eligibility exclusions. Public Explore
-requests `excludeTop=true`, which removes the current snapshot's winner IDs before ranking,
-counting and pagination; the promoted Top 3 therefore do not appear again in the lower grid.
-Controlled demos remain searchable there. My Builds and API requests without that explicit flag
+passes repeated `excludeId` parameters containing the displayed snapshot's winner IDs (at most
+three). The list endpoint removes those IDs before ranking, counting and pagination. A successful
+Top 3 refresh updates the exclusions and reloads the lower grid; filter/page changes retain the
+displayed snapshot's IDs even if the server cache expires. While the initial snapshot is pending
+or unavailable, browsing remains complete. Failed refreshes retain the previous snapshot and
+exclusions. Requests without exclusions remain complete. Existing callers can still use
+`excludeTop=true` to exclude the server's current winners; nonempty explicit IDs take precedence.
+Controlled demos remain searchable there. My Builds and API requests without exclusions
 remain complete. The dedicated showcase appears only on public Explore, above filters. Its fetch key
 never contains search parameters. Copy top 3 uses the snapshot currently displayed and performs no
 network request.

@@ -64,6 +64,10 @@ path, where Vite passes the edge-provided header through and the backend remains
 The production Docker case trusts only Caddy's fixed address and its sanitized header,
 as described below; other proxy layouts require their own explicit trust boundary.
 
+Development fixtures are excluded from production builds. In development, fixture tooling
+connects directly to Quarkus on loopback; Vite's development and preview proxies allow only
+public API routes and reject fixture paths so public tunnel traffic cannot inherit local access.
+
 This state is per Quarkus process and resets on restart. Horizontal deployment would require a
 shared limiter such as Redis or rate limiting at a trusted edge, neither of which is part of the
 current single-instance design. Cloudflare/network protection is complementary; the REST filter is
@@ -99,12 +103,13 @@ propagates to only that field's total. Missing rows are fully unknown, never zer
 
 `GET /api/stats/catalog?gameVersionId=…` returns version-specific racer and part maps (absent rows
 have no entry) plus derived stock-machine totals. `GET /api/stats/build` accepts `gameVersionId`,
-`racerId`, `frontPartId`, `rearPartId`, and optional `tirePartId`; omitted components are unknown, unknown
+`racerId`, `frontPartId`, `rearPartId`, and optional `tirePartId`; omitted racer/front/rear components are unknown,
+while an omitted tire contributes nothing. Unknown
 catalog IDs are rejected, and a missing version returns five explicit null fields without assuming
 a version. These read-only routes neither mutate builds nor impose a stats-availability rule.
 Existing build response contracts remain compatible.
 
-Game Collection can display any selected patch snapshot. The four currently known patches begin
+Game Collection displays the newest known patch snapshot. The four currently known patches begin
 with identical explicitly stored base stats; they are not resolved through a runtime fallback, so
 future version migrations can diverge safely. Editor preview, details and comparison
 request backend totals for their own selected version. React renders values, partial/unavailable
@@ -126,6 +131,14 @@ backfills existing users as verified. Google-created users set `emailVerifiedAt`
 the Google identity verifier already requires a verified email claim; Google login sends no RingLab
 verification mail.
 
+`AuthService` owns registration, password login and current-account lookup.
+`EmailVerificationService` owns token generation, hashing, expiry, replacement and
+consumption. Registration calls its package-private issuance method inside the
+registration transaction; verification and resend each retain their own REQUIRED
+transaction boundary. `AuthRestResource` sends mail after the application call returns,
+so SMTP delivery is still outside the database transaction. Both application beans keep
+request data in local variables rather than shared fields.
+
 Google sign-in uses the same RingLab session boundary as local login:
 
 ```text
@@ -138,8 +151,20 @@ Google Identity Services -> Google ID token -> POST /api/auth/google
 The Google adapter verifies signature, issuer, configured audience, expiry and
 required identity claims, then supplies `VerifiedExternalIdentity` to application
 logic. Google token details remain outside the account model. The application
-resolves returning users by provider and subject; email is used only for initial
-account creation and conflict detection, never implicit linking. First-time users
+resolves returning users by provider and subject. On a first Google sign-in, an exact
+normalized email match links to an existing RingLab account only when its email was
+already verified and the Google-verified address ends in `@gmail.com`. Google is
+authoritative for Gmail ownership; a verified third-party email claim alone does not
+establish current ownership. Workspace/custom domains, lookalike domains and other
+providers retain the explicit authenticated linking requirement. Unverified local
+accounts are never linked by sign-in. Gmail aliases are not collapsed. Existing IDs, passwords and profile
+fields are preserved. An unverified Gmail collision returns a 409 explaining that the
+user must resend/open the verification link before retrying Google. See
+[Google's ownership guidance](https://developers.google.com/identity/gsi/web/guides/verify-google-id-token).
+
+`ExternalAuthService` owns verification, account resolution, linking policy and the
+transaction. `ExternalAccountRegistration` owns passwordless account creation and
+username selection inside that transaction. First-time users
 receive an ASCII username derived from the email local-part, capped at 21 characters
 to leave room for an underscore and eight random hexadecimal characters on collision.
 Short or non-ASCII local-parts receive a `user_` prefix. Both account and identity
@@ -152,15 +177,31 @@ do not need a schema enum migration. External-only users have no usable password
 local login still performs the dummy bcrypt check and rejects a null hash. The
 ordinary `SessionResponse` and JWT issuer, role, lifetime and ownership semantics
 are shared. RingLab never receives Google's password and stores no Google tokens.
-Linking accounts, adding passwords and Google API authorization are outside scope.
+Authenticated local users can link a verified Google identity with the same email through
+`ExternalAuthService.link`. Adding passwords and Google API authorization are outside scope.
 
 `GOOGLE_CLIENT_ID` and frontend `VITE_GOOGLE_CLIENT_ID` must identify the same Web
 client. Missing configuration disables Google sign-in without disabling local auth.
 The frontend uses GIS's official button and JavaScript callback, then submits JSON
 through the existing API layer; this is not Google's form/redirect login flow.
+`useAuthForm` owns local/Google submissions and registration. Auth requests are
+anonymous, so an invalid credential cannot expire an existing bearer session. It
+ignores responses after navigation or a newer session. `AuthPage` owns the form markup.
 The endpoint accepts JSON, and cross-origin requests remain governed by the existing
 CORS allowlist. Successful login explicitly accepts a RingLab token in the browser;
 there is no authentication cookie established by a cross-site form submission.
+
+Build editor loading lives in `useBuildDraft`: it loads an owned edit or public remix,
+resets on source/account changes, and ignores abandoned loads. New drafts default to
+the latest known patch; edits/remixes retain their stored patch, including an absent
+legacy patch that must be explicitly selected before saving. `BuildEditor` owns field
+interactions and saves. Failed source loads do not expose a previous draft for submission.
+
+Explore uses `SearchableFilter` for searchable catalog choices and keyboard interaction.
+`exploreFilters.ts` contains URL parsing, preference precedence and active-filter labels;
+the page coordinates catalog/build loading and rendering. An unavailable saved patch is
+ignored without repeatedly replacing the URL. Removing the sort chip clears its saved
+public preference so the default sort is restored.
 
 MapStruct generates entity/domain mappings for users, builds, comments, and the five game-data entity types. It removes repeated field copying and keeps ORM records out of the domain. Persistence mappers use strict unmapped-target checking, so adding a target property requires an explicit mapping decision. Vote persistence writes its small validated record directly with an upsert, so it has no mapper. REST mappings are explicit where they are small or require assembling multiple module results.
 
@@ -247,6 +288,11 @@ transaction, and `CommunitySnapshotCache` publishes the immutable snapshot only
 after the transaction returns successfully. Cache lifetime and synchronization
 are unchanged.
 
+Explore passes the displayed snapshot's IDs as up to three `excludeId` query parameters
+to build browsing. Exclusion happens before ranking, counts and pagination, so a cache refresh
+cannot silently change which displayed winners are omitted. The older `excludeTop=true`
+option remains available for clients that want the server's current winners excluded instead.
+
 The write validator, showcase eligibility and incomplete stats preview deliberately
 remain separate policies. They reuse `MachineCompatibility`, `MachineComposition`,
 `GadgetPlate` and `BaseStats.sum` only where the same rule applies.
@@ -266,16 +312,16 @@ before application ranking/pagination and composes with existing filters and all
 Wilson ranking and visible raw scores are unchanged. Steam news remains an independent external
 REST adapter; automatic patch extraction and synchronization are intentionally not implemented.
 
-The editor offers an optional Game version / Patch selector; details and cards display selected
+The editor requires a Game version / Patch selection; details and cards display selected
 versions compactly. Explore offers a Patch filter, and Game Collection lists versions and release
 dates. The demo seeder resolves and validates catalog IDs through REST before writing, assigning
 a deterministic version mix to new demo builds. Existing build fields, votes, and comments are preserved.
 
-The editor starts in Standard mode and offers an explicit Standard/Board family choice. Part options and complete stock shortcuts are filtered by the structured source-machine family; switching family clears incompatible parts and the stock shortcut, and Board mode omits the tire control and preview row. Details, cards, sharing, stats, remix/edit, and comparison handle a null tire without inventing a placeholder. The backend remains authoritative.
+The editor starts without a machine type and offers SPEED, ACCELERATION, HANDLING, POWER and BOOST. Part options and complete stock shortcuts are filtered by the source machine's racing type; switching type clears incompatible parts and the stock shortcut. BOOST omits the tire control and preview row. Details, cards, sharing, stats, remix/edit, and comparison handle a null tire without inventing a placeholder. The backend remains authoritative.
 
 React Router owns page navigation. A small context holds current authentication; forms and page queries own local state. `api.ts` centralizes the bearer header, JSON handling and errors. `useLoad` aborts stale requests on route/filter changes. Build selection helpers preserve and reorder gadget IDs and mirror the small Gadget Plate placement rule for editor feedback. React's normal text escaping is used for user content.
 
-Session bootstrap clears credentials on 401 only; other failures retain the token and expose a session-check retry. API 429 errors retain a valid Retry-After delay and include it in their displayed message. The editor resets its draft on edit-route changes and permits submission only when the loaded build ID and author match the current route and actor.
+Session bootstrap clears credentials on 401 only; other failures retain the token and expose a session-check retry. Requests capture a session generation so old responses cannot clear or replace a newly accepted session. API 429 errors retain a valid Retry-After delay and include it in their displayed message. The editor resets its draft on edit-route changes and permits submission only when the loaded build ID and author match the current route and actor. Save completion updates UI and navigates only while its editor context remains current; leaving the editor does not cancel an already-submitted server mutation.
 
 At the REST boundary, CurrentUser also verifies that the JWT subject still has a RingLab account; missing accounts receive 401 without changing public author lookup semantics. HttpRestExceptionMapper preserves sanitized framework HTTP errors (including malformed-input 400 and unsupported-media 415); unexpected exceptions retain the generic 500 fallback. Persistence writes translate only SQLSTATE 23503 for `votes_build_id_fkey`, `comments_build_id_fkey`, and `builds_remixed_from_build_id_fkey` into missing-build application errors (404). Explicit flushes keep those failures inside the translation boundary; the enclosing transaction rolls back, and unrelated constraint failures remain unexpected.
 
@@ -314,5 +360,6 @@ compatibility and Gadget Plate rules; controlled demo prefixes are excluded only
 `adapter/in/rest/community` composes existing public build/stats DTOs, constructs trusted public
 URLs, implements conditional GET and formats Discord payloads without posting them.
 `TopCommunityBuilds` loads this snapshot independently above Explore filters and supplies its stats
-to the shared BuildCard. Normal search results and pagination remain complete.
+to the shared BuildCard. Explore excludes those displayed IDs from the lower grid before
+counting and pagination; My Builds remains complete.
 See [the integration guide](community-top-builds.md) for contracts, policy, TTL and scaling limits.

@@ -1,17 +1,19 @@
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
 import { LatestNews } from "../LatestNews";
 import { TopCommunityBuilds } from "../TopCommunityBuilds";
-import type { BuildPage, GameVersion, Machine, Racer } from "../types";
+import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../types";
 import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../icons";
+import { SearchableFilter } from "../SearchableFilter";
+import {
+  activeExploreFilterChips, clearExploreFilters, PUBLIC_PATCH_PREFERENCE,
+  PUBLIC_SORT_PREFERENCE, readPreference, resolveGameVersion, resolvePage, resolveSort,
+  updateExploreParams, type BuildSort,
+} from "./exploreFilters";
 
-const PUBLIC_SORT_PREFERENCE = "ringlab.explore.sort";
-const PUBLIC_PATCH_PREFERENCE = "ringlab.explore.gameVersionId";
-const SORT_VALUES = ["newest", "score", "rated"] as const;
 const SONIC_HERO_NAME = "Sonic the Hedgehog";
 const FEATURED_HERO_NAMES = new Set([
   'Miles "Tails" Prower',
@@ -19,208 +21,6 @@ const FEATURED_HERO_NAMES = new Set([
   "Shadow the Hedgehog",
   "Dr. Eggman",
 ]);
-type BuildSort = (typeof SORT_VALUES)[number];
-type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort";
-export interface ActiveFilterChip { key: FilterKey; label: string }
-interface SearchableOption { value: string; label: string }
-
-export function filterSearchableOptions(options: SearchableOption[], query: string) {
-  const normalized = query.trim().toLocaleLowerCase();
-  return normalized
-    ? options.filter(({ label }) => label.toLocaleLowerCase().includes(normalized))
-    : options;
-}
-
-function SearchableFilter({ label, icon, options, value, allLabel, onChange }: {
-  label: string;
-  icon: ReactNode;
-  options: SearchableOption[];
-  value: string;
-  allLabel: string;
-  onChange: (value: string) => void;
-}) {
-  const listboxId = useId();
-  const root = useRef<HTMLDivElement>(null);
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? allLabel;
-  const [text, setText] = useState(selectedLabel);
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const query = text === selectedLabel ? "" : text;
-  const matches = filterSearchableOptions(options, query);
-  const choices = query ? matches : [{ value: "", label: allLabel }, ...matches];
-
-  useEffect(() => setText(selectedLabel), [selectedLabel]);
-
-  const choose = (option: SearchableOption) => {
-    onChange(option.value);
-    setText(option.label);
-    setOpen(false);
-    setActiveIndex(0);
-  };
-
-  return (
-    <label className="searchable-filter">
-      <span className="field-label">{icon}{label}</span>
-      <div
-        className="searchable-filter-control"
-        ref={root}
-        onBlur={(event) => {
-          if (!root.current?.contains(event.relatedTarget)) {
-            setText(selectedLabel);
-            setOpen(false);
-          }
-        }}
-      >
-        <input
-          type="search"
-          role="combobox"
-          aria-label={`Search ${label.toLowerCase()}`}
-          aria-autocomplete="list"
-          aria-controls={listboxId}
-          aria-expanded={open}
-          aria-activedescendant={open && choices[activeIndex]
-            ? `${listboxId}-option-${activeIndex}` : undefined}
-          value={text}
-          onFocus={(event) => {
-            setOpen(true);
-            setActiveIndex(0);
-            event.currentTarget.select();
-          }}
-          onClick={() => {
-            setOpen(true);
-            setActiveIndex(0);
-          }}
-          onChange={(event) => {
-            setText(event.target.value);
-            setOpen(true);
-            setActiveIndex(0);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Escape") {
-              setText(selectedLabel);
-              setOpen(false);
-              return;
-            }
-            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-              event.preventDefault();
-              setOpen(true);
-              const direction = event.key === "ArrowDown" ? 1 : -1;
-              setActiveIndex((current) => choices.length
-                ? (current + direction + choices.length) % choices.length : 0);
-              return;
-            }
-            if (event.key === "Enter" && open && choices[activeIndex]) {
-              event.preventDefault();
-              choose(choices[activeIndex]);
-            }
-          }}
-        />
-        <span className="filter-chevron" aria-hidden="true">⌄</span>
-        <div id={listboxId} role="listbox" hidden={!open}>
-          {choices.map((option, index) => (
-            <button
-              id={`${listboxId}-option-${index}`}
-              type="button"
-              role="option"
-              aria-selected={option.value === value}
-              className={index === activeIndex ? "active" : undefined}
-              key={option.value}
-              onMouseDown={(event) => event.preventDefault()}
-              onMouseEnter={() => setActiveIndex(index)}
-              onClick={() => choose(option)}
-            >
-              {option.label}
-            </button>
-          ))}
-          {choices.length === 0 && <span className="no-filter-results">No matches</span>}
-        </div>
-      </div>
-    </label>
-  );
-}
-
-function readPreference(key: string) {
-  try {
-    return typeof localStorage === "undefined" ? null : localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-
-function isBuildSort(value: string | null): value is BuildSort {
-  return SORT_VALUES.some((sort) => sort === value);
-}
-
-export function resolveSort(urlValue: string | null, savedValue: string | null, mine: boolean): BuildSort {
-  if (isBuildSort(urlValue)) return urlValue;
-  if (!mine && isBuildSort(savedValue)) return savedValue;
-  return mine ? "newest" : "rated";
-}
-
-export function resolvePage(value: string | null) {
-  if (!value || !/^\d+$/.test(value)) return 0;
-  const page = Number(value);
-  return Number.isSafeInteger(page) ? page : 0;
-}
-
-export function resolveGameVersion(
-  urlValue: string | null,
-  savedValue: string | null,
-  knownIds: string[] | undefined,
-  mine: boolean,
-) {
-  if (!knownIds) return "";
-  const preferred = urlValue || (mine ? null : savedValue) || "";
-  return knownIds.includes(preferred) ? preferred : "";
-}
-
-export function updateExploreParams(
-  current: URLSearchParams,
-  changes: Record<string, string>,
-  resetPage = true,
-) {
-  const next = new URLSearchParams(current);
-  Object.entries(changes).forEach(([key, value]) => {
-    if (value) next.set(key, value);
-    else next.delete(key);
-  });
-  if (resetPage) next.delete("page");
-  return next;
-}
-
-export function clearExploreFilters(current: URLSearchParams) {
-  const next = new URLSearchParams(current);
-  ["search", "racerId", "machineId", "gameVersionId", "page"].forEach((key) => next.delete(key));
-  return next;
-}
-
-export function activeExploreFilterChips(
-  params: URLSearchParams,
-  racers: Racer[],
-  machines: Machine[],
-  versions: GameVersion[],
-  mine: boolean,
-): ActiveFilterChip[] {
-  const chips: ActiveFilterChip[] = [];
-  const search = params.get("search");
-  const racer = racers.find(({ id }) => id === params.get("racerId"));
-  const machine = machines.find(({ id }) => id === params.get("machineId"));
-  const version = versions.find(({ id }) => id === params.get("gameVersionId"));
-  const sort = params.get("sort");
-  if (search) chips.push({ key: "search", label: `Search: ${search}` });
-  if (racer) chips.push({ key: "racerId", label: `Racer: ${racer.name}` });
-  if (machine) chips.push({ key: "machineId", label: `Parts from: ${machine.name}` });
-  if (version) chips.push({ key: "gameVersionId", label: `Patch: Ver. ${version.version}` });
-  const defaultSort = mine ? "newest" : "rated";
-  if (sort && sort !== defaultSort && isBuildSort(sort)) {
-    const labels: Record<BuildSort, string> = {
-      newest: "Newest first", score: "Highest score", rated: "Best rated",
-    };
-    chips.push({ key: "sort", label: `Sort: ${labels[sort]}` });
-  }
-  return chips;
-}
-
 export const exploreLayoutClass = (newsVisible: boolean) =>
   `explore-content ${newsVisible ? "with-news" : "news-hidden"}`;
 
@@ -268,6 +68,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const page = resolvePage(urlParams.get("page"));
   const [search, setSearch] = useState(query);
   const [newsVisible, setNewsVisible] = useState(true);
+  const [spotlight, setSpotlight] = useState<TopCommunitySnapshot>();
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
@@ -293,7 +94,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   if (machine) params.set("machineId", machine);
   if (gameVersion) params.set("gameVersionId", gameVersion);
   if (mine && user) params.set("authorId", user.id);
-  if (!mine) params.set("excludeTop", "true");
+  if (!mine) spotlight?.items.forEach(({ build }) => params.append("excludeId", build.id));
   const builds = useLoad<BuildPage>(`/builds?${params}`);
   const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
   const activeChips = activeExploreFilterChips(
@@ -312,8 +113,10 @@ export function Explore({ mine = false }: { mine?: boolean }) {
       changed = true;
     }
     if (versions.data && preferredGameVersion !== gameVersion) {
-      next.delete("gameVersionId");
-      changed = true;
+      if (next.has("gameVersionId")) {
+        next.delete("gameVersionId");
+        changed = true;
+      }
     } else if (gameVersion && !requestedGameVersion) {
       next.set("gameVersionId", gameVersion);
       changed = true;
@@ -371,7 +174,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           </div>
         )}
       </div>
-      {!mine && <TopCommunityBuilds versions={versions.data || []} />}
+      {!mine && <TopCommunityBuilds versions={versions.data || []} onSnapshot={setSpotlight} />}
       <section className="filters" aria-label="Filter builds">
         <form
           className="search"
@@ -448,6 +251,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
               aria-label={`Remove ${chip.label}`} onClick={() => {
                 if (chip.key === "search") setSearch("");
                 if (chip.key === "gameVersionId") savePublicPreference(PUBLIC_PATCH_PREFERENCE, "");
+                if (chip.key === "sort") savePublicPreference(PUBLIC_SORT_PREFERENCE, "");
                 updateUrl({ [chip.key]: "" });
               }}>
               {chip.label} <span aria-hidden="true">×</span>

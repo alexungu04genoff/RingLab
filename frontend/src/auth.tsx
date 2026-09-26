@@ -6,7 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-import { api, ApiError, hasToken, json, setToken } from "./api";
+import { api, ApiError, currentSessionGeneration, hasToken, json, setToken } from "./api";
 import type { Session, User } from "./types";
 interface Auth {
   user: User | null;
@@ -23,13 +23,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionCheck, setSessionCheck] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
+    const generation = currentSessionGeneration();
+    const current = () => !controller.signal.aborted && generation === currentSessionGeneration();
     setSessionError("");
     setLoading(hasToken());
     if (hasToken())
       api<User>("/auth/me", { signal: controller.signal })
-        .then((current) => { if (!controller.signal.aborted) setUser(current); })
+        .then((account) => { if (current()) setUser(account); })
         .catch((error: unknown) => {
-          if (controller.signal.aborted) return;
+          if (!current()) return;
           if (error instanceof ApiError && error.status === 401) {
             setToken(null);
             setUser(null);
@@ -37,8 +39,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSessionError(error instanceof Error ? error.message : "Session check failed.");
           }
         })
-        .finally(() => { if (!controller.signal.aborted) setLoading(false); });
-    const expire = () => { setUser(null); setSessionError(""); };
+        .finally(() => { if (current()) setLoading(false); });
+    const expire = () => { setUser(null); setSessionError(""); setLoading(false); };
     window.addEventListener("ringlab-session-expired", expire);
     return () => {
       controller.abort();
@@ -46,17 +48,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [sessionCheck]);
   function accept(s: Session) {
+    setLoading(false);
     setSessionError("");
     setToken(s.token);
     setUser(s.user);
   }
   async function logout() {
+    const generation = currentSessionGeneration();
     try {
       await api("/auth/logout", json("POST"));
     } finally {
-      setToken(null);
-      setUser(null);
-      setSessionError("");
+      if (generation === currentSessionGeneration()) {
+        setToken(null);
+        setUser(null);
+        setSessionError("");
+      }
     }
   }
   return (

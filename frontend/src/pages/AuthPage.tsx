@@ -1,37 +1,12 @@
-import { useRef, useState } from "react";
 import { GoogleSignIn } from "../GoogleSignIn";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { api, json } from "../api";
-import { useAuth } from "../auth";
 import { ErrorNotice } from "../components";
-import type { Session } from "../types";
+import { useAuthForm } from "./useAuthForm";
+
 export function AuthPage({ register = false }: { register?: boolean }) {
-  const [error, setError] = useState("");
-  const [registeredEmail, setRegisteredEmail] = useState("");
-  const [busy, setBusy] = useState(false);
-  const { accept } = useAuth();
+  const { error, registeredEmail, busy, submitForm, googleLogin } = useAuthForm(register);
   const navigate = useNavigate();
   const location = useLocation();
-  const submitting = useRef(false);
-  function complete(session: Session) {
-    accept(session);
-    const from = location.state?.from;
-    navigate(typeof from === "string" && from.startsWith("/") && !from.startsWith("//") ? from : "/");
-  }
-  async function googleLogin(credential: string) {
-    if (submitting.current) return;
-    submitting.current = true;
-    setBusy(true);
-    setError("");
-    try {
-      complete(await api<Session>("/auth/google", json("POST", { credential })));
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      submitting.current = false;
-      setBusy(false);
-    }
-  }
   if (registeredEmail) return (
     <div className="auth-layout"><div className="auth-intro"><div className="eyebrow accent">ONE MORE LAP</div><h1>Check your<br /><em>email.</em></h1></div>
       <section className="panel auth-form"><h2>Verify your account</h2><p>We sent a verification link to {registeredEmail}. Open it, then return here to log in.</p>
@@ -60,30 +35,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
           ◎
         </div>
       </div>
-      <form
-        className="panel auth-form"
-        onSubmit={async (e) => {
-          e.preventDefault();
-          if (submitting.current) return;
-          submitting.current = true;
-          setBusy(true);
-          setError("");
-          const data = new FormData(e.currentTarget);
-          try {
-            if (register) {
-              await api("/auth/register", json("POST", Object.fromEntries(data)));
-              setRegisteredEmail(String(data.get("email") ?? ""));
-            } else {
-              complete(await api<Session>("/auth/login", json("POST", Object.fromEntries(data))));
-            }
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            submitting.current = false;
-            setBusy(false);
-          }
-        }}
-      >
+      <form className="panel auth-form" onSubmit={submitForm}>
         <h2>{register ? "Join the grid" : "Welcome back"}</h2>
         <p>
           {register

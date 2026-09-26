@@ -1,6 +1,7 @@
 package dev.ringlab.application;
 
 import dev.ringlab.application.auth.ExternalAuthService;
+import dev.ringlab.application.auth.ExternalAccountRegistration;
 import dev.ringlab.domain.auth.*;
 import dev.ringlab.port.out.*;
 import java.time.Instant;
@@ -16,7 +17,7 @@ class ExternalAuthServiceTest {
   private ExternalAuthService service(String subject, String email) {
     return new ExternalAuthService(credential ->
         new VerifiedExternalIdentity("GOOGLE", subject, email, "Display name"), identities, users,
-        profanity);
+        new ExternalAccountRegistration(users, profanity));
   }
 
   @Test
@@ -42,6 +43,50 @@ class ExternalAuthServiceTest {
             + "then link Google from your account page.",
         error.getMessage());
     assertEquals(List.of(local), new ArrayList<>(users.values.values()));
+    assertTrue(identities.values.isEmpty());
+  }
+
+  @Test
+  void verifiedGmailLoginLinksTheExistingAccountWithoutChangingItsProfileOrPassword() {
+    var local = new User(UUID.randomUUID(), "existing_name", "alex@gmail.com", "existing-hash", Instant.EPOCH);
+    users.create(local);
+
+    var signedIn = service("gmail-subject", "Alex@GMAIL.COM").login("credential");
+
+    assertEquals(local, signedIn);
+    assertEquals(List.of(local), new ArrayList<>(users.values.values()));
+    assertEquals(local.id(), identities.find("GOOGLE", "gmail-subject").orElseThrow().userId());
+    assertEquals(local, service("gmail-subject", "different@example.test").login("next-credential"));
+    assertEquals(1, identities.values.size());
+  }
+
+  @Test
+  void unverifiedLocalGmailRegistrationIsNotAdoptedByGoogleLogin() {
+    var local = new User(UUID.randomUUID(), "unverified", "alex@gmail.com", "hash", null, Instant.EPOCH);
+    users.create(local);
+
+    var error = assertThrows(AlreadyExistsException.class,
+        () -> service("gmail-subject", "alex@gmail.com").login("credential"));
+
+    assertEquals("An unverified account already uses this Gmail address. Resend the verification email, "
+        + "open its link, then try Google again.", error.getMessage());
+    assertEquals(local, users.byId(local.id()).orElseThrow());
+    assertTrue(identities.values.isEmpty());
+  }
+
+  @Test
+  void emailLinkRequiresGoogleAndTheExactGmailDomain() {
+    for (String email : List.of("alex@gmail.com.attacker.test", "alex@notgmail.com", "alex@workspace.test")) {
+      users.create(new User(UUID.randomUUID(), "user_" + users.values.size(), email, "hash", Instant.EPOCH));
+      assertThrows(AlreadyExistsException.class,
+          () -> service(email, email).login("credential"));
+    }
+    users.create(new User(UUID.randomUUID(), "gmail", "alex@gmail.com", "hash", Instant.EPOCH));
+    var otherProvider = new ExternalAuthService(credential ->
+        new VerifiedExternalIdentity("OTHER", "subject", "alex@gmail.com", "Alex"),
+        identities, users, new ExternalAccountRegistration(users, profanity));
+
+    assertThrows(AlreadyExistsException.class, () -> otherProvider.login("credential"));
     assertTrue(identities.values.isEmpty());
   }
 
@@ -116,7 +161,7 @@ class ExternalAuthServiceTest {
   void failedVerificationNeverWritesAccounts() {
     var service = new ExternalAuthService(credential -> {
       throw new AuthenticationException("Invalid Google credential");
-    }, identities, users, profanity);
+    }, identities, users, new ExternalAccountRegistration(users, profanity));
     for (String credential : Arrays.asList(null, "", "bad-token", "x".repeat(16385)))
       assertThrows(AuthenticationException.class, () -> service.login(credential));
     assertTrue(users.values.isEmpty());
@@ -135,7 +180,7 @@ class ExternalAuthServiceTest {
     };
     var service = new ExternalAuthService(credential ->
         new VerifiedExternalIdentity("GOOGLE", "subject", "alex@example.test", "Alex"),
-        identities, unavailable, profanity);
+        identities, unavailable, new ExternalAccountRegistration(unavailable, profanity));
 
     var error = assertThrows(AlreadyExistsException.class, () -> service.login("credential"));
 

@@ -1,11 +1,16 @@
 let bearer = sessionStorage.getItem("ringlab-token");
+let sessionGeneration = 0;
 export function setToken(token: string | null) {
+  sessionGeneration++;
   bearer = token;
   if (token) sessionStorage.setItem("ringlab-token", token);
   else sessionStorage.removeItem("ringlab-token");
 }
 export function hasToken() {
   return !!bearer;
+}
+export function currentSessionGeneration() {
+  return sessionGeneration;
 }
 export class ApiError extends Error {
   constructor(
@@ -24,11 +29,13 @@ export async function api<T>(
 ): Promise<T> {
   const { anonymous = false, ...requestOptions } = options;
   const headers = new Headers(options.headers);
+  const requestGeneration = sessionGeneration;
+  const requestToken = anonymous ? null : bearer;
   if (options.body) headers.set("Content-Type", "application/json");
-  if (bearer && !anonymous) headers.set("Authorization", `Bearer ${bearer}`);
+  if (requestToken) headers.set("Authorization", `Bearer ${requestToken}`);
   const response = await fetch(`/api${path}`, { ...requestOptions, headers });
   if (!response.ok) {
-    if (response.status === 401 && bearer && !anonymous) {
+    if (response.status === 401 && requestToken && requestGeneration === sessionGeneration) {
       setToken(null);
       window.dispatchEvent(new Event("ringlab-session-expired"));
     }

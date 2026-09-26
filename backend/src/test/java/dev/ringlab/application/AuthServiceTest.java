@@ -3,11 +3,15 @@ package dev.ringlab.application;
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.auth.AuthService;
+import dev.ringlab.application.auth.EmailVerificationService;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
 import dev.ringlab.port.out.EmailVerificationTokenRepository;
 import dev.ringlab.domain.auth.EmailVerificationToken;
 import io.quarkus.elytron.security.common.BcryptUtil;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,6 +29,7 @@ class AuthServiceTest {
   }
   private InMemoryUserRepository users;
   private AuthService service;
+  private EmailVerificationService verification;
   private InMemoryVerificationTokens verificationTokens;
   private StubProfanityPolicy profanity;
 
@@ -33,11 +38,12 @@ class AuthServiceTest {
     users = new InMemoryUserRepository();
     verificationTokens = new InMemoryVerificationTokens();
     profanity = new StubProfanityPolicy();
-    service = new AuthService(users, verificationTokens, VALIDATORS.getValidator(), profanity);
+    verification = new EmailVerificationService(users, verificationTokens);
+    service = new AuthService(users, verification, VALIDATORS.getValidator(), profanity);
   }
 
   @Test
-  void registrationNormalizesAccountAndHashesPassword() {
+  void registrationNormalizesAccountAndHashesPassword() throws Exception {
     var verification =
         service.register("Mixed_CASE", "Person@Example.COM", "password-123");
     User registered = users.lastCreated;
@@ -51,6 +57,12 @@ class AuthServiceTest {
     assertNotNull(registered.createdAt());
     assertNull(registered.emailVerifiedAt());
     assertNotEquals(verification.token(), verificationTokens.lastStored.tokenHash());
+    assertEquals(32, Base64.getUrlDecoder().decode(verification.token()).length);
+    assertEquals(HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+        .digest(verification.token().getBytes(StandardCharsets.UTF_8))), verificationTokens.lastStored.tokenHash());
+    assertEquals(registered.id(), verificationTokens.lastStored.userId());
+    assertEquals(registered.createdAt(), verificationTokens.lastStored.createdAt());
+    assertEquals(registered.createdAt().plus(Duration.ofHours(24)), verificationTokens.lastStored.expiresAt());
   }
 
   @Test
@@ -107,10 +119,10 @@ class AuthServiceTest {
     var rejected = assertThrows(ForbiddenException.class, () -> service.login("account", "correct-password"));
     assertEquals("Please verify your email before signing in.", rejected.getMessage());
 
-    service.verifyEmail(delivery.token());
+    verification.verifyEmail(delivery.token());
     assertNotNull(users.byUsername("account").orElseThrow().emailVerifiedAt());
     assertEquals(users.byUsername("account").orElseThrow(), service.login("account", "correct-password"));
-    assertThrows(ValidationException.class, () -> service.verifyEmail(delivery.token()));
+    assertThrows(ValidationException.class, () -> verification.verifyEmail(delivery.token()));
   }
 
   @Test
@@ -123,9 +135,9 @@ class AuthServiceTest {
   @Test
   void resendReplacesTheOldToken() {
     var first = service.register("account", "account@example.com", "correct-password");
-    var second = service.resendVerification("account@example.com").orElseThrow();
-    assertThrows(ValidationException.class, () -> service.verifyEmail(first.token()));
-    service.verifyEmail(second.token());
+    var second = verification.resendVerification("account@example.com").orElseThrow();
+    assertThrows(ValidationException.class, () -> verification.verifyEmail(first.token()));
+    verification.verifyEmail(second.token());
   }
 
   @Test
@@ -134,11 +146,11 @@ class AuthServiceTest {
     users.create(verified);
     users.create(new User(UUID.randomUUID(), "external", "external@example.test", null, Instant.now()));
 
-    assertTrue(service.resendVerification("missing@example.test").isEmpty());
-    assertTrue(service.resendVerification("verified@example.com").isEmpty());
-    assertTrue(service.resendVerification("external@example.test").isEmpty());
+    assertTrue(verification.resendVerification("missing@example.test").isEmpty());
+    assertTrue(verification.resendVerification("verified@example.com").isEmpty());
+    assertTrue(verification.resendVerification("external@example.test").isEmpty());
     for (String invalid : Arrays.asList(null, "", " ", "x".repeat(255))) {
-      assertTrue(service.resendVerification(invalid).isEmpty());
+      assertTrue(verification.resendVerification(invalid).isEmpty());
     }
     assertNull(verificationTokens.lastStored);
   }
@@ -147,7 +159,7 @@ class AuthServiceTest {
   void resendNormalizesEmailAndIssuesANewTokenForAnUnverifiedLocalAccount() {
     service.register("account", "account@example.com", "password-123");
 
-    var delivery = service.resendVerification("ACCOUNT@EXAMPLE.COM").orElseThrow();
+    var delivery = verification.resendVerification("ACCOUNT@EXAMPLE.COM").orElseThrow();
 
     assertEquals("account@example.com", delivery.email());
     assertNotEquals(delivery.token(), verificationTokens.lastStored.tokenHash());
@@ -159,7 +171,7 @@ class AuthServiceTest {
     var stored = verificationTokens.lastStored;
     verificationTokens.replace(new EmailVerificationToken(stored.userId(), stored.tokenHash(),
         java.time.Instant.now().minusSeconds(1), stored.createdAt()));
-    assertThrows(ValidationException.class, () -> service.verifyEmail(delivery.token()));
+    assertThrows(ValidationException.class, () -> verification.verifyEmail(delivery.token()));
     assertNull(users.byUsername("account").orElseThrow().emailVerifiedAt());
     assertThrows(ForbiddenException.class, () -> service.login("account", "correct-password"));
   }
@@ -175,7 +187,7 @@ class AuthServiceTest {
   @Test
   void malformedVerificationTokensAreRejectedBeforeRepositoryLookup() {
     for (String token : Arrays.asList(null, "", " ", "x".repeat(513))) {
-      var error = assertThrows(ValidationException.class, () -> service.verifyEmail(token));
+      var error = assertThrows(ValidationException.class, () -> verification.verifyEmail(token));
       assertEquals("Verification link is invalid or expired", error.getMessage());
     }
     assertNull(verificationTokens.lastLookupHash);
@@ -207,8 +219,8 @@ class AuthServiceTest {
   @Test
   void acceptedPasswordsCanLogInWithoutTrimming() {
     for (String password : List.of("        ", " password ", "x".repeat(72), "€".repeat(24))) {
-      var verification = service.register("account", "account@example.com", password);
-      service.verifyEmail(verification.token());
+      var delivery = service.register("account", "account@example.com", password);
+      verification.verifyEmail(delivery.token());
       User registered = users.lastCreated;
       assertEquals(registered.id(), service.login("ACCOUNT", password).id());
       assertTrue(BcryptUtil.matches(password, registered.passwordHash()));

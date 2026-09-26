@@ -40,10 +40,43 @@ async function openA() {
   render(<MemoryRouter initialEntries={["/builds/A/edit"]}><Navigation /><Routes>
     <Route path="/builds/:id/edit" element={<BuildEditor />} />
     <Route path="/builds/:id" element={<p>Saved destination</p>} />
+    <Route path="/outside" element={<p>Outside editor</p>} />
   </Routes></MemoryRouter>);
   await waitFor(() => expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("Build A draft"));
   return { navigate };
 }
+it.each(["success", "failure"])("ignores A's save %s after navigating to B", async (outcome) => {
+  loadB = () => Promise.resolve(buildB);
+  const router = await openA();
+  selectLatestPatch();
+  let resolve!: (build: Build) => void;
+  let reject!: (error: Error) => void;
+  vi.mocked(api).mockImplementationOnce(() => new Promise<Build>((done, fail) => {
+    resolve = done; reject = fail;
+  }));
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await act(async () => { await router.navigate("/builds/B/edit"); });
+  await waitFor(() => expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe(buildB.title));
+  await act(async () => {
+    if (outcome === "success") resolve(buildA);
+    else reject(new Error("Old save failed"));
+  });
+  expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe(buildB.title);
+  expect(screen.queryByText("Saved destination")).toBeNull();
+  expect(screen.queryByText("Old save failed")).toBeNull();
+});
+
+it("does not redirect after leaving an editor with a pending save", async () => {
+  const router = await openA();
+  selectLatestPatch();
+  let finish!: (build: Build) => void;
+  vi.mocked(api).mockImplementationOnce(() => new Promise<Build>(resolve => { finish = resolve; }));
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await act(async () => { await router.navigate("/outside"); });
+  await act(async () => { finish(buildA); });
+  expect(screen.getByText("Outside editor")).toBeTruthy();
+  expect(screen.queryByText("Saved destination")).toBeNull();
+});
 function expectNoWrite() {
   expect(vi.mocked(api).mock.calls.filter(([, options]) => options?.method === "PUT")).toEqual([]);
 }
@@ -80,6 +113,68 @@ it("defaults a new build to the latest known patch", async () => {
   await waitFor(() => expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value)
     .toBe(latestVersion.id));
   expect(screen.getByRole("option", { name: "Select a patch" })).toBeTruthy();
+});
+
+function openRemix() {
+  let navigate!: ReturnType<typeof useNavigate>;
+  function Navigation() { navigate = useNavigate(); return null; }
+  render(<MemoryRouter initialEntries={["/builds/new?remixFrom=A"]}><Navigation /><Routes>
+    <Route path="/builds/new" element={<BuildEditor />} />
+  </Routes></MemoryRouter>);
+  return { navigate };
+}
+
+it("clears a loaded remix and its provenance when navigating to a new build", async () => {
+  const router = openRemix();
+  await waitFor(() => expect((screen.getByLabelText("Build title") as HTMLInputElement).value)
+    .toBe("Remix of Build A draft"));
+  await act(async () => { await router.navigate("/builds/new"); });
+
+  expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("");
+  expect((screen.getByLabelText("Description") as HTMLTextAreaElement).value).toBe("");
+  expect((screen.getByLabelText("Racer") as HTMLSelectElement).value).toBe("");
+  expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value).toBe(latestVersion.id);
+  fireEvent.change(screen.getByLabelText("Build title"), { target: { value: "Fresh build" } });
+  fireEvent.change(screen.getByLabelText("Racer"), { target: { value: "racer" } });
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });
+  fireEvent.change(screen.getByLabelText("Use stock machine"), { target: { value: "machine" } });
+  vi.mocked(api).mockRejectedValueOnce(new Error("Save unavailable"));
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await screen.findByText("Save unavailable");
+  const write = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "POST")!;
+  expect(write[0]).toBe("/builds");
+  expect(JSON.parse(write[1]!.body as string).remixedFromBuildId).toBeNull();
+});
+
+it.each(["success", "failure"])("ignores an abandoned remix load's %s and leaves a usable new draft", async (outcome) => {
+  let resolve!: (build: Build) => void;
+  let reject!: (error: Error) => void;
+  const original = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => path === "/builds/A"
+    ? new Promise((done, fail) => { resolve = done; reject = fail; }) : original(path, options));
+  const router = openRemix();
+  await screen.findByText("Loading your build…");
+  await act(async () => { await router.navigate("/builds/new"); });
+  await act(async () => {
+    if (outcome === "success") resolve(buildA);
+    else reject(new Error("Abandoned load failed"));
+  });
+
+  expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("");
+  expect(screen.getByRole("button", { name: "Publish build" })).toBeTruthy();
+  expect(screen.queryByText("Loading your build…")).toBeNull();
+  expect(screen.queryByText("Abandoned load failed")).toBeNull();
+});
+
+it("hides the previous remix when the next source cannot be loaded", async () => {
+  const router = openRemix();
+  await screen.findByDisplayValue("Remix of Build A draft");
+  loadB = () => Promise.reject(new Error("Remix source unavailable"));
+  await act(async () => { await router.navigate("/builds/new?remixFrom=B"); });
+  await screen.findByText("Remix source unavailable");
+
+  expect(screen.queryByLabelText("Build title")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Publish build" })).toBeNull();
 });
 
 it("highlights an unspecified legacy patch and requires a selection", async () => {

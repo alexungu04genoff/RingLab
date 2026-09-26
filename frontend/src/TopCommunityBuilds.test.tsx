@@ -65,7 +65,7 @@ it("keeps one showcase request across every filter, preference, sort and page ch
   expect(topCalls()).toHaveLength(1);
   expect(topCalls()[0][1]).toMatchObject({ anonymous: true, credentials: "omit", cache: "no-cache" });
   expect(vi.mocked(api).mock.calls.some(([path]) =>
-    path.startsWith("/builds?") && new URLSearchParams(path.split("?")[1]).get("excludeTop") === "true"))
+    path.startsWith("/builds?") && new URLSearchParams(path.split("?")[1]).getAll("excludeId").includes("top")))
     .toBe(true);
   for (const query of ["search=wilson", "search=comment", "racerId=r", "machineId=m", "gameVersionId=v1", "sort=score", "page=1"]) {
     await act(async () => { await router.navigate(`/?${query}`); });
@@ -89,6 +89,32 @@ it("copies displayed items without fetching and reports clipboard failures", asy
   writeText.mockRejectedValueOnce(new Error("Denied"));
   fireEvent.click(screen.getByRole("button", { name: "Copy top 3" }));
   await screen.findByText(/Couldn’t copy/);
+});
+
+it("keeps displayed winners and paginated exclusions together when winners change", async () => {
+  const challenger = { ...build, id: "challenger", title: "New winner" };
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (!path.startsWith("/builds?")) return fallback(path, options);
+    const excluded = new URLSearchParams(path.split("?")[1]).getAll("excludeId");
+    const items = [build, challenger].filter(item => !excluded.includes(item.id));
+    return { items, total: items.length, page: 0, size: 12 };
+  });
+  const router = page();
+  await screen.findByText("1 builds");
+  expect(screen.getAllByText(build.title)).toHaveLength(1);
+  expect(screen.getAllByText(challenger.title)).toHaveLength(1);
+  top = () => Promise.resolve({ ...snapshot, items: [{ ...snapshot.items[0], build: challenger }] });
+  // Changing the lower query must still exclude the displayed old winner, despite server changes.
+  await act(async () => { await router.navigate("/?sort=score"); });
+  await screen.findByText("1 builds");
+  expect(screen.getAllByText(build.title)).toHaveLength(1);
+  fireEvent.click(screen.getByRole("button", { name: "Refresh top builds" }));
+  await waitFor(() => expect(within(screen.getByRole("region", { name: "Top 3 community builds" }))
+    .getByText(challenger.title)).toBeTruthy());
+  await screen.findByText("1 builds");
+  expect(screen.getAllByText(build.title)).toHaveLength(1);
+  expect(screen.getAllByText(challenger.title)).toHaveLength(1);
 });
 
 it("keeps loaded showcase on refresh failure and retries independently", async () => {

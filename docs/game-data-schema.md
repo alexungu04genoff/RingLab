@@ -1,6 +1,6 @@
 # Game-data schema
 
-This is the implemented relational shape after Flyway V25. It shows the game catalog and the
+This is the implemented relational shape after Flyway V27. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
 
 ```mermaid
@@ -23,7 +23,6 @@ erDiagram
         varchar name UK
         varchar racing_type "nullable enum"
         varchar image_path "nullable"
-        varchar family "STANDARD, BOARD"
     }
     RACER_STATS {
         uuid racer_id PK,FK
@@ -71,7 +70,7 @@ erDiagram
         uuid racer_id FK
         uuid front_part_id FK
         uuid rear_part_id FK
-        uuid tire_part_id FK "nullable for BOARD"
+        uuid tire_part_id FK "nullable for BOOST"
         uuid game_version_id FK "nullable"
     }
     BUILD_GADGETS {
@@ -96,25 +95,26 @@ equal. These remain separate database rows, so a future patch can supply changed
 altering historical builds. Blank and missing rows remain unknown. Future imports must use new
 migrations, never modify earlier migrations. No 1.3.2 balance snapshot is seeded.
 
-Base build stats sum racer + front + rear and, for Standard machines, tire per field; any unknown
-contribution makes only that resulting field unknown. Standard stock-machine totals sum three
-parts, while Board totals sum two; totals are never stored as an
+Base build stats sum racer + front + rear and, for non-BOOST machines, tire per field; any unknown
+contribution makes only that resulting field unknown. Non-BOOST stock-machine totals sum three
+parts, while BOOST totals sum two; totals are never stored as an
 independent value. Builds with no version have no assumed baseline. Missing stats do not affect
 build validity or publishing. Base stats and gadget-modified/effective stats are distinct concepts;
 numerical gadget effects are intentionally outside this implementation. Gadget
 metadata is a current snapshot; it is not version-aware even though some costs and effects changed
 between patches.
 
-`MachineFamily` is authoritative source-machine metadata. V25 introduces the family column, and
-V26 classifies the verified Extreme Gear catalog as `BOARD`, preserves its FRONT/REAR identifiers,
-and removes the structurally invalid generated TIRE rows. Standard machines retain FRONT, REAR,
-and TIRE. The application requires every selected part to share one family and rejects both a
-missing Standard tire and any tire supplied for a Board.
+`RacingType` is authoritative source-machine metadata. V25 introduced a family column and
+V26 corrected the Extreme Gear catalog to two parts, preserving FRONT/REAR identifiers and
+removing generated TIRE rows. V27 validates that classification, then drops the family column.
+The application requires selected parts to share one known source-machine racing type:
+BOOST uses FRONT/REAR only; SPEED, ACCELERATION, HANDLING and POWER require a tire as well.
+Racer type is independent of machine compatibility.
 
 ## Focused improvements
 
 1. Verify a dated historical source and per-part contributions before importing numerical data.
-   Part labels and the Extreme Gear composition correction remain separate work.
+   Part display labels remain separate work; the Extreme Gear composition correction is implemented.
 2. Add a small `gadget_versions` table keyed by `(gadget_id, game_version_id)` for effect text,
    slot cost and mode restrictions. Keep `gadgets` as stable identity/artwork and resolve rules for
    the build's selected patch.

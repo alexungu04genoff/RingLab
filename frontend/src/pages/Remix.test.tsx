@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
 import type { Build, MachinePart } from "../types";
 import { BuildDetails } from "./BuildDetails";
-import { draftFromRemix } from "./BuildEditor";
+import { draftFromRemix } from "./useBuildDraft";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn() }));

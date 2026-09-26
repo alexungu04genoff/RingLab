@@ -10,6 +10,8 @@ import dev.ringlab.adapter.in.rest.auth.response.MessageResponse;
 import dev.ringlab.adapter.in.rest.auth.request.EmailVerificationRequest;
 import dev.ringlab.adapter.in.rest.auth.request.ResendVerificationRequest;
 import dev.ringlab.application.auth.AuthService;
+import dev.ringlab.application.auth.EmailVerificationService;
+import dev.ringlab.application.auth.EmailVerificationService.VerificationEmail;
 import dev.ringlab.application.auth.ExternalAuthService;
 import dev.ringlab.adapter.in.rest.auth.request.GoogleSignInRequest;
 import dev.ringlab.domain.auth.User;
@@ -32,6 +34,7 @@ public class AuthRestResource {
   private final AuthService service;
   private final CurrentUser actor;
   private final ExternalAuthService externalAuth;
+  private final EmailVerificationService verification;
   private final EmailVerificationSender verificationSender;
   @ConfigProperty(name = "ringlab.public-base-url") String publicBaseUrl;
 
@@ -65,14 +68,14 @@ public class AuthRestResource {
   @POST
   @Path("verify-email")
   public MessageResponse verifyEmail(@Valid @NotNull EmailVerificationRequest request) {
-    service.verifyEmail(request.token());
+    verification.verifyEmail(request.token());
     return new MessageResponse("Your email has been verified. You can now sign in.");
   }
 
   @POST
   @Path("resend-verification")
   public MessageResponse resendVerification(@Valid @NotNull ResendVerificationRequest request) {
-    service.resendVerification(request.email()).ifPresent(this::sendVerification);
+    verification.resendVerification(request.email()).ifPresent(this::sendVerification);
     return checkEmailMessage();
   }
 
@@ -80,7 +83,7 @@ public class AuthRestResource {
     return new MessageResponse("Check your email to verify your account.");
   }
 
-  private void sendVerification(AuthService.VerificationEmail email) {
+  private void sendVerification(VerificationEmail email) {
     try {
       verificationSender.sendVerification(email.email(), publicBaseUrl + "/verify-email?token=" + email.token());
     } catch (RuntimeException exception) {

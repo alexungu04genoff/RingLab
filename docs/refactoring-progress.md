@@ -1,5 +1,9 @@
 # Backend readability refactor
 
+Historical record of the 2026-09-22 refactor, not verification of later changes.
+The subsequent review fixes replace the fixed registration identity with a unique per-test
+identity; the reused-database failure below records the original test as it existed then.
+
 Starting revision: `70020d64a061001c127344fe54a5e32f40435dc3`; working tree was clean.
 Only the root AGENTS.md applies. No commits, pushes, deployment, schema, tooling,
 configuration or frontend changes are part of this task.
@@ -158,3 +162,49 @@ Remaining warnings: the existing deprecated/unchecked test APIs and packaged-run
 test isolation issue above needs a separate fix. Gadget effects/historical costs,
 bounded response lookup overhead and last-write-wins edits remain existing limitations.
 No verification blocker remains; broader manual testing is optional after diff review.
+
+## Follow-up: authentication and Explore readability — 2026-09-26
+
+This section describes the later working-tree changes; the full-suite results above
+belong only to the historical refactor.
+
+- `ExternalAccountRegistration` now owns passwordless user creation and username
+  selection. `ExternalAuthService` retains the transaction and provider-link policy.
+  A verified Google Gmail identity can link to an exact already-verified local email;
+  unverified Gmail collisions explain the verification step. Existing accounts keep
+  their IDs, passwords and owned content.
+- `EmailVerificationService` now owns issuance, hashing, expiry, resend and token
+  consumption. Registration still creates the user and token inside one transaction;
+  verification/resend retain REQUIRED transactions and mail delivery remains outside.
+- `useAuthForm` and `useBuildDraft` separate asynchronous work from page markup and
+  ignore abandoned responses. Leaving a remix resets its draft and provenance.
+- `SearchableFilter` owns the searchable control; `exploreFilters.ts` owns URL and
+  preference rules. Stale patch preferences no longer repeatedly replace the URL,
+  and removing the sort chip clears its saved preference.
+
+Verification performed for the latest extraction:
+
+```powershell
+mvn -f backend/pom.xml '-Dmaven.repo.local=C:/Users/Alex/.m2/repository' '-Dtest=AuthServiceTest,AuthRestResourceTest,ExternalAuthServiceTest' test
+# From frontend:
+node node_modules/vitest/vitest.mjs run src/SearchableFilter.test.tsx src/pages/Explore.test.tsx src/pages/ExploreNavigation.test.tsx
+node node_modules/typescript/bin/tsc --noEmit
+```
+
+Results: 33 backend tests passed, 25 frontend tests passed, and TypeScript checking
+passed. The earlier focused auth/editor checks passed 16 backend and 29 frontend
+tests; those were separate runs. Existing deprecated/unchecked Java test warnings
+remain. All test sources compiled, but integration tests were not executed.
+
+No full suite, packaged API suite, acceptance/persistence integration test, or
+coverage analysis was run for these follow-up changes. Run `AcceptanceTest` and
+`GoogleAuthIntegrationTest` manually against a disposable configured test database
+to verify the real CDI, JWT, transaction and persistence boundaries:
+
+```powershell
+mvn -f backend/pom.xml '-Dtest=AcceptanceTest,GoogleAuthIntegrationTest' test
+```
+
+The existing local stack was reused; PostgreSQL was healthy and the frontend,
+proxied racers/builds/community APIs, and extracted frontend modules returned HTTP
+200. Local URL: http://localhost:5173. No source commit, push or deployment was made.

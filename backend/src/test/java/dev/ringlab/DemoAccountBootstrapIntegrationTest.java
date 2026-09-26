@@ -13,10 +13,11 @@ import org.junit.jupiter.api.Test;
 class DemoAccountBootstrapIntegrationTest {
   @Test
   void normalRegistrationStillReturnsVerificationMessageRatherThanSession() {
+    String username = "registration_" + java.util.UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     given().contentType(ContentType.JSON)
         .body(Map.of(
-            "username", "normal_registration_user",
-            "email", "normal_registration_user@example.test",
+            "username", username,
+            "email", username + "@example.test",
             "password", "NormalUser!2026"))
         .when().post("/api/auth/register")
         .then().statusCode(200)
@@ -24,7 +25,7 @@ class DemoAccountBootstrapIntegrationTest {
         .body("token", org.hamcrest.Matchers.nullValue());
 
     given().contentType(ContentType.JSON)
-        .body(Map.of("username", "normal_registration_user", "password", "NormalUser!2026"))
+        .body(Map.of("username", username, "password", "NormalUser!2026"))
         .when().post("/api/auth/login")
         .then().statusCode(403);
   }

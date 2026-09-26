@@ -3,18 +3,16 @@ import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
 import { browseOrigin, buildDetailsOrigin } from "../components";
+import { filterSearchableOptions } from "../SearchableFilter";
+import { Explore, exploreLayoutClass, selectRandomHeroRacers } from "./Explore";
 import {
   activeExploreFilterChips,
   clearExploreFilters,
-  Explore,
-  exploreLayoutClass,
-  filterSearchableOptions,
   resolveGameVersion,
   resolvePage,
   resolveSort,
-  selectRandomHeroRacers,
   updateExploreParams,
-} from "./Explore";
+} from "./exploreFilters";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));

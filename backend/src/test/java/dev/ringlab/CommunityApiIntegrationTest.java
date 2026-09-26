@@ -55,6 +55,13 @@ class CommunityApiIntegrationTest {
     assertEquals(completeTotal - topIds.size(), withoutTop.jsonPath().getInt("total"));
     assertTrue(java.util.Collections.disjoint(
         topIds, withoutTop.jsonPath().getList("items.id", String.class)));
+    var pinned = given().queryParam("excludeId", topIds.toArray()).queryParam("size", 50)
+        .get("/api/builds").then().statusCode(200).extract().response();
+    assertEquals(completeTotal - topIds.size(), pinned.jsonPath().getInt("total"));
+    assertTrue(java.util.Collections.disjoint(topIds, pinned.jsonPath().getList("items.id", String.class)));
+    given().queryParam("excludeId", java.util.stream.IntStream.range(0, 4)
+        .mapToObj(i -> java.util.UUID.randomUUID().toString()).toArray())
+        .get("/api/builds").then().statusCode(400);
     given().header("If-None-Match", tag).get("/api/community/top-builds").then().statusCode(304).body(isEmptyString());
     given().header("If-None-Match", "\"different\", " + tag).get("/api/community/top-builds").then().statusCode(304);
     given().cookie("preferences", "wilson").header("Host", "attacker.example")

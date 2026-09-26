@@ -35,6 +35,19 @@ class GoogleIdentityVerificationAdapterTest {
   }
 
   @Test
+  void gmailAddressDoesNotBypassTokenOrEmailVerification() throws Exception {
+    var gmail = payload();
+    gmail.setEmail("alex@gmail.com");
+    assertEquals("alex@gmail.com", adapter().verify(sign(gmail, privateKey())).email());
+
+    gmail.setEmailVerified(false);
+    assertThrows(AuthenticationException.class, () -> adapter().verify(sign(gmail, privateKey())));
+    gmail.setEmailVerified(true);
+    gmail.setAudience("another-client");
+    assertThrows(AuthenticationException.class, () -> adapter().verify(sign(gmail, privateKey())));
+  }
+
+  @Test
   void rejectsExpiredWrongAudienceWrongIssuerAndUntrustedSignatures() throws Exception {
     var expired = payload(); expired.setExpirationTimeSeconds(Instant.now().getEpochSecond() - 10);
     var audience = payload(); audience.setAudience("another-client");

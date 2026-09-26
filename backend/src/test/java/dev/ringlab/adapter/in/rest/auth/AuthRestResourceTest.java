@@ -7,6 +7,8 @@ import dev.ringlab.adapter.in.rest.auth.request.RegistrationRequest;
 import dev.ringlab.adapter.in.rest.auth.request.ResendVerificationRequest;
 import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.application.auth.AuthService;
+import dev.ringlab.application.auth.EmailVerificationService;
+import dev.ringlab.application.auth.EmailVerificationService.VerificationEmail;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
@@ -19,7 +21,7 @@ class AuthRestResourceTest {
         return new VerificationEmail(email, "secret-token");
       }
     };
-    var resource = new AuthRestResource(service, null, null,
+    var resource = new AuthRestResource(service, null, null, null,
         (email, verificationUrl) -> { throw new IllegalStateException("SMTP details"); });
     resource.publicBaseUrl = "https://ringlab.example";
 
@@ -33,13 +35,13 @@ class AuthRestResourceTest {
 
   @Test
   void resendKeepsTheSameGenericResponseWhenNoAccountIsEligible() {
-    var service = new AuthService(null, null, null, null) {
+    var verification = new EmailVerificationService(null, null) {
       @Override
       public Optional<VerificationEmail> resendVerification(String email) {
         return Optional.empty();
       }
     };
-    var resource = new AuthRestResource(service, null, null,
+    var resource = new AuthRestResource(null, null, null, verification,
         (email, verificationUrl) -> { throw new AssertionError("No email should be sent"); });
 
     var response = resource.resendVerification(new ResendVerificationRequest("missing@example.test"));

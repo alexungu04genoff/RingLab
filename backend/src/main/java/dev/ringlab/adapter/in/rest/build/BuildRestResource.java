@@ -36,6 +36,7 @@ public class BuildRestResource {
       @QueryParam("authorId") UUID author,
       @QueryParam("gameVersionId") UUID gameVersion,
       @QueryParam("excludeTop") @DefaultValue("false") boolean excludeTop,
+      @QueryParam("excludeId") @Size(max = 3) List<UUID> excludedBuildIds,
       @QueryParam("sort") @DefaultValue("rated") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
@@ -44,11 +45,15 @@ public class BuildRestResource {
       case "rated" -> BuildSort.BEST_RATED;
       default -> BuildSort.NEWEST;
     };
-    var excludedIds = excludeTop
-        ? communitySnapshots.get().items().stream()
+    // Explicit IDs pin exclusions to the snapshot displayed by this client.
+    Set<UUID> excludedIds = Set.of();
+    if (excludedBuildIds != null && !excludedBuildIds.isEmpty()) {
+      excludedIds = Set.copyOf(excludedBuildIds);
+    } else if (excludeTop) {
+      excludedIds = communitySnapshots.get().items().stream()
             .map(item -> item.build().id())
-            .collect(java.util.stream.Collectors.toSet())
-        : Set.<UUID>of();
+            .collect(java.util.stream.Collectors.toSet());
+    }
     var result = builds.list(new BuildService.Query(
         new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds),
         buildSort, page, size));

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, json } from "../api";
@@ -9,40 +9,20 @@ import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer, RacingType } from "../types";
 import { machineSetupError } from "../buildForm";
 import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
+import { useBuildDraft } from "./useBuildDraft";
 
 const partSlots = [
   { key: "frontPartId", type: "FRONT", label: "Front" },
   { key: "rearPartId", type: "REAR", label: "Rear" },
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
-const emptyDraft = (): BuildDraft => ({
-  title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: null,
-  machineType: null,
-  gameVersionId: null, remixedFromBuildId: null, gadgetIds: [],
-});
-export function draftFromRemix(build: Build): BuildDraft {
-  return {
-    title: `Remix of ${build.title}`,
-    description: build.description,
-    racerId: build.racer.id,
-    frontPartId: build.frontPart.id,
-    rearPartId: build.rearPart.id,
-    tirePartId: build.tirePart?.id ?? null,
-    machineType: build.frontPart.racingType,
-    gameVersionId: build.gameVersion?.id ?? null,
-    remixedFromBuildId: build.id,
-    gadgetIds: build.gadgets.map((gadget) => gadget.id),
-  };
-}
 export function BuildEditor() {
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const remixSourceId = id ? null : searchParams.get("remixFrom");
+  const saveContext = useRef<object | null>(null);
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [draft, setDraft] = useState<BuildDraft>(emptyDraft);
-  const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
-  const [loading, setLoading] = useState(!!id);
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<{
     title?: string; description?: string; gameVersionId?: string;
@@ -50,73 +30,22 @@ export function BuildEditor() {
   const [busy, setBusy] = useState(false);
   const [gadgetSearch, setGadgetSearch] = useState("");
   const [stockSourceId, setStockSourceId] = useState("");
-  const [allowed, setAllowed] = useState(!id);
   const racers = useLoad<Racer[]>("/racers");
   const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
+    id, remixSourceId, userId: user?.id, newestVersionId: versions.data?.[0]?.id,
+  });
   useEffect(() => {
-    setDraft(emptyDraft());
-    setLoadedBuild(undefined);
-    setAllowed(!id);
-    setLoading(!!id);
+    saveContext.current = {};
+    setBusy(false);
     setError("");
     setFieldErrors({});
     setStockSourceId("");
-    if (!id) return;
-    const controller = new AbortController();
-    api<Build>(`/builds/${id}`, { signal: controller.signal })
-      .then((b) => {
-        if (controller.signal.aborted) return;
-        if (b.author.id !== user?.id) {
-          setError("Only the author may edit this build.");
-          return;
-        }
-        setAllowed(true);
-        setLoadedBuild({ id: b.id, authorId: b.author.id });
-        setDraft({
-          title: b.title,
-          description: b.description,
-          racerId: b.racer.id,
-          frontPartId: b.frontPart.id,
-          rearPartId: b.rearPart.id,
-          tirePartId: b.tirePart?.id ?? null,
-          machineType: b.frontPart.racingType,
-          gameVersionId: b.gameVersion?.id ?? null,
-          remixedFromBuildId: b.remixedFrom?.id ?? null,
-          gadgetIds: b.gadgets.map((g) => g.id),
-        });
-      })
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [id, user?.id]);
-  useEffect(() => {
-    if (!remixSourceId) return;
-    setFieldErrors({});
-    const controller = new AbortController();
-    setLoading(true);
-    api<Build>(`/builds/${remixSourceId}`, { signal: controller.signal })
-      .then((b) => setDraft(draftFromRemix(b)))
-      .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
-    return () => controller.abort();
-  }, [remixSourceId]);
-  useEffect(() => {
-    const newestVersionId = versions.data?.[0]?.id;
-    if (id || remixSourceId || !newestVersionId) return;
-    setDraft((current) => current.gameVersionId
-      ? current
-      : { ...current, gameVersionId: newestVersionId });
-  }, [id, remixSourceId, versions.data, user?.id]);
+    setGadgetSearch("");
+    return () => { saveContext.current = null; };
+  }, [id, remixSourceId, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
     setDraft((d) => ({ ...d, [key]: value }));
     if (key === "title" || key === "description" || key === "gameVersionId") {
@@ -127,7 +56,6 @@ export function BuildEditor() {
   const selectedGadgets = draft.gadgetIds
     .map((gadgetId) => gadgets.data?.find((item) => item.id === gadgetId));
   const plateStatus = gadgetPlateStatus(selectedGadgets);
-  const canSubmit = allowed && (!id || (loadedBuild?.id === id && loadedBuild.authorId === user?.id));
   const activePartSlots = partSlots.filter((slot) => !draft.machineType ? slot.type !== "TIRE" : requiredMachineSlots(draft.machineType).includes(slot.type));
   const setupError = machineSetupError(draft, parts.data ?? []);
   return (
@@ -143,7 +71,7 @@ export function BuildEditor() {
         </div>
       </div>
       <ErrorNotice
-        message={error || racers.error || parts.error || gadgets.error || versions.error}
+        message={error || loadError || racers.error || parts.error || gadgets.error || versions.error}
       />
       {loading ? (
         <p role="status">Loading your build…</p>
@@ -159,6 +87,7 @@ export function BuildEditor() {
                 return;
               }
               setBusy(true);
+              const context = saveContext.current;
               setError("");
               setFieldErrors({});
               try {
@@ -167,15 +96,16 @@ export function BuildEditor() {
                   id ? `/builds/${id}` : "/builds",
                   json(id ? "PUT" : "POST", request),
                 );
-                navigate(`/builds/${b.id}`);
+                if (saveContext.current === context) navigate(`/builds/${b.id}`);
               } catch (e) {
+                if (saveContext.current !== context) return;
                 if (e instanceof ApiError && (e.field === "title" || e.field === "description" || e.field === "gameVersionId")) {
                   setFieldErrors({ [e.field]: e.message });
                 } else {
                   setError((e as Error).message);
                 }
               } finally {
-                setBusy(false);
+                if (saveContext.current === context) setBusy(false);
               }
             }}
           >

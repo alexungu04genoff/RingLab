@@ -11,7 +11,10 @@ export function topCommunitySummary(snapshot: TopCommunitySnapshot) {
   ].join("\n\n");
 }
 
-export function TopCommunityBuilds({ versions = [] }: { versions?: GameVersion[] }) {
+export function TopCommunityBuilds({ versions = [], onSnapshot }: {
+  versions?: GameVersion[];
+  onSnapshot?: (snapshot: TopCommunitySnapshot) => void;
+}) {
   const [snapshot, setSnapshot] = useState<TopCommunitySnapshot>();
   const [refresh, setRefresh] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -25,14 +28,17 @@ export function TopCommunityBuilds({ versions = [] }: { versions?: GameVersion[]
     api<TopCommunitySnapshot>("/community/top-builds", {
       signal: controller.signal, anonymous: true, credentials: "omit", cache: "no-cache",
     }).then(value => {
-      if (!controller.signal.aborted) setSnapshot(value);
+      if (!controller.signal.aborted) {
+        setSnapshot(value);
+        onSnapshot?.(value);
+      }
     }).catch(() => {
       if (!controller.signal.aborted) setError("Couldn’t refresh top community builds. Please retry.");
     }).finally(() => {
       if (!controller.signal.aborted) setLoading(false);
     });
     return () => controller.abort();
-  }, [refresh]);
+  }, [refresh, onSnapshot]);
 
   async function copy() {
     if (!snapshot) return;

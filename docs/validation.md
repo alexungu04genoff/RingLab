@@ -1,6 +1,6 @@
 # Verification
 
-## Current baseline — 2026-09-13
+## Current tooling
 
 Backend verification uses Java 21 and Maven:
 
@@ -9,11 +9,13 @@ mvn -f backend/pom.xml verify
 ```
 
 JaCoCo runs as part of `verify` and writes HTML and XML reports under
-`backend/target/site/jacoco/`. A clean backend baseline is still pending.
-The existing report included accumulated execution sessions, so its percentages
-must not be treated as coverage from the current run. Before a fresh measurement,
+`backend/target/site/jacoco/`. Maven enforces 90% instruction, 80% branch and 90% line coverage.
+Reports can contain accumulated execution sessions, so their percentages
+must not automatically be treated as coverage from the current run. Before a fresh measurement,
 archive the existing `backend/target/jacoco-quarkus.exec`; both agents must still
-append within the same verification run. No coverage threshold is enforced.
+append within the same verification run. The dated backend results in
+[refactoring-progress.md](refactoring-progress.md) record the 2026-09-22 fresh-database run;
+they do not verify later working-tree changes.
 
 The backend suite includes pure domain/application unit tests, REST resource and
 exception-mapping tests, persistence/repository contract integration tests,
@@ -38,22 +40,23 @@ was added, the 2026-09-13 V8 run measured 68.37%
 statements, 76.78% branches, 58.51% functions, and 68.37% lines. Frontend tests
 cover API/session behavior, build form and sharing helpers, comment pagination, and page-level
 interactions including Explore, Compare Builds, Remix, and machine setup/Gadget
-Plate feedback. The frontend coverage baseline is recorded from the command run
-for the current change; like the backend, it has no enforced threshold.
+Plate feedback. Vitest currently enforces 80% statements, branches and lines, and 65% functions.
+The percentages above are historical measurements, not the current baseline.
 
 ## Continuous integration
 
 `.github/workflows/ci.yml` runs on pushes and pull requests. The backend job
 uses Java 21 with the Maven cache, a disposable PostgreSQL 17 service and generated
 temporary JWT keys, and executes `mvn -f backend/pom.xml verify`, which includes
-architecture tests. Surefire uses Dev Services; the packaged application receives
-the service database through production environment variables. The frontend job uses Node 22 with the npm
+architecture tests. CI supplies its disposable PostgreSQL service through datasource environment
+variables. Local database-dependent verification must use a disposable database, never the
+normal development database. The frontend job uses Node 22 with the npm
 cache, executes `npm ci`, `npm run test:coverage`, and `npm run build`.
 
 Generated build and coverage output remains untracked: `backend/target/`,
 `frontend/coverage/`, and `frontend/dist/` are ignored.
 
-## Current run status
+## Historical run records
 
 ### Robustness fixes — 2026-09-13
 
