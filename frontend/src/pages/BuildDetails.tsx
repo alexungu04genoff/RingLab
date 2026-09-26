@@ -9,6 +9,7 @@ import { RacingTypeBadge } from "../RacingTypeBadge";
 import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
+import { RecommendedMapList } from "../MapRecommendations";
 import { useLoad } from "../useLoad";
 import type { Build, CommentPage, GameVersion, Vote } from "../types";
 
@@ -335,7 +336,11 @@ function BuildDetailsContent() {
               <p className="muted">No gadgets selected.</p>
             )}
           </section>
-          <section className="panel comments">
+            <section className="panel" aria-label="Recommended maps">
+              <h2>Recommended maps</h2>
+              <RecommendedMapList recommendations={b.mapRecommendations} />
+            </section>
+            <section className="panel comments">
             <h2>Comments</h2>
             <ErrorNotice message={comments.error} />
             {user ? (

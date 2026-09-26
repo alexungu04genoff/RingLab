@@ -41,25 +41,25 @@ public class SavedBuildDbAdapter implements SavedBuildRepository {
         .setParameter("user", userId).setParameter("ids", ids).getResultList());
   }
 
-  public Page list(UUID userId, String search, UUID versionId, int page, int size) {
+  public Page list(UUID userId, String search, UUID versionId, UUID mapId, boolean includeAllMaps, int page, int size) {
     var cb = em.getCriteriaBuilder();
     var query = cb.createQuery(SavedBuildDbEntity.class);
     var saved = query.from(SavedBuildDbEntity.class);
-    query.select(saved).where(filters(cb, query, saved, userId, search, versionId));
+    query.select(saved).where(filters(cb, query, saved, userId, search, versionId, mapId, includeAllMaps));
     query.orderBy(cb.desc(saved.get("savedAt")), cb.asc(saved.get("buildId")));
     var items = em.createQuery(query).setFirstResult(page * size).setMaxResults(size).getResultList()
         .stream().map(s -> new Bookmark(s.buildId, s.savedAt)).toList();
     var count = cb.createQuery(Long.class);
     var countSaved = count.from(SavedBuildDbEntity.class);
-    count.select(cb.count(countSaved)).where(filters(cb, count, countSaved, userId, search, versionId));
+    count.select(cb.count(countSaved)).where(filters(cb, count, countSaved, userId, search, versionId, mapId, includeAllMaps));
     return new Page(items, em.createQuery(count).getSingleResult());
   }
 
   private Predicate[] filters(CriteriaBuilder cb, CriteriaQuery<?> query, Root<SavedBuildDbEntity> saved,
-      UUID userId, String search, UUID versionId) {
+      UUID userId, String search, UUID versionId, UUID mapId, boolean includeAllMaps) {
     var build = query.from(BuildDbEntity.class);
     var predicates = BuildDbAdapter.filters(cb, query, build,
-        new BuildRepository.Filter(search, null, null, null, versionId));
+        new BuildRepository.Filter(search, null, null, null, versionId, Set.of(), mapId, includeAllMaps));
     predicates.add(cb.equal(saved.get("userId"), userId));
     predicates.add(cb.equal(saved.get("buildId"), build.get("id")));
     return predicates.toArray(Predicate[]::new);

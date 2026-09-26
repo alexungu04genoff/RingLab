@@ -16,7 +16,7 @@ const build = (id: string): Build => ({
   id, title: `Build ${id}`, description: "", author: actor,
   racer: { id: "racer", name: "Sonic", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
-  gameVersion: null, gadgets: [], remixedFrom: id === "A" ? { id: "B", title: "Source B" } : null,
+  gameVersion: null, gadgets: [], mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: id === "A" ? { id: "B", title: "Source B" } : null,
   createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
   score: id === "A" ? 10 : 20, upvotes: id === "A" ? 10 : 20, downvotes: 0,
 });

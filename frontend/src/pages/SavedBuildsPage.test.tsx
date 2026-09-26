@@ -13,7 +13,7 @@ vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
 const part = (type: "FRONT" | "REAR" | "TIRE") => ({ id: type, type, sourceMachineId: "m", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" as const });
 const build: Build = { id: "one", title: "Saved setup", description: "", author: { id: "author", username: "Original author" },
   racer: { id: "r", name: "Racer", imagePath: null, racingType: "SPEED" }, frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
-  gameVersion: null, remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 0, upvotes: 0, downvotes: 0 };
+  gameVersion: null, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 0, upvotes: 0, downvotes: 0 };
 const second = { ...build, id: "two", title: "Second setup" };
 const values = { speed: 10, acceleration: 20, handling: 30, power: 40, boost: 50 };
 const stats = { ...values, character: values, machine: values };

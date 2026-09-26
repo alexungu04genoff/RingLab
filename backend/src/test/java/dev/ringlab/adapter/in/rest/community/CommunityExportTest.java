@@ -35,7 +35,7 @@ class CommunityExportTest {
       entries.add(new CommunitySnapshot.Entry(b, "author", racer, new CommunitySnapshot.Part(front, source),
           new CommunitySnapshot.Part(rear, source), null, null,
           List.of(new Gadget(UUID.randomUUID(), "😀".repeat(1000), null, 1, null)), new VoteSummary(3, 1),
-          new BaseStatsBreakdown(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null));
+            new BaseStatsBreakdown(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null, List.of()));
     }
     var snapshot = new CommunitySnapshot(UUID.randomUUID(), Instant.EPOCH, entries);
     var response = TopBuildsResponse.from(snapshot, new CommunityPublicUrls("http://localhost:5173", "http://localhost:5173"));

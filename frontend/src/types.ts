@@ -46,6 +46,18 @@ export interface Gadget {
   slotCost: number | null;
   imagePath: string | null;
 }
+export interface RaceMap {
+  id: string;
+  name: string;
+  category: "MAIN_COURSE" | "CROSSWORLD";
+  contentPack: string | null;
+  imagePath: string | null;
+  catalogOrder: number;
+}
+export interface MapRecommendations {
+  mode: "ALL" | "SELECTED";
+  maps: RaceMap[];
+}
 export type MachinePartType = "FRONT" | "REAR" | "TIRE";
 export interface MachinePart {
   id: string;
@@ -76,6 +88,7 @@ export interface Build {
   gameVersion: GameVersion | null;
   remixedFrom: RemixSource | null;
   gadgets: Gadget[];
+  mapRecommendations: MapRecommendations;
   createdAt: string;
   updatedAt: string;
   score: number;
@@ -93,6 +106,8 @@ export interface BuildDraft {
   gameVersionId: string | null;
   remixedFromBuildId: string | null;
   gadgetIds: string[];
+  recommendedMapIds: string[];
+  mapRecommendationMode: "ALL" | "SELECTED";
 }
 export interface TopCommunitySnapshot {
   schemaVersion: number;

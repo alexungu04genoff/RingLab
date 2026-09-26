@@ -8,6 +8,8 @@ import { BuildDetails } from "./pages/BuildDetails";
 import { AuthPage } from "./pages/AuthPage";
 import { VerifyEmailPage } from "./pages/VerifyEmailPage";
 import { ResendVerificationPage } from "./pages/ResendVerificationPage";
+import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
+import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AccountPage } from "./pages/AccountPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
@@ -53,7 +55,7 @@ function App() {
               </>
             ) : (
               <>
-                <Link to="/login">Log in</Link>
+                <Link className="account-login" to="/login">Log in</Link>
                 <Link className="button primary" to="/register">
                   Join the grid
                 </Link>
@@ -98,6 +100,8 @@ function App() {
             element={<AuthPage key="register" register />}
           />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
           <Route path="/resend-verification" element={<ResendVerificationPage />} />
           <Route
             path="/account"

@@ -24,7 +24,8 @@ public record TopBuildsResponse(int schemaVersion, String ranking, String scope,
               part(entry.front()), part(entry.rear()), part(entry.tire()),
               entry.patch() == null ? null : GameVersionResponse.from(entry.patch()),
               entry.remixSource() == null ? null : new RemixSourceResponse(entry.remixSource().id(), entry.remixSource().title()),
-              entry.gadgets().stream().map(GadgetResponse::from).toList(), b.createdAt(), b.updatedAt(),
+              entry.gadgets().stream().map(GadgetResponse::from).toList(),
+              MapRecommendationsResponse.from(b.recommendedMapIds(), entry.recommendedMaps()), b.createdAt(), b.updatedAt(),
               votes.score(), votes.upvotes(), votes.downvotes());
           return new Item(index + 1, build, entry.front().source().racingType(),
               BuildStatsResponse.from(entry.stats()), urls.build(b.id()), urls.artwork(entry.racer().imagePath()));

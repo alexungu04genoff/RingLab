@@ -28,7 +28,7 @@ it("explains base stats by disclosure activation without changing partial values
   const part = { id: "p", sourceMachineId: "m", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" as const };
   const build: Build = { id: "b", title: "My demo build", description: "", author: { id: "user", username: "ringlab_demo_person" },
     racer: { id: "r", name: "Racer", racingType: null, imagePath: null }, frontPart: { ...part, type: "FRONT" },
-    rearPart: { ...part, type: "REAR" }, tirePart: { ...part, type: "TIRE" }, gameVersion: null, remixedFrom: null,
+    rearPart: { ...part, type: "REAR" }, tirePart: { ...part, type: "TIRE" }, gameVersion: null, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null,
     gadgets: [], score: 0, upvotes: 0, downvotes: 0, createdAt: "2026-01-01", updatedAt: "2026-01-01" };
   const values = { speed: 0, acceleration: 2.75, handling: null, power: 5, boost: null };
   const { container } = render(<MemoryRouter><BuildCard build={build} stats={{ ...values, character: values, machine: values }} /></MemoryRouter>);

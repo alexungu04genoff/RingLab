@@ -42,6 +42,12 @@ public class BuildDbEntity {
   @OrderColumn(name = "position")
   public List<UUID> gadgetIds = new ArrayList<>();
 
+  @ElementCollection
+  @CollectionTable(name = "build_recommended_maps", joinColumns = @JoinColumn(name = "build_id"))
+  @Column(name = "map_id", nullable = false)
+  @org.hibernate.annotations.BatchSize(size = 50)
+  public Set<UUID> recommendedMapIds = new HashSet<>();
+
   @Column(name = "created_at", nullable = false)
   public Instant createdAt;
 

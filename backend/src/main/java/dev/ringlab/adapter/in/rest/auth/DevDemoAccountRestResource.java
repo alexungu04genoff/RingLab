@@ -52,7 +52,7 @@ public class DevDemoAccountRestResource {
     for (int index = 0; index < users.size(); index++) {
       var user = users.get(index);
       var session = new SessionResponse(
-          Jwt.subject(user.id().toString()).upn(user.username()).groups("user").sign(),
+          Jwt.subject(user.id().toString()).upn(user.username()).groups("user").claim("authVersion", user.authVersion()).sign(),
           UserResponse.from(user));
       result.add(new AccountSession(body.accounts().get(index).key(), session));
     }

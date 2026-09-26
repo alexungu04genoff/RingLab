@@ -19,6 +19,13 @@ public class GameDataRestResource {
   private final GameDataRepository repository;
 
   @GET
+  @Path("maps")
+  public List<dev.ringlab.adapter.in.rest.gamedata.response.RaceMapResponse> maps() {
+    return repository.listRaceMaps().stream()
+        .map(dev.ringlab.adapter.in.rest.gamedata.response.RaceMapResponse::from).toList();
+  }
+
+  @GET
   @Path("game-versions")
   public List<GameVersionResponse> gameVersions() {
     return repository.listGameVersions().stream().map(GameVersionResponse::from).toList();

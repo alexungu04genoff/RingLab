@@ -10,6 +10,8 @@ import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer, Racing
 import { machineSetupError } from "../buildForm";
 import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
 import { useBuildDraft } from "./useBuildDraft";
+import { MapRecommendationPicker } from "../MapRecommendations";
+import type { RaceMap } from "../types";
 
 const partSlots = [
   { key: "frontPartId", type: "FRONT", label: "Front" },
@@ -34,6 +36,7 @@ export function BuildEditor() {
   const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const maps = useLoad<RaceMap[]>("/maps");
   const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
     id, remixSourceId, userId: user?.id, newestVersionId: versions.data?.[0]?.id,
   });
@@ -58,6 +61,7 @@ export function BuildEditor() {
   const plateStatus = gadgetPlateStatus(selectedGadgets);
   const activePartSlots = partSlots.filter((slot) => !draft.machineType ? slot.type !== "TIRE" : requiredMachineSlots(draft.machineType).includes(slot.type));
   const setupError = machineSetupError(draft, parts.data ?? []);
+  const mapSelectionMissing = draft.mapRecommendationMode === "SELECTED" && draft.recommendedMapIds.length === 0;
   return (
     <>
       <Link className="back" to={id ? `/builds/${id}` : "/"}>
@@ -91,7 +95,8 @@ export function BuildEditor() {
               setError("");
               setFieldErrors({});
               try {
-                const { machineType: _machineType, ...request } = draft;
+                if (mapSelectionMissing) { setError("Select at least one map, or choose All maps."); return; }
+                const { machineType: _machineType, mapRecommendationMode: _mapMode, ...request } = draft;
                 const b = await api<Build>(
                   id ? `/builds/${id}` : "/builds",
                   json(id ? "PUT" : "POST", request),
@@ -286,6 +291,9 @@ export function BuildEditor() {
                   Display order does not affect Gadget Plate validity.
                 </p>
               </section>
+              <MapRecommendationPicker maps={maps.data ?? []} loading={maps.loading} error={maps.error}
+                mode={draft.mapRecommendationMode} selectedIds={draft.recommendedMapIds}
+                onChange={(mode, ids) => setDraft(current => ({ ...current, mapRecommendationMode: mode, recommendedMapIds: ids }))} />
             </div>
             <aside className="panel selection build-preview">
               <div className="eyebrow accent">YOUR COMBINATION</div>
@@ -380,7 +388,7 @@ export function BuildEditor() {
               <button
                 className="primary"
                 disabled={
-                  busy || !racers.data || !parts.data || !gadgets.data || !plateStatus.valid || !!setupError
+                  busy || !racers.data || !parts.data || !gadgets.data || !plateStatus.valid || !!setupError || mapSelectionMissing
                 }
               >
                 {busy ? "Saving…" : id ? "Save changes" : "Publish build"}

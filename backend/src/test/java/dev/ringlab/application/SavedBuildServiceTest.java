@@ -26,12 +26,13 @@ class SavedBuildServiceTest {
     public Instant save(UUID user, UUID id) { assertEquals(actor, user); return bookmarks.computeIfAbsent(id, ignored -> Instant.now()); }
     public void remove(UUID user, UUID id) { assertEquals(actor, user); bookmarks.remove(id); }
     public Set<UUID> status(UUID user, Set<UUID> ids) { assertEquals(actor,user); var result = new HashSet<>(bookmarks.keySet()); result.retainAll(ids); return result; }
-    public Page list(UUID user, String search, UUID version, int page, int size) {
+    public Page list(UUID user, String search, UUID version, UUID mapId, boolean includeAllMaps, int page, int size) {
       assertEquals(actor,user); assertEquals("query",search); assertEquals(2,page); assertEquals(12,size);
       return new Page(bookmarks.entrySet().stream().map(e -> new Bookmark(e.getKey(),e.getValue())).toList(), 30);
     }
   };
-  private final SavedBuildService service = new SavedBuildService(repository, builds);
+  private final SavedBuildService service = new SavedBuildService(repository, builds,
+      new dev.ringlab.application.build.BuildDraftValidator(null, null));
   private Build build() {
     var id = UUID.randomUUID();
     var build = new Build(id,"Live title","",UUID.randomUUID(),id,id,id,id,null,null,List.of(),Instant.EPOCH,Instant.EPOCH);

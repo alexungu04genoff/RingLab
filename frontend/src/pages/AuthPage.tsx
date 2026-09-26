@@ -87,6 +87,7 @@ export function AuthPage({ register = false }: { register?: boolean }) {
             <small>At least 8 characters, at most 72 UTF-8 bytes.</small>
           )}
         </label>
+        {!register && <p><Link to="/forgot-password">Forgot password?</Link></p>}
         <button className="primary" disabled={busy}>
           {busy ? "Please wait…" : register ? "Create account" : "Log in"}
         </button>

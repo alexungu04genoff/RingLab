@@ -24,6 +24,7 @@ public class SavedBuildRestResource {
   private final CurrentUser actor;
   private final BuildResponseAssembler responses;
   private final BaseStatsService stats;
+  private final dev.ringlab.port.out.VoteRepository votes;
   public record SavedItem(BuildResponse build, Instant savedAt) {}
   public record SavedPage(List<SavedItem> items, long total, int page, int size,
       Map<UUID, BuildStatsResponse> statsByBuildId, String statsError) {}
@@ -37,10 +38,17 @@ public class SavedBuildRestResource {
   @GET
   public Response list(@QueryParam("search") @Size(max = 120) String search,
       @QueryParam("gameVersionId") UUID version,
+      @QueryParam("mapId") UUID mapId,
+      @QueryParam("includeAllMaps") @DefaultValue("true") @Pattern(regexp = "true|false") String includeAllMaps,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
-    var result = saved.list(actor.id(), search, version, page, size);
-    var items = result.items().stream().map(item -> new SavedItem(responses.assemble(item.build()), item.savedAt())).toList();
+    var result = saved.list(actor.id(), search, version, mapId, Boolean.parseBoolean(includeAllMaps), page, size);
+    var builds = result.items().stream().map(SavedBuildService.Item::build).toList();
+    var summaries = builds.isEmpty() ? Map.<UUID, dev.ringlab.domain.vote.VoteSummary>of()
+        : votes.summaries(builds.stream().map(dev.ringlab.domain.build.Build::id).toList());
+    var assembled = builds.isEmpty() ? List.<BuildResponse>of() : responses.assembleAll(builds, summaries);
+    var savedAt = result.items().stream().collect(java.util.stream.Collectors.toMap(item -> item.build().id(), SavedBuildService.Item::savedAt));
+    var items = assembled.stream().map(build -> new SavedItem(build, savedAt.get(build.id()))).toList();
     Map<UUID, BuildStatsResponse> pageStats = new HashMap<>();
     String error = null;
     try {

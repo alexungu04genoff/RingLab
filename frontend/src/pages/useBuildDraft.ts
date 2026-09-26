@@ -5,6 +5,7 @@ import type { Build, BuildDraft } from "../types";
 const emptyDraft = (): BuildDraft => ({
   title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: null,
   machineType: null, gameVersionId: null, remixedFromBuildId: null, gadgetIds: [],
+  recommendedMapIds: [], mapRecommendationMode: "ALL",
 });
 
 function draftFromBuild(build: Build): BuildDraft {
@@ -19,6 +20,8 @@ function draftFromBuild(build: Build): BuildDraft {
     gameVersionId: build.gameVersion?.id ?? null,
     remixedFromBuildId: build.remixedFrom?.id ?? null,
     gadgetIds: build.gadgets.map((gadget) => gadget.id),
+    recommendedMapIds: build.mapRecommendations.maps.map(map => map.id),
+    mapRecommendationMode: build.mapRecommendations.mode,
   };
 }
 

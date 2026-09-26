@@ -29,6 +29,26 @@ public class BuildDraftValidator {
     validateMachineParts(draft);
     requireVersion(draft.gameVersionId());
     validateGadgets(draft.gadgetIds());
+    validateMaps(draft.recommendedMapIds());
+  }
+
+  private void validateMaps(List<UUID> ids) {
+    if (ids == null) return; // Omitted: create defaults to All, edit preserves the saved set.
+    if (ids.stream().anyMatch(java.util.Objects::isNull))
+      throw new ValidationException("Map IDs must not contain null", "recommendedMapIds");
+    if (new HashSet<>(ids).size() != ids.size())
+      throw new ValidationException("Duplicate map ID", "recommendedMapIds");
+    var known = game.listRaceMaps().stream().map(dev.ringlab.domain.gamedata.RaceMap::id)
+        .collect(java.util.stream.Collectors.toSet());
+    if (ids.size() > known.size())
+      throw new ValidationException("Map selection exceeds the supported catalog", "recommendedMapIds");
+    if (!known.containsAll(ids))
+      throw new ValidationException("Unknown map ID", "recommendedMapIds");
+  }
+
+  public void validateMapFilter(UUID id) {
+    if (id != null && game.listRaceMaps().stream().noneMatch(map -> map.id().equals(id)))
+      throw new ValidationException("Unknown map ID", "mapId");
   }
 
   private void validateText(BuildService.Draft draft) {

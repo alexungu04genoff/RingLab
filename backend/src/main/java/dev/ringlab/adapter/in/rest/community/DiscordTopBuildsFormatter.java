@@ -19,6 +19,8 @@ public final class DiscordTopBuildsFormatter {
       String description = "Author: " + safe(b.author().username(), 80)
           + "\nRacer: " + safe(b.racer().name(), 80) + " · " + item.machineType()
           + "\nPatch: " + (b.gameVersion() == null ? "Unspecified" : safe(b.gameVersion().version(), 40))
+          + "\nRecommended maps: " + (b.mapRecommendations().maps().isEmpty() ? "All maps"
+              : safe(b.mapRecommendations().maps().stream().map(m -> m.name()).collect(Collectors.joining(", ")), 350))
           + "\nVotes: ↑ " + b.upvotes() + " · ↓ " + b.downvotes() + " · Score " + b.score()
           + "\nFront: " + safe(b.frontPart().sourceMachineName(), 100)
           + "\nRear: " + safe(b.rearPart().sourceMachineName(), 100)

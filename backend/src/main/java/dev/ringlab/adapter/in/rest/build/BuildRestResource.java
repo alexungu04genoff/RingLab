@@ -40,6 +40,8 @@ public class BuildRestResource {
       @QueryParam("machineId") UUID machine,
       @QueryParam("authorId") UUID author,
       @QueryParam("gameVersionId") UUID gameVersion,
+      @QueryParam("mapId") UUID mapId,
+      @QueryParam("includeAllMaps") @DefaultValue("true") @Pattern(regexp = "true|false") String includeAllMaps,
       @QueryParam("excludeTop") @DefaultValue("false") boolean excludeTop,
       @QueryParam("excludeId") @Size(max = 3) List<UUID> excludedBuildIds,
       @QueryParam("sort") @DefaultValue("rated") @Pattern(regexp = "newest|score|rated") String sort,
@@ -61,9 +63,10 @@ public class BuildRestResource {
             .collect(java.util.stream.Collectors.toSet());
     }
     var result = builds.list(new BuildService.Query(
-        new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds),
+        new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds,
+            mapId, Boolean.parseBoolean(includeAllMaps)),
         buildSort, page, size));
-    var items = result.items().stream().map(build -> responses.assemble(build, result.summary(build.id()))).toList();
+    var items = result.items().isEmpty() ? List.<BuildResponse>of() : responses.assembleAll(result.items(), result.summaries());
     Map<UUID, BuildStatsResponse> pageStats = null;
     String statsError = null;
     if (includeStats) {

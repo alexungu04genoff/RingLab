@@ -10,6 +10,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface GameDataRepository {
+  /** Returns maps in stable catalog order, independent of patch labels. */
+  List<dev.ringlab.domain.gamedata.RaceMap> listRaceMaps();
+
   /** Returns versions newest release date first, then ID. */
   List<GameVersion> listGameVersions();
 

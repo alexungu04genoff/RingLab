@@ -60,6 +60,13 @@ public class BuildDbAdapter implements BuildRepository {
   static List<Predicate> filters(
       CriteriaBuilder criteriaBuilder, CriteriaQuery<?> query, Root<BuildDbEntity> build, Filter filter) {
     List<Predicate> predicates = new ArrayList<>();
+    if (filter.mapId() != null) {
+      // Set-based predicates never multiply candidate rows, counts or pagination.
+      var selected = criteriaBuilder.isMember(filter.mapId(), build.<java.util.Set<UUID>>get("recommendedMapIds"));
+      predicates.add(filter.includeAllMaps()
+          ? criteriaBuilder.or(selected, criteriaBuilder.isEmpty(build.get("recommendedMapIds")))
+          : selected);
+    }
     if (!filter.excludedIds().isEmpty()) {
       predicates.add(criteriaBuilder.not(build.get("id").in(filter.excludedIds())));
     }

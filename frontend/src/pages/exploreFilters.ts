@@ -1,10 +1,10 @@
-import type { GameVersion, Machine, Racer } from "../types";
+import type { GameVersion, Machine, Racer, RaceMap } from "../types";
 
 export const PUBLIC_SORT_PREFERENCE = "ringlab.explore.sort";
 export const PUBLIC_PATCH_PREFERENCE = "ringlab.explore.gameVersionId";
 const SORT_VALUES = ["newest", "score", "rated"] as const;
 export type BuildSort = (typeof SORT_VALUES)[number];
-type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort";
+type FilterKey = "search" | "racerId" | "machineId" | "gameVersionId" | "sort" | "mapId" | "includeAllMaps";
 interface ActiveFilterChip { key: FilterKey; label: string }
 
 export function readPreference(key: string) {
@@ -58,7 +58,7 @@ export function updateExploreParams(
 
 export function clearExploreFilters(current: URLSearchParams) {
   const next = new URLSearchParams(current);
-  ["search", "racerId", "machineId", "gameVersionId", "page"].forEach((key) => next.delete(key));
+  ["search", "racerId", "machineId", "gameVersionId", "mapId", "includeAllMaps", "page"].forEach((key) => next.delete(key));
   return next;
 }
 
@@ -68,8 +68,15 @@ export function activeExploreFilterChips(
   machines: Machine[],
   versions: GameVersion[],
   mine: boolean,
+  maps: RaceMap[] = [],
 ): ActiveFilterChip[] {
   const chips: ActiveFilterChip[] = [];
+  const mapId = params.get("mapId");
+  if (mapId) {
+    chips.push({ key: "mapId", label: `Map: ${maps.find(map => map.id === mapId)?.name ?? "Unknown map"}` });
+    if (params.get("includeAllMaps") === "false")
+      chips.push({ key: "includeAllMaps", label: "Specific recommendations only" });
+  }
   const search = params.get("search");
   const racer = racers.find(({ id }) => id === params.get("racerId"));
   const machine = machines.find(({ id }) => id === params.get("machineId"));

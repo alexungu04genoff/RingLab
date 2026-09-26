@@ -9,7 +9,7 @@ import type { BaseStats, Build, BuildDraft, BuildStatsResult, MachinePart } from
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const complete: BaseStats = { speed: 17.5, acceleration: 0, handling: 12, power: 9, boost: 8 };
 const calculated: BaseStats = { ...complete, acceleration: 5 };
-const draft: BuildDraft = { title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
+const draft: BuildDraft = { recommendedMapIds: [], mapRecommendationMode: "ALL", title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
   tirePartId: "t", machineType: "SPEED", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
 const version = { id: "v", version: "1.3.1", releasedAt: "2026-03-18" };
 const breakdown: BuildStatsResult = {
@@ -132,7 +132,7 @@ it("shows compact version-aware stat bars on build cards", async () => {
   const build = { id: "build", title: "Fast build", description: "", author: { id: "u", username: "driver" },
     racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),
-    gameVersion: version, remixedFrom: null, gadgets: [], createdAt: "2026-01-01T00:00:00Z",
+    gameVersion: version, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, gadgets: [], createdAt: "2026-01-01T00:00:00Z",
     updatedAt: "2026-01-01T00:00:00Z", score: 0, upvotes: 0, downvotes: 0 } satisfies Build;
   render(<MemoryRouter><BuildCard build={build} /></MemoryRouter>);
   expect(screen.getByText("Loading stats…")).toBeTruthy();
@@ -157,7 +157,7 @@ it("shows calculated stats with a compatibility warning on cards and build detai
     author: { id: "u", username: "driver" },
     racer: { id: "r", name: "Shadow", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT", "SPEED"), rearPart: machinePart("REAR", "SPEED"),
-    tirePart: machinePart("TIRE", "ACCELERATION"), gameVersion: version, remixedFrom: null,
+    tirePart: machinePart("TIRE", "ACCELERATION"), gameVersion: version, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null,
     gadgets: [], createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z",
     score: 0, upvotes: 0, downvotes: 0 } satisfies Build;
 

@@ -54,7 +54,7 @@ public class AuthRestResource {
 
   private SessionResponse session(User u) {
     return new SessionResponse(
-        Jwt.subject(u.id().toString()).upn(u.username()).groups("user").sign(),
+        Jwt.subject(u.id().toString()).upn(u.username()).groups("user").claim("authVersion", u.authVersion()).sign(),
         UserResponse.from(u));
   }
 

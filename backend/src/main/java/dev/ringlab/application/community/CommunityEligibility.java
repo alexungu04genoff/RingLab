@@ -13,7 +13,7 @@ public final class CommunityEligibility {
   private static final List<String> DEMO_PREFIXES = List.of(
       "[Wilson Demo]", "[Comment Demo]", "[Pagination Demo]", "[Compare Demo]",
       "[Remix Demo]", "[Machine Demo]", "[Gadget Demo]", "[Ownership Demo]",
-      "[Vote Demo]", "[Version Demo]", "[DEMO]");
+      "[Vote Demo]", "[Version Demo]", "[Map Demo]", "[DEMO]");
 
   public static boolean controlledDemo(String title) {
     return DEMO_PREFIXES.stream().anyMatch(title::startsWith);

@@ -21,6 +21,15 @@ import org.junit.jupiter.api.Test;
 
 class RateLimitTest {
   @Test
+  void recoveryEndpointsHaveDedicatedClientLimits() {
+    assertEquals(RequestRateLimitPolicy.FORGOT_PASSWORD, policy("POST", "/api/auth/forgot-password"));
+    assertEquals(RequestRateLimitPolicy.RESET_PASSWORD, policy("POST", "/api/auth/reset-password"));
+    var limiter = limiter(5, Duration.ofHours(1), 10, new MutableClock());
+    for (int i = 0; i < 5; i++) assertTrue(limiter.tryConsume(RequestRateLimitPolicy.FORGOT_PASSWORD, "ip:127.0.0.1").allowed());
+    assertFalse(limiter.tryConsume(RequestRateLimitPolicy.FORGOT_PASSWORD, "ip:127.0.0.1").allowed());
+    assertTrue(limiter.tryConsume(RequestRateLimitPolicy.RESET_PASSWORD, "ip:127.0.0.1").allowed());
+  }
+  @Test
   void allowsBurstThenReturnsRetryAfterAndRefillsWithoutSleeping() {
     MutableClock clock = new MutableClock();
     InMemoryRateLimiter limiter = limiter(3, Duration.ofMinutes(1), 100, clock);

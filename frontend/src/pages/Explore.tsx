@@ -10,6 +10,8 @@ import { TopCommunityBuilds } from "../TopCommunityBuilds";
 import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../types";
 import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../icons";
 import { SearchableFilter } from "../SearchableFilter";
+import { MapFilter } from "../MapRecommendations";
+import type { RaceMap } from "../types";
 import {
   activeExploreFilterChips, clearExploreFilters, PUBLIC_PATCH_PREFERENCE,
   PUBLIC_SORT_PREFERENCE, readPreference, resolveGameVersion, resolvePage, resolveSort,
@@ -65,6 +67,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const query = urlParams.get("search") ?? "";
   const racer = urlParams.get("racerId") ?? "";
   const machine = urlParams.get("machineId") ?? "";
+  const mapId = urlParams.get("mapId") ?? "";
+  const includeAllMaps = urlParams.get("includeAllMaps") !== "false";
   const requestedGameVersion = urlParams.get("gameVersionId") ?? "";
   const sort = resolveSort(urlParams.get("sort"), readPreference(PUBLIC_SORT_PREFERENCE), mine);
   const page = resolvePage(urlParams.get("page"));
@@ -75,6 +79,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const maps = useLoad<RaceMap[]>("/maps");
   const savedGameVersion = mine ? null : readPreference(PUBLIC_PATCH_PREFERENCE);
   const preferredGameVersion = requestedGameVersion || savedGameVersion || "";
   const gameVersion = resolveGameVersion(
@@ -96,13 +101,17 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   });
   if (racer) params.set("racerId", racer);
   if (machine) params.set("machineId", machine);
+  if (mapId) {
+    params.set("mapId", mapId);
+    params.set("includeAllMaps", urlParams.get("includeAllMaps") ?? "true");
+  }
   if (gameVersion) params.set("gameVersionId", gameVersion);
   if (mine && user) params.set("authorId", user.id);
   if (!mine) spotlight?.items.forEach(({ build }) => params.append("excludeId", build.id));
   const builds = useLoad<BuildPage>(`/builds?${params}`, statsRefresh);
-  const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
+  const hasActiveFilters = Boolean(query || racer || machine || gameVersion || mapId);
   const activeChips = activeExploreFilterChips(
-    urlParams, racers.data || [], machines.data || [], versions.data || [], mine,
+    urlParams, racers.data || [], machines.data || [], versions.data || [], mine, maps.data || [],
   );
   useEffect(() => setSearch(query), [query]);
   useEffect(() => {
@@ -248,6 +257,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             <option value="rated">Best rated</option>
           </select>
         </label>
+        <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
+          onChange={(id, include) => updateUrl({ mapId: id, includeAllMaps: id ? String(include) : "" })} />
       </section>
       {activeChips.length > 0 && (
         <div className="active-filters" aria-label="Active filters">
@@ -257,7 +268,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
                 if (chip.key === "search") setSearch("");
                 if (chip.key === "gameVersionId") savePublicPreference(PUBLIC_PATCH_PREFERENCE, "");
                 if (chip.key === "sort") savePublicPreference(PUBLIC_SORT_PREFERENCE, "");
-                updateUrl({ [chip.key]: "" });
+                updateUrl(chip.key === "mapId" ? { mapId: "", includeAllMaps: "" } : { [chip.key]: "" });
               }}>
               {chip.label} <span aria-hidden="true">×</span>
             </button>
@@ -265,7 +276,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
           <button type="button" className="clear-filters" onClick={clearFilters}>Clear filters</button>
         </div>
       )}
-      <ErrorNotice message={racers.error || machines.error || versions.error} />
+      <ErrorNotice message={racers.error || machines.error || versions.error || maps.error} />
       <div className={mine ? undefined : exploreLayoutClass(newsVisible)}>
         <div>
           <div className="section-heading">
@@ -309,7 +320,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
                 {hasActiveFilters ? (
                   <>
                     <h2>No matching builds</h2>
-                    <p>No builds matched your current search or filters.</p>
+                    <p>{mapId && !includeAllMaps ? "No map-specific recommendations match these filters yet." : "No builds matched your current search or filters."}</p>
                     <button type="button" onClick={clearFilters}>
                       Clear search and filters
                     </button>

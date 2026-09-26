@@ -152,6 +152,19 @@ transaction boundary. `AuthRestResource` sends mail after the application call r
 so SMTP delivery is still outside the database transaction. Both application beans keep
 request data in local variables rather than shared fields.
 
+`PasswordResetService` owns separate recovery tokens through `PasswordResetRepository`
+and `PasswordResetSender`. V29 stores one SHA-256 digest per account and adds
+`users.auth_version`. Issuance and consumption serialize on the user row; consumption
+rechecks the digest after locking and atomically changes the bcrypt hash, increments
+the session version and deletes the token. Unlike verification, reset delivery is
+inside the transaction so failed delivery rolls back token replacement. The REST
+response stays generic even on delivery failure to avoid disclosing eligibility.
+Only verified local-password accounts qualify. Registration and reset share the
+small `PasswordPolicy` validator. Every JWT issuer includes the current version;
+`CurrentUser` rejects mismatches. Legacy JWTs without a claim mean version zero,
+preserving them until the account resets its password. See [Password recovery](password-recovery.md)
+for cooldown, rate limits, failure tradeoffs and the local demonstration.
+
 Google sign-in uses the same RingLab session boundary as local login:
 
 ```text

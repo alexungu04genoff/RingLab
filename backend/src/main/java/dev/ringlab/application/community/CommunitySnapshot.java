@@ -13,7 +13,7 @@ public record CommunitySnapshot(UUID revision, Instant snapshotAt, List<Entry> i
   public record Part(MachinePart part, Machine source) {}
   public record Entry(Build build, String authorName, Racer racer, Part front, Part rear,
                       Part tire, GameVersion patch, List<Gadget> gadgets, VoteSummary votes,
-                      BaseStatsBreakdown stats, Build remixSource) {
-    public Entry { gadgets = List.copyOf(gadgets); }
+                      BaseStatsBreakdown stats, Build remixSource, List<RaceMap> recommendedMaps) {
+    public Entry { gadgets = List.copyOf(gadgets); recommendedMaps = List.copyOf(recommendedMaps); }
   }
 }

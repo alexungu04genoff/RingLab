@@ -46,7 +46,15 @@ public class BuildService {
   public record Draft(
       String title, String description, UUID racerId, UUID frontPartId,
       UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
-      List<UUID> gadgetIds) {}
+      List<UUID> gadgetIds, List<UUID> recommendedMapIds) {
+    /** Null maps means omitted; the REST adapter rejects explicit JSON null. */
+    public Draft(String title, String description, UUID racerId, UUID frontPartId,
+        UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
+        List<UUID> gadgetIds) {
+      this(title, description, racerId, frontPartId, rearPartId, tirePartId, gameVersionId,
+          remixedFromBuildId, gadgetIds, null);
+    }
+  }
 
   private final BuildRepository builds;
   private final GameDataRepository game;
@@ -89,6 +97,7 @@ public class BuildService {
       throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
     if (query.filter().search() != null && query.filter().search().length() > 120)
       throw new ValidationException("Search must be at most 120 characters");
+    drafts.validateMapFilter(query.filter().mapId());
   }
 
   private Map<UUID, LocalDate> releaseDates(BuildSort sort) {
@@ -133,6 +142,7 @@ public class BuildService {
             draft.gameVersionId(),
             draft.remixedFromBuildId(),
             draft.gadgetIds(),
+            draft.recommendedMapIds() == null ? java.util.Set.of() : java.util.Set.copyOf(draft.recommendedMapIds()),
             now,
             now);
     builds.save(build);
@@ -157,6 +167,7 @@ public class BuildService {
             draft.gameVersionId(),
             existing.remixedFromBuildId(),
             draft.gadgetIds(),
+            draft.recommendedMapIds() == null ? existing.recommendedMapIds() : java.util.Set.copyOf(draft.recommendedMapIds()),
             existing.createdAt(),
             Instant.now());
     builds.save(build);

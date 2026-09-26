@@ -15,7 +15,7 @@ const build: Build = {
   id: "top", title: "Top snapshot winner", description: "", author: { id: "a", username: "author" },
   racer: { id: "r", name: "Racer", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
-  gameVersion: { id: "v1", version: "1.4.1", releasedAt: "2026-06-23" }, remixedFrom: null,
+  gameVersion: { id: "v1", version: "1.4.1", releasedAt: "2026-06-23" }, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null,
   gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 7, upvotes: 8, downvotes: 1,
 };
 const stats = { speed: null, acceleration: null, handling: null, power: null, boost: null };

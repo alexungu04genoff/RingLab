@@ -20,7 +20,7 @@ const stock: Build = {
   racer: { id: "racer", name: "Shadow", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: null,
-  remixedFrom: null,
+  mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null,
   gadgets: [{ id: "gadget", name: "Ring Engine", description: "Gain rings over time.", slotCost: 1,
     imagePath: "/assets/gadgets/ring-engine.png" }],
   createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", score: 39, upvotes: 40, downvotes: 1,

@@ -17,9 +17,16 @@ public interface BuildRepository {
       UUID machineId,
       UUID authorId,
       UUID gameVersionId,
-      Set<UUID> excludedIds) {
+      Set<UUID> excludedIds,
+      UUID mapId,
+      boolean includeAllMaps) {
     public Filter(String search, UUID racerId, UUID machineId, UUID authorId, UUID gameVersionId) {
-      this(search, racerId, machineId, authorId, gameVersionId, Set.of());
+      this(search, racerId, machineId, authorId, gameVersionId, Set.of(), null, true);
+    }
+
+    public Filter(String search, UUID racerId, UUID machineId, UUID authorId, UUID gameVersionId,
+        Set<UUID> excludedIds) {
+      this(search, racerId, machineId, authorId, gameVersionId, excludedIds, null, true);
     }
 
     public Filter {

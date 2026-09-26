@@ -59,7 +59,8 @@ class CommunitySelectionTest {
       case "find" -> Optional.ofNullable(builds.get(args[0]));
       default -> throw new AssertionError(name);
     });
-    var game = stub(GameDataRepository.class, (name, args) -> switch (name) {
+      var game = stub(GameDataRepository.class, (name, args) -> switch (name) {
+        case "listRaceMaps" -> List.of();
       case "listRacers" -> List.of(new Racer(racer, "Guest racer", RacingType.SPEED, "/assets/racers/tails.png"));
       case "listMachines" -> List.copyOf(machines.values());
       case "listMachineParts" -> List.copyOf(parts.values());

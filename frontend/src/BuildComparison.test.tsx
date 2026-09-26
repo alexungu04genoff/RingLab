@@ -16,7 +16,7 @@ const part = (type: "FRONT" | "REAR" | "TIRE") => ({ id: type, type, sourceMachi
 const base: Build = { id: "top", title: "Top build", description: "", author: { id: "a", username: "person" },
   racer: { id: "r", name: "Racer", imagePath: null, racingType: "SPEED" },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"), gameVersion: null,
-  remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 1, upvotes: 1, downvotes: 0 };
+  mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 1, upvotes: 1, downvotes: 0 };
 const unknown = { speed: null, acceleration: null, handling: null, power: null, boost: null };
 const stats = { ...unknown, character: unknown, machine: unknown };
 const ordinary = { ...base, id: "ordinary", title: "Ordinary build" };

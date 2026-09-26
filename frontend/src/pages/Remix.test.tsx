@@ -21,7 +21,7 @@ const source: Build = {
   racer: { id: "racer", name: "Sonic", racingType: "SPEED", imagePath: null },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: { id: "version", version: "1.4.1", releasedAt: "2026-06-23" },
-  remixedFrom: null,
+  mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null,
   gadgets: [
     { id: "second", name: "Second", description: null, slotCost: 1, imagePath: null },
     { id: "first", name: "First", description: null, slotCost: 1, imagePath: null },
@@ -62,7 +62,7 @@ it("preserves a Board family and its absent tire when remixing", () => {
 });
 
 it("offers authenticated remix action and links provenance to its source", () => {
-  const remix = { ...source, id: "remix", remixedFrom: { id: "source", title: "Original route" } };
+  const remix = { ...source, id: "remix", mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: { id: "source", title: "Original route" } };
   vi.mocked(useLoad).mockImplementation((path: string) => ({
     data: path.includes("comments") ? { items: [], total: 0, page: 0, size: 20 }
       : path === "/game-versions" ? [source.gameVersion] : remix,

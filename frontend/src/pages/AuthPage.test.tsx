@@ -28,6 +28,11 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
+it("offers account recovery from the login password form", () => {
+  page();
+  expect(screen.getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe("/forgot-password");
+});
+
 function page(register = false) {
   let navigate!: ReturnType<typeof useNavigate>;
   function Navigation() { navigate = useNavigate(); return null; }

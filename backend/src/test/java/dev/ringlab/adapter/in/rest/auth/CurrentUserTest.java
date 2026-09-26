@@ -14,6 +14,22 @@ import org.junit.jupiter.api.Test;
 
 class CurrentUserTest {
   @Test
+  void legacyAndVersionedSessionsBecomeInvalidAfterReset() {
+    UUID id = UUID.randomUUID();
+    for (int currentVersion : new int[]{0, 1}) {
+      UserRepository users = (UserRepository) Proxy.newProxyInstance(UserRepository.class.getClassLoader(),
+          new Class<?>[]{UserRepository.class}, (proxy, method, args) -> Optional.of(
+              new User(id, "account", "account@example.test", "hash", java.time.Instant.EPOCH, java.time.Instant.EPOCH, currentVersion)));
+      for (Object claim : new Object[]{null, 0, 1, -1, 1.5, "bad", "01"}) {
+        JsonWebToken token = (JsonWebToken) Proxy.newProxyInstance(JsonWebToken.class.getClassLoader(),
+            new Class<?>[]{JsonWebToken.class}, (proxy, method, args) -> method.getName().equals("getSubject") ? id.toString() : claim);
+        if (Integer.valueOf(currentVersion).equals(claim) || (claim == null && currentVersion == 0))
+          assertEquals(id, new CurrentUser(token, users).id());
+        else assertThrows(AuthenticationException.class, () -> new CurrentUser(token, users).id());
+      }
+    }
+  }
+  @Test
   void acceptsOnlyAValidSubjectForAnAccountThatStillExists() {
     UUID existing = UUID.randomUUID();
     UserRepository users = repositoryContaining(existing);

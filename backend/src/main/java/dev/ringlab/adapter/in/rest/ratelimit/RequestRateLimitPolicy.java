@@ -13,6 +13,8 @@ enum RequestRateLimitPolicy {
   GOOGLE_LOGIN(IdentityScope.CLIENT_IP),
   REGISTRATION(IdentityScope.CLIENT_IP),
   RESEND_VERIFICATION(IdentityScope.CLIENT_IP),
+  FORGOT_PASSWORD(IdentityScope.CLIENT_IP),
+  RESET_PASSWORD(IdentityScope.CLIENT_IP),
   BUILD_CREATION(IdentityScope.AUTHENTICATED_USER),
   COMMENT_CREATION(IdentityScope.AUTHENTICATED_USER),
   VOTING(IdentityScope.AUTHENTICATED_USER),
@@ -54,6 +56,8 @@ enum RequestRateLimitPolicy {
     if (method.equals("POST") && path.equals("/api/auth/resend-verification")) {
       return Optional.of(RESEND_VERIFICATION);
     }
+    if (method.equals("POST") && path.equals("/api/auth/forgot-password")) return Optional.of(FORGOT_PASSWORD);
+    if (method.equals("POST") && path.equals("/api/auth/reset-password")) return Optional.of(RESET_PASSWORD);
     if (method.equals("GET") && (path.equals("/api/builds")
         || path.equals("/api/community/top-builds") || path.equals("/api/community/top-builds/discord"))) {
       return Optional.of(BUILD_LIST);

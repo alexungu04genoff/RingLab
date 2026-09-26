@@ -18,7 +18,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
-import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Comparator;
 import java.util.Locale;
@@ -36,7 +35,7 @@ public class AuthService {
   private record RegistrationInput(
       @NotBlank @Pattern(regexp = "[A-Za-z0-9_]{3,30}") String username,
       @NotBlank @Email @Size(max = 254) String email,
-      @NotNull @Size(min = 8, max = 72) String password) {}
+      String password) {}
 
   private record LoginInput(
       @NotBlank @Size(max = 30) String username,
@@ -54,11 +53,10 @@ public class AuthService {
   @Transactional
   public VerificationEmail register(String username, String email, String password) {
     validateInput(new RegistrationInput(username, email, password));
+    PasswordPolicy.validate(password);
     username = username.toLowerCase(Locale.ROOT);
     email = email.toLowerCase(Locale.ROOT);
     profanity.requireClean(username);
-    if (password.getBytes(StandardCharsets.UTF_8).length > 72)
-      throw new ValidationException("Password must be at most 72 UTF-8 bytes");
     if (users.exists(username, email))
       throw new AlreadyExistsException("Username or email already registered");
     Instant now = Instant.now();

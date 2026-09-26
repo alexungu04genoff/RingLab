@@ -1,4 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { MapThumbnail } from "../MapRecommendations";
+import { mapCategoryLabel } from "../mapSelection";
+import type { RaceMap } from "../types";
+import { CompassIcon } from "../icons";
 import { Artwork, ErrorNotice, date } from "../components";
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
@@ -12,11 +17,12 @@ const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
   { key: "machines", label: "Stock Machines", Icon: SteeringWheelIcon },
   { key: "gadgets", label: "Gadgets", Icon: GearIcon },
+  { key: "maps", label: "Maps", Icon: CompassIcon },
   { key: "game-versions", label: "Versions / Patches", Icon: HistoryIcon },
 ] as const;
 
 type CollectionKey = (typeof collections)[number]["key"];
-type CollectionItem = Racer | Machine | Gadget | GameVersion;
+type CollectionItem = Racer | Machine | Gadget | GameVersion | RaceMap;
 
 const patchNotesByVersion: Record<string, string> = {
   "1.4.1": "https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1836506165544896",
@@ -84,6 +90,11 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
   stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
+  if ("category" in item) return <article className="panel map-collection-item">
+    <MapThumbnail map={item} /><h2>{item.name}</h2><p>{mapCategoryLabel(item.category)}</p>
+    {item.contentPack && <p className="muted">{item.contentPack}</p>}
+    <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link>
+  </article>;
   if ("slotCost" in item) return <GadgetCard gadget={item} />;
   if (tab === "machines") return <StockMachineCard machine={item}
     parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
@@ -93,6 +104,7 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
 
 export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
+  const [mapSearch, setMapSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
   const versions = useLoad<GameVersion[]>("/game-versions");
   const machineParts = useLoad<MachinePart[]>("/machine-parts");
@@ -131,8 +143,10 @@ export function GameData() {
       <ErrorNotice message={items.error} />
       <ErrorNotice message={versions.error || stats.error || machineParts.error} />
       {items.loading && <p role="status">Loading collection…</p>}
+      {tab === "maps" && <label className="collection-map-search">Search maps
+        <input type="search" value={mapSearch} onChange={event => setMapSearch(event.target.value)} /></label>}
       <div className={`collection collection-${tab}`}>
-        {items.data?.map((item) => <div key={item.id}>
+        {items.data?.filter(item => tab !== "maps" || ("name" in item && item.name.toLocaleLowerCase().includes(mapSearch.trim().toLocaleLowerCase()))).map((item) => <div key={item.id}>
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
             stats={stats.data} version={latestVersion?.version ?? null}
             loading={versions.loading || machineParts.loading || stats.loading}

@@ -18,6 +18,11 @@ public class GameDataDbAdapter implements GameDataRepository {
   private final EntityManager em;
   private final GameDataDbMapper mapper;
 
+  public List<dev.ringlab.domain.gamedata.RaceMap> listRaceMaps() {
+    return em.createQuery("from RaceMapDbEntity order by catalogOrder, id", RaceMapDbEntity.class)
+        .getResultList().stream().map(RaceMapDbEntity::toDomain).toList();
+  }
+
   public List<GameVersion> listGameVersions() {
     return em.createQuery("from GameVersionDbEntity order by releasedAt desc, id", GameVersionDbEntity.class)
         .getResultList().stream().map(mapper::toDomain).toList();

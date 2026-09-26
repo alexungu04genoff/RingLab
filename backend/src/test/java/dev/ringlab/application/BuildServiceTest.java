@@ -737,6 +737,8 @@ class BuildServiceTest {
   }
 
   private static final class GameDataStub implements GameDataRepository {
+    private final List<dev.ringlab.domain.gamedata.RaceMap> maps = new ArrayList<>();
+    public List<dev.ringlab.domain.gamedata.RaceMap> listRaceMaps() { return List.copyOf(maps); }
     private final Map<UUID, GameVersion> versions = new HashMap<>();
 
     public List<GameVersion> listGameVersions() {

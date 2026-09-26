@@ -331,6 +331,12 @@ Successful local login and Google sign-in return an RSA-signed JWT with the user
 
 The client keeps the bearer token in **sessionStorage**, surviving refresh in the same tab. Every authenticated request includes `Authorization: Bearer …`. A 401 clears the client session. Backend role checks protect mutations; application services separately verify resource ownership. Hidden buttons are only a UI convenience.
 
+Verified local-password accounts can recover access through **Forgot password?**.
+The single-use link expires after 30 minutes by default; successful reset invalidates
+all older sessions and returns to normal login. Google-only accounts keep using Google.
+See [Password recovery](docs/password-recovery.md) for endpoints, V29, configuration,
+legacy-session compatibility, mock-mail testing and the professor demonstration.
+
 `POST /api/auth/logout` returns 204 and the client discards its token. This is stateless logout: a copied token remains valid until expiration. There is no refresh token, revocation store, or session table. Browser storage is accessible to same-origin scripts, so keep the app free of untrusted script injection and use HTTPS for deployment. React renders descriptions and comments as plain text.
 
 ## Tests

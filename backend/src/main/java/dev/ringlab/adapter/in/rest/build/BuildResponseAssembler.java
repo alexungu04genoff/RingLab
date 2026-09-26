@@ -15,6 +15,10 @@ import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.UUID;
+import java.util.List;
+import java.util.Map;
+import dev.ringlab.domain.gamedata.RaceMap;
+import dev.ringlab.adapter.in.rest.build.response.MapRecommendationsResponse;
 import lombok.RequiredArgsConstructor;
 
 /** Enriches persisted builds with the public author, catalog, provenance and vote response. */
@@ -45,6 +49,18 @@ class BuildResponseAssembler {
   }
 
   BuildResponse assemble(Build build, VoteSummary summary) {
+    return assemble(build, summary, build.recommendedMapIds().isEmpty() ? List.of() : game.listRaceMaps());
+  }
+
+  /** Load the bounded map catalog once per response page, never once per map/card. */
+  List<BuildResponse> assembleAll(List<Build> items, Map<UUID, VoteSummary> summaries) {
+    var maps = items.stream().anyMatch(build -> !build.recommendedMapIds().isEmpty())
+        ? game.listRaceMaps() : List.<RaceMap>of();
+    return items.stream().map(build -> assemble(build,
+        summaries.getOrDefault(build.id(), new VoteSummary(0, 0)), maps)).toList();
+  }
+
+  private BuildResponse assemble(Build build, VoteSummary summary, List<RaceMap> maps) {
     var author = users.current(build.authorId());
     var remixSource = builds.remixSource(build).orElse(null);
     return new BuildResponse(
@@ -59,6 +75,7 @@ class BuildResponseAssembler {
         build.gameVersionId() == null ? null : GameVersionResponse.from(game.findGameVersion(build.gameVersionId()).orElseThrow()),
         remixSource == null ? null : new RemixSourceResponse(remixSource.id(), remixSource.title()),
         build.gadgetIds().stream().map(this::gadgetItem).toList(),
+        MapRecommendationsResponse.from(build.recommendedMapIds(), maps),
         build.createdAt(),
         build.updatedAt(),
         summary.score(), summary.upvotes(), summary.downvotes());

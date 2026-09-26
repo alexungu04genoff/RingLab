@@ -20,6 +20,7 @@ public record BuildResponse(
     GameVersionResponse gameVersion,
     RemixSourceResponse remixedFrom,
     List<GadgetResponse> gadgets,
+    MapRecommendationsResponse mapRecommendations,
     Instant createdAt,
     Instant updatedAt,
     long score,

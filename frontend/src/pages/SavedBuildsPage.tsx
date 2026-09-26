@@ -5,6 +5,8 @@ import { ComparisonTray } from "../BuildComparison";
 import { useSavedBuilds } from "../SavedBuilds";
 import { useLoad } from "../useLoad";
 import type { Build, BuildStatsResult, GameVersion } from "../types";
+import type { RaceMap } from "../types";
+import { MapFilter } from "../MapRecommendations";
 
 export interface SavedBuildPage {
   items: { build: Build; savedAt: string }[];
@@ -18,14 +20,18 @@ export function SavedBuildsPage() {
   const [params, setParams] = useSearchParams();
   const search = params.get("search") ?? "";
   const patch = params.get("gameVersionId") ?? "";
+  const mapId = params.get("mapId") ?? "";
+  const includeAllMaps = params.get("includeAllMaps") !== "false";
   const requestedPage = Number(params.get("page") ?? 0);
   const page = Number.isInteger(requestedPage) && requestedPage >= 0 && requestedPage <= 100000 ? requestedPage : 0;
   const [query, setQuery] = useState(search);
   const [refresh, setRefresh] = useState(0);
   useEffect(() => setQuery(search), [search]);
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const maps = useLoad<RaceMap[]>("/maps");
   const request = new URLSearchParams({ search, page: String(page), size: "12" });
   if (patch) request.set("gameVersionId", patch);
+  if (mapId) { request.set("mapId", mapId); request.set("includeAllMaps", params.get("includeAllMaps") ?? "true"); }
   const result = useLoad<SavedBuildPage>(saved?.authenticated ? `/saved-builds?${request}` : "", refresh + (saved?.revision ?? 0));
   const update = (changes: Record<string, string>) => {
     const next = new URLSearchParams(params);
@@ -61,15 +67,22 @@ export function SavedBuildsPage() {
         {versions.data?.map(version => <option key={version.id} value={version.id}>Ver. {version.version}</option>)}
       </select></label>
       <span>Most recently saved first</span>
+      <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
+        onChange={(id, include) => update({ mapId: id, includeAllMaps: id ? String(include) : "", page: "" })} />
     </section>
+    {maps.error && <p role="alert">{maps.error}</p>}
+    {mapId && <div className="active-filters" aria-label="Active map filter">
+      <button className="filter-chip" onClick={() => update({ mapId: "", includeAllMaps: "", page: "" })}>
+        Map: {maps.data?.find(map => map.id === mapId)?.name ?? "Unknown map"}{!includeAllMaps && " · Specific only"} ×
+      </button></div>}
     {result.loading && <p role="status">Loading saved builds…</p>}
     {result.error && <div role="alert"><p>Could not load saved builds. {result.error}</p>
       <button onClick={() => setRefresh(value => value + 1)}>Retry saved builds</button></div>}
     {result.data && <>
       <p>{result.data.total} saved {result.data.total === 1 ? "build" : "builds"}</p>
       {result.data.items.length === 0 ? <div className="empty">
-        <p>{search || patch ? "No saved builds match these filters." : "No saved builds yet. Bookmark a setup from Explore to find it here later."}</p>
-        {(search || patch) && <button onClick={() => setParams({})}>Clear filters</button>}
+        <p>{search || patch || mapId ? "No saved builds match these filters." : "No saved builds yet. Bookmark a setup from Explore to find it here later."}</p>
+        {(search || patch || mapId) && <button onClick={() => setParams({})}>Clear filters</button>}
         <Link to="/">Explore builds</Link>
       </div> : <div className="build-grid">
         {result.data.items.map(({build,savedAt}) => <div className="saved-card" key={build.id}>

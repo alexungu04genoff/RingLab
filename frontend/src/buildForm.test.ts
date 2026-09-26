@@ -22,7 +22,7 @@ it.each(machineTypes)("%s filters all slots and presets independently of the rac
     id: `${racingType}-${type}`, type, sourceMachineId: racingType, sourceMachineName: racingType,
     sourceMachineImagePath: null, racingType,
   })));
-  const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "independent", machineType,
+  const draft: BuildDraft = { recommendedMapIds: [], mapRecommendationMode: "ALL", title: "Keep", description: "Keep", racerId: "independent", machineType,
     frontPartId: "", rearPartId: "", tirePartId: null, gameVersionId: "v", gadgetIds: ["g"], remixedFromBuildId: null };
   expect(stockMachineSources(parts, machineType).map(p => p.sourceMachineId)).toEqual([machineType]);
   const selected = applyStockMachine(draft, parts, machineType);
@@ -123,7 +123,7 @@ it("applies all stock parts while preserving other fields and permits a later in
     id: `stock-${type}`, type, sourceMachineId: "stock", sourceMachineName: "Stock",
     sourceMachineImagePath: null, racingType: "SPEED",
   }));
-  const draft: BuildDraft = { title: "Keep", description: "Keep", racerId: "racer",
+  const draft: BuildDraft = { recommendedMapIds: [], mapRecommendationMode: "ALL", title: "Keep", description: "Keep", racerId: "racer",
     frontPartId: "old-front", rearPartId: "old-rear", tirePartId: "old-tire",
     machineType: "SPEED", gameVersionId: "version", remixedFromBuildId: null, gadgetIds: ["gadget"] };
   const stocked = applyStockMachine(draft, parts, "stock");
@@ -141,7 +141,7 @@ it("filters stock and individual parts by family and applies the correct family 
     sourceMachineImagePath: null, racingType: "SPEED",
   }));
   const parts = [...boardParts, ...standardParts];
-  const draft: BuildDraft = { title: "Keep", description: "", racerId: "racer",
+  const draft: BuildDraft = { recommendedMapIds: [], mapRecommendationMode: "ALL", title: "Keep", description: "", racerId: "racer",
     frontPartId: "front", rearPartId: "rear", tirePartId: "tire", machineType: "SPEED",
     gameVersionId: "version", remixedFromBuildId: null, gadgetIds: [] };
 

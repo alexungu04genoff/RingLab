@@ -24,6 +24,7 @@ final class CommunitySnapshotAssembler {
   private final Map<UUID, Machine> machines;
   private final Map<UUID, MachinePart> parts;
   private final Map<UUID, Gadget> gadgets;
+  private final List<RaceMap> maps;
   private final Map<UUID, Map<UUID, BaseStats>> racerStats = new HashMap<>();
   private final Map<UUID, Map<UUID, BaseStats>> partStats = new HashMap<>();
   private final Map<UUID, String> authorNames = new HashMap<>();
@@ -38,6 +39,7 @@ final class CommunitySnapshotAssembler {
     machines = index(game.listMachines(), Machine::id);
     parts = index(game.listMachineParts(), MachinePart::id);
     gadgets = index(game.listGadgets(), Gadget::id);
+    maps = game.listRaceMaps();
   }
 
   boolean eligible(Build build) {
@@ -59,7 +61,8 @@ final class CommunitySnapshotAssembler {
         build.gadgetIds().stream().map(gadgets::get).toList(), summary,
         BaseStatsBreakdown.calculate(build.racerId(), build.frontPartId(), build.rearPartId(),
             build.tirePartId(), versionRacers, versionParts),
-        build.remixedFromBuildId() == null ? null : builds.find(build.remixedFromBuildId()).orElse(null));
+        build.remixedFromBuildId() == null ? null : builds.find(build.remixedFromBuildId()).orElse(null),
+        maps.stream().filter(map -> build.recommendedMapIds().contains(map.id())).toList());
   }
 
   private CommunitySnapshot.Part part(UUID id) {

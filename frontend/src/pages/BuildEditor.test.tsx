@@ -15,7 +15,7 @@ const buildA: Build = {
   id: "A", title: "Build A draft", description: "A description", author: { id: "owner", username: "alex" },
   racer: { id: "racer", name: "Sonic", imagePath: null, racingType: "SPEED" },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"), gadgets: [],
-  gameVersion: null, remixedFrom: null, createdAt: "2026-01-01", updatedAt: "2026-01-01",
+  gameVersion: null, mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, createdAt: "2026-01-01", updatedAt: "2026-01-01",
   score: 0, upvotes: 0, downvotes: 0,
 };
 const buildB = { ...buildA, id: "B", title: "Build B draft" };

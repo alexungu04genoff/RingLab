@@ -6,6 +6,8 @@ import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, isStockSetu
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
 import { BuildStats } from "../BaseStats";
+import { RecommendedMapList } from "../MapRecommendations";
+import { compareMapRecommendations } from "../mapSelection";
 import type { Build, BuildPage, Gadget } from "../types";
 
 const SELECTOR_PAGE_SIZE = 8;
@@ -17,6 +19,7 @@ export function compareUrl(leftId: string, rightId: string) {
 
 export function buildDiff(left: Build, right: Build) {
   return {
+    maps: compareMapRecommendations(left.mapRecommendations, right.mapRecommendations),
     racer: left.racer.id !== right.racer.id,
     patch: left.gameVersion?.id !== right.gameVersion?.id,
     front: left.frontPart.id !== right.frontPart.id,
@@ -152,6 +155,13 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
           </span></div>
         <GadgetList build={build} other={other} side={side} />
       </section>
+      <DiffValue different={diff.maps.different} label="Recommended maps">
+        <h2>Recommended maps</h2><RecommendedMapList recommendations={build.mapRecommendations} />
+        {build.mapRecommendations.mode === "SELECTED" && other.mapRecommendations.mode === "SELECTED" && <>
+          <p>Common: {diff.maps.common.map(map => map.name).join(", ") || "None"}</p>
+          <p>Only this build: {diff.maps.onlyLeft.map(map => map.name).join(", ") || "None"}</p>
+        </>}
+      </DiffValue>
       <section className="panel compare-meta"><h2>Community & metadata</h2>
         <p aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
           <span className="upvote-count">↑ {build.upvotes}</span> · <span className="downvote-count">↓ {build.downvotes}</span>

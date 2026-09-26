@@ -11,6 +11,7 @@ import { savedBuildSetupIssues } from "./buildForm";
 import { LibraryIcon } from "./icons";
 import { CompareToggle } from "./BuildComparison";
 import { SaveBuildButton } from "./SavedBuilds";
+import { MapRecommendationControl } from "./MapRecommendations";
 
 const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
 const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";
@@ -175,7 +176,10 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
           </span>
         </div>
         <div className="card-equipment">
+          <div className="card-machine-badges">
+          <MapRecommendationControl recommendations={build.mapRecommendations} title={build.title} />
           <RacingTypeBadge kind="machine" type={build.frontPart.racingType} className="type-badge machine-type" />
+          </div>
           <span className="card-parts" aria-label="Machine parts">
             <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
             <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />

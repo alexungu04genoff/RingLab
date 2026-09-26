@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 public class SavedBuildService {
   private final SavedBuildRepository saved;
   private final BuildRepository builds;
+  private final BuildDraftValidator drafts;
   public record Item(Build build, Instant savedAt) {}
   public record Page(List<Item> items, long total) {
     public Page { items = List.copyOf(items); }
@@ -35,7 +36,13 @@ public class SavedBuildService {
 
   @Transactional
   public Page list(UUID actor, String search, UUID version, int page, int size) {
-    var bookmarks = saved.list(actor, search, version, page, size);
+    return list(actor, search, version, null, true, page, size);
+  }
+
+  @Transactional
+  public Page list(UUID actor, String search, UUID version, UUID mapId, boolean includeAllMaps, int page, int size) {
+    drafts.validateMapFilter(mapId);
+    var bookmarks = saved.list(actor, search, version, mapId, includeAllMaps, page, size);
     var hydrated = builds.findAll(bookmarks.items().stream().map(SavedBuildRepository.Bookmark::buildId).toList())
         .stream().collect(Collectors.toMap(Build::id, Function.identity()));
     return new Page(bookmarks.items().stream().filter(item -> hydrated.containsKey(item.buildId()))

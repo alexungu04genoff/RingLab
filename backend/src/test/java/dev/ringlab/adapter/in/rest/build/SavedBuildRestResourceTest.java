@@ -12,8 +12,8 @@ import static org.junit.jupiter.api.Assertions.*;
 class SavedBuildRestResourceTest {
   @Test void optionalStatsFailurePreservesPrivateListAndDoesNotLeakTheCause() {
     var actorId = UUID.randomUUID();
-    var service = new SavedBuildService(null,null) {
-      @Override public Page list(UUID actor, String search, UUID patch, int page, int size) {
+    var service = new SavedBuildService(null,null,null) {
+      @Override public Page list(UUID actor, String search, UUID patch, UUID mapId, boolean includeAllMaps, int page, int size) {
         assertEquals(actorId,actor); return new Page(List.of(),12);
       }
     };
@@ -23,7 +23,7 @@ class SavedBuildRestResourceTest {
         throw new IllegalStateException("Internal database detail");
       }
     };
-    var response = new SavedBuildRestResource(service,actor,null,stats).list(null,null,1,12);
+    var response = new SavedBuildRestResource(service,actor,null,stats,null).list(null,null,null,"true",1,12);
     var page = (SavedBuildRestResource.SavedPage) response.getEntity();
     assertEquals(12,page.total()); assertEquals(1,page.page()); assertTrue(page.items().isEmpty());
     assertNull(page.statsByBuildId()); assertEquals("Could not load base stats. Please try again.",page.statsError());

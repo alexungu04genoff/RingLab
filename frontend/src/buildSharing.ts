@@ -1,6 +1,7 @@
 import { gadgetPlateStatus } from "./buildForm";
 import type { Build } from "./types";
 import { machineTypeLabel } from "./machineComposition";
+import { mapSummary } from "./mapSelection";
 
 function slotLabel(cost: number): string {
   return `${cost} ${cost === 1 ? "slot" : "slots"}`;
@@ -32,6 +33,8 @@ export function formatBuildForSharing(build: Build, url: string): string {
     ...(build.tirePart ? [`Tires: ${build.tirePart.sourceMachineName}`] : []),
     "",
     ...gadgets,
+    "",
+    `**Recommended maps:** ${mapSummary(build.mapRecommendations)}`,
     "",
     `**Community:** ↑ ${build.upvotes} · ↓ ${build.downvotes}`,
     "",

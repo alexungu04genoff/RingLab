@@ -16,7 +16,7 @@ const base: Build = { id: "b", title: "Ordinary build", description: "", author:
   racer: { id: "r", name: "Racer", imagePath: null, racingType: "SPEED" },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),
   gameVersion: { id: "patch", version: "1.4.1", releasedAt: "2026-06-23" },
-  remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 1, upvotes: 1, downvotes: 0 };
+  mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, gadgets: [], createdAt: "2026-01-01", updatedAt: "2026-01-01", score: 1, upvotes: 1, downvotes: 0 };
 const values = { speed: 17.25, acceleration: 0, handling: null, power: 3, boost: 4 };
 const stats = { ...values, character: values, machine: values };
 const unknown = { speed: null, acceleration: null, handling: null, power: null, boost: null };

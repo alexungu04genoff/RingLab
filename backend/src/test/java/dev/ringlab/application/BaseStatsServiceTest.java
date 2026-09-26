@@ -171,6 +171,7 @@ class BaseStatsServiceTest {
   }
 
   private class Catalog implements GameDataRepository {
+    public List<dev.ringlab.domain.gamedata.RaceMap> listRaceMaps() { return List.of(); }
     RacingType machineType = RacingType.SPEED;
     final List<Machine> extraMachines = new ArrayList<>();
     final List<MachinePart> catalogParts = new ArrayList<>(List.of(

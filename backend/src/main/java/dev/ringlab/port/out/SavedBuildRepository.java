@@ -11,5 +11,9 @@ public interface SavedBuildRepository {
   Instant save(UUID userId, UUID buildId);
   void remove(UUID userId, UUID buildId);
   Set<UUID> status(UUID userId, Set<UUID> buildIds);
-  Page list(UUID userId, String search, UUID versionId, int page, int size);
+  Page list(UUID userId, String search, UUID versionId, UUID mapId, boolean includeAllMaps, int page, int size);
+
+  default Page list(UUID userId, String search, UUID versionId, int page, int size) {
+    return list(userId, search, versionId, null, true, page, size);
+  }
 }
