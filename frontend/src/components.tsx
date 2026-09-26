@@ -1,12 +1,15 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "./stats";
-import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, RacingType } from "./types";
-import { useLoad } from "./useLoad";
+import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer } from "./types";
+import { CardStats } from "./CardStats";
+import type { PageCardStats } from "./CardStats";
+import { RacingTypeBadge, racingTypeClass, racingTypeLabel } from "./RacingTypeBadge";
+export { racingTypeClass, racingTypeLabel } from "./RacingTypeBadge";
 import { machineTypeLabel } from "./machineComposition";
 import { savedBuildSetupIssues } from "./buildForm";
 import { LibraryIcon } from "./icons";
+import { CompareToggle } from "./BuildComparison";
 
 const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
 const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";
@@ -112,16 +115,6 @@ export function patchAge(version: GameVersion | null, versions: GameVersion[]): 
   return catalogIndex > 0 ? "older" : "unknown";
 }
 
-export function racingTypeClass(racingType: RacingType | null): string {
-  return `racing-type-${racingType?.toLowerCase() ?? "unknown"}`;
-}
-
-export function racingTypeLabel(racingType: RacingType | null): string {
-  if (!racingType) return "Unknown";
-  const lower = racingType.toLowerCase();
-  return `${lower.charAt(0).toUpperCase()}${lower.slice(1)}`;
-}
-
 function BuildPartIcon({ part, label, abbreviation }: {
   part: MachinePart;
   label: string;
@@ -156,25 +149,19 @@ export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
   );
 }
 
-export function BuildCard({ build, versions = [], stats, rank }: {
-  build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; rank?: number;
+export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
+  build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; rank?: number; pageStats?: PageCardStats;
 }) {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
   const setupIssues = savedBuildSetupIssues(build);
   return (
-    <Link
-      to={`/builds/${build.id}`}
-      state={{ from: browseOrigin(location.pathname, location.search) }}
-      className="build-card"
-    >
+    <article className="build-card">
       <div className="card-art">
         {rank != null && <span className="top-community-rank" aria-label={`Rank ${rank}`}>#{rank}</span>}
         <Artwork item={build.racer} portrait />
         <div className="card-art-heading">
-          <span className={`type-badge racing-type ${racingTypeClass(build.racer.racingType)}`}>
-            {build.racer.racingType ?? "Unknown"}
-          </span>
+          <RacingTypeBadge kind="racer" type={build.racer.racingType} />
           <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
             <span className="community-score">Score {build.score}</span>
             <span className="score-help" tabIndex={0} aria-label="How Best rated works">
@@ -186,9 +173,7 @@ export function BuildCard({ build, versions = [], stats, rank }: {
           </span>
         </div>
         <div className="card-equipment">
-          <span className={`type-badge machine-type racing-type ${racingTypeClass(build.frontPart.racingType)}`}>
-            {build.frontPart.racingType ?? "UNKNOWN"}
-          </span>
+          <RacingTypeBadge kind="machine" type={build.frontPart.racingType} className="type-badge machine-type" />
           <span className="card-parts" aria-label="Machine parts">
             <BuildPartIcon part={build.frontPart} label="Front" abbreviation="F" />
             <BuildPartIcon part={build.rearPart} label="Rear" abbreviation="R" />
@@ -201,9 +186,10 @@ export function BuildCard({ build, versions = [], stats, rank }: {
           <span className="eyebrow">{build.racer.name}</span>
           {setupIssues.length > 0 && <span className="invalid-setup-badge"
             aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
+          <CompareToggle build={build} />
         </div>
-        <h2>{build.title}</h2>
-        {stats ? <BuildCardStatsContent build={build} stats={stats} /> : <BuildCardStats build={build} />}
+        <h2><Link to={`/builds/${build.id}`} state={{ from: browseOrigin(location.pathname, location.search) }}>{build.title}</Link></h2>
+        <CardStats build={build} stats={stats} pageStats={pageStats} />
         <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
             <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
@@ -223,39 +209,10 @@ export function BuildCard({ build, versions = [], stats, rank }: {
           <time dateTime={build.createdAt}>{date(build.createdAt)}</time>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 
-function BuildCardStats({ build }: { build: Build }) {
-  const path = buildStatsPath({ gameVersionId: build.gameVersion?.id ?? null,
-    racerId: build.racer.id, frontPartId: build.frontPart.id,
-    rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null });
-  const result = useLoad<BuildStatsResult>(path);
-  if (!path) return <div className="card-stats unavailable">Stats unavailable</div>;
-  if (result.loading) return <div className="card-stats unavailable">Loading stats…</div>;
-  if (result.error || !result.data) return <div className="card-stats unavailable">Stats unavailable</div>;
-  return <BuildCardStatsContent build={build} stats={result.data} />;
-}
-
-function BuildCardStatsContent({ build, stats }: { build: Build; stats: BuildStatsResult }) {
-  const warning = buildStatsWarning(build);
-  return <><dl className="card-stats" aria-label="Base stats">
-    {statNames.map((name) => {
-      const { value, hasBreakdown, label, width, characterWidth, machineWidth }
-        = statPresentation(name, stats, stats);
-      return <div className={`card-stat stat-${name}`} key={name}>
-        <div><dt>{label}</dt><dd>{value ?? "—"}</dd></div>
-        <span className={`card-stat-track${value == null ? " unknown" : ""}`} aria-hidden="true">
-          {hasBreakdown ? <>
-            <span className="card-stat-character-fill" style={{ width: `${characterWidth}%` }} />
-            <span className="card-stat-machine-fill" style={{ width: `${machineWidth}%` }} />
-          </> : <span style={{ width: `${width}%` }} />}
-        </span>
-      </div>;
-    })}
-  </dl>{warning && <p className="card-stats-warning" role="note">⚠ {warning}</p>}</>;
-}
 export function isStockSetup(build: Pick<Build, "frontPart" | "rearPart" | "tirePart">) {
   return build.frontPart.sourceMachineId === build.rearPart.sourceMachineId &&
     (!build.tirePart || build.frontPart.sourceMachineId === build.tirePart.sourceMachineId);
@@ -293,9 +250,7 @@ export function MachineSetup({ build, compact = false, differences }: {
               <div className="machine-part-copy">
                 <strong>{part.sourceMachineName}</strong>
                 {part.racingType && (
-                  <span className={`part-type racing-type ${racingTypeClass(part.racingType)}`}>
-                    {part.racingType}
-                  </span>
+                  <RacingTypeBadge kind="machine" type={part.racingType} className="part-type" />
                 )}
               </div>
               <span className="eyebrow machine-part-slot">{label}</span>

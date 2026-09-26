@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "./api";
 import { BuildCard } from "./components";
+import { SnapshotTime } from "./SnapshotTime";
 import type { GameVersion, TopCommunitySnapshot } from "./types";
 
 export function topCommunitySummary(snapshot: TopCommunitySnapshot) {
@@ -55,9 +56,7 @@ export function TopCommunityBuilds({ versions = [], onSnapshot }: {
       <div className="top-community-title-line">
         <h2 id="top-community-heading">Top 3 community builds</h2>
         <span>Overall best rated · All patches</span>
-        {snapshot && <small>Updated <time dateTime={snapshot.snapshotAt}>
-          {new Date(snapshot.snapshotAt).toLocaleString()}
-        </time></small>}
+        {snapshot && <small><SnapshotTime timestamp={snapshot.snapshotAt} /></small>}
       </div>
       <div className="top-community-actions">
         <button type="button" disabled={loading} onClick={() => setRefresh(value => value + 1)}>

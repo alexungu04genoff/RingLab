@@ -8,6 +8,7 @@ import dev.ringlab.domain.gamedata.Machine;
 import dev.ringlab.domain.gamedata.MachinePart;
 import dev.ringlab.domain.gamedata.MachinePartType;
 import dev.ringlab.domain.gamedata.MachineComposition;
+import dev.ringlab.domain.build.Build;
 import dev.ringlab.port.out.BaseStatsRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -62,6 +63,26 @@ public class BaseStatsService {
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
     return BaseStatsBreakdown.calculate(racer, front, rear, tire, racers, parts);
+  }
+
+  /** Enrich only an already selected page of persisted builds. Its references are held
+   * by the builds and constrained by foreign keys; do not look them up again per card. */
+  public Map<UUID, BaseStatsBreakdown> buildPage(List<Build> builds) {
+    Map<UUID, Map<UUID, BaseStats>> racersByVersion = new HashMap<>();
+    Map<UUID, Map<UUID, BaseStats>> partsByVersion = new HashMap<>();
+    Map<UUID, BaseStatsBreakdown> result = new HashMap<>();
+    for (var build : builds) {
+      UUID version = build.gameVersionId();
+      if (version == null) {
+        result.put(build.id(), BaseStatsBreakdown.UNKNOWN);
+        continue;
+      }
+      var racers = racersByVersion.computeIfAbsent(version, stats::racerStats);
+      var parts = partsByVersion.computeIfAbsent(version, stats::machinePartStats);
+      result.put(build.id(), BaseStatsBreakdown.calculate(build.racerId(), build.frontPartId(),
+          build.rearPartId(), build.tirePartId(), racers, parts));
+    }
+    return Map.copyOf(result);
   }
 
   private void requireVersion(UUID version) {

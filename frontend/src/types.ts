@@ -114,6 +114,8 @@ export interface BuildPage {
   total: number;
   page: number;
   size: number;
+  statsByBuildId?: Record<string, BuildStatsResult>;
+  statsError?: string;
 }
 export interface Comment {
   id: string;

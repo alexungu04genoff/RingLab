@@ -1,8 +1,9 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { gadgetPlateStatus } from "../buildForm";
-import { Artwork, countLabel, date, ErrorNotice, isStockSetup, MachineSetup, racingTypeClass } from "../components";
+import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, isStockSetup, MachineSetup } from "../components";
+import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
 import { BuildStats } from "../BaseStats";
 import type { Build, BuildPage, Gadget } from "../types";
@@ -134,8 +135,7 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
       </section>
       <DiffValue different={diff.racer} label="Racer">
         <span className="eyebrow">RACER</span><strong>{build.racer.name}</strong>
-        <span className={`type-badge inline racing-type ${racingTypeClass(build.racer.racingType)}`}>
-          {build.racer.racingType ?? "Unknown"}</span>
+        <RacingTypeBadge kind="racer" type={build.racer.racingType} className="type-badge inline" />
       </DiffValue>
       <DiffValue different={diff.patch} label="Patch"><span className="eyebrow">GAME VERSION / PATCH</span>
         <strong>{build.gameVersion ? `Ver. ${build.gameVersion.version}` : "Unspecified"}</strong></DiffValue>
@@ -164,6 +164,8 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
 }
 
 export function CompareBuilds() {
+  const location = useLocation();
+  const backToBrowse = <Link className="back" to={buildDetailsOrigin(location.state?.from)}>← Back to Explore</Link>;
   const [params] = useSearchParams();
   const leftId = params.get("left") ?? "";
   const rightId = params.get("right") ?? "";
@@ -173,8 +175,9 @@ export function CompareBuilds() {
     <p>Open a build and use its Compare action to start a comparison.</p><Link to="/">Explore builds</Link></div>;
   if (rightId && rightId === leftId) return <div className="empty"><h1>Choose two different builds.</h1>
     <p>A build cannot be compared with itself.</p><Link to={`/compare?left=${encodeURIComponent(leftId)}`}>Choose another build</Link></div>;
-  if (!left.data) return <><ErrorNotice message={left.error} />{left.loading && <p role="status">Loading build…</p>}</>;
+  if (!left.data) return <>{backToBrowse}<ErrorNotice message={left.error} />{left.loading && <p role="status">Loading build…</p>}</>;
   return <>
+    {backToBrowse}
     <Link className="back" to={`/builds/${leftId}`}>← Back to build details</Link>
     <div className="page-heading"><div><div className="eyebrow accent">STRUCTURED COMPARISON</div>
       <h1>Compare builds</h1><p>Compare racers, machine parts, gadgets, patches, and community response.</p></div></div>

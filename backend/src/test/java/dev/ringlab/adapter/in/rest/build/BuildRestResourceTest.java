@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
+import dev.ringlab.application.gamedata.BaseStatsService;
 import dev.ringlab.application.vote.VoteService;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.domain.build.Build;
@@ -28,17 +29,40 @@ class BuildRestResourceTest {
       }
     };
     // A null cache also ensures explicit exclusions never consult a later server snapshot.
-    var resource = new BuildRestResource(builds, null, null, null);
-    var page = resource.list(null, null, null, null, null, true, List.of(winner), "rated", 2, 12);
+    var resource = new BuildRestResource(builds, null, null, null, null);
+    var page = resource.list(null, null, null, null, null, true, List.of(winner), "rated", 2, 12, false);
     assertEquals(24, page.total());
     assertEquals(2, page.page());
   }
   @Test
   void defaultsPublicBuildListingToBestRated() throws NoSuchMethodException {
     var list = BuildRestResource.class.getDeclaredMethod("list", String.class, UUID.class,
-        UUID.class, UUID.class, UUID.class, boolean.class, List.class, String.class, int.class, int.class);
+        UUID.class, UUID.class, UUID.class, boolean.class, List.class, String.class, int.class, int.class, boolean.class);
 
     assertEquals("rated", list.getParameters()[7].getAnnotation(DefaultValue.class).value());
+    assertEquals("false", list.getParameters()[10].getAnnotation(DefaultValue.class).value());
+  }
+
+  @Test
+  void optionalEnrichmentFailurePreservesPageAndUsesASafeMessage() {
+    var builds = new BuildService(null, null, null, null) {
+      @Override public Page list(Query query) { return new Page(List.of(), 19); }
+    };
+    var stats = new BaseStatsService(null, null) {
+      @Override public Map<UUID, BaseStatsBreakdown> buildPage(List<Build> page) {
+        assertTrue(page.isEmpty());
+        throw new IllegalStateException("Internal database detail");
+      }
+    };
+    var resource = new BuildRestResource(builds, null, null, null, stats);
+    var defaultPage = resource.list(null, null, null, null, null, false, List.of(), "newest", 2, 12, false);
+    assertNull(defaultPage.statsByBuildId());
+    assertNull(defaultPage.statsError());
+    var page = resource.list(null, null, null, null, null, false, List.of(), "newest", 2, 12, true);
+    assertEquals(defaultPage.items(), page.items()); assertEquals(19, page.total());
+    assertEquals(2, page.page()); assertEquals(12, page.size());
+    assertNull(page.statsByBuildId());
+    assertEquals("Could not load base stats. Please try again.", page.statsError());
   }
 
   @Test
@@ -77,8 +101,8 @@ class BuildRestResourceTest {
     };
     var votes = new CountingVoteService();
     var responses = new BuildResponseAssembler(builds, users, new Catalog(id), votes);
-    var resource = new BuildRestResource(builds, responses, null, null);
-    var page = resource.list(null, null, null, null, null, false, List.of(), "newest", 0, 12);
+    var resource = new BuildRestResource(builds, responses, null, null, null);
+    var page = resource.list(null, null, null, null, null, false, List.of(), "newest", 0, 12, false);
     assertEquals(1, page.total());
     assertEquals(id, page.items().getFirst().id());
     assertEquals(3, page.items().getFirst().score());

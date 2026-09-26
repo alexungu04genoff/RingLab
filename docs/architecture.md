@@ -363,3 +363,19 @@ URLs, implements conditional GET and formats Discord payloads without posting th
 to the shared BuildCard. Explore excludes those displayed IDs from the lower grid before
 counting and pagination; My Builds remains complete.
 See [the integration guide](community-top-builds.md) for contracts, policy, TTL and scaling limits.
+
+## Browse comparison and page stats
+
+`BuildComparisonProvider` owns at most two public build selections above the routes.
+It has no server persistence or authentication dependency. Cards use independent
+title links and comparison buttons; an inline tray checks availability before opening
+the existing comparison route. Route changes preserve selection; a reload clears it.
+
+`GET /api/builds?includeStats=true` optionally adds `statsByBuildId` for the selected
+page. `BaseStatsService.buildPage` uses the saved references and request-local maps,
+reading each distinct patch's racer and part maps once. It uses the same domain
+`BaseStatsBreakdown.calculate` as the single-build endpoint. Pagination, ranking,
+exclusions and response assembly precede enrichment. Failure omits the map and adds
+a safe `statsError` while preserving the normal page. Default callers receive the
+original four fields. Explore/My Builds consume this map; Top 3 keeps snapshot stats.
+See [browsing improvements](browsing-improvements.md) for UI behavior and validation.

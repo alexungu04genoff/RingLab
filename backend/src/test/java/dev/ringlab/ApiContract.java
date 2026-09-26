@@ -100,6 +100,27 @@ public abstract class ApiContract {
   }
 
   @Test
+  void optionalPageStatsMatchSingleBuildStatsAndKeepDefaultResponseShape() {
+    var author = register();
+    var body = draft();
+    String id = request(author.token).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+    var plain = given().queryParam("authorId", author.id).get("/api/builds").then().statusCode(200)
+        .body("keySet()", containsInAnyOrder("items", "total", "page", "size")).extract().jsonPath();
+    var enriched = given().queryParam("authorId", author.id).queryParam("includeStats", true)
+        .get("/api/builds").then().statusCode(200)
+        .body("keySet()", containsInAnyOrder("items", "total", "page", "size", "statsByBuildId")).extract().jsonPath();
+    assertThat(enriched.getList("items"), equalTo(plain.getList("items")));
+    assertThat(enriched.getInt("total"), equalTo(plain.getInt("total")));
+    var params = new HashMap<String, Object>();
+    for (String field : List.of("racerId", "frontPartId", "rearPartId", "tirePartId", "gameVersionId")) params.put(field, body.get(field));
+    var single = given().queryParams(params).get("/api/stats/build").then().statusCode(200).extract().jsonPath().getMap("$");
+    assertThat(enriched.getMap("statsByBuildId").get(id), equalTo(single));
+    given().queryParam("authorId", author.id).queryParam("includeStats", true).queryParam("excludeId", id)
+        .get("/api/builds").then().statusCode(200).body("items", empty()).body("total", equalTo(0))
+        .body("statsByBuildId.size()", equalTo(0));
+  }
+
+  @Test
   void registrationLoginAndCurrentUser() {
     var user = register();
     request(null)

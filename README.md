@@ -421,6 +421,14 @@ All endpoints are under `/api`; request and response bodies are JSON. IDs are UU
 
 Build listing: `search` (literal case-insensitive substring across titles, racers, source machines and gadgets), `racerId`, `machineId`, `authorId`, `gameVersionId`, `sort=newest|score|rated` (default rated), zero-based `page`, and `size` (1–50, default 12). `machineId` means “uses at least one part sourced from this stock machine.” Up to three repeated `excludeId` UUIDs pin exclusions to the displayed Top 3; otherwise `excludeTop=true` excludes the server's current snapshot. Response: `{items,total,page,size}`. Ranking tie-breaks are described below. Comments use zero-based `page` and `size` (default 20, max 50), oldest first. Creation currently returns 200 with the resource; deletions return 204 except votes, which return the updated score and current vote.
 
+Optional `includeStats=true` adds `statsByBuildId`, keyed by returned build ID, with the
+same nullable totals and character/machine breakdown as `/stats/build`. It only enriches
+the returned page, with one racer-map and one part-map read per distinct patch. On an
+optional stats failure the normal page remains available and includes a safe `statsError`
+instead of the map. Default callers are unchanged. Explore/My Builds use this enrichment;
+Top 3 continues to use its snapshot stats. See [the browsing guide](docs/browsing-improvements.md)
+for comparison selection, accessible stats disclosures, the provenance limitation, and measurements.
+
 PostgreSQL returns all filtered build candidates and raw vote counts. Domain `BuildRanking` and `WilsonScore` define ranking; `BuildService` ranks globally before pagination and derives the total from the candidate set. BEST_RATED uses full-precision Wilson confidence descending, actual patch release date descending (unspecified last), fewer downvotes at Wilson zero, creation time descending, then UUID ascending. This intentionally loads all matching candidates into memory. Comments remain paginated in PostgreSQL, with creation time ascending then UUID ascending.
 
 Build deletion atomically removes its votes, comments and gadget relations through database cascades. Remixes survive with their parent reference cleared. If a parent disappears during response assembly, optional `remixedFrom` is null; a missing requested build still returns 404. These lifecycle and query guarantees are documented on the outbound ports and covered by `RepositoryContractIntegrationTest`.

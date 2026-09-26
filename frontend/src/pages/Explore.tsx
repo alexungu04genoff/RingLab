@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth";
 import { Artwork, BuildCard, ErrorNotice } from "../components";
 import { useLoad } from "../useLoad";
+import { ComparisonTray } from "../BuildComparison";
+import { pageCardStats } from "../CardStats";
 import { LatestNews } from "../LatestNews";
 import { TopCommunityBuilds } from "../TopCommunityBuilds";
 import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../types";
@@ -69,6 +71,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const [search, setSearch] = useState(query);
   const [newsVisible, setNewsVisible] = useState(true);
   const [spotlight, setSpotlight] = useState<TopCommunitySnapshot>();
+  const [statsRefresh, setStatsRefresh] = useState(0);
   const racers = useLoad<Racer[]>("/racers");
   const machines = useLoad<Machine[]>("/machines");
   const versions = useLoad<GameVersion[]>("/game-versions");
@@ -89,13 +92,14 @@ export function Explore({ mine = false }: { mine?: boolean }) {
     sort,
     page: String(page),
     size: "12",
+    includeStats: "true",
   });
   if (racer) params.set("racerId", racer);
   if (machine) params.set("machineId", machine);
   if (gameVersion) params.set("gameVersionId", gameVersion);
   if (mine && user) params.set("authorId", user.id);
   if (!mine) spotlight?.items.forEach(({ build }) => params.append("excludeId", build.id));
-  const builds = useLoad<BuildPage>(`/builds?${params}`);
+  const builds = useLoad<BuildPage>(`/builds?${params}`, statsRefresh);
   const hasActiveFilters = Boolean(query || racer || machine || gameVersion);
   const activeChips = activeExploreFilterChips(
     urlParams, racers.data || [], machines.data || [], versions.data || [], mine,
@@ -144,6 +148,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   };
   return (
     <>
+      <ComparisonTray />
       <div className={`page-heading ${mine ? "" : "explore-hero"}`}>
         <div className={mine ? "" : "hero-copy"}>
           {!mine ? (
@@ -289,10 +294,13 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             </div>
           )}
           {builds.data &&
+            builds.data.statsError && <div className="error" role="alert">Builds are available, but base stats could not load. <button type="button"
+              onClick={() => setStatsRefresh((value) => value + 1)}>Retry page stats</button></div>}
+          {builds.data &&
             (builds.data.items.length ? (
               <div className="build-grid">
                 {builds.data.items.map((b) => (
-                  <BuildCard key={b.id} build={b} versions={versions.data || []} />
+                  <BuildCard key={b.id} build={b} versions={versions.data || []} pageStats={pageCardStats(builds.data!, b.id)} />
                 ))}
               </div>
             ) : (

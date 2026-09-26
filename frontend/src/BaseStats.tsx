@@ -3,6 +3,7 @@ import { useLoad } from "./useLoad";
 import { ErrorNotice } from "./components";
 import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "./stats";
 import type { StatsBreakdown } from "./stats";
+import { RacerIcon, SteeringWheelIcon } from "./icons";
 
 export { buildStatsPath } from "./stats";
 
@@ -22,8 +23,8 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
         : `Ver. ${version}${known < 5 ? " · Partial stats" : ""}`}</p>
       {warning && <p className="stats-compatibility-warning" role="note">{warning}</p>}
       {breakdown && known > 0 && <div className="stat-legend" aria-label="Stat bar breakdown">
-        <span><i className="character-swatch" />Character</span>
-        <span><i className="machine-swatch" />Machine</span>
+        <span><RacerIcon /><i className="character-swatch" />Character</span>
+        <span><SteeringWheelIcon /><i className="machine-swatch" />Machine</span>
       </div>}
       <dl className="stat-bars">{statNames.map((name) => {
         const { value, character, machine, hasBreakdown, label, width,

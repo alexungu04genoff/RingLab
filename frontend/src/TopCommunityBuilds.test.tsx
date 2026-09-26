@@ -63,6 +63,7 @@ it("keeps one showcase request across every filter, preference, sort and page ch
   expect(within(screen.getByRole("region", { name: "Top 3 community builds" }))
     .getByLabelText("Base stats")).toBeTruthy();
   expect(topCalls()).toHaveLength(1);
+  expect(vi.mocked(api).mock.calls.filter(([path]) => path.startsWith("/stats/"))).toHaveLength(0);
   expect(topCalls()[0][1]).toMatchObject({ anonymous: true, credentials: "omit", cache: "no-cache" });
   expect(vi.mocked(api).mock.calls.some(([path]) =>
     path.startsWith("/builds?") && new URLSearchParams(path.split("?")[1]).getAll("excludeId").includes("top")))

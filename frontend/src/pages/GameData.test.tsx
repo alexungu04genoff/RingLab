@@ -76,7 +76,7 @@ it("selects the newest version by release date", () => {
   expect(newestGameVersion(undefined)).toBeUndefined();
 });
 
-it("shows each available stock part and its stats in the machine hover popup", () => {
+it("shows loaded stock parts when explicitly opened without another catalog request", () => {
   const machine: Machine = { id: "dark-reaper", name: "Dark Reaper", racingType: "SPEED", imagePath: null };
   const part = (type: MachinePart["type"]): MachinePart => ({
     id: type.toLowerCase(), type, sourceMachineId: machine.id, sourceMachineName: machine.name,
@@ -94,8 +94,13 @@ it("shows each available stock part and its stats in the machine hover popup", (
   render(<GameData />);
   fireEvent.click(screen.getByRole("button", { name: /Stock Machines/ }));
 
+  const calls = vi.mocked(useLoad).mock.calls.length;
+  expect(screen.queryByLabelText("Front part stats")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  expect(vi.mocked(useLoad).mock.calls.length).toBe(calls);
+
   expect(screen.getByLabelText("Front part stats").textContent).toContain("Speed11");
   expect(screen.getByLabelText("Rear part stats").textContent).toContain("Acceleration12");
   expect(screen.getByLabelText("Tire part stats").textContent).toContain("Boost15");
-  expect(screen.getAllByText("Ver. 1.4.1")).toHaveLength(2);
+  expect(screen.getAllByText("Ver. 1.4.1")).toHaveLength(3);
 });

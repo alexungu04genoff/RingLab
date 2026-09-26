@@ -13,6 +13,7 @@ import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
 import { CompassIcon, HammerIcon, LibraryIcon } from "./icons";
 import { SiteFooter } from "./components";
+import { BuildComparisonProvider } from "./BuildComparison";
 import "./styles.css";
 function App() {
   const { user, logout, loading } = useAuth();
@@ -119,7 +120,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <App />
+        <BuildComparisonProvider><App /></BuildComparisonProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

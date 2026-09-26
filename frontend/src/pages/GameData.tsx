@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Artwork, ErrorNotice, date, racingTypeClass } from "../components";
+import { Artwork, ErrorNotice, date } from "../components";
+import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
 import { StatsBlock } from "../BaseStats";
-import type { BaseStats, StatsCatalog } from "../types";
+import type { StatsCatalog } from "../types";
 import type { Gadget, GameVersion, Machine, MachinePart, Racer } from "../types";
 import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
-import { statNames } from "../stats";
+import { StockMachineCard } from "../StockMachineCard";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -31,65 +32,15 @@ export function newestGameVersion(versions: GameVersion[] | undefined) {
     !newest || version.releasedAt > newest.releasedAt ? version : newest, undefined);
 }
 
-function RacingTypeBadge({ item }: { item: Racer | Machine }) {
-  return (
-    <span className={`collection-type racing-type ${racingTypeClass(item.racingType)}`}>
-      {item.racingType ?? "Unknown"}
-    </span>
-  );
-}
-
 function RacerCard({ racer }: { racer: Racer }) {
   return (
     <article className="panel collection-item racer-collection-item">
       <Artwork item={racer} compact portrait />
       <div className="collection-copy">
         <h2>{racer.name}</h2>
-        <RacingTypeBadge item={racer} />
+        <RacingTypeBadge kind="racer" type={racer.racingType} className="collection-type" />
       </div>
     </article>
-  );
-}
-
-const partLabel = (part: MachinePart) => part.type === "TIRE" ? "Tire" :
-  part.type[0] + part.type.slice(1).toLowerCase();
-
-function PartStats({ part, stats }: { part: MachinePart; stats?: BaseStats }) {
-  return <section className="machine-part-stats" aria-label={`${partLabel(part)} part stats`}>
-    <h3>{partLabel(part)}</h3>
-    <dl>{statNames.map((stat) => <div key={stat}>
-      <dt>{stat[0].toUpperCase() + stat.slice(1)}</dt>
-      <dd>{stats?.[stat] ?? "—"}</dd>
-    </div>)}</dl>
-  </section>;
-}
-
-function MachineCard({ machine, parts, partStats, version }: {
-  machine: Machine;
-  parts: MachinePart[];
-  partStats: StatsCatalog["machineParts"] | undefined;
-  version: string | null;
-}) {
-  return (
-    <div className="machine-collection-hover" tabIndex={0} aria-describedby={`machine-stats-${machine.id}`}>
-      <article className="panel collection-item machine-collection-item">
-        <Artwork item={machine} compact />
-        <div className="collection-copy">
-          <span className="eyebrow">Machine</span>
-          <h2>{machine.name}</h2>
-          <RacingTypeBadge item={machine} />
-        </div>
-      </article>
-      <aside className="machine-stats-popup" id={`machine-stats-${machine.id}`}>
-        <div className="machine-stats-popup-heading">
-          <div><span className="eyebrow">Stock part stats</span><strong>{machine.name}</strong></div>
-          <span>Ver. {version ?? "unknown"}</span>
-        </div>
-        {parts.length > 0 ? <div className="machine-part-stats-grid">
-          {parts.map((part) => <PartStats key={part.id} part={part} stats={partStats?.[part.id]} />)}
-        </div> : <p>Part stats unavailable.</p>}
-      </aside>
-    </div>
   );
 }
 
@@ -128,15 +79,15 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
   );
 }
 
-function CollectionCard({ item, tab, machineParts, stats, version }: {
+function CollectionCard({ item, tab, machineParts, stats, version, loading, error }: {
   item: CollectionItem; tab: CollectionKey; machineParts: MachinePart[];
-  stats: StatsCatalog | undefined; version: string | null;
+  stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("slotCost" in item) return <GadgetCard gadget={item} />;
-  if (tab === "machines") return <MachineCard machine={item}
+  if (tab === "machines") return <StockMachineCard machine={item}
     parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
-    partStats={stats?.machineParts} version={version} />;
+    catalog={stats} version={version} loading={loading} error={error} />;
   return <RacerCard racer={item} />;
 }
 
@@ -159,13 +110,13 @@ export function GameData() {
           <section className="collection-intro" aria-label="How a RingLab build works">
             <strong>How a build comes together</strong>
             <p>
-              Choose one racer, one front, one rear and one tire part, and optional gadgets in the order you
-              want them shown.
+              Choose one racer, front and rear parts, plus a tire for machines other than Boost / Extreme Gear.
+              Add optional gadgets in the order you want them shown.
             </p>
           </section>
         </div>
       </div>
-      <div className="tabs">
+      <div className="tabs collection-tabs">
         {collections.map(({ key, label, Icon }) => (
           <button
             key={key}
@@ -183,7 +134,9 @@ export function GameData() {
       <div className={`collection collection-${tab}`}>
         {items.data?.map((item) => <div key={item.id}>
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
-            stats={stats.data} version={latestVersion?.version ?? null} />
+            stats={stats.data} version={latestVersion?.version ?? null}
+            loading={versions.loading || machineParts.loading || stats.loading}
+            error={versions.error || machineParts.error || stats.error} />
           {"racingType" in item && <>
             {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
               : !versions.error && !stats.error && <StatsBlock

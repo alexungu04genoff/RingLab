@@ -2,11 +2,13 @@ package dev.ringlab.application;
 
 import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.port.out.BaseStatsRepository;
 import dev.ringlab.port.out.GameDataRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +30,71 @@ class BaseStatsServiceTest {
 
   private BaseStats ones() {
     return new BaseStats(BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE);
+  }
+
+  private Build saved(UUID patch, UUID selectedTire) {
+    return new Build(UUID.randomUUID(), "Saved", "", UUID.randomUUID(), racer, front, rear, selectedTire,
+        patch, null, List.of(), Instant.EPOCH, Instant.EPOCH);
+  }
+
+  @Test
+  void pageResultsEqualCanonicalCalculationIncludingBoardsDecimalsZeroAndUnknowns() {
+    racers.put(racer, new BaseStats(BigDecimal.ZERO, new BigDecimal("1.25"), null, BigDecimal.ONE, BigDecimal.ONE));
+    parts.put(front, ones()); parts.put(rear, ones()); parts.put(tire, ones());
+    var car = saved(version, tire);
+    var board = saved(version, null);
+    var versionless = saved(null, tire);
+    var carExpected = service.buildBreakdown(version, racer, front, rear, tire);
+    var boardExpected = service.buildBreakdown(version, racer, front, rear, null);
+    reads = 0;
+    var result = service.buildPage(List.of(car, board, versionless));
+    assertEquals(carExpected, result.get(car.id()));
+    assertEquals(boardExpected, result.get(board.id()));
+    assertEquals(new BigDecimal("3.25"), result.get(board.id()).total().acceleration());
+    assertEquals(BigDecimal.ZERO, result.get(car.id()).character().speed());
+    assertNull(result.get(car.id()).total().handling());
+    assertEquals(BaseStatsBreakdown.UNKNOWN, result.get(versionless.id()));
+    assertEquals(2, reads);
+    parts.remove(tire);
+    assertEquals(service.buildBreakdown(version, racer, front, rear, tire), service.buildPage(List.of(car)).get(car.id()));
+    assertEquals(BaseStats.UNKNOWN, service.buildPage(List.of(car)).get(car.id()).machine());
+  }
+
+  @Test
+  void pageReadsEachDistinctPatchMapOnceWithoutCatalogLookupsOrCrossContamination() {
+    UUID other = UUID.randomUUID();
+    Map<UUID, Integer> racerReads = new HashMap<>();
+    Map<UUID, Integer> partReads = new HashMap<>();
+    var pageService = new BaseStatsService(new BaseStatsRepository() {
+      public Map<UUID, BaseStats> racerStats(UUID patch) {
+        racerReads.merge(patch, 1, Integer::sum);
+        return patch.equals(version) ? Map.of(racer, ones()) : Map.of();
+      }
+      public Map<UUID, BaseStats> machinePartStats(UUID patch) {
+        partReads.merge(patch, 1, Integer::sum);
+        return patch.equals(version) ? Map.of(front, ones(), rear, ones(), tire, ones()) : Map.of();
+      }
+    }, null); // Any attempt to reconstruct catalog references fails this test.
+    var a = saved(version, tire); var b = saved(other, null);
+    var page = new ArrayList<Build>();
+    page.add(a); page.add(b);
+    for (int i = 0; i < 10; i++) page.add(saved(i % 2 == 0 ? version : other, tire));
+    var result = pageService.buildPage(page);
+    assertEquals(new BigDecimal("4"), result.get(a.id()).total().speed());
+    assertEquals(BaseStatsBreakdown.UNKNOWN, result.get(b.id()));
+    assertEquals(Map.of(version, 1, other, 1), racerReads);
+    assertEquals(racerReads, partReads);
+    assertThrows(UnsupportedOperationException.class, () -> result.clear());
+    pageService.buildPage(List.of(a));
+    assertEquals(2, racerReads.get(version)); // No cache survives page requests.
+  }
+
+  @Test
+  void emptyAndVersionlessPagesDoNotReadStats() {
+    var pageService = new BaseStatsService(null, null);
+    assertTrue(pageService.buildPage(List.of()).isEmpty());
+    var build = saved(null, null);
+    assertEquals(Map.of(build.id(), BaseStatsBreakdown.UNKNOWN), pageService.buildPage(List.of(build)));
   }
 
   @Test

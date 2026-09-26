@@ -3,7 +3,8 @@ import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge, racingTypeClass } from "../components";
+import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge } from "../components";
+import { RacingTypeBadge } from "../RacingTypeBadge";
 import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
@@ -180,9 +181,7 @@ function BuildDetailsContent() {
                     <div className="eyebrow">RACER</div>
                     <h2>{b.racer.name}</h2>
                   </div>
-                  <span className={`type-badge inline racing-type ${racingTypeClass(b.racer.racingType)}`}>
-                    {b.racer.racingType ?? "Unknown"}
-                  </span>
+                  <RacingTypeBadge kind="racer" type={b.racer.racingType} className="type-badge inline" />
                 </div>
               </div>
               <div className="racer-build-summary">
