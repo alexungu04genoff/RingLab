@@ -835,8 +835,8 @@ main:has(.explore-hero) {
 .card-stat dd { margin: 0; color: #eef5ff; font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; }
 @container (max-width: 420px) {
   .card-stats { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .card-stats .card-stat.stat-power { grid-column: span 2; }
-  .card-stats .card-stat.stat-boost { grid-column: 2 / span 2; }
+  .card-stats .card-stat.stat-power,
+  .card-stats .card-stat.stat-boost { grid-column: span 2; }
 }
 @container (max-width: 340px) {
   .card-stat > div { flex-direction: column; gap: 2px; }
@@ -848,8 +848,8 @@ main:has(.explore-hero) {
 .card-stat-track.unknown { background: repeating-linear-gradient(135deg, #171e2a, #171e2a 3px, #111722 3px, #111722 6px); }
 .card-stat.stat-acceleration { --stat-color: #f1c75b; }
 .card-stat.stat-handling { --stat-color: #e767d1; }
-.card-stat.stat-power { grid-column: 2 / span 2; --stat-color: #ff7868; }
-.card-stat.stat-boost { grid-column: 4 / span 2; --stat-color: #73df8b; }
+.card-stat.stat-power { grid-column: 1 / span 2; --stat-color: #ff7868; }
+.card-stat.stat-boost { grid-column: 3 / span 2; --stat-color: #73df8b; }
 .card-kicker {
   display: flex;
   align-items: center;
@@ -960,7 +960,10 @@ main:has(.explore-hero) {
   transform: translateY(0);
 }
 /* Anchor card tooltips to the row so later gadgets cannot widen the page. */
-.build-card .tags { position: relative; }
+.build-card .tags {
+  position: relative;
+  justify-content: flex-start;
+}
 .build-card .tags > .card-gadget-icon { position: static; }
 .build-card .card-gadget-icon [role="tooltip"] { max-width: min(240px, 100%); }
 .card-meta {
