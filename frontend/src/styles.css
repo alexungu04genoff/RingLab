@@ -1737,9 +1737,9 @@ hr {
 }
 .detail-heading .save-build-control { align-self: stretch; }
 .detail-heading .save-build {
-  width: 180px;
+  width: 52px;
   height: 100%;
-  padding: 10px 17px;
+  padding: 10px;
 }
 .detail-grid {
   display: grid;
