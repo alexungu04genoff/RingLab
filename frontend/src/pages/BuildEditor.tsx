@@ -332,7 +332,9 @@ export function BuildEditor() {
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <span className="gadget-option-meta">
                           <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
-                          <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />
+                          {draft.gadgetIds.includes(g.id) && draftStats.data?.passive
+                            ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} />
+                            : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />}
                         </span>
                         {g.description && <span>{g.description}</span>}
                       </span>

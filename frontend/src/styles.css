@@ -3292,6 +3292,7 @@ nav,
 :root { --passive-border: #3a4658; }
 .passive-stats { min-width:0; }
 .passive-coverage { font-size:.85rem; font-weight:650; margin:.5rem 0; }
+.passive-stacking-warning { margin:.65rem 0 .5rem; padding:8px 10px; border:1px solid #a97a31; border-radius:5px; background:#2f281a; color:#f5d487; font-size:.75rem; line-height:1.4; }
 .passive-stat-grid { display:grid; gap:.45rem; margin:.5rem 0; }
 .passive-stat-grid > div { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:baseline; gap:.5rem; border-bottom:1px solid var(--passive-border); padding:.35rem 0; }
 .passive-stat-grid dt { font-size:.85rem; }
@@ -3330,6 +3331,7 @@ nav,
 .gadget-adjustment.bonus { background:color-mix(in srgb, var(--stat-color) 12%, transparent);
   box-shadow:0 0 6px color-mix(in srgb, var(--stat-color) 25%, transparent); }
 .gadget-adjustment.penalty { border-style:dashed; }
+.gadget-adjustment.unresolved { border-color:#a97a31; color:#f5d487; background:#2f281a; box-shadow:none; }
 .gadget-option:has(.gadget-adjustment.bonus) .artwork,
 .preview-gadgets li:has(.gadget-adjustment.bonus) .artwork { box-shadow:0 0 9px #3aaafa66; }
 .card-passive-details > summary { cursor:pointer; color:var(--muted, #adb5c4); }

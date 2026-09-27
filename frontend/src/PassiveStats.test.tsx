@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { DraftStats } from "./BaseStats";
 import { CardStats } from "./CardStats";
 import { BuildGadgetIcon } from "./components";
-import { GadgetRuleDetails, PassiveStatsPanel } from "./PassiveStats";
+import { GadgetAdjustmentBadges, GadgetRuleDetails, PassiveStatsPanel } from "./PassiveStats";
 import { passiveStatsPath, persistedStatsPath } from "./stats";
 import { shareStats } from "./buildSharing";
 import type { Build, BuildStatsResult, PassiveStatsResult } from "./types";
@@ -46,6 +46,17 @@ it("distinguishes partial, unsupported, conditional and non-stat effects",()=>{
   expect(screen.getByText("Gadget rules unavailable for this patch")).toBeTruthy();
   expect(screen.getByLabelText("speed result").textContent).toBe("= —");
   expect(screen.getByLabelText("Gadget speed adjustment").textContent).toBe("Unknown");
+});
+
+it("makes unresolved stacking visible instead of presenting the catalog bonus as applied",()=>{
+  const unresolved = {...result,coverage:"PARTIAL" as const,adjustments:{speed:0,acceleration:0,handling:0,power:0,boost:0},
+    adjusted:base,effects:[{...result.effects[0],gadgetName:"Acceleration Machine Kit",status:"UNSUPPORTED" as const,
+      adjustment:{speed:0,acceleration:0,handling:0,power:0,boost:0},
+      explanation:"Individual modifier is verified, but stacking is unresolved."}]};
+  render(<><GadgetAdjustmentBadges gadgetId="g1" value={unresolved} /><PassiveStatsPanel value={unresolved} /></>);
+  expect(screen.getByLabelText("Gadget adjustment not included").textContent).toContain("stacking unresolved");
+  expect(screen.getByText(/Gadget bonuses not added/).textContent).toContain("Acceleration Machine Kit");
+  expect(screen.getByLabelText("Gadget acceleration adjustment").textContent).toBe("+0");
 });
 
 it("uses page enrichment without issuing a per-card request and stops control bubbling",async()=>{

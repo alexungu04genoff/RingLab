@@ -12,7 +12,15 @@ export function GadgetAdjustmentBadges({ gadgetId, value }: { gadgetId: string; 
   const adjustments = statNames.map(name => ({name,
     points: effects.reduce((total, effect) => total + (effect.adjustment[name] ?? 0), 0),
   })).filter(({points}) => points !== 0);
-  if (!adjustments.length) return null;
+  if (!adjustments.length) {
+    const unresolved = value.effects.some(effect => effect.gadgetId === gadgetId
+      && effect.effectId === "stats" && effect.status === "UNSUPPORTED");
+    return unresolved ? <span className="gadget-adjustments" aria-label="Gadget adjustment not included">
+      <span className="gadget-adjustment unresolved" title="This combination's passive-stat stacking has not been verified.">
+        Not added · stacking unresolved
+      </span>
+    </span> : null;
+  }
   return <span className="gadget-adjustments" aria-label="Applied gadget adjustments">
     {adjustments.map(({name,points}) => <span key={name}
       className={`gadget-adjustment stat-row stat-${name} ${points > 0 ? "bonus" : "penalty"}`}
@@ -67,6 +75,9 @@ const groups = [
 export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveStatsResult; compact?: boolean }) {
   if (!value) return <p className="muted">Passive gadget information is unavailable. Base stats remain available.</p>;
   const unavailable = value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT";
+  const unresolvedGadgets = [...new Set(value.effects
+    .filter(effect => effect.effectId === "stats" && effect.status === "UNSUPPORTED")
+    .map(effect => effect.gadgetName))];
   const calculations = <dl className="passive-stat-grid" aria-label="Base plus gadget adjustment equals result">
     {statNames.map(name => <div key={name} className={`stat-${name}`}>
       <dt>{name[0].toUpperCase() + name.slice(1)}</dt>
@@ -106,6 +117,9 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
           </div>
         </div>;
       })}</dl></>}
+    {unresolvedGadgets.length > 0 && <p className="passive-stacking-warning" role="note">
+      Gadget bonuses not added: stacking is unresolved for {unresolvedGadgets.join(" + ")}.
+    </p>}
     <p className="passive-coverage" role="note">{coverageLabel(value)}</p>
     {compact && calculations}
     <p className="muted passive-note">{value.coverage === "PARTIAL" ? "Known subtotal only. " : ""}Passive effects only · Ver. {value.supportedVersion}</p>
