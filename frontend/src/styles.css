@@ -1735,6 +1735,11 @@ hr {
   gap: 9px;
   flex-shrink: 0;
 }
+.detail-heading .save-build {
+  min-width: 44px;
+  min-height: 44px;
+  padding: 8px 10px;
+}
 .detail-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
