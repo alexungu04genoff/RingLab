@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { DraftStats } from "./BaseStats";
 import { CardStats } from "./CardStats";
 import { BuildGadgetIcon } from "./components";
-import { GadgetAdjustmentBadges, GadgetRuleDetails, PassiveStatsPanel } from "./PassiveStats";
+import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels, GadgetRuleDetails, PassiveStatsPanel } from "./PassiveStats";
 import { passiveStatsPath, persistedStatsPath } from "./stats";
 import { shareStats } from "./buildSharing";
 import type { Build, BuildStatsResult, PassiveStatsResult } from "./types";
@@ -190,4 +190,15 @@ it("renders collection rules from the shared API metadata",()=>{
     explanation:"Uses racer type",sources:["https://example.test/source"],stackingGroup:null}]}]}} />);
   expect(screen.getByText("Racer type BOOST: Power −5, Boost +7")).toBeTruthy();
   expect(screen.getByText("Other known types: No stat-point adjustment")).toBeTruthy();
+});
+
+it("keeps a gadget type condition separate from its stat badges",()=>{
+  const catalog={ruleset:"test",supportedVersion:"1.4.1",note:"Known arithmetic",gadgets:[{gadgetId:"g1",effects:[{
+    effectId:"stats",label:"Matching machine bonus",kind:"PASSIVE" as const,subject:"MACHINE" as const,requiredType:"ACCELERATION" as const,
+    matching:{speed:0,acceleration:20,handling:0,power:0,boost:0},nonMatching:{speed:0,acceleration:0,handling:0,power:0,boost:0},
+    explanation:"Uses machine type",sources:[],stackingGroup:null}]}]};
+  render(<><span className="gadget-option-meta"><small>3 slots</small><GadgetCatalogTypeLabels gadgetId="g1" catalog={catalog} /></span>
+    <GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} /></>);
+  expect(screen.getByLabelText("Gadget type conditions").textContent).toBe("Acceleration machine");
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toBe("Acceleration +20");
 });

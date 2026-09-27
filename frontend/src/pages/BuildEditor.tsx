@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
-import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges } from "../PassiveStats";
+import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels } from "../PassiveStats";
 import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, currentSessionGeneration, json } from "../api";
@@ -332,11 +332,12 @@ export function BuildEditor() {
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <span className="gadget-option-meta">
                           <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
-                          {draft.gadgetIds.includes(g.id) && draftStats.data?.passive
-                            ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} />
-                            : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />}
+                          <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules.data} />
                         </span>
                         {g.description && <span>{g.description}</span>}
+                        {draft.gadgetIds.includes(g.id) && draftStats.data?.passive
+                          ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} />
+                          : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />}
                       </span>
                     </label>
                     </div>
