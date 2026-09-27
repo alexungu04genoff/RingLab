@@ -117,10 +117,15 @@ class BuildRecommendationSolverTest {
     var result = solve(f, request(current, current, RacingType.SPEED));
     assertEquals(UNAVAILABLE, result.outcome()); assertNull(result.selection()); assertNull(result.currentStats());
     assertTrue(result.restrictions().stream().anyMatch(s -> s.contains("Unreviewed")));
-    f.addGadget(52, 1); f.addGadget(50, 1);
-    current = selection(List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(50)));
+    f.addGadget(52, 1); f.addGadget(49, 1);
+    current = selection(List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(49)));
     result = solve(f, request(current, current, RacingType.SPEED));
     assertEquals(UNAVAILABLE, result.outcome()); assertTrue(result.restrictions().stream().anyMatch(s -> s.contains("stacking")));
+    f.addGadget(50, 1);
+    current = selection(List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(50)));
+    result = solve(f, request(current, current, RacingType.SPEED));
+    assertEquals(ESTABLISHED, result.outcome());
+    assertEquals(points(24, 0, 7, 4, 4), result.recommendedStats());
     f.version = new GameVersion(VERSION, "1.3.1", LocalDate.EPOCH);
     assertEquals(UNAVAILABLE, solve(f, request(EMPTY, EMPTY, RacingType.SPEED)).outcome());
   }

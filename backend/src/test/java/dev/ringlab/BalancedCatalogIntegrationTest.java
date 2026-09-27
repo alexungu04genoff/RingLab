@@ -91,8 +91,10 @@ class BalancedCatalogIntegrationTest {
       assertEquals(110.2, result.getDouble("balanced.minimum.BOOST"));
       assertEquals(112, result.getDouble("recommendedStats.boost"));
       assertEquals(31, result.getDouble("recommendedStats.speed"));
-      assertEquals(47, result.getDouble("recommendedStats.acceleration"));
-      assertEquals(61, result.getDouble("recommendedStats.handling"));
+      // Independent passive effects expand the legal gadget combinations beyond the original demo.
+      // Preserve its trade-off and require the lower priorities to be at least as good.
+      assertTrue(result.getDouble("recommendedStats.acceleration") >= 47);
+      assertTrue(result.getDouble("recommendedStats.handling") >= 61);
       given().get("/api/builds/" + id).then().statusCode(200).body("frontPart.id", equalTo(definition.get("frontPartId")))
           .body("rearPart.id", equalTo(definition.get("rearPartId"))).body("title", equalTo(definition.get("title")));
       System.out.printf("BALANCED FROZEN FIXTURE isolatedId=%s outcome=%s work=%d ms=%d%n", id, result.getString("outcome"), result.getLong("work"), result.getLong("elapsedMillis"));
