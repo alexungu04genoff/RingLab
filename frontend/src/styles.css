@@ -1362,7 +1362,7 @@ footer {
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  padding-right: 8px;
+  padding-right: 16px;
   scrollbar-color: #50627a transparent;
   scrollbar-width: thin;
 }
