@@ -92,13 +92,35 @@ Lap starters, Evolution, ring engines and water/flight kit bonuses are condition
 excluded. Physical km/h are not Speed points. Charge timing, boost duration, item quantity
 and order, recovery and invincibility are separate from five-stat adjustments. Handling
 Character Kit's exact bundled Ring Thief variant is disputed; its +7/−5 passive part is
-supported separately. Unreviewed gadgets are explicitly unsupported, never assumed zero.
+supported separately. The disputed ring quantity does not make that passive part unknown.
+Unreviewed gadgets are explicitly unsupported, never assumed zero.
 Dummy/unknown identities in the external table are not imported.
+
+### Utility coverage correction (2026-09-28)
+
+Ruleset `2026-09-28.4` classifies the 42 remaining catalog gadgets using the original
+Gadget List's current 1.4 table, checked against the existing catalog descriptions.
+Item, ring, recovery, invincibility and technique utilities contribute **zero passive
+stat points**. Conditional race effects also contribute zero without an assumed event.
+All-Rounder's transformation/terrain effects and Less is More's ring-dependent physical
+speed remain conditional. Existing passive bonuses and penalties are unchanged.
+
+The production failure was Charmy Bee + Ancient Throne with Damage Evolution,
+Invincible Finish and Perfect Landing: valid stats `(29,66,61,35,49)` were marked partial
+because the last two gadgets lacked rule entries. Their finish/landing effects now have
+explicit conditional rules, so that complete setup can be a Balanced reference and
+retain its gadgets. The same correction covers the other reviewed utilities, including
+Handling Character Kit's ring-theft capability. Unknown identities and unresolved
+overlapping passive modifiers still remain unsupported. No schema or catalog cost changes.
+
+The subsequent [full 79-gadget audit](gadget-passive-audit-1.4.1.md) records every
+catalog entry, matching/non-matching passive values, corrected utility explanations,
+and the separate Substitute Item slot-cost discrepancy.
 
 ## Implementation and compatibility
 
 `PassiveGadgetRules` is a typed local table keyed by UUID, ruleset
-`crossworlds-1.4.1-passive-2026-09-27.1`. `PassiveStatsCalculator` is pure domain arithmetic;
+`crossworlds-1.4.1-passive-2026-09-28.4`. `PassiveStatsCalculator` is pure domain arithmetic;
 `PassiveStatsService` validates drafts, resolves actual racer/machine types separately, and
 batches page data. Top-three exports reuse it with already resolved metadata. No new rules
 engine, live scraping, ranking, ownership, publication or map mechanics are introduced.

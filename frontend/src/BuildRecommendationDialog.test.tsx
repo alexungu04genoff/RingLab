@@ -135,12 +135,12 @@ it("explains stat gains and losses on hover, keyboard focus and tap without appl
   expect(screen.queryByRole("tooltip")).toBeNull();
   fireEvent.mouseEnter(gain);
   expect(screen.getByRole("tooltip").textContent).toContain("Starting 20 → Recommended 21");
-  expect(screen.getByRole("tooltip").textContent).toContain("Lighter segment: increase");
+  expect(screen.getByRole("tooltip").textContent).toContain("Outlined extension: increase");
   fireEvent.mouseLeave(gain);
   expect(screen.queryByRole("tooltip")).toBeNull();
   fireEvent.focus(loss);
   expect(screen.getByRole("tooltip").textContent).toContain("Starting 30 → Recommended 29");
-  expect(screen.getByRole("tooltip").textContent).toContain("Darker segment: decrease");
+  expect(screen.getByRole("tooltip").textContent).toContain("Hatched reduction: decrease");
   expect(loss.getAttribute("aria-describedby")).toBe(screen.getByRole("tooltip").id);
   fireEvent.keyDown(loss, { key: "Escape" });
   expect(screen.queryByRole("tooltip")).toBeNull();
@@ -351,6 +351,31 @@ it("allows Balanced with reviewed non-stat gadgets without inventing stat bonuse
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
   expect(screen.getByLabelText("Handling current: 40")).toBeTruthy();
+});
+
+it("calculates Balanced for a remixed setup whose race-time gadgets contribute zero passive stats", async () => {
+  const gadgets = [
+    { id: "70000000-0000-4000-8000-000000000007", name: "Damage Evolution", slotCost: 1 },
+    { id: "70000000-0000-4000-8000-000000000004", name: "Invincible Finish", slotCost: 3 },
+    { id: "70000000-0000-4000-8000-000000000002", name: "Perfect Landing", slotCost: 1 },
+  ].map(gadget => ({ ...gadget, description: null, imagePath: null }));
+  const remixed = { ...draft, gadgetIds: gadgets.map(gadget => gadget.id) };
+  const reference: BuildStatsResult = { ...loadedStats, passive: { ...loadedStats.passive!, effects: gadgets.map(gadget => ({
+    gadgetId: gadget.id, gadgetName: gadget.name, effectId: "other-0", label: "Race-time effect",
+    status: "CONDITIONAL", adjustment: zeroStats, explanation: "No race event is assumed.", sources: [],
+  })) } };
+  vi.mocked(api).mockResolvedValue({ ...result, selection: draftSelection(remixed), recommendedStats: stats });
+  render(<BuildRecommendationDialog draft={remixed} locks={emptyLocks()} context="remix"
+    catalog={{ ...catalog, gadgets }} version={{ id: "patch", version: "1.4.1", releasedAt: "2026-06-23" }}
+    referenceStats={reference} returnFocus={null} onClose={vi.fn()} onApply={applied} />);
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.getByLabelText("Speed current: 30")).toBeTruthy();
+  calculate();
+  await screen.findByRole("heading", { name: "Recommended setup" });
+  const call = vi.mocked(api).mock.calls.find(([path]) => path === "/build-recommendations")!;
+  expect(JSON.parse(call[1]!.body as string)).toMatchObject({ mode: "BALANCED", current: draftSelection(remixed) });
+  expect(applied).not.toHaveBeenCalled();
 });
 
 it("explains a missing patch beside Calculate and requires reopening after the draft changes", async () => {

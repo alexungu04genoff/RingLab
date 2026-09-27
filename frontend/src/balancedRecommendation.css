@@ -10,23 +10,27 @@
 .build-recommendation-dialog .recommendation-priorities .type-badge { font-size: 15px; }
 .build-recommendation-dialog .recommendation-draft-note { font-size: 14px; }
 .recommendation-reference-gadgets .gadget-adjustment { font-size: 14px; line-height: 1.5; padding: 3px 8px; height: auto; }
-.recommendation-stat-legend { color: var(--muted); font-size: 16px; }
-.recommendation-stat-row { margin: 20px 0; }
-.recommendation-stat-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; font-size: 18px; margin-bottom: 10px; }
-.recommendation-stat-label > span:first-of-type { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
-.recommendation-stat-delta { min-width: 95px; text-align: right; font-weight: 700; }
-.recommendation-stat-meter { position: relative; }
-.build-recommendation-dialog .recommendation-stat-hit-area { display: block; width: 100%; padding: 10px 0; border: 0; background: transparent; border-radius: 6px; cursor: help; }
+.recommendation-stat-legend { color: var(--muted); font-size: 14px; line-height: 1.5; }
+.recommendation-stat-list.card-stats { gap: 20px 24px; margin: 18px 0 24px; }
+.recommendation-stat-list .recommendation-stat-row.card-stat { grid-column: span 2; margin: 0; }
+.recommendation-stat-row .recommendation-stat-label { flex-direction: row; flex-wrap: wrap; }
+.recommendation-stat-before { color: var(--muted); font-size: 14px; font-weight: 400; }
+.recommendation-stat-delta { display: block; margin-top: 6px; font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.recommendation-stat-delta small { font-size: 13px; font-weight: 400; }
+.recommendation-stat-row .recommendation-stat-meter { position: relative; display: block; margin: 0; }
+.build-recommendation-dialog .recommendation-stat-hit-area { display: block; width: 100%; padding: 4px 0; border: 0; background: transparent; border-radius: 6px; cursor: help; }
 .recommendation-stat-hit-area:focus-visible { outline: 2px solid var(--stat-color); outline-offset: 2px; }
-.recommendation-stat-track { display: block; position: relative; height: 12px; border-radius: 20px; background: #0d131d; }
 .recommendation-stat-tooltip { position: absolute; bottom: 100%; left: 0; z-index: 5; display: grid; gap: 4px; width: max-content; max-width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--stat-color); border-radius: 8px; background: #101925; color: #e4edff; font-size: 14px; line-height: 1.5; box-shadow: 0 4px 16px #0006; }
-.recommendation-stat-base { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
-.recommendation-stat-segment { position: absolute; top: 0; height: 100%; border-radius: 3px; }
-.recommendation-stat-segment.recommendation-gain { background: color-mix(in srgb, var(--stat-color) 40%, #fff); border: 1px solid color-mix(in srgb, var(--stat-color) 20%, #fff); }
-.recommendation-stat-segment.recommendation-loss { background: color-mix(in srgb, var(--stat-color) 40%, #101925); border: 1px dashed var(--stat-color); }
-.recommendation-stat-row .recommendation-stat-delta { color: color-mix(in srgb, var(--stat-color) 65%, #fff); }
-.recommendation-stat-marker { position: absolute; top: -3px; height: 18px; border-left: 2px solid #e4edff; }
-.recommendation-stat-limit { display: block; margin-top: 8px; color: var(--muted); font-size: 14px; }
+.recommendation-stat-row .recommendation-stat-delta:not(.recommendation-neutral) { color: color-mix(in srgb, var(--stat-color) 65%, #fff); }
+.card-stat-track > .recommendation-stat-marker { position: absolute; top: -3px; height: 14px; border-left: 2px solid #e4edff; border-radius: 0; background: transparent; }
+.recommendation-stat-limit { display: block; margin-top: 4px; color: var(--muted); font-size: 13px; line-height: 1.5; }
+@media (max-width: 700px) {
+  .recommendation-stat-list.card-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .recommendation-stat-list .recommendation-stat-row.card-stat { grid-column: auto; }
+}
+@media (max-width: 440px) {
+  .recommendation-stat-list.card-stats { grid-template-columns: minmax(0, 1fr); }
+}
 .recommendation-modes button { min-height: 48px; }
 .recommendation-toolbar .recommendation-machine-type { display: flex; flex-direction: column; gap: 6px; width: 280px; max-width: 100%; margin: 0; font-size: 16px; }
 .recommendation-machine-type select { height: 48px; margin: 0; }

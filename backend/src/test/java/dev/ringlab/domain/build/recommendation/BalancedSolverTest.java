@@ -79,6 +79,30 @@ class BalancedSolverTest {
     assertEquals(UNAVAILABLE, f.solve(f.request(f.reference(), List.of(BOOST), "0")).outcome());
   }
 
+  @Test void charmyAncientThroneRemixCanUseBalancedWithUtilityGadgetsLockedOrUnlocked() {
+    var f = new Fixture();
+    f.racers.put(id(2),new Racer(id(2),"Charmy Bee",RacingType.ACCELERATION,null));
+    f.machines.put(id(3),new Machine(id(3),"Ancient Throne",RacingType.HANDLING,null));
+    f.racerStats.put(id(2),points(14,18,10,11,7));
+    f.partStats.replaceAll((key, value) -> points(5,16,17,8,14));
+    var gadgets = List.of(new Gadget(PassiveGadgetRules.id(7),"Damage Evolution",null,1,null),
+        new Gadget(PassiveGadgetRules.id(4),"Invincible Finish",null,3,null),
+        new Gadget(PassiveGadgetRules.id(2),"Perfect Landing",null,1,null));
+    gadgets.forEach(gadget -> f.gadgets.put(gadget.id(),gadget));
+    var current = new BuildSelection(id(2),id(10),id(11),id(12),gadgets.stream().map(Gadget::id).toList());
+    var priorities = List.of(ACCELERATION,HANDLING,BOOST,POWER,SPEED);
+    for (var locks : List.of(EMPTY,current)) {
+      var request = new RecommendationRequest(id(1),RacingType.HANDLING,priorities,current,locks,
+          RecommendationMode.BALANCED,config(priorities,"0","0","0","0","0"));
+      var result = f.solve(request);
+      assertEquals(ESTABLISHED,result.outcome());
+      assertEquals(points(29,66,61,35,49),result.currentStats());
+      assertEquals(result.currentStats(),result.recommendedStats());
+      assertEquals(current,result.selection());
+      assertTrue(result.alreadyBest());
+    }
+  }
+
   @Test void limitsKeepIncumbentAndNeverClaimInfeasibilityOrAnEstablishedSecondaryDecision() {
     var f = new Fixture(); var request = f.request(f.reference(), List.of(BOOST), "0");
     var result = new BuildRecommendationSolver(f.catalog(), request, new BuildRecommendationSolver.Budget(1, Duration.ofSeconds(10))).solve();
