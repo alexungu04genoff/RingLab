@@ -1658,6 +1658,13 @@ hr {
   padding: 0px 7px;
   font-size: 12px;
 }
+.selected-gadgets.preview-gadgets .gadget-name {
+  flex: 1 1 auto;
+}
+.selected-gadgets.preview-gadgets li > div {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
 .detail-heading {
   display: flex;
   justify-content: space-between;
