@@ -99,6 +99,21 @@ class PassiveStatsCalculatorTest {
     assertEquals(NON_STAT,result.effects().getLast().status());
   }
 
+  @Test void independentModifiersAreCalculatedTogetherRegardlessOfSelectionOrder() {
+    var result = calculate(POWER,HANDLING,50,55,61);
+    assertEquals(points(0,8,3,0,8),result.adjustments());
+    assertEquals(CALCULATED,result.coverage());
+    assertEquals(result.adjusted(),calculate(POWER,HANDLING,61,50,55).adjusted());
+  }
+
+  @Test void unrelatedKnownEffectsSurviveAnUnresolvedOverlappingPair() {
+    var result = calculate(BOOST,POWER,38,11,50);
+    assertEquals(PARTIAL,result.coverage());
+    assertEquals(points(0,0,3,0,0),result.adjustments());
+    assertEquals(APPLIED,result.effects().stream().filter(e -> e.gadgetId().equals(id(50))
+        && e.effectId().equals("stats")).findFirst().orElseThrow().status());
+  }
+
   @Test void nonStatAndRaceEffectsNeverTurnIntoFiveStatBonuses() {
     for(int n:new int[]{5,6,7,8,15,17,45,46,47,48}) {
       var result=calculate(BOOST,POWER,n);

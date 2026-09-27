@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 /** Small, version-specific reviewed table. See docs/passive-gadget-sources.md. */
 public final class PassiveGadgetRules {
   public static final String VERSION = "1.4.1";
-  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-27.1";
+  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-28.1";
   public static final String ORIGINAL = "https://docs.google.com/spreadsheets/u/0/d/1_B2mHZUP6J6jeZfcwbM2HkLvjkwMYuACE4l6Ktt-UkI/htmlview/sheet?headers=true&gid=0";
   public static final String SEGA = "https://asia.sega.com/SonicRacingCrossWorlds/en/update/v-1-4-1.html";
   public static final BaseStats ZERO = points(0, 0, 0, 0, 0);

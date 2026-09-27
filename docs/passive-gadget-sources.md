@@ -67,10 +67,13 @@ is edited and no derived total is stored.
 
 Independent tuner documentation explicitly supports a same-type Tuner 1 + Tuner 2 pair.
 This release sums that pair including penalties, and supports any single applicable
-passive modifier. **Other combinations of multiple applicable passive modifiers are
-unresolved and are not summed.** Both entries are marked unsupported, independently of
-saved order. Non-matching zero effects and separately classified race/non-stat effects
-do not block a known modifier. This conservative subset is deliberate.
+passive modifier. Modifiers affecting disjoint stats are evaluated independently:
+on a Handling machine, Drift Charge Kit (+3 Handling), Acceleration Tuner 2
+(+8 Acceleration) and Boost Tuner 2 (+8 Boost) do not stack on the same stat.
+This is arithmetic over the reviewed individual rules, not new evidence for arbitrary
+stacking. Other overlapping pairs remain unsupported, independently of saved order.
+Unrelated known modifiers survive those unresolved pairs. Non-matching zero effects
+and separately classified race/non-stat effects do not block a known modifier.
 
 No universal effective cap or final rounding rule is imposed. BigDecimal preserves decimal
 precision; unknown base fields stay unknown. Values may exceed 100 or be negative. Results

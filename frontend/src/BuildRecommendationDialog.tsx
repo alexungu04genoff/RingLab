@@ -85,7 +85,17 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
   const headingId = useId();
   const blockerId = useId();
   const [machineType, setMachineType] = useState<RacingType | null>(draft.machineType);
-  const [priorities, setPriorities] = useState([...defaultPriorities]);
+  const [priorities, setPriorities] = useState(() => {
+    const current = referenceStats?.passive?.coverage === "CALCULATED" ? referenceStats.passive.adjusted : null;
+    const value = (priority: RacingType) => {
+      const points = current?.[priority.toLowerCase() as keyof BaseStats];
+      return points != null && Number.isFinite(points) ? points : -Infinity;
+    };
+    return [...defaultPriorities].sort((left, right) => {
+      const a = value(left), b = value(right);
+      return a === b ? 0 : a > b ? -1 : 1;
+    });
+  });
   const [mode, setMode] = useState<"STRICT" | "BALANCED">("STRICT");
   const [secondary, setSecondary] = useState<RacingType[]>([]);
   const [losses, setLosses] = useState<Record<RacingType, string>>({ SPEED: "0", ACCELERATION: "0", HANDLING: "0", BOOST: "0", POWER: "0" });
@@ -120,6 +130,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
   const conflict = lockTypeConflict(machineType, locks, catalog.parts);
   const lockedSlots = slots.filter(slot => locks[slot.key]);
   const selected = result?.selection;
+  const comparisonScale = Math.max(100, ...Object.values(result?.currentStats ?? {}), ...Object.values(result?.recommendedStats ?? {}));
   const ExplanationContainer = mode === "BALANCED" ? "details" : "section";
   const close = () => { recommendation.cancel(); onClose(); };
   const stat = (stats: BaseStats | null | undefined, priority: RacingType) => stats?.[priority.toLowerCase() as keyof BaseStats] ?? null;
@@ -236,7 +247,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
               onClick={() => setPriorities(movePriority(priorities, index, 1))}>↓</button></div>
         </li>)}</ol> : <div className="balanced-priorities-scroll"><table className="balanced-priorities-table" aria-label="Stat priorities">
           <thead><tr><th scope="col"><span className="sr-only">Drag</span></th><th scope="col">Stat</th><th scope="col">Move</th>
-            <th scope="col">Current</th><th scope="col">Maximum loss</th><th scope="col">Minimum allowed</th><th scope="col">Tie-break only</th></tr></thead>
+            <th scope="col">Current</th><th scope="col">Maximum loss</th><th scope="col">Minimum allowed</th><th scope="col">Tie-break / Ignore</th></tr></thead>
           <tbody>{activePriorities.map((priority, index) => {
             const minimum = referenceAvailable && losses[priority] !== "" && Number.isFinite(Number(losses[priority]))
               ? Number((stat(referenceValues, priority)! * (1 - Number(losses[priority]) / 100)).toFixed(8)) : "Unavailable";
@@ -259,13 +270,13 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
                   value={losses[priority]} onChange={event => setLosses({ ...losses, [priority]: event.target.value })} /><span aria-hidden="true">%</span></div></td>
               <td className="balanced-minimum" aria-label={`${racingTypeLabel(priority)} minimum allowed: ${minimum}`}>{minimum}</td>
               <td><button type="button" className="balanced-demote" disabled={activePriorities.length === 1}
-                aria-label={`Move ${racingTypeLabel(priority)} to tie-break only`} onClick={() => setSecondary([...secondary, priority])}>Move</button></td>
+                aria-label={`Move ${racingTypeLabel(priority)} to tie-break / ignore`} onClick={() => setSecondary([...secondary, priority])}>Move</button></td>
             </tr>;
           })}</tbody>
         </table></div>}
-        {mode === "BALANCED" && <section aria-label="Secondary stats"><h3 title="No minimum required. Higher values count only when your prioritized stats are equal. Multiple secondary stats are compared by their combined total.">Tie-break only</h3>
+        {mode === "BALANCED" && <section aria-label="Secondary stats"><h3 title="No minimum required. Higher values count only when your prioritized stats are equal. Multiple secondary stats are compared by their combined total.">Tie-break / Ignore</h3>
           <p>No minimum required. Higher values count only when your prioritized stats are equal. Multiple secondary stats are compared by their combined total.</p>
-          {secondary.length > 0 && <div className="balanced-priorities-scroll"><table className="balanced-secondary-table" aria-label="Tie-break-only stats"><thead><tr>
+          {secondary.length > 0 && <div className="balanced-priorities-scroll"><table className="balanced-secondary-table" aria-label="Tie-break / Ignore stats"><thead><tr>
             <th scope="col">Stat</th><th scope="col">Current</th><th scope="col"><span className="sr-only">Action</span></th></tr></thead>
             <tbody>{secondary.map(priority => <tr key={priority}><th scope="row"><span className={`type-badge racing-type ${racingTypeClass(priority)}`}>{racingTypeLabel(priority)}</span></th>
               <td className="balanced-current">{stat(referenceValues, priority) ?? "Unavailable"}</td><td><button type="button" aria-label={`Restore ${racingTypeLabel(priority)}`}
@@ -285,16 +296,30 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
             <div><dt>Gadgets</dt><dd><span>{reference.gadgetIds.length ? reference.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</span>
               <span aria-label="changes to">→</span><span>{selected.gadgetIds.length ? selected.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</span></dd></div>
           </dl>}{machineType === "BOOST" && <p className="recommendation-setup-note">Boost uses Front and Rear only. The proposed setup has no tire.</p>}
-          <table className="recommendation-stats"><caption>Passive-adjusted stats · same selected patch</caption><thead><tr>
-            <th>Stat</th><th>Current</th><th>Recommended</th><th>Signed change</th>{mode === "BALANCED" && <><th>Maximum loss</th><th>Minimum allowed</th></>}</tr></thead><tbody>{[...activePriorities, ...(mode === "BALANCED" ? secondary : [])].map(priority => {
+          <section className="recommendation-stat-comparison" aria-label="Stat comparison">
+            <h3>Passive-adjusted stats · same selected patch</h3>
+            <p className="recommendation-stat-legend">Starting value → new value · <span className="recommendation-gain">+ Gain</span> · <span className="recommendation-loss">− Loss</span></p>
+            {[...activePriorities, ...(mode === "BALANCED" ? secondary : [])].map(priority => {
               const before = stat(result.currentStats, priority), after = stat(result.recommendedStats, priority);
               const difference = before === null || after === null ? null : Number((after - before).toFixed(8));
-              return <tr key={priority}><th scope="row">{racingTypeLabel(priority)}</th><td>{before ?? "Unavailable"}</td><td>{after ?? "Unavailable"}</td>
-                <td className={mode === "BALANCED" && difference !== null ? difference > 0 ? "recommendation-gain" : difference < 0 ? "recommendation-loss" : "recommendation-neutral" : undefined}>
-                  {mode === "BALANCED" ? signedStatChange(before, after) : difference === null ? "Unavailable" : difference > 0 ? `+${difference}` : difference}</td>
-                {mode === "BALANCED" && (secondary.includes(priority) ? <td colSpan={2}>Tie-break only — no minimum</td>
-                  : <><td>{losses[priority]}%</td><td>{result.balanced?.minimum[priority] ?? "Unavailable"}</td></>)}</tr>;
-            })}</tbody></table>
+              const changeClass = difference === null || difference === 0 ? "recommendation-neutral" : difference > 0 ? "recommendation-gain" : "recommendation-loss";
+              return <div key={priority} className={`recommendation-stat-row stat-row stat-${priority.toLowerCase()}`}>
+                <div className="recommendation-stat-label"><strong>{racingTypeLabel(priority)}</strong>
+                  <span>{before ?? "Unavailable"} → <strong>{after ?? "Unavailable"}</strong></span>
+                  <span className={`recommendation-stat-delta ${changeClass}`}>{difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference}`}
+                    {mode === "BALANCED" && difference !== null && difference !== 0 && <small> ({signedStatChange(before, after)})</small>}</span>
+                </div>
+                <div className="recommendation-stat-track" role="img" aria-label={`${racingTypeLabel(priority)}: ${before ?? "Unavailable"} to ${after ?? "Unavailable"}`}>
+                  {before !== null && after !== null && <>
+                    <span className="recommendation-stat-base" style={{ width: `${Math.max(0, Math.min(before, after)) / comparisonScale * 100}%` }} />
+                    <span className={`recommendation-stat-segment ${changeClass}`} style={{ left: `${Math.max(0, Math.min(before, after)) / comparisonScale * 100}%`, width: `${Math.abs(difference!) / comparisonScale * 100}%` }} />
+                    <span className="recommendation-stat-marker" style={{ left: `${Math.max(0, before) / comparisonScale * 100}%` }} />
+                  </>}
+                </div>
+                {mode === "BALANCED" && <small className="recommendation-stat-limit">{secondary.includes(priority) ? "Tie-break / Ignore — no minimum"
+                  : `Maximum loss ${losses[priority]}% · Minimum allowed ${result.balanced?.minimum[priority] ?? "Unavailable"}`}</small>}
+              </div>;
+            })}</section>
           {mode === "BALANCED" && <BalancedSelectionChanges reference={reference} selected={selected} locks={locks} catalog={catalog} machineType={machineType} />}</>}
         <ExplanationContainer aria-label="Recommendation explanation" className={mode === "BALANCED" ? "balanced-explanation" : undefined}>
           {mode === "BALANCED" ? <summary>Why this setup</summary> : <h3>Reason</h3>}<p>{result.reason}</p>

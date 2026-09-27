@@ -56,9 +56,11 @@ it("opens configuration with current stats without requesting, exposes prioritie
   expect(screen.getByLabelText("Acceleration current: 20").textContent).toContain("20");
   expect(screen.getByLabelText("Boost current: 60").textContent).toContain("60");
   expect(screen.getByText("Nothing is locked. All selections may change.")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Move Speed up" }));
-  expect(within(screen.getByRole("list")).getAllByRole("listitem")[0].textContent).toContain("Speed");
-  fireEvent.click(screen.getByRole("button", { name: "Move Speed down" }));
+  expect(within(screen.getByRole("list")).getAllByRole("listitem").map(row => row.querySelector(".type-badge")?.textContent))
+    .toEqual(["Boost", "Power", "Handling", "Speed", "Acceleration"]);
+  fireEvent.click(screen.getByRole("button", { name: "Move Power up" }));
+  expect(within(screen.getByRole("list")).getAllByRole("listitem")[0].textContent).toContain("Power");
+  fireEvent.click(screen.getByRole("button", { name: "Move Power down" }));
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("dialog")).toBeNull(); expect(applied).not.toHaveBeenCalled();
   expect(document.activeElement).toBe(screen.getByRole("button", { name: "Recommend" }));
@@ -116,7 +118,10 @@ it("sends one async request, displays honest deltas/explanation and explicitly a
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(vi.mocked(api).mock.calls).toHaveLength(1);
   expect(JSON.parse(vi.mocked(api).mock.calls[0][1]!.body as string)).toEqual(request);
-  const table = screen.getByRole("table"); expect(table.textContent).toContain("+1"); expect(table.textContent).toContain("-1");
+  const comparison = screen.getByRole("region", { name: "Stat comparison" });
+  expect(comparison.textContent).toContain("+1"); expect(comparison.textContent).toContain("-1");
+  expect(within(comparison).getByRole("img", { name: "Acceleration: 20 to 21" })).toBeTruthy();
+  expect(within(comparison).getByRole("img", { name: "Speed: 30 to 29" })).toBeTruthy();
   expect(screen.getByLabelText("Recommendation explanation").textContent).toContain(result.reason);
   expect(applied).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
   expect(applied).toHaveBeenCalledWith({ ...draft, frontPartId: "f2" }); expect(screen.queryByRole("dialog")).toBeNull();
@@ -126,7 +131,7 @@ it("shows unavailable current stats and result outcome without claiming improvem
   vi.mocked(api).mockResolvedValue({ ...result, currentStats: null, recommendedStats: null, outcome: "BEST_FOUND" });
   render(<Harness initial={{ ...draft, machineType: "BOOST", tirePartId: null }} />); open(); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
-  expect(screen.getByRole("table").textContent).toContain("Unavailable");
+  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Unavailable");
   expect(screen.getByText(/Boost uses Front and Rear only/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
   expect(screen.queryByRole("button", { name: "Apply to draft" })).toBeNull(); expect(api).toHaveBeenCalledTimes(1);
@@ -193,7 +198,7 @@ it("freezes Balanced reference, defaults to zero losses and restores previous se
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   await screen.findByLabelText("Boost current: 60");
   const prioritiesTable = screen.getByRole("table", { name: "Stat priorities" });
-  for (const heading of ["Stat", "Move", "Current", "Maximum loss", "Minimum allowed", "Tie-break only"])
+  for (const heading of ["Stat", "Move", "Current", "Maximum loss", "Minimum allowed", "Tie-break / Ignore"])
     expect(within(prioritiesTable).getByRole("columnheader", { name: heading })).toBeTruthy();
   expect(within(prioritiesTable).getAllByRole("row")).toHaveLength(6);
   expect(within(prioritiesTable).getAllByText("Maximum loss")).toHaveLength(1);
@@ -201,9 +206,9 @@ it("freezes Balanced reference, defaults to zero losses and restores previous se
   expect(boost.value).toBe("0");
   fireEvent.change(boost, { target: { value: "5" } });
   expect(screen.getByLabelText("Boost minimum allowed: 57")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Move Boost to tie-break only" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move Boost to tie-break / ignore" }));
   expect(screen.queryByLabelText("Boost maximum loss (%)")).toBeNull();
-  const secondaryTable = screen.getByRole("table", { name: "Tie-break-only stats" });
+  const secondaryTable = screen.getByRole("table", { name: "Tie-break / Ignore stats" });
   expect(within(secondaryTable).getByRole("columnheader", { name: "Current" })).toBeTruthy();
   expect(within(secondaryTable).getByRole("rowheader", { name: "Boost" })).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Restore Boost" }));
@@ -211,14 +216,14 @@ it("freezes Balanced reference, defaults to zero losses and restores previous se
     .toEqual(["Acceleration", "Speed", "Handling", "Power", "Boost"]);
   expect((screen.getByRole("button", { name: "Move Boost down" }) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByLabelText("Boost maximum loss (%)") as HTMLInputElement).value).toBe("5");
-  fireEvent.click(screen.getByRole("button", { name: "Move Power to tie-break only" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move Power to tie-break / ignore" }));
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   const calls = vi.mocked(api).mock.calls.filter(([path]) => path === "/build-recommendations");
   expect(JSON.parse(calls[0][1]!.body as string)).toMatchObject({ mode: "BALANCED", current: draftSelection(draft),
     priorities: ["ACCELERATION", "SPEED", "HANDLING", "BOOST"],
     balanced: { maximumLossPercent: { BOOST: 5, SPEED: 0, ACCELERATION: 0, HANDLING: 0 }, secondary: ["POWER"] } });
-  expect(screen.getByRole("table").textContent).toContain("Tie-break only — no minimum");
-  expect(screen.getByRole("table").textContent).toContain("-3.3333%");
+  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Tie-break / Ignore — no minimum");
+  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("-3.3333%");
   expect(applied).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
   expect(screen.getByLabelText("Boost minimum allowed: 57")).toBeTruthy();
@@ -320,8 +325,8 @@ it("requires one active stat and valid finite losses, preserves mode settings, a
   render(<Harness />); open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   await screen.findByLabelText("Boost current: 60");
   for (const name of ["Power", "Handling", "Speed", "Acceleration"])
-    fireEvent.click(screen.getByRole("button", { name: `Move ${name} to tie-break only` }));
-  expect((screen.getByRole("button", { name: "Move Boost to tie-break only" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: `Move ${name} to tie-break / ignore` }));
+  expect((screen.getByRole("button", { name: "Move Boost to tie-break / ignore" }) as HTMLButtonElement).disabled).toBe(true);
   for (const value of ["", "-1", "101"]) {
     fireEvent.change(screen.getByLabelText("Boost maximum loss (%)"), { target: { value } });
     expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);

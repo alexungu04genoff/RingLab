@@ -51,13 +51,15 @@ public final class PassiveStatsCalculator {
       }
     }
 
-    // The reviewed evidence establishes Tuner 1 + Tuner 2 of the same type.
-    // Other multi-modifier interactions remain explicitly unsupported, never guessed additive.
+    // Independent stat adjustments do not stack with one another. Only overlapping
+    // modifiers need reviewed stacking evidence (same-type Tuner 1 + Tuner 2).
     var applied = effects.stream().filter(e -> e.status() == APPLIED).toList();
-    if (applied.size() > 1 && !verifiedStack(applied)) {
+    if (applied.size() > 1) {
       for (int i = 0; i < effects.size(); i++) {
         var effect = effects.get(i);
-        if (effect.status() == APPLIED) effects.set(i,new PassiveStatsResult.Effect(effect.gadgetId(),effect.gadgetName(),
+        boolean unresolved = effect.status() == APPLIED && applied.stream().anyMatch(other -> other != effect
+            && overlaps(effect.adjustment(), other.adjustment()) && !verifiedStack(List.of(effect, other)));
+        if (unresolved) effects.set(i,new PassiveStatsResult.Effect(effect.gadgetId(),effect.gadgetName(),
             effect.effectId(),effect.label(),UNSUPPORTED,PassiveGadgetRules.ZERO,
             "Individual modifier is verified, but stacking with the other selected passive modifiers is unresolved. This combination is not added.",effect.sources()));
       }
@@ -82,5 +84,15 @@ public final class PassiveStatsCalculator {
     var second = PassiveGadgetRules.forGadget(effects.get(1).gadgetId()).stream()
         .filter(r -> r.effectId().equals(effects.get(1).effectId())).findFirst().orElseThrow();
     return first.stackingGroup() != null && first.stackingGroup().equals(second.stackingGroup());
+  }
+
+  private static boolean overlaps(BaseStats first, BaseStats second) {
+    return nonzero(first.speed(), second.speed()) || nonzero(first.acceleration(), second.acceleration())
+        || nonzero(first.handling(), second.handling()) || nonzero(first.power(), second.power())
+        || nonzero(first.boost(), second.boost());
+  }
+
+  private static boolean nonzero(java.math.BigDecimal first, java.math.BigDecimal second) {
+    return first != null && second != null && first.signum() != 0 && second.signum() != 0;
   }
 }
