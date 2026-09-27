@@ -37,13 +37,13 @@ function App() {
             <NavLink to="/" end>
               <CompassIcon /> Explore
             </NavLink>
-            <NavLink to="/game-data"><LibraryIcon /> Game Collection</NavLink>
+            <NavLink to="/game-data" aria-label="Game Collection"><LibraryIcon /> Game<span className="mobile-optional"> Collection</span></NavLink>
             <NavLink to="/my-builds"><HammerIcon /> My Builds</NavLink>
-            <NavLink to="/saved-builds"><BookmarkIcon /> Saved Builds</NavLink>
+            <NavLink to="/saved-builds" aria-label="Saved Builds"><BookmarkIcon /> Saved<span className="mobile-optional"> Builds</span></NavLink>
           </nav>
           <div className="account">
-            <Link className="button primary" to="/builds/new">
-              ＋ Create build
+            <Link className="button primary" to="/builds/new" aria-label="Create build">
+              ＋ Create<span className="mobile-optional"> build</span>
             </Link>
             {loading ? (
               <span>Loading…</span>
@@ -57,8 +57,8 @@ function App() {
             ) : (
               <>
                 <Link className="account-login" to="/login">Log in</Link>
-                <Link className="button primary" to="/register">
-                  Join the grid
+                <Link className="button primary" to="/register" aria-label="Join the grid">
+                  Join<span className="mobile-optional"> the grid</span>
                 </Link>
               </>
             )}

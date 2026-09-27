@@ -2516,25 +2516,34 @@ hr {
   }
   .navbar {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    padding: 10px 18px;
-    gap: 6px 12px;
+    grid-template-columns: auto minmax(0, 1fr);
+    min-height: 0;
+    padding: 8px 18px;
+    gap: 4px 14px;
   }
   .brand {
     font-size: 21px;
   }
   .account {
-    display: contents;
+    grid-column: 2;
+    grid-row: 1;
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-left: 0;
+    white-space: nowrap;
   }
   .navbar > .brand { grid-column: 1; grid-row: 1; }
-  .account > :first-child { grid-column: 1; grid-row: 2; justify-self: start; }
-  .account > :nth-child(2) { grid-column: 2; grid-row: 1; justify-self: end; min-width: 0; overflow-wrap: anywhere; }
-  .account > :nth-child(3) { grid-column: 2; grid-row: 2; justify-self: end; }
-  .account > a, .account > button { min-height: 44px; display: inline-flex; align-items: center; }
+  .account > a, .account > button {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    padding: 7px 10px;
+    font-size: 12px;
+  }
   .account-login {
-    min-width: 76px;
+    min-width: 64px;
     justify-content: center;
-    padding: 8px 14px;
     border: 1px solid #3385bc;
     border-radius: 7px;
     background: linear-gradient(180deg, #1c3549, #182735);
@@ -2553,16 +2562,18 @@ hr {
   }
   nav {
     grid-column: 1 / -1;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 0 12px;
+    grid-row: 2;
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
     border-top: 1px solid var(--border);
-    padding-top: 4px;
+    padding-top: 2px;
   }
   nav a {
-    min-height: 44px;
-    padding: 6px 0;
-    font-size: 14px;
+    min-height: 38px;
+    padding: 4px 0;
+    font-size: 13px;
+    white-space: nowrap;
   }
   .card-kicker { align-items: flex-start; }
   .card-kicker > .eyebrow { flex-basis: 100%; }
@@ -2745,6 +2756,33 @@ hr {
   }
 }
 @media (max-width: 420px) {
+  .navbar {
+    padding: 6px 10px;
+    gap: 3px 10px;
+  }
+  .account {
+    gap: 4px;
+  }
+  .account > a,
+  .account > button,
+  .account .button {
+    min-height: 38px;
+    padding: 6px 7px;
+    font-size: 11px;
+  }
+  .account-login {
+    min-width: 54px;
+  }
+  nav {
+    gap: 8px;
+  }
+  nav a {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  .mobile-optional {
+    display: none;
+  }
   .gadget-options {
     grid-template-columns: 1fr;
   }
@@ -2754,12 +2792,6 @@ hr {
   .preview-item .artwork,
   .preview-placeholder {
     height: 120px;
-  }
-  .account {
-    font-size: 11px;
-  }
-  .account .button {
-    padding: 7px 9px;
   }
   .brand {
     font-size: 18px;
