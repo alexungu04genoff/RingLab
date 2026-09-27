@@ -1457,20 +1457,24 @@ footer {
   font-size: 12px;
   line-height: 1.5;
 }
-.preview-gadgets {
+.selected-gadgets.preview-gadgets {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-.preview-gadgets li {
-  display: flex;
+.selected-gadgets.preview-gadgets li {
+  display: grid;
+  grid-template-columns: 20px 52px minmax(0, 1fr) auto;
   align-items: center;
   gap: 10px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: #12171f;
 }
-.preview-gadgets li:last-child {
-  border-bottom: 0;
+.selected-gadgets.preview-gadgets li:last-child {
+  margin-bottom: 0;
 }
 .preview-gadgets .gadget-number {
   width: 20px;
@@ -1481,9 +1485,8 @@ footer {
 }
 .preview-gadgets .artwork,
 .gadget-placeholder {
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
+  width: 52px;
+  height: 52px;
   border-radius: 5px;
 }
 .preview-gadgets .artwork > span {
@@ -1497,17 +1500,23 @@ footer {
   color: var(--muted);
 }
 .preview-gadgets .gadget-name {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 13px;
 }
-.preview-gadgets li > div {
-  display: inline-flex;
-  gap: 3px;
-  margin-left: auto;
+.preview-gadgets .gadget-reorder-controls {
+  display: grid;
+  gap: 4px;
+  margin-left: 0;
 }
-.preview-gadgets button {
-  padding: 1px 8px;
+.selected-gadgets.preview-gadgets button {
+  width: 28px;
+  min-height: 26px;
+  padding: 0;
   font-size: 12px;
 }
 hr {
