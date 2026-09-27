@@ -145,18 +145,18 @@ header {
 .navbar {
   max-width: 1704px;
   margin: auto;
-  min-height: 86px;
+  min-height: 66px;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 50px;
-  padding: 15px 28px;
+  gap: 32px;
+  padding: 8px 28px;
 }
 .brand {
   display: flex;
   align-items: center;
   gap: 0;
-  font-size: 27px;
+  font-size: 25px;
   letter-spacing: -1px;
   font-weight: 900;
   font-style: italic;
@@ -165,17 +165,17 @@ header {
   color: var(--accent);
 }
 .brand-mark {
-  width: 24px;
-  height: 24px;
-  border: 6px solid var(--accent);
+  width: 22px;
+  height: 22px;
+  border: 5px solid var(--accent);
   border-radius: 50%;
   margin-right: 10px;
   transform: skew(-12deg);
 }
 nav {
   display: flex;
-  gap: 26px;
-  font-size: 16px;
+  gap: 20px;
+  font-size: 15px;
   font-weight: 600;
 }
 nav a {
@@ -183,7 +183,7 @@ nav a {
   align-items: center;
   gap: 7px;
   color: var(--muted);
-  padding: 12px 0;
+  padding: 8px 0;
 }
 nav a.active {
   color: var(--accent);
@@ -192,8 +192,13 @@ nav a.active {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 10px;
   font-size: 13px;
+}
+.account > a,
+.account > button {
+  min-height: 40px;
+  padding: 8px 12px;
 }
 .account > span {
   max-width: 150px;
@@ -2415,10 +2420,12 @@ hr {
 }
 @media (max-width: 1000px) {
   .navbar {
-    gap: 25px;
+    gap: 18px;
+    padding-inline: 20px;
   }
   nav {
-    gap: 16px;
+    gap: 12px;
+    font-size: 14px;
   }
   .filters {
     grid-template-columns: 1fr 1fr;
@@ -2456,7 +2463,13 @@ hr {
     grid-template-columns: repeat(2, 1fr);
   }
   .account {
-    gap: 10px;
+    gap: 6px;
+  }
+  .account > a,
+  .account > button {
+    min-height: 38px;
+    padding: 7px 9px;
+    font-size: 12px;
   }
   .account > span {
     display: none;
