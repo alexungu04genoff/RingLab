@@ -19,7 +19,7 @@ import { SavedBuildsPage } from "./pages/SavedBuildsPage";
 import { SiteFooter } from "./components";
 import { BuildComparisonProvider } from "./BuildComparison";
 // Keep public dev browsers from pairing cached CSS with newer components.
-import "./styles.css?v=20260927-gadget-contributions";
+import "./styles.css?v=20260927-auto-builder";
 function App() {
   const { user, logout, loading } = useAuth();
   return (

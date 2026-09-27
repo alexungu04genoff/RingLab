@@ -1,7 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, ApiError } from "../api";
+import { api, ApiError, setToken } from "../api";
 import type { Build, BuildStatsResult, MachinePart } from "../types";
 import { BuildEditor } from "./BuildEditor";
 
@@ -36,7 +36,83 @@ beforeEach(() => {
     return [];
   });
 });
-afterEach(cleanup);
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal"); Reflect.deleteProperty(HTMLDialogElement.prototype, "close"); });
+
+function desktopViewport() {
+  let listener: (() => void) | undefined;
+  const query = { matches: true, addEventListener: (_: string, changed: () => void) => { listener = changed; }, removeEventListener: () => {} };
+  vi.stubGlobal("matchMedia", () => query);
+  Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function(this: HTMLDialogElement) { this.open = true; } });
+  Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });
+  return { resize: (matches: boolean) => { query.matches = matches; act(() => listener?.()); } };
+}
+
+it("desktop individual and machine group locks remain synchronized and protect controls", async () => {
+  desktopViewport(); await openA();
+  fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
+  expect((screen.getByLabelText("Racer") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Lock Tires" }));
+  expect(screen.getByRole("button", { name: "Lock machine setup" }).getAttribute("aria-pressed")).toBe("mixed");
+  expect((screen.getByLabelText("Use stock machine") as HTMLSelectElement).disabled).toBe(true);
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "BOOST" } });
+  expect((screen.getByLabelText("Machine type") as HTMLSelectElement).value).toBe("SPEED");
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "" } });
+  expect((screen.getByLabelText("Machine type") as HTMLSelectElement).value).toBe("SPEED");
+  fireEvent.click(screen.getByRole("button", { name: "Lock machine setup" }));
+  expect((screen.getByLabelText("Front") as HTMLSelectElement).disabled).toBe(true);
+  expect(screen.getByRole("button", { name: "Unlock machine setup" }).getAttribute("aria-pressed")).toBe("true");
+  fireEvent.click(screen.getByRole("button", { name: "Unlock Rear" }));
+  expect(screen.getByRole("button", { name: "Lock machine setup" }).getAttribute("aria-pressed")).toBe("mixed");
+  fireEvent.click(screen.getByRole("button", { name: "Lock machine setup" }));
+  fireEvent.click(screen.getByRole("button", { name: "Unlock machine setup" }));
+  expect(screen.getByRole("button", { name: "Lock machine setup" }).getAttribute("aria-pressed")).toBe("false");
+  expectNoWrite();
+});
+
+it("gadget lock click never toggles its checkbox or submits and locks reset for another editor", async () => {
+  desktopViewport(); const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async(path, options) => path === "/gadgets"
+    ? [{ id: "g", name: "Supported gadget", slotCost: 1, description: null, imagePath: null }] : fallback(path, options));
+  loadB = () => Promise.resolve(buildB); const router = await openA();
+  fireEvent.click(screen.getByRole("checkbox", { name: /Supported gadget/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Lock Supported gadget" }));
+  const checkbox = screen.getByRole("checkbox", { name: /Supported gadget/ }) as HTMLInputElement;
+  expect(checkbox.checked).toBe(true); expect(checkbox.disabled).toBe(true); expectNoWrite();
+  fireEvent.click(screen.getByRole("button", { name: "Unlock Supported gadget" })); expect(checkbox.checked).toBe(true);
+  fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
+  await act(async () => router.navigate("/builds/B/edit"));
+  await screen.findByDisplayValue("Build B draft");
+  expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
+});
+
+it("resizing to mobile aborts the popup, removes invisible locks and preserves the manual editor", async () => {
+  const viewport = desktopViewport(); await openA(); selectLatestPatch();
+  fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
+  fireEvent.click(screen.getByRole("button", { name: "Recommend a build" }));
+  expect(vi.mocked(api).mock.calls.some(([path]) => path === "/build-recommendations")).toBe(false);
+  let finish!: (value: unknown) => void;
+  vi.mocked(api).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+  fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" }));
+  const pending = vi.mocked(api).mock.calls.find(([path]) => path === "/build-recommendations")![1]!.signal!;
+  viewport.resize(false); expect(pending.aborted).toBe(true);
+  expect(screen.queryByRole("dialog")).toBeNull(); expect(screen.queryByRole("button", { name: "Recommend a build" })).toBeNull();
+  expect((screen.getByLabelText("Racer") as HTMLSelectElement).disabled).toBe(false);
+  expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("Build A draft");
+  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "" } });
+  expect((screen.getByLabelText("Machine type") as HTMLSelectElement).value).toBe("");
+  await act(async () => finish({ selection: null, outcome: "UNAVAILABLE" }));
+  viewport.resize(true); expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
+});
+
+it("same-user session replacement clears locks and closes the proposal", async () => {
+  desktopViewport(); await openA();
+  fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
+  fireEvent.click(screen.getByRole("button", { name: "Recommend a build" }));
+  setToken("replacement-session"); fireEvent.change(screen.getByLabelText("Build title"), { target: { value: "Updated" } });
+  expect(screen.queryByRole("dialog")).toBeNull();
+  expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
+});
 
 it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the picker and preview at %s", async (route) => {
   const fallback = vi.mocked(api).getMockImplementation()!;
@@ -59,7 +135,7 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
     <Route path="/builds/:id/edit" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
   const checkbox=await screen.findByRole("checkbox",{name:/Drift Charge Kit/});
-  if(route.endsWith("edit")) selectLatestPatch();
+  selectLatestPatch();
   fireEvent.click(checkbox);
   await waitFor(()=>expect(screen.getAllByLabelText("Applied gadget adjustments")).toHaveLength(2));
   for (const badge of screen.getAllByLabelText("Applied gadget adjustments")) {
@@ -199,6 +275,7 @@ it("clears a loaded remix and its provenance when navigating to a new build", as
   fireEvent.change(screen.getByLabelText("Racer"), { target: { value: "racer" } });
   fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });
   fireEvent.change(screen.getByLabelText("Use stock machine"), { target: { value: "machine" } });
+  selectLatestPatch();
   vi.mocked(api).mockRejectedValueOnce(new Error("Save unavailable"));
   fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
   await screen.findByText("Save unavailable");

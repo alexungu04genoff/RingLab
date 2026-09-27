@@ -30,6 +30,7 @@ class RateLimitSettings {
     configuredRules.put(RequestRateLimitPolicy.FORGOT_PASSWORD, rule(config, "forgot-password"));
     configuredRules.put(RequestRateLimitPolicy.RESET_PASSWORD, rule(config, "reset-password"));
     configuredRules.put(RequestRateLimitPolicy.BUILD_CREATION, rule(config, "build-creation"));
+    configuredRules.put(RequestRateLimitPolicy.BUILD_RECOMMENDATION, rule(config, "build-recommendation"));
     configuredRules.put(RequestRateLimitPolicy.COMMENT_CREATION, rule(config, "comment-creation"));
     configuredRules.put(RequestRateLimitPolicy.VOTING, rule(config, "voting"));
     configuredRules.put(

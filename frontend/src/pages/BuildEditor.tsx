@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
 import { GadgetAdjustmentBadges } from "../PassiveStats";
 import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, json } from "../api";
+import { api, ApiError, currentSessionGeneration, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
@@ -14,6 +14,9 @@ import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machine
 import { useBuildDraft } from "./useBuildDraft";
 import { MapRecommendationPicker, RecommendedMapList } from "../MapRecommendations";
 import type { RaceMap } from "../types";
+import { BuildRecommendationDialog, SelectionLock } from "../BuildRecommendationDialog";
+import { desktopRecommendationQuery, emptyLocks, groupLockState, lockTypeConflict, stockSourceForDraft, toggleMachineLocks } from "../recommendation";
+import type { ComponentKey, RecommendationSelection } from "../recommendation";
 
 const partSlots = [
   { key: "frontPartId", type: "FRONT", label: "Front" },
@@ -21,6 +24,7 @@ const partSlots = [
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
 export function BuildEditor() {
+  const editorId = useId();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
   const remixSourceId = id ? null : searchParams.get("remixFrom");
@@ -34,6 +38,25 @@ export function BuildEditor() {
   const [busy, setBusy] = useState(false);
   const [gadgetSearch, setGadgetSearch] = useState("");
   const [stockSourceId, setStockSourceId] = useState("");
+  const editorContext = JSON.stringify([id, remixSourceId, user?.id, currentSessionGeneration()]);
+  const [desktop, setDesktop] = useState(() => window.matchMedia?.(desktopRecommendationQuery).matches ?? false);
+  const [lockState, setLockState] = useState({ context: editorContext, value: emptyLocks() });
+  const locks = desktop && lockState.context === editorContext ? lockState.value : emptyLocks();
+  const [recommendationContext, setRecommendationContext] = useState<string | null>(null);
+  const recommendButton = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const query = window.matchMedia?.(desktopRecommendationQuery);
+    if (!query) return;
+    const changed = () => {
+      setDesktop(query.matches);
+      if (!query.matches) { setRecommendationContext(null); setLockState({ context: editorContext, value: emptyLocks() }); }
+    };
+    query.addEventListener("change", changed);
+    return () => query.removeEventListener("change", changed);
+  }, [editorContext]);
+  useEffect(() => { setRecommendationContext(null); setLockState({ context: editorContext, value: emptyLocks() }); }, [editorContext]);
+  function setLocks(value: RecommendationSelection) { setLockState({ context: editorContext, value }); }
+  function toggleLock(key: ComponentKey) { setLocks({ ...locks, [key]: locks[key] ? null : draft[key] || null }); }
   const racers = useLoad<Racer[]>("/racers");
   const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
@@ -174,9 +197,12 @@ export function BuildEditor() {
                   <span className="step">02</span> Racer & machine
                 </h2>
                 <div className="machine-setup-controls">
-                  <label className="stock-machine-control">
-                    Use stock machine
-                    <select value={stockSourceId} disabled={parts.loading} onChange={(e) => {
+                  <div className="stock-machine-control">
+                    <div className="selection-field-heading"><label htmlFor={`${editorId}-stock`}>Use stock machine</label>
+                      {desktop && <SelectionLock label="machine setup" locked={groupLockState(draft, locks, parts.data ?? [])}
+                        disabled={!!setupError} onClick={() => setLocks(toggleMachineLocks(draft, locks, parts.data ?? []))} />}
+                    </div>
+                    <select id={`${editorId}-stock`} value={stockSourceId} disabled={parts.loading || !!locks.frontPartId || !!locks.rearPartId || !!locks.tirePartId} onChange={(e) => {
                       setStockSourceId(e.target.value);
                       if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
                     }}>
@@ -185,15 +211,19 @@ export function BuildEditor() {
                         <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName} · {racingTypeLabel(part.racingType)}</option>
                       ))}
                     </select>
-                  </label>
+                  </div>
                   <label>
                     Machine type
                     <select value={draft.machineType ?? ""} required onChange={(e) => {
+                      const nextType = (e.target.value || null) as RacingType | null;
+                      if (nextType ? lockTypeConflict(nextType, locks, parts.data ?? [])
+                        : locks.frontPartId || locks.rearPartId || locks.tirePartId) return;
                       setStockSourceId("");
                       setDraft((current) => switchMachineType(current, (e.target.value || null) as RacingType | null, parts.data ?? []));
                     }}>
                       <option value="">Any type — choose a machine or part</option>
-                      {machineTypes.map((type) => <option key={type} value={type}>{machineTypeLabel(type)}</option>)}
+                      {machineTypes.map((type) => <option key={type} value={type}
+                        disabled={!!lockTypeConflict(type, locks, parts.data ?? [])}>{machineTypeLabel(type)}</option>)}
                     </select>
                   </label>
                 </div>
@@ -203,6 +233,8 @@ export function BuildEditor() {
                       label="Racer"
                       items={racers.data || []}
                       value={draft.racerId}
+                      disabled={!!locks.racerId}
+                      labelAction={desktop && <SelectionLock label="Racer" locked={!!locks.racerId} disabled={!selectedRacer} onClick={() => toggleLock("racerId")} />}
                       onChange={(v) => field("racerId", v)}
                     />
                     {selectedRacer && (
@@ -221,9 +253,12 @@ export function BuildEditor() {
                     const selectedPart = parts.data?.find((part) => part.id === draft[slot.key]);
                     const options = machinePartsForType(parts.data ?? [], draft.machineType, slot.type);
                     const incompatible = !!draft[slot.key] && !options.some((part) => part.id === draft[slot.key]);
-                    return <label key={slot.key} className="part-select">
-                      {slot.label}
-                      <select required value={draft[slot.key] ?? ""} disabled={parts.loading} aria-invalid={incompatible}
+                    return <div key={slot.key} className="part-select">
+                      <div className="selection-field-heading"><label htmlFor={`${editorId}-${slot.key}`}>{slot.label}</label>
+                        {desktop && <SelectionLock label={slot.label} locked={!!locks[slot.key]} disabled={!selectedPart}
+                          onClick={() => toggleLock(slot.key)} />}
+                      </div>
+                      <select id={`${editorId}-${slot.key}`} required value={draft[slot.key] ?? ""} disabled={parts.loading || !!locks[slot.key]} aria-invalid={incompatible}
                         onChange={(e) => {
                           setStockSourceId("");
                           const partId = e.target.value;
@@ -248,13 +283,13 @@ export function BuildEditor() {
                             {selectedPart.racingType ?? "Type unknown"}
                           </small></span>
                       </span>}
-                    </label>
+                    </div>
                   })}
                 </div>
                 {parts.data && setupError && <p role="alert" className="field-warning">{setupError}</p>}
                 {draft.machineType && !requiredMachineSlots(draft.machineType).includes("TIRE") && draft.tirePartId && (
                   <p role="alert">Stored tire: {parts.data?.find((part) => part.id === draft.tirePartId)?.sourceMachineName ?? draft.tirePartId}.
-                    <button type="button" onClick={() => { setStockSourceId(""); field("tirePartId", null); }}>Remove incompatible tire</button>
+                    <button type="button" disabled={!!locks.tirePartId} onClick={() => { setStockSourceId(""); field("tirePartId", null); }}>Remove incompatible tire</button>
                   </p>
                 )}
               </section>
@@ -271,13 +306,14 @@ export function BuildEditor() {
                 </label>
                 <div className="gadget-options">
                   {filterGadgets(gadgets.data ?? [], gadgetSearch, draft.gadgetIds).map((g) => (
+                    <div className={`gadget-choice ${desktop && draft.gadgetIds.includes(g.id) ? "has-lock" : ""}`} key={g.id}>
                     <label
-                      key={g.id}
                       className={`gadget-option ${draft.gadgetIds.includes(g.id) ? "selected" : ""}`}
                     >
                       <input
                         type="checkbox"
                         checked={draft.gadgetIds.includes(g.id)}
+                        disabled={locks.gadgetIds.includes(g.id)}
                         onChange={() =>
                           field(
                             "gadgetIds",
@@ -292,6 +328,9 @@ export function BuildEditor() {
                         {draft.gadgetIds.includes(g.id) && <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data?.passive} />}
                       </span>
                     </label>
+                    {desktop && draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
+                      onClick={() => setLocks({ ...locks, gadgetIds: toggleGadget(locks.gadgetIds, g.id) })} />}
+                    </div>
                   ))}
                 </div>
                 <p className="muted">
@@ -303,6 +342,11 @@ export function BuildEditor() {
                 onChange={(mode, ids) => setDraft(current => ({ ...current, mapRecommendationMode: mode, recommendedMapIds: ids }))} />
             </div>
             <aside className="panel selection build-preview">
+              {desktop && <div className="recommendation-entry"><button ref={recommendButton} type="button" className="recommend-action"
+                aria-haspopup="dialog" aria-expanded={recommendationContext === editorContext}
+                disabled={busy || !racers.data || !parts.data || !gadgets.data}
+                onClick={() => setRecommendationContext(editorContext)}>Recommend a build</button>
+                <small>Lock selections, then preview a recommendation.</small></div>}
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
               <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} loadedResult={draftStats} />
@@ -413,6 +457,12 @@ export function BuildEditor() {
           </form>
         )
       )}
+      {desktop && recommendationContext === editorContext && !loading && canSubmit &&
+        <BuildRecommendationDialog draft={draft} locks={locks} context={editorContext}
+          catalog={{ racers: racers.data ?? [], parts: parts.data ?? [], gadgets: gadgets.data ?? [] }}
+          version={versions.data?.find(version => version.id === draft.gameVersionId) ?? null}
+          returnFocus={recommendButton.current} onClose={() => setRecommendationContext(null)}
+          onApply={next => { setDraft(next); setStockSourceId(stockSourceForDraft(next, parts.data ?? [])); }} />}
     </>
   );
 }

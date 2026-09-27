@@ -29,6 +29,8 @@ class ArchitectureTest {
         application_does_not_depend_on_adapters_or_rest_or_persistence.check(classes);
         ports_remain_independent_of_application_and_adapters.check(classes);
         persistence_does_not_own_ranking.check(classes);
+        ports_depend_only_on_jdk_or_domain.check(classes);
+        adapters_do_not_execute_recommendations.check(classes);
     }
 
     private static final ArchRule domain_depends_only_on_jdk_or_domain = classes()
@@ -43,6 +45,24 @@ class ArchitectureTest {
     private static final ArchRule ports_remain_independent_of_application_and_adapters = noClasses()
             .that().resideInAnyPackage("..port..")
             .should().dependOnClassesThat().resideInAnyPackage("..application..", "..adapter..");
+
+    private static final ArchRule ports_depend_only_on_jdk_or_domain = classes()
+            .that().resideInAnyPackage("..port..")
+            .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "dev.ringlab.domain..", "dev.ringlab.port..");
+
+    private static final ArchRule adapters_do_not_execute_recommendations = classes()
+            .that().resideInAnyPackage("..adapter..")
+            .should(new ArchCondition<>("map or retrieve recommendation facts without optimizing") {
+                @Override public void check(JavaClass type, ConditionEvents events) {
+                    for (var call : type.getAccessesFromSelf()) {
+                        String owner = call.getTargetOwner().getName();
+                        if (owner.equals("dev.ringlab.domain.build.recommendation.BuildRecommendationSolver")
+                                || (owner.equals("dev.ringlab.domain.build.recommendation.StatPriority")
+                                    && call.getName().equals("compare")))
+                            events.add(SimpleConditionEvent.violated(type, call.getDescription()));
+                    }
+                }
+            });
 
     private static final ArchRule persistence_does_not_own_ranking = classes()
             .that().resideInAnyPackage("..adapter.out.db..")

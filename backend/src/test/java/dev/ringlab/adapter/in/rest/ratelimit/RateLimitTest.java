@@ -21,6 +21,17 @@ import org.junit.jupiter.api.Test;
 
 class RateLimitTest {
   @Test
+  void recommendationsHaveTheirOwnAuthenticatedBudget() {
+    assertEquals(RequestRateLimitPolicy.BUILD_RECOMMENDATION, policy("POST", "/api/build-recommendations"));
+    var limiter = limiter(1, Duration.ofMinutes(1), 10, new MutableClock());
+    var first = RateLimitIdentity.resolve(RequestRateLimitPolicy.BUILD_RECOMMENDATION, Optional.of("one"), "127.0.0.1");
+    assertEquals("user:one", first);
+    assertTrue(limiter.tryConsume(RequestRateLimitPolicy.BUILD_RECOMMENDATION, first).allowed());
+    assertFalse(limiter.tryConsume(RequestRateLimitPolicy.BUILD_RECOMMENDATION, first).allowed());
+    assertTrue(limiter.tryConsume(RequestRateLimitPolicy.BUILD_RECOMMENDATION, "user:two").allowed());
+    assertTrue(limiter.tryConsume(RequestRateLimitPolicy.BUILD_CREATION, first).allowed());
+  }
+  @Test
   void recoveryEndpointsHaveDedicatedClientLimits() {
     assertEquals(RequestRateLimitPolicy.FORGOT_PASSWORD, policy("POST", "/api/auth/forgot-password"));
     assertEquals(RequestRateLimitPolicy.RESET_PASSWORD, policy("POST", "/api/auth/reset-password"));

@@ -428,3 +428,26 @@ draft gadget IDs and the existing plate, and reuses batched base contributions f
 Community snapshots calculate with already resolved catalog metadata. REST adds passive
 results without replacing base fields. See [passive-gadget-sources.md](passive-gadget-sources.md)
 for evidence, partial coverage and unresolved stacking. Maps never affect these calculations.
+
+## Desktop build recommendations
+
+`domain/build/recommendation` owns immutable request/catalog/result types, strict
+lexicographic stat comparison and a bounded deterministic solver. It reuses
+`PassiveStatsCalculator`, `GadgetPlate` and the now-pure
+`domain/gamedata/MachineCompatibility`; the existing application compatibility
+facade translates validation failures without changing existing build behavior.
+`RecommendationCatalogLoader` resolves catalog and versioned contributions once
+through the existing outbound ports in a short transaction.
+`BuildRecommendationService` then searches detached facts outside a transaction,
+with two nonwaiting concurrency permits and server-owned work/time budgets.
+`BuildRecommendationRestResource` authenticates and maps a read-only proposal,
+runs on a worker thread and has a dedicated per-user REST rate policy.
+
+Frontend lock/priority/draft-merge helpers live in `recommendation.ts`; the
+`useBuildRecommendation` hook owns abortable requests and stale-context checks.
+The desktop editor hosts ephemeral locks and one native modal with configuration,
+activity and result states. Explicit Apply changes only permitted unsaved draft
+fields. At the existing 1001px desktop boundary, resizing smaller cancels and
+clears invisible locks while preserving the draft. No optimizer policy is copied
+into React or persistence. See [Auto-builder v1](auto-builder.md) for the exact
+objective, separability proof, data limits, endpoint and demonstration.

@@ -16,6 +16,7 @@ enum RequestRateLimitPolicy {
   FORGOT_PASSWORD(IdentityScope.CLIENT_IP),
   RESET_PASSWORD(IdentityScope.CLIENT_IP),
   BUILD_CREATION(IdentityScope.AUTHENTICATED_USER),
+  BUILD_RECOMMENDATION(IdentityScope.AUTHENTICATED_USER),
   COMMENT_CREATION(IdentityScope.AUTHENTICATED_USER),
   VOTING(IdentityScope.AUTHENTICATED_USER),
   AUTHENTICATED_MUTATION(IdentityScope.AUTHENTICATED_USER);
@@ -71,6 +72,9 @@ enum RequestRateLimitPolicy {
     }
     if (method.equals("POST") && path.equals("/api/builds")) {
       return Optional.of(BUILD_CREATION);
+    }
+    if (method.equals("POST") && path.equals("/api/build-recommendations")) {
+      return Optional.of(BUILD_RECOMMENDATION);
     }
     if (method.equals("POST") && COMMENT_PATH.matcher(path).matches()) {
       return Optional.of(COMMENT_CREATION);

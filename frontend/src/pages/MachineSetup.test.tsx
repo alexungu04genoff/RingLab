@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import { within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { BuildCard, countLabel, patchAge } from "../components";
@@ -8,7 +9,7 @@ import { BuildEditor } from "./BuildEditor";
 import { BuildDetails } from "./BuildDetails";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn() }));
+vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn(), currentSessionGeneration: () => 0 }));
 vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source = "Dark Reaper"): MachinePart => ({
@@ -45,14 +46,14 @@ beforeEach(() => {
 
 it("offers machine parts before choosing a type and keeps gadgets separate", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
-  const selectors = [...html.matchAll(/<label class="part-select">(Front|Rear|Tires)<select([^>]*)>(.*?)<\/select>/g)];
-  expect(selectors.map((match) => match[1])).toEqual(["Front", "Rear"]);
-  selectors.forEach((match) => {
-    expect(match[2]).toContain("required");
-    expect(match[2]).not.toContain("disabled");
-    expect(match[3]).not.toContain("Ring Engine");
-    expect([...match[3].matchAll(/<option/g)].length).toBeGreaterThan(1);
-  });
+  const page = document.createElement("div"); page.innerHTML = html;
+  expect(within(page).queryByLabelText("Tires")).toBeNull();
+  for (const label of ["Front", "Rear"]) {
+    const select = within(page).getByLabelText(label) as HTMLSelectElement;
+    expect(select.required).toBe(true); expect(select.disabled).toBe(false);
+    expect(select.textContent).not.toContain("Ring Engine");
+    expect(select.options.length).toBeGreaterThan(1);
+  }
   expect(html).toContain('type="checkbox"');
   expect(html).toContain("Ring Engine");
   expect(html).toContain("Machine setup");

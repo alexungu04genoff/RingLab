@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, PassiveStatsResult } from "./types";
@@ -291,7 +291,9 @@ export function ItemSelect({
   value,
   onChange,
   optional = false,
+  disabled = false,
   emptyLabel,
+  labelAction,
 }: {
   label: string;
   icon?: ReactNode;
@@ -299,13 +301,15 @@ export function ItemSelect({
   value: string;
   onChange: (value: string) => void;
   optional?: boolean;
+  disabled?: boolean;
   emptyLabel?: string;
+  labelAction?: ReactNode;
 }) {
-  return (
-    <label>
-      <span className="field-label">{icon}{label}</span>
-      <select
+  const selectId = useId();
+  const select = <select
+        id={selectId}
         value={value}
+        disabled={disabled}
         onChange={(e) => onChange(e.target.value)}
         required={!optional}
       >
@@ -321,7 +325,8 @@ export function ItemSelect({
             {` · ● ${racingTypeLabel(i.racingType)}`}
           </option>
         ))}
-      </select>
-    </label>
-  );
+      </select>;
+  return labelAction ? <div><div className="selection-field-heading">
+    <label htmlFor={selectId}><span className="field-label">{icon}{label}</span></label>{labelAction}
+  </div>{select}</div> : <label><span className="field-label">{icon}{label}</span>{select}</label>;
 }
