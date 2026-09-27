@@ -6,20 +6,27 @@ import { GearIcon, RacerIcon, SteeringWheelIcon } from "./icons";
 
 export function signedPoints(value: number | null) { return value == null ? "Unknown" : `${value >= 0 ? "+" : "−"}${Math.abs(value)}`; }
 
-export function GadgetAdjustmentBadges({ gadgetId, value }: { gadgetId: string; value?: PassiveStatsResult }) {
-  if (!value || value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT") return null;
+export function GadgetAdjustmentBadges({ gadgetId, value, catalog }: {
+  gadgetId: string; value?: PassiveStatsResult; catalog?: GadgetRulesCatalog;
+}) {
+  if (!value) return <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />;
   const effects = value.effects.filter(effect => effect.gadgetId === gadgetId && effect.status === "APPLIED");
   const adjustments = statNames.map(name => ({name,
     points: effects.reduce((total, effect) => total + (effect.adjustment[name] ?? 0), 0),
   })).filter(({points}) => points !== 0);
   if (!adjustments.length) {
-    const unresolved = value.effects.some(effect => effect.gadgetId === gadgetId
-      && effect.effectId === "stats" && effect.status === "UNSUPPORTED");
-    return unresolved ? <span className="gadget-adjustments" aria-label="Gadget adjustment not included">
+    const status = value.effects.find(effect => effect.gadgetId === gadgetId && effect.effectId === "stats")?.status;
+    const message = value.coverage === "UNSUPPORTED_VERSION" ? "Unavailable for this patch"
+      : value.coverage === "INVALID_LOADOUT" ? "Not calculated · invalid loadout"
+      : status === "UNSUPPORTED" ? "Not added · stacking unresolved"
+      : status === "REQUIRES_SELECTION" ? "Choose the required racer or machine"
+      : status === "NOT_MATCHED" ? "Not active for this setup" : null;
+    return message ? <span className="gadget-adjustments gadget-selection-feedback" aria-label="Gadget adjustment not included">
+      <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />
       <span className="gadget-adjustment unresolved" title="This combination's passive-stat stacking has not been verified.">
-        Not added · stacking unresolved
+        {message}
       </span>
-    </span> : null;
+    </span> : <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />;
   }
   return <span className="gadget-adjustments" aria-label="Applied gadget adjustments">
     {adjustments.map(({name,points}) => <span key={name}

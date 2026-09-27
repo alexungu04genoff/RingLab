@@ -3335,6 +3335,8 @@ nav,
   box-shadow:0 0 6px color-mix(in srgb, var(--stat-color) 25%, transparent); }
 .gadget-adjustment.penalty { border-style:dashed; }
 .gadget-adjustment.unresolved { border-color:#a97a31; color:#f5d487; background:#2f281a; box-shadow:none; }
+.gadget-selection-feedback { align-items:center; }
+.gadget-selection-feedback > .gadget-adjustments { margin-top:0; }
 .gadget-option:has(.gadget-adjustment.bonus) .artwork,
 .preview-gadgets li:has(.gadget-adjustment.bonus) .artwork { box-shadow:0 0 9px #3aaafa66; }
 .card-passive-details > summary { cursor:pointer; color:var(--muted, #adb5c4); }

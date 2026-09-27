@@ -59,6 +59,19 @@ it("makes unresolved stacking visible instead of presenting the catalog bonus as
   expect(screen.getByLabelText("Gadget acceleration adjustment").textContent).toBe("+0");
 });
 
+it("keeps reviewed values visible when a selected gadget is not active for the current setup",()=>{
+  const catalog={ruleset:"test",supportedVersion:"1.4.1",note:"Known arithmetic",gadgets:[{gadgetId:"g1",effects:[{
+    effectId:"stats",label:"Matching racer bonus",kind:"PASSIVE" as const,subject:"RACER" as const,requiredType:"ACCELERATION" as const,
+    matching:{speed:0,acceleration:7,handling:0,power:0,boost:-5},nonMatching:{speed:0,acceleration:0,handling:0,power:0,boost:0},
+    explanation:"Uses racer type",sources:[],stackingGroup:null}]}]};
+  const inactive={...result,adjustments:{speed:0,acceleration:0,handling:0,power:0,boost:0},adjusted:base,
+    effects:[{...result.effects[0],status:"NOT_MATCHED" as const,adjustment:{speed:0,acceleration:0,handling:0,power:0,boost:0}}]};
+  render(<GadgetAdjustmentBadges gadgetId="g1" value={inactive} catalog={catalog} />);
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Acceleration +7");
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Boost −5");
+  expect(screen.getByText("Not active for this setup")).toBeTruthy();
+});
+
 it("uses page enrichment without issuing a per-card request and stops control bubbling",async()=>{
   const fetch=vi.fn();vi.stubGlobal("fetch",fetch);const outer=vi.fn();
   render(<div onClick={outer}><CardStats build={build} pageStats={{status:"ready",value:{...base,passive:result}}} /></div>);

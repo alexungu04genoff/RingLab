@@ -336,7 +336,7 @@ export function BuildEditor() {
                         </span>
                         {g.description && <span>{g.description}</span>}
                         {draft.gadgetIds.includes(g.id) && draftStats.data?.passive
-                          ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} />
+                          ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} catalog={gadgetRules.data} />
                           : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />}
                       </span>
                     </label>
@@ -419,7 +419,7 @@ export function BuildEditor() {
                       <span className="gadget-name">
                         <strong>{gadget?.name || "Loading gadget…"}</strong>
                         {gadget && <small>{gadget.slotCost === null ? "Cost unknown" : `${gadget.slotCost} ${gadget.slotCost === 1 ? "slot" : "slots"}`}</small>}
-                        <GadgetAdjustmentBadges gadgetId={gadgetId} value={draftStats.data?.passive} />
+                        <GadgetAdjustmentBadges gadgetId={gadgetId} value={draftStats.data?.passive} catalog={gadgetRules.data} />
                       </span>
                       <div>
                         <button
