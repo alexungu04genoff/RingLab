@@ -57,9 +57,13 @@ class PassiveStatsServiceTest {
     assertThrows(ValidationException.class,()->service.draft(version,racer,front,rear,tire,List.of(PassiveGadgetRules.id(11),PassiveGadgetRules.id(38),PassiveGadgetRules.id(23))));
   }
 
-  @Test void incompleteAndIncoherentContextsDoNotGuessMachineBonuses() {
+  @Test void incompleteDraftsExposeKnownSubtotalsAndCoherentMachineBonuses() {
     var partial=service.draft(version,racer,front,null,null,List.of(PassiveGadgetRules.id(38)));
-    assertEquals(PassiveStatsResult.Status.REQUIRES_SELECTION,partial.effects().getFirst().status());
+    assertEquals(PassiveStatsResult.Coverage.PARTIAL,partial.coverage());
+    assertEquals(PassiveStatsResult.Status.APPLIED,partial.effects().getFirst().status());
+    assertEquals(new BigDecimal("11.25"),partial.base().total().speed());
+    assertEquals(new BigDecimal("1.25"),partial.base().machine().speed());
+    assertEquals(new BigDecimal("31.25"),partial.adjusted().power());
     var missing=service.draft(null,null,null,null,null,List.of());
     assertEquals(BaseStatsBreakdown.UNKNOWN,missing.base());
     var mixed=build(front,boardRear,tire,List.of(PassiveGadgetRules.id(38)));

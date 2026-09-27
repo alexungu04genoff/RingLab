@@ -15,6 +15,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 
@@ -63,6 +64,23 @@ public class BaseStatsService {
     var racers = stats.racerStats(version);
     var parts = stats.machinePartStats(version);
     return BaseStatsBreakdown.calculate(racer, front, rear, tire, racers, parts);
+  }
+
+  /** Draft previews expose the subtotal of selected components instead of hiding it until every slot is filled. */
+  public BaseStatsBreakdown draftBreakdown(UUID version, UUID racer, UUID front, UUID rear, UUID tire) {
+    if (version != null) requireVersion(version);
+    if (racer != null && game.findRacer(racer).isEmpty()) throw NotFoundException.missing("Racer");
+    requirePart(front, MachinePartType.FRONT);
+    requirePart(rear, MachinePartType.REAR);
+    requirePart(tire, MachinePartType.TIRE);
+    if (version == null) return BaseStatsBreakdown.UNKNOWN;
+    var racers = stats.racerStats(version);
+    var parts = stats.machinePartStats(version);
+    var character = racer == null ? BaseStats.ZERO : racers.getOrDefault(racer, BaseStats.UNKNOWN);
+    var selectedParts = java.util.stream.Stream.of(front, rear, tire).filter(Objects::nonNull)
+        .map(id -> parts.getOrDefault(id, BaseStats.UNKNOWN)).toList();
+    var machine = selectedParts.isEmpty() ? BaseStats.ZERO : BaseStats.sum(selectedParts);
+    return new BaseStatsBreakdown(BaseStats.sum(List.of(character, machine)), character, machine);
   }
 
   /** Enrich only an already selected page of persisted builds. Its references are held

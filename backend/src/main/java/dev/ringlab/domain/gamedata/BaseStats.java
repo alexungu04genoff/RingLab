@@ -7,6 +7,8 @@ import java.util.function.Function;
 /** Base contributions only; null means unknown, including an absent historical record. */
 public record BaseStats(BigDecimal speed, BigDecimal acceleration, BigDecimal handling,
                         BigDecimal power, BigDecimal boost) {
+  public static final BaseStats ZERO = new BaseStats(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO,
+      BigDecimal.ZERO, BigDecimal.ZERO);
   public static final BaseStats UNKNOWN = new BaseStats(null, null, null, null, null);
 
   public static BaseStats sum(List<BaseStats> components) {

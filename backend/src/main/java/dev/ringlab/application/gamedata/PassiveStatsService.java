@@ -24,7 +24,7 @@ public class PassiveStatsService {
     var gadgets = ids.stream().map(id -> game.findGadget(id).orElseThrow(() -> NotFoundException.missing("Gadget"))).toList();
     if (!GadgetPlate.canFit(gadgets.stream().map(Gadget::slotCost).toList()))
       throw new ValidationException("Selected gadgets do not fit the Gadget Plate");
-    var breakdown = base.buildBreakdown(version,racer,front,rear,tire);
+    var breakdown = base.draftBreakdown(version,racer,front,rear,tire);
     var parts = index(game.listMachineParts(),MachinePart::id);
     var machines = index(game.listMachines(),Machine::id);
     return resolved(breakdown,version == null ? null : game.findGameVersion(version).orElseThrow(),
@@ -70,11 +70,14 @@ public class PassiveStatsService {
         || (rear != null && rear.type() != MachinePartType.REAR)
         || (tire != null && tire.type() != MachinePartType.TIRE)
         || (machineType == RacingType.BOOST && tire != null)) coherent = false;
-    boolean complete = front != null && rear != null && machineType != null
+    boolean complete = racer != null && front != null && rear != null && machineType != null
         && (machineType == RacingType.BOOST || tire != null);
-    return PassiveStatsCalculator.calculate(base,patch == null ? null : patch.version(),
-        racer == null ? null : racer.racingType(),coherent && complete ? machineType : null,
+    var result = PassiveStatsCalculator.calculate(base,patch == null ? null : patch.version(),
+        racer == null ? null : racer.racingType(),coherent ? machineType : null,
         gadgets,validGadgets && coherent);
+    if (complete || result.coverage() != PassiveStatsResult.Coverage.CALCULATED) return result;
+    return new PassiveStatsResult(result.base(),result.adjustments(),result.adjusted(),
+        PassiveStatsResult.Coverage.PARTIAL,result.ruleset(),result.supportedVersion(),result.note(),result.effects());
   }
 
   private static <T> Map<UUID,T> index(List<T> values, Function<T,UUID> key) {
