@@ -1,6 +1,5 @@
-import { useState } from "react";
 import type { BaseStats, Build, BuildDraft, BuildStatsResult, GameVersion, StatsMode } from "./types";
-import { PassiveStatsPanel, StatsModeControl } from "./PassiveStats";
+import { PassiveStatsPanel } from "./PassiveStats";
 import { useLoad } from "./useLoad";
 import { ErrorNotice } from "./components";
 import { buildStatsPath, buildStatsWarning, passiveStatsPath, persistedStatsPath, statNames, statPresentation } from "./stats";
@@ -75,20 +74,18 @@ function PassiveRequest({ path, basePath, version, warning }: { path: string; ba
     : result.error ? <><ErrorNotice message={`Could not load gadget stats: ${result.error}`} />
       <StatsRequest path={basePath} version={version} warning={warning} /></>
       : <>{warning && <p role="note" className="stats-compatibility-warning">{warning}</p>}
-        <PassiveStatsPanel value={result.data?.passive} /></>}</>;
+        {result.data?.passive ? <PassiveStatsPanel value={result.data.passive} />
+          : <StatsBlock stats={result.data} version={version} breakdown={result.data} title="Stats" />}</>}</>;
 }
 
-export function DraftStats({ draft, version, warning, mode: controlledMode, persistedPath }: {
+export function DraftStats({ draft, version, warning, mode = "gadgets", persistedPath }: {
   draft: StatsDraft; version: GameVersion | null; warning?: string | null;
   mode?: StatsMode; persistedPath?: string;
 }) {
-  const [localMode, setMode] = useState<StatsMode>("base");
-  const mode = controlledMode ?? localMode;
   const path = buildStatsPath(draft);
   const passivePath = persistedPath ?? passiveStatsPath({ ...draft, gadgetIds: draft.gadgetIds ?? [] });
   // Remount on selection changes so an earlier response cannot flash as the new setup's stats.
-  return <>{controlledMode === undefined && <StatsModeControl mode={mode} onChange={setMode} />}
-    {mode === "base" ? <StatsRequest key={path} path={path} version={version?.version ?? null} warning={warning} saved={!!persistedPath} />
+  return <>{mode === "base" || !version ? <StatsRequest key={path} path={path} version={version?.version ?? null} warning={warning} saved={!!persistedPath} />
       : <PassiveRequest key={passivePath} path={passivePath} basePath={path} version={version?.version ?? null} warning={warning} />}</>;
 }
 

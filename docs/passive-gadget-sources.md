@@ -179,12 +179,12 @@ displayed matching +20/−4 and non-matching +8 from the shared metadata; its de
 and expanded rules use the whole card width. No browser console errors were observed.
 The 13 affected collection/passive presentation tests passed again after the layout fixes.
 
-Final card presentation follow-up (2026-09-27): cards retain the normal stat bars and
-put the compact Gear / Gadget adjustments toggle below them. Base is still the default;
-adjusted mode keeps its coverage label visible, with base/adjustment/result arithmetic
-and effect explanations behind Details. Details/editor/comparison retain the explicit
-Base / With gadgets controls. This follows the requested compact card redesign.
-The neutral map pill and larger 64px machine thumbnails are also preserved.
+Current presentation (2026-09-27): cards, editor, details and comparison automatically
+include supported passive adjustments, with no Base / With gadgets controls. Solid
+racer, striped machine and outlined gadget segments distinguish the contributions.
+Coverage stays visible; base/adjustment/result arithmetic and effect explanations
+remain in Details. Unsupported calculations retain readable base values. Map pills
+fit their content, and machine thumbnails are 48px with readable part badges.
 
 After those changes, `npm run test:coverage -- --maxWorkers=2` again passed all 252 tests
 in 32 files (91.96% statements/lines, 91.08% branches, 87.13% functions), and

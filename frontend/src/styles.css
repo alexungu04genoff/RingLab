@@ -3252,7 +3252,9 @@ nav,
 .card-gadget-state { font-size:10px; text-transform:uppercase; opacity:.75; }
 .card-gadget-toggle svg { width:16px; height:16px; }
 .card-gadget-toggle[aria-pressed="true"] { color:#74cfff; border-color:#74cfff; background:#17364a; }
-.card-passive-details { margin-top:.5rem; font-size:.75rem; }
+.card-passive-details { margin-top:.5rem; margin-bottom:.5rem; font-size:.75rem; }
+.passive-stat-bars { display:grid; gap:18px; margin:16px 0; }
+.passive-stat-bars .stat-label { margin-bottom:8px; }
 .card-passive-details > summary { cursor:pointer; color:var(--muted, #adb5c4); }
 .card-stat-meter { position:relative; display:flex; align-items:center; gap:5px; height:12px; }
 .card-stat-meter > .card-stat-track { flex:1; min-width:0; }

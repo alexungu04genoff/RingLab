@@ -96,6 +96,18 @@ it("shows signed penalties alongside gadget bonuses",()=>{
   expect(screen.getByRole("img",{name:/Acceleration: base 30.75; gadget −6; adjusted 24.75. Hatched reduction/})).toBeTruthy();
 });
 
+it("shows gadget adjustments automatically without mode buttons",async()=>{
+  const fetch=vi.fn((url:string)=>Promise.resolve(new Response(JSON.stringify(
+    url.includes("passive-build") ? {...base,passive:result} : base))));
+  vi.stubGlobal("fetch",fetch);
+  render(<DraftStats draft={draft} version={version} />);
+  expect(screen.queryByRole("button",{name:"With gadgets"})).toBeNull();
+  expect(screen.queryByRole("button",{name:"Base"})).toBeNull();
+  await waitFor(()=>expect(screen.getByLabelText("speed result").textContent).toBe("= 125.25"));
+  expect(fetch.mock.calls[0][0]).toContain("gadgetId=g1");
+  expect(screen.getByRole("img",{name:/Speed: base 85.25; gadget \+40; result 125.25/})).toBeTruthy();
+});
+
 it("recalculates after changing gadgets and never displays an earlier response under the new draft",async()=>{
   let resolveOld!:(value:Response)=>void;
   const old=new Promise<Response>(resolve=>{resolveOld=resolve;});
@@ -104,8 +116,6 @@ it("recalculates after changing gadgets and never displays an earlier response u
     : Promise.resolve(new Response(JSON.stringify(url.includes("passive-build") ? {...base,passive:{...result,adjusted:{...result.adjusted,speed:88.25}}} : base))));
   vi.stubGlobal("fetch",fetch);
   const {rerender}=render(<DraftStats draft={draft} version={version} />);
-  await screen.findByRole("progressbar",{name:"Speed: 85.25"});
-  await userEvent.click(screen.getByRole("button",{name:"With gadgets"}));
   expect(screen.getByText("Loading passive gadget stats…")).toBeTruthy();
   rerender(<DraftStats draft={{...draft,gadgetIds:["g2"]}} version={version} />);
   await waitFor(()=>expect(screen.getByLabelText("speed result").textContent).toBe("= 88.25"));
