@@ -166,13 +166,14 @@ it("keeps an incompatible legacy rear visible and requires explicit correction",
   expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("REAR");
 });
 
-it("defaults a new build to the latest known patch", async () => {
+it("requires a patch selection for a new build", async () => {
   render(<MemoryRouter initialEntries={["/builds/new"]}><Routes>
     <Route path="/builds/new" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
   await waitFor(() => expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value)
-    .toBe(latestVersion.id));
+    .toBe(""));
   expect(screen.getByRole("option", { name: "Select a patch" })).toBeTruthy();
+  expect(screen.getByText("A game version / patch is required.")).toBeTruthy();
 });
 
 function openRemix() {
@@ -193,7 +194,7 @@ it("clears a loaded remix and its provenance when navigating to a new build", as
   expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("");
   expect((screen.getByLabelText("Description") as HTMLTextAreaElement).value).toBe("");
   expect((screen.getByLabelText("Racer") as HTMLSelectElement).value).toBe("");
-  expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value).toBe(latestVersion.id);
+  expect((screen.getByLabelText("Game version / Patch") as HTMLSelectElement).value).toBe("");
   fireEvent.change(screen.getByLabelText("Build title"), { target: { value: "Fresh build" } });
   fireEvent.change(screen.getByLabelText("Racer"), { target: { value: "racer" } });
   fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });

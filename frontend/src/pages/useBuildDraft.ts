@@ -30,11 +30,10 @@ export function draftFromRemix(build: Build): BuildDraft {
 }
 
 /** Loads an owned edit or a public remix; route changes always start a fresh draft. */
-export function useBuildDraft({ id, remixSourceId, userId, newestVersionId }: {
+export function useBuildDraft({ id, remixSourceId, userId }: {
   id?: string;
   remixSourceId: string | null;
   userId?: string;
-  newestVersionId?: string;
 }) {
   const [draft, setDraft] = useState<BuildDraft>(emptyDraft);
   const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
@@ -68,12 +67,6 @@ export function useBuildDraft({ id, remixSourceId, userId, newestVersionId }: {
       });
     return () => controller.abort();
   }, [id, remixSourceId, userId]);
-
-  useEffect(() => {
-    if (id || remixSourceId || !newestVersionId) return;
-    setDraft((current) => current.gameVersionId
-      ? current : { ...current, gameVersionId: newestVersionId });
-  }, [id, remixSourceId, newestVersionId, userId]);
 
   const canSubmit = !loading && !loadError
     && (!id || (loadedBuild?.id === id && loadedBuild.authorId === userId));

@@ -40,7 +40,7 @@ export function BuildEditor() {
   const versions = useLoad<GameVersion[]>("/game-versions");
   const maps = useLoad<RaceMap[]>("/maps");
   const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
-    id, remixSourceId, userId: user?.id, newestVersionId: versions.data?.[0]?.id,
+    id, remixSourceId, userId: user?.id,
   });
   const draftStats = useLoad<BuildStatsResult>(!loading && canSubmit ? passiveStatsPath(draft) : "");
   useEffect(() => {
