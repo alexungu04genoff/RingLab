@@ -1,7 +1,10 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
-import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer } from "./types";
+import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, PassiveStatsResult } from "./types";
+import { adjustmentSummary, coverageLabel, GadgetAdjustmentBadges } from "./PassiveStats";
+import { persistedStatsPath } from "./stats";
+import { useLoad } from "./useLoad";
 import { CardStats } from "./CardStats";
 import type { PageCardStats } from "./CardStats";
 import { RacingTypeBadge, racingTypeClass, racingTypeLabel } from "./RacingTypeBadge";
@@ -141,13 +144,18 @@ function BuildPartIcon({ part, label, abbreviation }: {
   );
 }
 
-export function BuildGadgetIcon({ gadget }: { gadget: Gadget }) {
-  const tooltip = gadget.description ? `${gadget.name}: ${gadget.description}` : gadget.name;
+export function BuildGadgetIcon({ gadget, passive }: { gadget: Gadget; passive?: PassiveStatsResult }) {
+  const supported = passive && !["UNSUPPORTED_VERSION", "INVALID_LOADOUT"].includes(passive.coverage);
+  const applied = supported ? passive.effects.filter(effect => effect.gadgetId === gadget.id && effect.status === "APPLIED") : [];
+  const appliedText = applied.map(effect => adjustmentSummary(effect.adjustment)).join("; ");
+  const tooltip = `${gadget.name}${appliedText ? `: ${appliedText}` : gadget.description ? `: ${gadget.description}` : ""}`;
   return (
     <span className="card-gadget-icon" tabIndex={0} aria-label={tooltip}>
       <Artwork item={gadget} compact />
       <span role="tooltip">
         <strong>{gadget.name}</strong>
+        {applied.length > 0 && <><span>Applied to this setup</span><GadgetAdjustmentBadges gadgetId={gadget.id} value={passive} /></>}
+        {passive && (!supported || passive.coverage === "PARTIAL") && <span>{coverageLabel(passive)}</span>}
         {gadget.description && <span>{gadget.description}</span>}
       </span>
     </span>
@@ -160,6 +168,11 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
   const location = useLocation();
   const versionAge = patchAge(build.gameVersion, versions);
   const setupIssues = savedBuildSetupIssues(build);
+  const requestedStats = useLoad<BuildStatsResult>(!pageStats && !stats ? persistedStatsPath(build) : "");
+  const resolvedPageStats: PageCardStats | undefined = pageStats ?? (stats ? undefined
+    : requestedStats.loading ? {status:"pending"}
+      : requestedStats.data ? {status:"ready",value:requestedStats.data} : {status:"failed"});
+  const passive = resolvedPageStats ? (resolvedPageStats.status === "ready" ? resolvedPageStats.value.passive : undefined) : stats?.passive;
   return (
     <article className="build-card">
       <div className="card-art">
@@ -200,10 +213,10 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
           </div>
         </div>
         <h2><Link to={`/builds/${build.id}`} state={{ from: browseOrigin(location.pathname, location.search) }}>{build.title}</Link></h2>
-        <CardStats build={build} stats={stats} pageStats={pageStats} />
+        <CardStats build={build} stats={stats} pageStats={resolvedPageStats} />
         <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
-            <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
+            <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} passive={passive} />
           ))}
           {build.gadgets.length > CARD_GADGET_LIMIT && <span>+{build.gadgets.length - CARD_GADGET_LIMIT}</span>}
           {build.gadgets.length === 0 && <span>No gadgets</span>}

@@ -16,7 +16,7 @@ export function shareStats(stats?: BuildStatsResult): string[] {
   const value = stats.passive;
   const result = value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT" ? "unavailable"
     : statNames.map(name => `${name} ${stats[name] ?? "unknown"} ${signedPoints(value.adjustments[name])} = ${value.adjusted[name] ?? "unknown"}`).join(" · ");
-  return [base, `With gadgets (${coverageLabel(value)}; Ver. ${value.supportedVersion}): ${result}`,
+  return [base, `Passive stats (${coverageLabel(value)}; Ver. ${value.supportedVersion}): ${result}`,
     "Known passive arithmetic only; excludes race-time effects and unresolved rules."];
 }
 

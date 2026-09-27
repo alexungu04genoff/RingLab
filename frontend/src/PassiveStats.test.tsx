@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, expect, it, vi } from "vitest";
 import { DraftStats } from "./BaseStats";
 import { CardStats } from "./CardStats";
+import { BuildGadgetIcon } from "./components";
 import { GadgetRuleDetails, PassiveStatsPanel } from "./PassiveStats";
 import { passiveStatsPath, persistedStatsPath } from "./stats";
 import { shareStats } from "./buildSharing";
@@ -96,12 +97,50 @@ it("shows signed penalties alongside gadget bonuses",()=>{
   expect(screen.getByRole("img",{name:/Acceleration: base 30.75; gadget −6; adjusted 24.75. Hatched reduction/})).toBeTruthy();
 });
 
+it("shows only the hovered gadget's applied bonuses and penalties for this setup",()=>{
+  const gadget = {...build.gadgets[0],name:"Handling Tuner 1",description:"Adjust Handling"};
+  const adjustment = {speed:0,acceleration:0,handling:20,power:-4,boost:0};
+  const passive = {...result,effects:[{...result.effects[0],gadgetName:gadget.name,adjustment},
+    {...result.effects[0],gadgetId:"other",adjustment:{...adjustment,handling:8}}]};
+  const {rerender}=render(<BuildGadgetIcon gadget={gadget} passive={passive} />);
+  expect(screen.getByLabelText("Handling Tuner 1: Handling +20, Power −4")).toBeTruthy();
+  expect(screen.getByText("Handling +20")).toBeTruthy();
+  expect(screen.getByText("Power −4")).toBeTruthy();
+  expect(screen.queryByText("Handling +28")).toBeNull();
+  rerender(<BuildGadgetIcon gadget={gadget} passive={{...passive,coverage:"UNSUPPORTED_VERSION"}} />);
+  expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
+  expect(screen.getByText("Gadget rules unavailable for this patch")).toBeTruthy();
+});
+
+it("explains every applied gadget on editor bars and removes highlights for unsupported effects",async()=>{
+  const effects = [...result.effects, {...result.effects[0],gadgetId:"g2",gadgetName:"Speed Tuner 2"}];
+  const {container,rerender}=render(<PassiveStatsPanel value={{...result,effects}} />);
+  const marker=screen.getByRole("button",{name:"Speed gadget adjustment +40"});
+  expect(container.querySelector(".stat-speed .card-stat-gadget-segment.bonus")).toBeTruthy();
+  expect(container.querySelector(".stat-acceleration .card-stat-gadget-segment.penalty")).toBeTruthy();
+  await userEvent.hover(marker);
+  expect(screen.getByRole("tooltip").textContent).toContain("Speed Tuner 1");
+  expect(screen.getByRole("tooltip").textContent).toContain("Speed Tuner 2");
+  await userEvent.unhover(marker);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  await userEvent.click(marker);
+  expect(screen.getByRole("tooltip").textContent).toContain("Base 85.25 +40 = 125.25");
+  await userEvent.keyboard("{Escape}");
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  rerender(<PassiveStatsPanel value={{...result,coverage:"UNSUPPORTED_VERSION",effects}} />);
+  expect(screen.queryByRole("button",{name:/gadget adjustment/})).toBeNull();
+  expect(container.querySelector(".card-stat-gadget-segment")).toBeNull();
+  rerender(<PassiveStatsPanel value={{...result,effects:effects.map(effect=>({...effect,status:"CONDITIONAL"}))}} />);
+  expect(screen.queryByRole("button",{name:/gadget adjustment/})).toBeNull();
+  expect(container.querySelector(".card-stat-gadget-segment")).toBeNull();
+});
+
 it("shows gadget adjustments automatically without mode buttons",async()=>{
   const fetch=vi.fn((url:string)=>Promise.resolve(new Response(JSON.stringify(
     url.includes("passive-build") ? {...base,passive:result} : base))));
   vi.stubGlobal("fetch",fetch);
   render(<DraftStats draft={draft} version={version} />);
-  expect(screen.queryByRole("button",{name:"With gadgets"})).toBeNull();
+  expect(screen.queryByRole("group",{name:"Statistics mode"})).toBeNull();
   expect(screen.queryByRole("button",{name:"Base"})).toBeNull();
   await waitFor(()=>expect(screen.getByLabelText("speed result").textContent).toBe("= 125.25"));
   expect(fetch.mock.calls[0][0]).toContain("gadgetId=g1");

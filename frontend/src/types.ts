@@ -16,7 +16,6 @@ export interface BuildStatsResult extends BaseStats {
   machine: BaseStats;
   passive?: PassiveStatsResult;
 }
-export type StatsMode = "base" | "gadgets";
 export interface PassiveStatsResult {
   base: BuildStatsResult;
   adjustments: BaseStats;

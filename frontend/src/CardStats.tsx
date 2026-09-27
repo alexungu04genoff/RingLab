@@ -1,8 +1,7 @@
-import { useId, useState } from "react";
 import { GearIcon, RacerIcon, SteeringWheelIcon } from "./icons";
-import { coverageLabel, PassiveStatsPanel, signedPoints } from "./PassiveStats";
-import { buildStatsWarning, persistedStatsPath, statNames, statPresentation, type StatName } from "./stats";
-import type { Build, BuildPage, BuildStatsResult, PassiveStatsResult, StatsMode } from "./types";
+import { coverageLabel, GadgetStatImpact, PassiveStatsPanel, signedPoints } from "./PassiveStats";
+import { buildStatsWarning, persistedStatsPath, statNames, statPresentation } from "./stats";
+import type { Build, BuildPage, BuildStatsResult } from "./types";
 import { useLoad } from "./useLoad";
 
 export type PageCardStats = { status: "ready"; value: BuildStatsResult }
@@ -80,7 +79,7 @@ function CardStatsContent({ build, stats }: { build: Build; stats: BuildStatsRes
             style={{ left: `${Math.max(0, Math.min(baseValue!, adjustedValue!)) * scale}%`,
               width: `${Math.abs(Math.max(0, adjustedValue!) - Math.max(0, baseValue!)) * scale}%` }} />}
         </span>
-        {supported && stats.passive && <GadgetStatImpact name={name} value={stats.passive} mode="gadgets" />}
+        {supported && stats.passive && <GadgetStatImpact name={name} value={stats.passive} />}
         </span>
       </div>;
     })}
@@ -88,29 +87,4 @@ function CardStatsContent({ build, stats }: { build: Build; stats: BuildStatsRes
     <summary>{!passive && "Base stats · "}{stats.passive ? coverageLabel(stats.passive) : "Gadget information unavailable"} · Details</summary>
     <PassiveStatsPanel value={stats.passive} compact />
   </details>{warning && <p className="card-stats-warning" role="note">⚠ {warning}</p>}</>;
-}
-
-function GadgetStatImpact({ name, value, mode }: { name: StatName; value: PassiveStatsResult; mode: StatsMode }) {
-  const tooltipId = useId();
-  const [open, setOpen] = useState(false);
-  const effects = value.effects.filter(effect => effect.status === "APPLIED"
-    && effect.adjustment[name] != null && effect.adjustment[name] !== 0);
-  if (!effects.length) return null;
-  const label = name[0].toUpperCase() + name.slice(1);
-  return <span className="card-stat-impact" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
-    onBlur={() => setOpen(false)} onKeyDown={event => {
-      if (event.key === "Escape") { event.stopPropagation(); setOpen(false); }
-    }}>
-    <button type="button" aria-label={`${label} gadget adjustment ${signedPoints(value.adjustments[name])}`}
-      aria-describedby={open ? tooltipId : undefined} onFocus={() => setOpen(true)}
-      onClick={event => { event.stopPropagation(); setOpen(true); }} />
-    {open && <span className="card-stat-impact-copy" id={tooltipId} role="tooltip">
-      {effects.map(effect => <span key={`${effect.gadgetId}-${effect.effectId}`}>
-        <strong>{effect.gadgetName}</strong> · {label} {signedPoints(effect.adjustment[name])}
-      </span>)}
-      <span>Base {value.base[name] ?? "—"} {signedPoints(value.adjustments[name])} = {value.adjusted[name] ?? "—"}.</span>
-      <span>{mode === "base" ? "Adjustment preview; Base shown." : "Included in the passive value."}
-        {value.coverage === "PARTIAL" && " Known subtotal only."}</span>
-    </span>}
-  </span>;
 }

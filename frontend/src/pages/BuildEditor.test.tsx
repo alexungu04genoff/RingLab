@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError } from "../api";
-import type { Build, MachinePart } from "../types";
+import type { Build, BuildStatsResult, MachinePart } from "../types";
 import { BuildEditor } from "./BuildEditor";
 
 vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
@@ -37,6 +37,39 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+
+it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the picker and preview at %s", async (route) => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  const gadget = {id:"drift",name:"Drift Charge Kit",description:"Improve Handling",slotCost:1,imagePath:null};
+  const base: BuildStatsResult = {speed:20,acceleration:30,handling:40,power:50,boost:60,
+    character:{speed:5,acceleration:5,handling:5,power:5,boost:5},
+    machine:{speed:15,acceleration:25,handling:35,power:45,boost:55}};
+  const adjustment={speed:0,acceleration:0,handling:3,power:0,boost:0};
+  vi.mocked(api).mockImplementation(async(path,options)=>{
+    if(path==="/gadgets") return [gadget];
+    if(path.startsWith("/stats/passive-build")) return {...base,passive:{base,
+      adjustments:adjustment,adjusted:{...base,handling:43},coverage:"CALCULATED",
+      ruleset:"test",supportedVersion:"1.4.1",note:"Verified passive effects",
+      effects:path.includes("gadgetId=drift") ? [{gadgetId:"drift",gadgetName:gadget.name,effectId:"handling",
+        label:"Handling",status:"APPLIED",adjustment,explanation:"Passive Handling bonus",sources:[]}] : []}};
+    return fallback(path,options);
+  });
+  render(<MemoryRouter initialEntries={[route]}><Routes>
+    <Route path="/builds/new" element={<BuildEditor />} />
+    <Route path="/builds/:id/edit" element={<BuildEditor />} />
+  </Routes></MemoryRouter>);
+  const checkbox=await screen.findByRole("checkbox",{name:/Drift Charge Kit/});
+  if(route.endsWith("edit")) selectLatestPatch();
+  fireEvent.click(checkbox);
+  await waitFor(()=>expect(screen.getAllByLabelText("Applied gadget adjustments")).toHaveLength(2));
+  for (const badge of screen.getAllByLabelText("Applied gadget adjustments")) {
+    expect(within(badge).getByText("Handling +3")).toBeTruthy();
+  }
+  expect(screen.getByRole("button",{name:"Handling gadget adjustment +3"})).toBeTruthy();
+  expect(vi.mocked(api).mock.calls.filter(([path])=>path.includes("gadgetId=drift"))).toHaveLength(1);
+  fireEvent.click(checkbox);
+  expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
+});
 async function openA() {
   let navigate!: ReturnType<typeof useNavigate>;
   function Navigation() { navigate = useNavigate(); return null; }

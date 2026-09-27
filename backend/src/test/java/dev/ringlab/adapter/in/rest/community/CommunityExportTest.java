@@ -33,6 +33,7 @@ class CommunityExportTest {
     var text=DiscordTopBuildsFormatter.format(response).embeds().getFirst().description();
     assertTrue(text.contains("Base (Spd/Acc/Hnd/Pwr/Bst): 90 / 30 / 40 / 50 / 60"));
     assertTrue(text.contains("110 / 26 / 40 / 50 / 60"));
+    assertTrue(text.contains("Passive stats (CALCULATED, Ver. 1.4.1)"));
     assertTrue(text.contains("Recommended maps: All maps"));
   }
   @Test void urlsUseTrustedOriginsAndRejectUnsafeArtwork() {

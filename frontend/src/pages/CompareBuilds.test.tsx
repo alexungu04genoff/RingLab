@@ -64,7 +64,7 @@ it("automatically includes gadget stats for both builds without a mode control",
   const calls=vi.mocked(useLoad).mock.calls.map(([path])=>path);
   expect(calls.some(path=>path.startsWith("/stats/persisted/left?"))).toBe(true);
   expect(calls.some(path=>path.startsWith("/stats/persisted/right?"))).toBe(true);
-  expect(screen.queryByRole("button",{name:"With gadgets"})).toBeNull();
+  expect(screen.queryByRole("group",{name:"Statistics mode"})).toBeNull();
 });
 
 it("renders both URL-selected builds and preserves gadget order and plate usage", () => {

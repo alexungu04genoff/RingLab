@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
+import { GadgetAdjustmentBadges } from "../PassiveStats";
+import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer, RacingType } from "../types";
+import type { Build, BuildDraft, BuildStatsResult, Gadget, GameVersion, MachinePart, Racer, RacingType } from "../types";
 import { machineSetupError } from "../buildForm";
 import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
 import { useBuildDraft } from "./useBuildDraft";
@@ -40,6 +42,7 @@ export function BuildEditor() {
   const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
     id, remixSourceId, userId: user?.id, newestVersionId: versions.data?.[0]?.id,
   });
+  const draftStats = useLoad<BuildStatsResult>(!loading && canSubmit ? passiveStatsPath(draft) : "");
   useEffect(() => {
     saveContext.current = {};
     setBusy(false);
@@ -286,6 +289,7 @@ export function BuildEditor() {
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
                         {g.description && <span>{g.description}</span>}
+                        {draft.gadgetIds.includes(g.id) && <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data?.passive} />}
                       </span>
                     </label>
                   ))}
@@ -301,7 +305,7 @@ export function BuildEditor() {
             <aside className="panel selection build-preview">
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
-              <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} />
+              <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} loadedResult={draftStats} />
               <div className="preview-core">
                 <section className="preview-item">
                   <span className="preview-label">Selected racer</span>
@@ -361,6 +365,7 @@ export function BuildEditor() {
                       <span className="gadget-name">
                         <strong>{gadget?.name || "Loading gadget…"}</strong>
                         {gadget && <small>{gadget.slotCost === null ? "Cost unknown" : `${gadget.slotCost} ${gadget.slotCost === 1 ? "slot" : "slots"}`}</small>}
+                        <GadgetAdjustmentBadges gadgetId={gadgetId} value={draftStats.data?.passive} />
                       </span>
                       <div>
                         <button

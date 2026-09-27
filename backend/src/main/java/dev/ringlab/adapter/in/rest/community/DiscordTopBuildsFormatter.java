@@ -42,9 +42,9 @@ public final class DiscordTopBuildsFormatter {
     if (passive == null) return base;
     if (passive.coverage() == dev.ringlab.domain.gamedata.PassiveStatsResult.Coverage.UNSUPPORTED_VERSION
         || passive.coverage() == dev.ringlab.domain.gamedata.PassiveStatsResult.Coverage.INVALID_LOADOUT)
-      return base + "\nWith gadgets: unavailable (" + passive.coverage() + ")";
+      return base + "\nPassive stats: unavailable (" + passive.coverage() + ")";
     var adjusted = passive.adjusted();
-    return base + "\nWith gadgets (" + passive.coverage() + ", Ver. " + passive.supportedVersion() + "): "
+    return base + "\nPassive stats (" + passive.coverage() + ", Ver. " + passive.supportedVersion() + "): "
         + values(adjusted.speed(),adjusted.acceleration(),adjusted.handling(),adjusted.power(),adjusted.boost())
         + "\nKnown passive arithmetic; race-time effects excluded.";
   }

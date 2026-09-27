@@ -151,7 +151,7 @@ the preview backend runs the verified packaged application with its isolated pre
 database, mock mail and separate JWT keys. Its log is
 `E:\RingLab\.tools\gadgets-preview-backend.log`. External news is disabled in this preview.
 After the restart, the frontend and persisted stats API both responded successfully
-through the frontend proxy. The visible example was refreshed with With gadgets selected
+through the frontend proxy. The visible example was refreshed with passive adjustments displayed
 and confirmed Speed 105, Acceleration 24, Handling 59, Power 52, Boost 32.
 
 Five isolated examples use Amy Rose + Speedster Lightning in 1.4.1. Their base stats are
@@ -180,7 +180,7 @@ and expanded rules use the whole card width. No browser console errors were obse
 The 13 affected collection/passive presentation tests passed again after the layout fixes.
 
 Current presentation (2026-09-27): cards, editor, details and comparison automatically
-include supported passive adjustments, with no Base / With gadgets controls. Solid
+include supported passive adjustments, without a display-mode toggle. Solid
 racer, striped machine and outlined gadget segments distinguish the contributions.
 Coverage stays visible; base/adjustment/result arithmetic and effect explanations
 remain in Details. Unsupported calculations retain readable base values. Map pills

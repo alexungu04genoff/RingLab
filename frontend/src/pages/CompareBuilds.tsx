@@ -8,7 +8,7 @@ import { useLoad } from "../useLoad";
 import { BuildStats } from "../BaseStats";
 import { RecommendedMapList } from "../MapRecommendations";
 import { compareMapRecommendations } from "../mapSelection";
-import type { Build, BuildPage, Gadget, StatsMode } from "../types";
+import type { Build, BuildPage, Gadget } from "../types";
 
 const SELECTOR_PAGE_SIZE = 8;
 
@@ -125,7 +125,7 @@ function GadgetList({ build, other, side }: { build: Build; other: Build; side: 
   ) : <p className="muted">No gadgets selected for the {side.toLowerCase()} build.</p>;
 }
 
-function BuildColumn({ build, other, side, mode }: { build: Build; other: Build; side: "Left" | "Right"; mode: StatsMode }) {
+function BuildColumn({ build, other, side }: { build: Build; other: Build; side: "Left" | "Right" }) {
   const diff = buildDiff(build, other);
   const plate = gadgetPlateStatus(build.gadgets);
   return (
@@ -145,7 +145,7 @@ function BuildColumn({ build, other, side, mode }: { build: Build; other: Build;
       <DiffValue different={diff.composition || diff.machineType} label="Machine composition"><MachineSetup build={build} compact
         differences={{ FRONT: diff.front, REAR: diff.rear, TIRE: diff.tires }} /></DiffValue>
       <section className="panel">
-        <BuildStats build={build} mode={mode} />
+        <BuildStats build={build} />
       </section>
       <section className="panel compare-gadget-panel">
         <div className="gadget-heading"><h2>Gadgets</h2>
@@ -174,7 +174,6 @@ function BuildColumn({ build, other, side, mode }: { build: Build; other: Build;
 }
 
 export function CompareBuilds() {
-  const mode: StatsMode = "gadgets";
   const location = useLocation();
   const origin = buildDetailsOrigin(location.state?.from);
   const backToBrowse = <Link className="back" to={origin}>← Back to {origin.startsWith("/saved-builds") ? "Saved Builds" : "Explore"}</Link>;
@@ -196,7 +195,7 @@ export function CompareBuilds() {
     {!rightId && <BuildSelector leftId={leftId} />}
     {rightId && !right.data && <><ErrorNotice message={right.error} />
       {right.loading && <p role="status">Loading comparison…</p>}</>}
-    {right.data && <><div className="compare-grid"><BuildColumn build={left.data} other={right.data} side="Left" mode={mode} />
-      <BuildColumn build={right.data} other={left.data} side="Right" mode={mode} /></div></>}
+    {right.data && <><div className="compare-grid"><BuildColumn build={left.data} other={right.data} side="Left" />
+      <BuildColumn build={right.data} other={left.data} side="Right" /></div></>}
   </>;
 }

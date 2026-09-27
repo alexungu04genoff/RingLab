@@ -57,7 +57,7 @@ it("renders a missing historical record as unavailable", () => {
 
 it("requires an explicit version and does not make a preview request without one", () => {
   const fetch = vi.fn(); vi.stubGlobal("fetch", fetch);
-  render(<DraftStats mode="base" draft={{ ...draft, gameVersionId: null }} version={null} />);
+  render(<DraftStats draft={{ ...draft, gameVersionId: null }} version={null} />);
   expect(screen.getByText("Select a game version to see stats.")).toBeTruthy();
   expect(fetch).not.toHaveBeenCalled();
   expect(buildStatsPath({ ...draft, gameVersionId: null })).toBe("");
@@ -77,16 +77,16 @@ it("explains missing versions on saved builds without suggesting a nonexistent s
   expect(screen.queryByText("Select a game version to see stats.")).toBeNull();
 });
 
-it("requests backend totals for the selected components and excludes gadgets", async () => {
+it("keeps backend base totals readable when passive metadata is unavailable", async () => {
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(breakdown)));
   vi.stubGlobal("fetch", fetch);
-  render(<DraftStats mode="base" draft={draft} version={version} />);
-  expect(screen.getByText("Loading base stats…")).toBeTruthy();
+  render(<DraftStats draft={draft} version={version} />);
+  expect(screen.getByText("Loading passive gadget stats…")).toBeTruthy();
   await screen.findByRole("progressbar", { name: "Speed: 17.5" });
-  expect(fetch.mock.calls[0][0]).toBe("/api/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t");
+  expect(fetch.mock.calls[0][0]).toBe("/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
-  expect(screen.getByText(/Gadget effects are not included/)).toBeTruthy();
+  expect(screen.queryByRole("group", { name: "Statistics mode" })).toBeNull();
   expect(buildStatsPath({ ...draft, tirePartId: null })).not.toContain("tirePartId");
 });
 
@@ -98,11 +98,11 @@ it("uses the backend breakdown for a Board draft without requesting a tire or ca
   };
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(boardBreakdown)));
   vi.stubGlobal("fetch", fetch);
-  render(<DraftStats mode="base" draft={{ ...draft, machineType: "BOOST", tirePartId: null }} version={version} />);
+  render(<DraftStats draft={{ ...draft, machineType: "BOOST", tirePartId: null }} version={version} />);
   await screen.findByRole("progressbar", { name: "Speed: 13" });
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toBe(
-    "/api/stats/build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b");
+    "/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 8")).toBeTruthy();
 });
 
@@ -115,10 +115,10 @@ it("preserves unknown values in an incomplete draft without fetching the catalog
   };
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(partial)));
   vi.stubGlobal("fetch", fetch);
-  render(<DraftStats mode="base" draft={{ ...draft, frontPartId: "", rearPartId: "", tirePartId: null }} version={version} />);
+  render(<DraftStats draft={{ ...draft, frontPartId: "", rearPartId: "", tirePartId: null }} version={version} />);
   await screen.findByRole("progressbar", { name: "Speed: 5" });
   expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.calls[0][0]).toBe("/api/stats/build?gameVersionId=v&racerId=r");
+  expect(fetch.mock.calls[0][0]).toBe("/api/stats/passive-build?gameVersionId=v&racerId=r&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
   expect(screen.queryByLabelText(/Speed components/)).toBeNull();
   expect(document.querySelector(".stat-speed .stat-fill")?.getAttribute("style")).toContain("5%");
 });
@@ -181,8 +181,8 @@ it("reports preview errors and discards stale responses on selection changes", a
     return Promise.resolve(new Response(JSON.stringify({ message: "Unavailable" }), { status: 503 }));
   });
   vi.stubGlobal("fetch", fetch);
-  const view = render(<DraftStats mode="base" draft={draft} version={version} />);
-  view.rerender(<DraftStats mode="base" draft={{ ...draft, racerId: "new" }} version={version} />);
+  const view = render(<DraftStats draft={draft} version={version} />);
+  view.rerender(<DraftStats draft={{ ...draft, racerId: "new" }} version={version} />);
   await screen.findByText(/Could not load base stats/);
   resolveOld(new Response(JSON.stringify(breakdown)));
   await waitFor(() => expect(screen.queryByText("17.5")).toBeNull());

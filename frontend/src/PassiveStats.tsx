@@ -1,9 +1,26 @@
+import { useId, useState } from "react";
 import type { BaseStats, GadgetRulesCatalog, PassiveStatsResult } from "./types";
-import { statNames } from "./stats";
+import { statNames, type StatName } from "./stats";
 import { GearIcon, RacerIcon, SteeringWheelIcon } from "./icons";
 
 
 export function signedPoints(value: number | null) { return value == null ? "Unknown" : `${value >= 0 ? "+" : "−"}${Math.abs(value)}`; }
+
+export function GadgetAdjustmentBadges({ gadgetId, value }: { gadgetId: string; value?: PassiveStatsResult }) {
+  if (!value || value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT") return null;
+  const effects = value.effects.filter(effect => effect.gadgetId === gadgetId && effect.status === "APPLIED");
+  const adjustments = statNames.map(name => ({name,
+    points: effects.reduce((total, effect) => total + (effect.adjustment[name] ?? 0), 0),
+  })).filter(({points}) => points !== 0);
+  if (!adjustments.length) return null;
+  return <span className="gadget-adjustments" aria-label="Applied gadget adjustments">
+    {adjustments.map(({name,points}) => <span key={name}
+      className={`gadget-adjustment stat-row stat-${name} ${points > 0 ? "bonus" : "penalty"}`}
+      title={`Applied to this setup${value.coverage === "PARTIAL" ? "; known subtotal only" : ""}`}>
+      {name[0].toUpperCase() + name.slice(1)} {signedPoints(points)}
+    </span>)}
+  </span>;
+}
 export function adjustmentSummary(stats: BaseStats) {
   return statNames.filter(name => stats[name] !== 0 && stats[name] != null)
     .map(name => `${name[0].toUpperCase() + name.slice(1)} ${signedPoints(stats[name])}`).join(", ") || "No stat-point adjustment";
@@ -46,17 +63,22 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
         const base = value.base[name];
         const total = unavailable ? base : value.adjusted[name];
         const delta = unavailable ? null : value.adjustments[name];
+        const hasAppliedEffect = !unavailable && value.effects.some(effect => effect.status === "APPLIED"
+          && effect.adjustment[name] != null && effect.adjustment[name] !== 0);
         const scale = 100 / Math.max(100, base ?? 0, total ?? 0);
         const racer = Math.min(100, Math.max(0, value.base.character?.[name] ?? 0) * scale);
         const machine = Math.min(100 - racer, Math.max(0, value.base.machine?.[name] ?? 0) * scale);
         const explanation = `${label}: base ${base ?? "unknown"}; gadget ${signedPoints(delta)}; ${unavailable ? "base shown" : "result"} ${total ?? "unknown"}`;
         return <div className={`stat-row stat-${name}`} key={name}>
           <div className="stat-label"><dt>{label}</dt><dd>{total ?? "—"}</dd></div>
-          <div className={`card-stat-track${total == null ? " unknown" : ""}`} role="img" aria-label={explanation} title={explanation}>
+          <div className="card-stat-meter">
+          <div className={`card-stat-track${total == null ? " unknown" : ""}`} role="img" aria-label={explanation}>
             <span className="card-stat-character-fill" style={{width:`${racer}%`}} />
             <span className="card-stat-machine-fill" style={{width:`${machine}%`}} />
-            {base != null && total != null && delta != null && delta !== 0 && <span className={`card-stat-gadget-segment ${delta > 0 ? "bonus" : "penalty"}`}
+            {hasAppliedEffect && base != null && total != null && delta != null && delta !== 0 && <span className={`card-stat-gadget-segment ${delta > 0 ? "bonus" : "penalty"}`}
               style={{left:`${Math.max(0, Math.min(base,total))*scale}%`,width:`${Math.abs(Math.max(0,total)-Math.max(0,base))*scale}%`}} />}
+          </div>
+          {hasAppliedEffect && <GadgetStatImpact name={name} value={value} />}
           </div>
         </div>;
       })}</dl></>}
@@ -95,4 +117,29 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
         </li>)}</ul>}
       <p>{catalog.note}</p><p>Stacking is supported for a single passive modifier or a same-type Tuner 1 + Tuner 2 pair. Other combinations are reported as unresolved.</p></>}
   </details>;
+}
+
+export function GadgetStatImpact({ name, value }: { name: StatName; value: PassiveStatsResult }) {
+  const tooltipId = useId();
+  const [open, setOpen] = useState(false);
+  const effects = value.effects.filter(effect => effect.status === "APPLIED"
+    && effect.adjustment[name] != null && effect.adjustment[name] !== 0);
+  if (!effects.length) return null;
+  const label = name[0].toUpperCase() + name.slice(1);
+  return <span className="card-stat-impact" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}
+    onBlur={() => setOpen(false)} onKeyDown={event => {
+      if (event.key === "Escape") { event.stopPropagation(); setOpen(false); }
+    }}>
+    <button type="button" aria-label={`${label} gadget adjustment ${signedPoints(value.adjustments[name])}`}
+      aria-describedby={open ? tooltipId : undefined} onFocus={() => setOpen(true)}
+      onClick={event => { event.stopPropagation(); setOpen(true); }} />
+    {open && <span className="card-stat-impact-copy" id={tooltipId} role="tooltip">
+      {effects.map(effect => <span key={`${effect.gadgetId}-${effect.effectId}`}>
+        <strong>{effect.gadgetName}</strong> · {label} {signedPoints(effect.adjustment[name])}
+      </span>)}
+      <span>Base {value.base[name] ?? "—"} {signedPoints(value.adjustments[name])} = {value.adjusted[name] ?? "—"}.</span>
+      <span>Included in the passive value.
+        {value.coverage === "PARTIAL" && " Known subtotal only."}</span>
+    </span>}
+  </span>;
 }

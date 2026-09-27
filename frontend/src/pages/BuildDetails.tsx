@@ -33,6 +33,7 @@ function BuildDetailsContent() {
   const location = useLocation();
   const origin = buildDetailsOrigin(location.state?.from);
   const build = useLoad<Build>(`/builds/${id}`);
+  const stats = useLoad<BuildStatsResult>(build.data ? persistedStatsPath(build.data) : "");
   const versions = useLoad<GameVersion[]>("/game-versions");
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
@@ -255,14 +256,14 @@ function BuildDetailsContent() {
                     </div>
                   </section>
                   <div className="hero-stats">
-                    <BuildStats build={b} />
+                    <BuildStats build={b} loadedResult={stats} />
                   </div>
                   <div className="hero-context">
                     <section className="hero-gadgets" aria-label="Selected gadgets">
                       <div className="eyebrow">GADGETS</div>
                       <div className="tags">
                         {b.gadgets.map((g, i) => (
-                          <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} />
+                          <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} passive={stats.data?.passive} />
                         ))}
                         {b.gadgets.length === 0 && <span>No gadgets</span>}
                       </div>
