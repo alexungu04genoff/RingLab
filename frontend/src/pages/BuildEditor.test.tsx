@@ -141,6 +141,10 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
   for (const badge of screen.getAllByLabelText("Applied gadget adjustments")) {
     expect(within(badge).getByText("Handling +3")).toBeTruthy();
   }
+  const picker = checkbox.closest(".gadget-option")!;
+  const meta = picker.querySelector(".gadget-option-meta")!;
+  expect(within(meta).getByText("1 slot")).toBeTruthy();
+  expect(within(meta).getByLabelText("Applied gadget adjustments")).toBeTruthy();
   expect(screen.getByRole("button",{name:"Handling gadget adjustment +3"})).toBeTruthy();
   expect(vi.mocked(api).mock.calls.filter(([path])=>path.includes("gadgetId=drift"))).toHaveLength(1);
   fireEvent.click(checkbox);

@@ -2820,6 +2820,9 @@ hr {
 .gadget-option-copy { min-width: 0; display: grid; gap: 3px; line-height: 1.35; }
 .gadget-option-copy small { color: var(--accent); }
 .gadget-option-copy > span { color: var(--muted); font-size: 11px; }
+.gadget-option-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 18px; }
+.gadget-option-meta .gadget-adjustments { margin-top: 0; }
+.gadget-option-meta .gadget-adjustment { font-size: 10px; padding: 2px 5px; }
 .preview-gadgets .gadget-name strong, .preview-gadgets .gadget-name small { display: block; }
 .preview-gadgets .gadget-name small { margin-top: 3px; color: var(--accent); font-size: 10px; }
 .cost-summary { color: var(--muted); font-size: 12px; }

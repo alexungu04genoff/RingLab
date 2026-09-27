@@ -323,9 +323,11 @@ export function BuildEditor() {
                       />
                       <Artwork item={g} compact />
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
-                        <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
+                        <span className="gadget-option-meta">
+                          <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
+                          {draft.gadgetIds.includes(g.id) && <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data?.passive} />}
+                        </span>
                         {g.description && <span>{g.description}</span>}
-                        {draft.gadgetIds.includes(g.id) && <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data?.passive} />}
                       </span>
                     </label>
                     {desktop && draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
