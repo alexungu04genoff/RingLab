@@ -21,6 +21,30 @@ export function GadgetAdjustmentBadges({ gadgetId, value }: { gadgetId: string; 
     </span>)}
   </span>;
 }
+
+/** Shows reviewed passive values before selection; type-dependent values retain their condition. */
+export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog }: { gadgetId: string; catalog?: GadgetRulesCatalog }) {
+  const effects = (catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
+    .filter(effect => effect.kind === "PASSIVE") ?? [];
+  const groups = effects.map(effect => ({ effect,
+    condition: effect.requiredType ? `${effect.requiredType[0] + effect.requiredType.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}` : "Matching type",
+    adjustments: statNames
+    .map(name => ({ name, points: effect.matching[name] }))
+    .filter(({ points }) => points != null && points !== 0) }));
+  if (!groups.some(group => group.adjustments.length)) return null;
+  return <span className="gadget-adjustments gadget-catalog-adjustments" aria-label="Reviewed gadget stat adjustments">
+    {groups.map(({ effect, condition, adjustments }) => adjustments.length > 0 && <span className="gadget-adjustment-group" key={effect.effectId}>
+      {effect.subject !== "ANY" && <span className="gadget-adjustment-condition">
+        {condition}
+      </span>}
+      {adjustments.map(({ name, points }) => <span key={name}
+        className={`gadget-adjustment stat-row stat-${name} ${points! > 0 ? "bonus" : "penalty"}`}
+        title={`Reviewed passive effect${effect.subject === "ANY" ? "" : ` for a ${effect.requiredType?.toLowerCase()} ${effect.subject.toLowerCase()}`}`}>
+        {name[0].toUpperCase() + name.slice(1)} {signedPoints(points)}
+      </span>)}
+    </span>)}
+  </span>;
+}
 export function adjustmentSummary(stats: BaseStats) {
   return statNames.filter(name => stats[name] !== 0 && stats[name] != null)
     .map(name => `${name[0].toUpperCase() + name.slice(1)} ${signedPoints(stats[name])}`).join(", ") || "No stat-point adjustment";

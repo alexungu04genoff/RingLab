@@ -128,6 +128,9 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
   const adjustment={speed:0,acceleration:0,handling:3,power:0,boost:0};
   vi.mocked(api).mockImplementation(async(path,options)=>{
     if(path==="/gadgets") return [gadget];
+    if(path==="/stats/gadget-rules") return {ruleset:"test",supportedVersion:"1.4.1",note:"Reviewed effects",gadgets:[{gadgetId:"drift",effects:[{
+      effectId:"handling",label:"Handling",kind:"PASSIVE",subject:"ANY",requiredType:null,matching:adjustment,nonMatching:{speed:0,acceleration:0,handling:0,power:0,boost:0},explanation:"Always active",sources:[],stackingGroup:null
+    }]}]};
     if(path.startsWith("/stats/passive-build")) return {...base,passive:{base,
       adjustments:adjustment,adjusted:{...base,handling:43},coverage:"CALCULATED",
       ruleset:"test",supportedVersion:"1.4.1",note:"Verified passive effects",
@@ -140,16 +143,16 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
     <Route path="/builds/:id/edit" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
   const checkbox=await screen.findByRole("checkbox",{name:/Drift Charge Kit/});
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments")).toBeTruthy();
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Handling +3");
   selectLatestPatch();
   fireEvent.click(checkbox);
-  await waitFor(()=>expect(screen.getAllByLabelText("Applied gadget adjustments")).toHaveLength(2));
-  for (const badge of screen.getAllByLabelText("Applied gadget adjustments")) {
-    expect(within(badge).getByText("Handling +3")).toBeTruthy();
-  }
+  await waitFor(()=>expect(screen.getByLabelText("Applied gadget adjustments")).toBeTruthy());
+  expect(screen.getByLabelText("Applied gadget adjustments").textContent).toContain("Handling +3");
   const picker = checkbox.closest(".gadget-option")!;
   const meta = picker.querySelector(".gadget-option-meta")!;
   expect(within(meta as HTMLElement).getByText("1 slot")).toBeTruthy();
-  expect(within(meta as HTMLElement).getByLabelText("Applied gadget adjustments")).toBeTruthy();
+  expect(within(meta as HTMLElement).getByLabelText("Reviewed gadget stat adjustments")).toBeTruthy();
   expect(screen.getByRole("button",{name:"Handling gadget adjustment +3"})).toBeTruthy();
   expect(vi.mocked(api).mock.calls.filter(([path])=>path.includes("gadgetId=drift"))).toHaveLength(1);
   fireEvent.click(checkbox);

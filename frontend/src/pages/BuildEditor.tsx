@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
-import { GadgetAdjustmentBadges } from "../PassiveStats";
+import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges } from "../PassiveStats";
 import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, currentSessionGeneration, json } from "../api";
@@ -8,7 +8,7 @@ import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, BuildStatsResult, Gadget, GameVersion, MachinePart, Racer, RacingType } from "../types";
+import type { Build, BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, GameVersion, MachinePart, Racer, RacingType } from "../types";
 import { machineSetupError } from "../buildForm";
 import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
 import { useBuildDraft } from "./useBuildDraft";
@@ -60,6 +60,7 @@ export function BuildEditor() {
   const racers = useLoad<Racer[]>("/racers");
   const parts = useLoad<MachinePart[]>("/machine-parts");
   const gadgets = useLoad<Gadget[]>("/gadgets");
+  const gadgetRules = useLoad<GadgetRulesCatalog>("/stats/gadget-rules");
   const versions = useLoad<GameVersion[]>("/game-versions");
   const maps = useLoad<RaceMap[]>("/maps");
   const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
@@ -101,7 +102,7 @@ export function BuildEditor() {
         </div>
       </div>
       <ErrorNotice
-        message={error || loadError || racers.error || parts.error || gadgets.error || versions.error}
+        message={error || loadError || racers.error || parts.error || gadgets.error || gadgetRules.error || versions.error}
       />
       {loading ? (
         <p role="status">Loading your build…</p>
@@ -329,7 +330,7 @@ export function BuildEditor() {
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <span className="gadget-option-meta">
                           <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
-                          {draft.gadgetIds.includes(g.id) && <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data?.passive} />}
+                          <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />
                         </span>
                         {g.description && <span>{g.description}</span>}
                       </span>

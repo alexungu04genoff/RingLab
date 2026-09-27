@@ -2823,6 +2823,8 @@ hr {
 .gadget-option-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; min-height: 18px; }
 .gadget-option-meta .gadget-adjustments { margin-top: 0; }
 .gadget-option-meta .gadget-adjustment { font-size: 10px; padding: 2px 5px; }
+.gadget-adjustment-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.gadget-adjustment-condition { color: var(--muted); font-size: 10px; white-space: nowrap; }
 .preview-gadgets .gadget-name strong, .preview-gadgets .gadget-name small { display: block; }
 .preview-gadgets .gadget-name small { margin-top: 3px; color: var(--accent); font-size: 10px; }
 .cost-summary { color: var(--muted); font-size: 12px; }
