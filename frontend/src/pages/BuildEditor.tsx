@@ -358,7 +358,7 @@ export function BuildEditor() {
             <aside className="panel selection build-preview">
               {desktop && <div className="recommendation-entry"><button ref={recommendButton} type="button" className="recommend-action"
                 aria-haspopup="dialog" aria-expanded={recommendationContext === editorContext}
-                disabled={busy || !racers.data || !parts.data || !gadgets.data}
+                disabled={busy || !racers.data || !parts.data || !gadgets.data || versions.loading || !versions.data}
                 onClick={() => setRecommendationContext(editorContext)}>Recommend a build</button>
                 <small>Lock selections, then preview a recommendation.</small></div>}
               <div className="build-preview-scroll" role="region" aria-label="Build summary details" tabIndex={0}>
@@ -495,6 +495,7 @@ export function BuildEditor() {
         <BuildRecommendationDialog draft={draft} locks={locks} context={editorContext}
           catalog={{ racers: racers.data ?? [], parts: parts.data ?? [], gadgets: gadgets.data ?? [] }}
           version={versions.data?.find(version => version.id === draft.gameVersionId) ?? null}
+          referenceStats={draftStats.data ?? null}
           returnFocus={recommendButton.current} onClose={() => setRecommendationContext(null)}
           onApply={next => { setDraft(next); setStockSourceId(stockSourceForDraft(next, parts.data ?? [])); }} />}
     </>

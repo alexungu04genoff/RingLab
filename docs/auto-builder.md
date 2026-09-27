@@ -5,6 +5,10 @@ not a language model, race simulation, popularity ranking or map recommendation.
 The existing editor owns publishing. No recommendation request writes builds,
 bookmarks, votes, comments or catalog data.
 
+Strict remains the default. [Balanced mode](balanced-auto-builder.md) adds hard
+per-stat loss floors and a weighted trade-off objective, using the same popup,
+endpoint, locks, detached catalog, budgets and Apply-to-draft flow.
+
 ## Strict objective and ties
 
 The priority list must contain Acceleration, Speed, Handling, Boost and Power
@@ -12,8 +16,8 @@ exactly once. The default order is that sequence. The domain compares the
 `PassiveStatsCalculator`'s five **passive-adjusted** `BigDecimal` values
 lexicographically, using `compareTo`. One point in an earlier stat wins against
 any improvement in later stats. Decimal scale and UI bar widths do not affect
-the comparison. There are no weights, balanced mode or numerical rounding in
-selection. Values may exceed 100; effective in-game caps remain unestablished.
+the comparison. Strict uses no weights or numerical rounding in selection.
+Values may exceed 100; effective in-game caps remain unestablished.
 
 If all five values tie, prefer:
 
@@ -71,7 +75,7 @@ The REST adapter authenticates the current account and maps transport records.
 Persistence never selects the winning build. Architecture tests protect these
 boundaries and forbid optimizer/comparator execution from adapters.
 
-For each fixed machine type:
+The preserved **Strict** search uses the following reduction for each fixed machine type:
 
 1. Check hard locks and whether legal component choices exist, independently of
    whether their base values are complete.
@@ -135,6 +139,7 @@ The response distinguishes:
 | `ESTABLISHED` | Completed search established the best supported candidate. |
 | `BEST_FOUND` | A valid candidate exists, but search hit a budget. |
 | `NO_LEGAL_COMPLETION` | Complete feasibility check found no catalog completion. |
+| `NO_FEASIBLE_CANDIDATE` | Complete Balanced supported search found no candidate meeting all floors and hard constraints. |
 | `UNAVAILABLE` | Required patch, base contributions or locked effects cannot be fully evaluated. |
 | `LIMIT_WITHOUT_CANDIDATE` | Budget ended before finding a supported candidate; not proof of infeasibility. |
 
@@ -168,7 +173,10 @@ this explicit route while keeping development-fixture endpoints blocked.
 ```
 
 Incomplete current selections are allowed; title/description/maps are not request
-inputs. The server supplies stats, costs, compatibility and rules. The response
+inputs. This applies to Strict; Balanced explicitly requires a complete supported
+reference. Omitting `mode` preserves Strict. Balanced adds `mode: "BALANCED"`,
+active `priorities` and a typed `balanced` configuration; see the focused guide.
+The server supplies stats, costs, compatibility and rules. The response
 contains `outcome`, nullable `selection`, `currentStats`, `recommendedStats`,
 `alreadyBest`, `reason`, `restrictions`, `ruleset`, `note`, `work`, `elapsedMillis`.
 Validation uses existing safe 400 errors; unsupported data is a typed 200 outcome.
@@ -224,7 +232,11 @@ Safe demonstration on an isolated database and local preview:
 6. Use keyboard Tab/Shift+Tab and Escape, and shrink the viewport while calculating.
    The editor remains usable and the unsaved draft remains intact.
 
-## Verification and integration
+## Strict implementation verification history
+
+The measurements below describe the original Strict implementation. Current
+Balanced verification and its frozen real-catalog demonstration are recorded in
+[Balanced mode](balanced-auto-builder.md).
 
 Pure solver tests compare exact arithmetic and independently enumerate small
 Cartesian fixtures, including fixed-type effects and deterministic subset ties.

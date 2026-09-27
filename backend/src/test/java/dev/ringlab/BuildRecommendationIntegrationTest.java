@@ -92,6 +92,39 @@ class BuildRecommendationIntegrationTest {
     given().auth().oauth2(token).get("/api/saved-builds").then().statusCode(200);
   }
 
+  @Test void balancedUsesServerReferenceAndExactFloorsWithoutMutation() {
+    var token = VerifiedUserFixture.createToken(em); var before = communityCounts();
+    var current = selection(); current.put("stats", Map.of("boost", 999999));
+    var body = request(current, empty());
+    body.put("mode", "BALANCED"); body.put("priorities", List.of("BOOST", "SPEED", "ACCELERATION", "HANDLING"));
+    body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", 5, "SPEED", 10, "ACCELERATION", 25, "HANDLING", 50), "secondary", List.of("POWER")));
+    var result = post(token, body).statusCode(200).body("selection", notNullValue())
+        .body("outcome", is(oneOf("ESTABLISHED", "BEST_FOUND"))).extract().jsonPath();
+    for (var stat : List.of("BOOST", "SPEED", "ACCELERATION", "HANDLING"))
+      assertTrue(result.getDouble("recommendedStats." + stat.toLowerCase()) >= result.getDouble("balanced.minimum." + stat));
+    assertTrue(result.getDouble("currentStats.boost") < 999999);
+    assertEquals(before, communityCounts());
+    body.put("current", empty());
+    post(token, body).statusCode(200).body("outcome", equalTo("UNAVAILABLE")).body("reason", containsString("frozen reference"));
+  }
+
+  @Test void balancedRejectsMalformedPartitionsPercentagesAndNames() {
+    var token = VerifiedUserFixture.createToken(em); var body = request(selection(), empty());
+    body.put("mode", "BALANCED"); body.put("priorities", List.of("BOOST"));
+    for (Object invalid : List.of(-1, 101, "NaN", "Infinity")) {
+      body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", invalid), "secondary", List.of("SPEED", "ACCELERATION", "HANDLING", "POWER")));
+      post(token, body).statusCode(400);
+    }
+    body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", 0), "secondary", List.of("SPEED", "SPEED", "HANDLING", "POWER")));
+    post(token, body).statusCode(400);
+    body.put("priorities", List.of("MAGIC")); post(token, body).statusCode(400);
+    token = VerifiedUserFixture.createToken(em); body.put("priorities", List.of("BOOST"));
+    body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", 0), "secondary", List.of("SPEED", "HANDLING", "POWER")));
+    post(token, body).statusCode(400);
+    body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", 0), "secondary", List.of("SPEED", "ACCELERATION", "HANDLING", "POWER")));
+    body.remove("mode"); post(token, body).statusCode(400).body("message", containsString("every stat"));
+  }
+
   private io.restassured.response.ValidatableResponse post(String token, Map<String, Object> body) {
     return given().auth().oauth2(token).contentType("application/json").body(body).post("/api/build-recommendations").then();
   }

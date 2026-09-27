@@ -1,0 +1,15 @@
+{
+  "key": "optimizer-miku-balanced-v1",
+  "title": "[Optimizer Demo] Miku — Boost trade-off baseline",
+  "description": "Remix this template into an unsaved draft. Lock Hatsune Miku and choose BOOST, then Balanced. Priorities: Boost > Speed > Acceleration > Handling; maximum losses: 5%, 10%, 25%, 50%. Move Power to tie-break only. Calculate and compare the allowed Boost sacrifice with the other gains, then Apply to your draft. The template remains unchanged. Uses reviewed Ver. 1.4.1 passive arithmetic; race-time effects are outside the objective.",
+  "racerId": "60000000-0000-4000-8000-000000000018",
+  "frontPartId": "10000000-0000-4000-8000-000000000009",
+  "rearPartId": "20000000-0000-4000-8000-000000000009",
+  "tirePartId": null,
+  "gameVersionId": "50000000-0000-0000-0000-000000000001",
+  "gadgetIds": [
+    "70000000-0000-4000-8000-000000000060",
+    "70000000-0000-4000-8000-000000000061"
+  ],
+  "recommendedMapIds": []
+}

@@ -432,7 +432,7 @@ for evidence, partial coverage and unresolved stacking. Maps never affect these 
 ## Desktop build recommendations
 
 `domain/build/recommendation` owns immutable request/catalog/result types, strict
-lexicographic stat comparison and a bounded deterministic solver. It reuses
+lexicographic stat comparison, the exact `BalancedObjective`, and a bounded deterministic solver. It reuses
 `PassiveStatsCalculator`, `GadgetPlate` and the now-pure
 `domain/gamedata/MachineCompatibility`; the existing application compatibility
 facade translates validation failures without changing existing build behavior.
@@ -451,3 +451,14 @@ fields. At the existing 1001px desktop boundary, resizing smaller cancels and
 clears invisible locks while preserving the draft. No optimizer policy is copied
 into React or persistence. See [Auto-builder v1](auto-builder.md) for the exact
 objective, separability proof, data limits, endpoint and demonstration.
+
+Balanced retains the shared catalog resolution and gadget-subset evaluation but
+searches complete component combinations with optimistic per-stat suffix bounds.
+It does not use Strict's independent component maxima. Fixed positive coefficients
+compare weighted relative changes without division/rounding; active loss floors
+are mandatory, followed by active-value, secondary-total and convenience ties.
+The popup freezes reference selections/patch for its lifetime; server passive
+calculation supplies both reference and candidate values. Configuration changes
+invalidate pending requests and Apply proposals. No preferences or locks are
+persisted. See [Balanced mode](balanced-auto-builder.md) for the bound proof,
+reference requirements and exact comparison order.

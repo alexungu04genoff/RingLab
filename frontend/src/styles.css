@@ -1560,7 +1560,7 @@ hr {
 }
 .gadget-options {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(360px, 100%), 1fr));
   gap: 9px;
 }
 .gadget-options label + label {
@@ -1600,11 +1600,11 @@ hr {
 .recommendation-entry { flex: 0 0 auto; padding: 12px 0; margin: -12px 0 18px; background: var(--panel, #12171f); }
 .recommend-action { width: 100%; border-color: var(--accent); color: var(--accent); }
 .recommendation-entry small { display: block; text-align: center; color: var(--muted); margin-top: 7px; }
-.build-recommendation-dialog { color: var(--text); background: #111822; border: 1px solid var(--border); border-radius: 12px; width: min(900px, calc(100vw - 64px)); max-height: calc(100dvh - 64px); padding: 0; }
+.build-recommendation-dialog { color: var(--text); background: #111822; border: 1px solid var(--border); border-radius: 12px; width: min(1040px, calc(100vw - 64px)); max-height: calc(100dvh - 64px); padding: 0; }
 .build-recommendation-dialog::backdrop { background: #02050be0; }
 .recommendation-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 26px; border-bottom: 1px solid var(--border); }
 .recommendation-heading h2 { margin: 0; font-size: 24px; }
-.recommendation-heading button { font-size: 24px; padding: 3px 12px; }
+.recommendation-heading button { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; line-height: 1; }
 .recommendation-body { padding: 4px 26px 20px; }
 .recommendation-body h3 { margin-top: 24px; }
 .recommendation-patch { color: var(--accent); }
@@ -1613,12 +1613,15 @@ hr {
 .recommendation-locks li > span:last-child { color: var(--muted); }
 .recommendation-item { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .recommendation-item .artwork { width: 40px; height: 40px; flex: 0 0 40px; }
-.recommendation-priorities { padding-left: 25px; }
-.recommendation-priorities li { padding: 9px 0 9px 10px; border-bottom: 1px solid var(--border); cursor: grab; }
+.recommendation-priorities { padding: 0; list-style: none; }
+.recommendation-priorities li { display: grid; grid-template-columns: 28px 26px minmax(145px, 200px) minmax(120px, 1fr) auto; gap: 10px; align-items: center; padding: 9px 6px; border-bottom: 1px solid var(--border); cursor: grab; }
 .recommendation-priorities li.dragging { opacity: .5; }
-.priority-drag-handle { display: inline-block; margin-right: 10px; color: var(--muted); font-size: 20px; vertical-align: middle; }
+.priority-rank { text-align: right; font-variant-numeric: tabular-nums; }
+.priority-drag-handle { display: inline-block; color: var(--muted); font-size: 20px; vertical-align: middle; }
 .recommendation-priorities .type-badge { font-size: 13px; min-width: 145px; display: inline-flex; justify-content: center; text-transform: none; }
-.recommendation-priorities li > div { display: inline-flex; gap: 8px; margin-left: 24px; }
+.recommendation-priority-current { display: flex; align-items: baseline; gap: 7px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.recommendation-priority-current strong { color: var(--text); }
+.recommendation-priorities li > .recommendation-priority-actions { display: inline-flex; gap: 8px; justify-self: end; }
 .recommendation-priorities button { padding: 5px 12px; }
 .recommendation-actions { position: sticky; bottom: 0; display: flex; gap: 10px; padding: 16px 26px; background: #1b2430; border-top: 1px solid var(--border); }
 .recommendation-draft-note { font-size: 12px; color: var(--muted); padding: 0 26px; }
@@ -2542,9 +2545,6 @@ hr {
   .editor {
     grid-template-columns: minmax(0, 1fr) 260px;
   }
-  .gadget-options {
-    grid-template-columns: 1fr;
-  }
 }
 @media (max-width: 700px) {
   .detail-loadout {
@@ -2776,9 +2776,6 @@ hr {
   .two-columns label + label {
     margin-top: 0;
   }
-  .gadget-options {
-    grid-template-columns: 1fr 1fr;
-  }
   footer {
     margin: 0 18px;
     flex-wrap: wrap;
@@ -2834,9 +2831,6 @@ hr {
   }
   .mobile-optional {
     display: none;
-  }
-  .gadget-options {
-    grid-template-columns: 1fr;
   }
   .preview-core {
     grid-template-columns: 1fr;
@@ -2965,7 +2959,7 @@ hr {
 .gadget-option { align-items: center; gap: 12px; }
 .gadget-option .artwork { width: 80px; height: 80px; flex: 0 0 80px; }
 .gadget-option .artwork img { object-fit: contain; object-position: center; }
-.gadget-option-copy { min-width: 0; display: grid; gap: 3px; line-height: 1.35; }
+.gadget-option-copy { min-width: 0; flex: 1; display: grid; grid-template-columns: minmax(0, 1fr); gap: 3px; line-height: 1.35; overflow-wrap: anywhere; }
 .gadget-option-copy small { color: var(--accent); }
 .gadget-option-copy > span { color: var(--muted); font-size: 11px; }
 .gadget-option-meta { display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:24px; }
@@ -2973,7 +2967,16 @@ hr {
 .gadget-type-labels { display:inline-flex; flex-wrap:wrap; align-items:center; height:24px; gap:5px; }
 .gadget-type-labels > .gadget-type-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:24px; padding:0 8px; font-size:12px; line-height:22px; letter-spacing:.2px; text-transform:none; white-space:nowrap; }
 .gadget-option-copy > .gadget-adjustments { align-self:end; margin-top:5px; }
-.gadget-option-copy > .gadget-adjustments .gadget-adjustment { display:inline-flex; align-items:center; box-sizing:border-box; height:24px; padding:0 8px; font-size:12px; line-height:22px; }
+.gadget-option-copy > .gadget-adjustments .gadget-adjustment { display:inline-flex; align-items:center; box-sizing:border-box; min-height:24px; padding:0 8px; font-size:12px; line-height:22px; }
+.gadget-option .gadget-type-labels { min-width: 0; height: auto; }
+.gadget-option .gadget-type-badge,
+.gadget-option .gadget-adjustment { max-width: 100%; height: auto; min-height: 24px; white-space: normal; }
+@media (max-width: 420px) {
+  .gadget-option { display: grid; grid-template-columns: 56px minmax(0, 1fr); grid-template-rows: 56px 1fr; align-items: start; }
+  .gadget-option .artwork { grid-column: 1; grid-row: 1; width: 56px; height: 56px; }
+  .gadget-option input { grid-column: 1; grid-row: 2; justify-self: center; }
+  .gadget-option-copy { grid-column: 2; grid-row: 1 / span 2; }
+}
 .gadget-adjustment-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
 .preview-gadgets .gadget-name strong, .preview-gadgets .gadget-name small { display: block; }
 .preview-gadgets .gadget-name small { margin-top: 3px; color: var(--accent); font-size: 10px; }

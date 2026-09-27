@@ -13,6 +13,7 @@ param(
   [switch]$ValidateOnly,
   [switch]$Refresh,
   [switch]$ProfessorDemoOnly,
+  [switch]$OptimizerDemoOnly,
   [switch]$PromoteFeatured,
   [switch]$ExpandedCommunity,
   [switch]$SetRankingTimestamps,
@@ -23,6 +24,12 @@ $DemoPassword='RingLabDemo!2026'
 $requestClock=[Diagnostics.Stopwatch]::StartNew()
 $lastRequestMilliseconds=-$RequestIntervalMilliseconds
 . "$PSScriptRoot/CommunityDemoPlan.ps1"
+. "$PSScriptRoot/OptimizerDemoPlan.ps1"
+
+function Get-SelectedDemoPlan($Catalog) {
+  if($OptimizerDemoOnly){return Get-OptimizerDemoPlan $Catalog}
+  Get-CommunityDemoPlan $Catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity
+}
 
 function Assert-LoopbackUrl([string]$Url) {
   try {$uri=[uri]$Url}catch{throw 'BaseUrl must be a valid absolute URL.'}
@@ -189,18 +196,21 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
 }
 
 Assert-LoopbackUrl $BaseUrl
+if($OptimizerDemoOnly -and ($Refresh -or $ProfessorDemoOnly -or $PromoteFeatured -or $ExpandedCommunity -or $SetRankingTimestamps)){
+  throw 'OptimizerDemoOnly creates/reuses only its frozen template and author; refresh, ranking, engagement and broad planning flags are forbidden.'
+}
 if($ProfessorDemoOnly -and !$Refresh){throw 'ProfessorDemoOnly requires -Refresh so existing managed records receive the normal conflict checks.'}
 if($SetRankingTimestamps -and !$Refresh){throw 'SetRankingTimestamps requires -Refresh and the normal managed-record conflict checks.'}
 if($Preview){
   if(!$CatalogSnapshotPath){throw 'Offline preview requires -CatalogSnapshotPath. Use -ExportCatalogSnapshot with live read-only validation first.'}
   $catalog=Get-Content -Raw -LiteralPath $CatalogSnapshotPath|ConvertFrom-Json
-  $plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
+  $plan=Get-SelectedDemoPlan $catalog;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
 }
 
 $database=Assert-LocalDevelopmentDatabase
 $catalog=Get-LiveCatalog
 if($ExportCatalogSnapshot){$catalog|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $ExportCatalogSnapshot -Encoding utf8;Write-Host "Wrote explicit live catalog snapshot to $ExportCatalogSnapshot";return}
-$plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity
+$plan=Get-SelectedDemoPlan $catalog
 Assert-Plan $plan $catalog
 $types=@(ConvertTo-DemoArray $catalog.machines|Select-Object -Expand racingType -Unique)
 if('BOOST' -notin $types){throw 'Running backend catalog does not expose Boost / Extreme Gear support.'}
@@ -215,6 +225,9 @@ $actions=@();$buildIds=@{}
 foreach($b in $plan.builds){
   $record=$stateByKey[$b.key];$actual=$null
   if($record){$actual=@($allBuilds|Where-Object id -eq $record.id)|Select-Object -First 1}
+  if($OptimizerDemoOnly -and $record -and !$actual){
+    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed optimizer template was removed; preserve that change';id=$record.id};continue
+  }
   if(!$actual){
     $matches=@($legacyMatches[$b.key])
     if($matches.Count -eq 1){
@@ -250,6 +263,12 @@ foreach($b in $plan.builds){
 if($ProfessorDemoOnly){
   foreach($action in @($actions|Where-Object action -eq 'add')){$action.action='conflict';$action.reason='professor fixture refresh never creates missing records'}
 }
+if($OptimizerDemoOnly){
+  # Existing manual edits are never replaced by this narrowly scoped operation.
+  foreach($action in @($actions|Where-Object action -eq 'update')){
+    $action.action='conflict';$action.reason='optimizer template already exists; retain its selections and manual edits'
+  }
+}
 $manualCount=@($allBuilds|Where-Object {$id=[string]$_.id;$id -notin @($actions.id|ForEach-Object{[string]$_})}).Count
 $actions+=[pscustomobject]@{key='(unrelated/manual builds)';action='retain-manual';reason='outside fixture ownership';id=$null;count=$manualCount}
 Show-Summary $plan $actions $allBuilds
@@ -261,7 +280,11 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind)){
 foreach($conflict in @($actions|Where-Object action -eq 'conflict')){Write-Warning "$($conflict.key): $($conflict.reason)"}
 if($PromoteFeatured){Write-Host 'Featured Sonic: add missing votes from 65 reserved fixture voters; preserve all existing votes. This is fictional demo engagement.'}
 if($SetRankingTimestamps){Write-Host 'Fixed ranking timestamps: update only trusted manifest-owned ranking fixtures with exact current timestamp checks.'}
-if(!$Apply){Write-Host 'Preview only. Add -Apply to perform the displayed additions/updates; use -Refresh -Apply for an explicit refresh.';return [pscustomobject]@{plan=$plan;actions=$actions}}
+if(!$Apply){
+  if($OptimizerDemoOnly){Write-Host 'Preview only. Add -Apply to create/reuse only this optimizer template and its author. Existing edits are preserved.'}
+  else{Write-Host 'Preview only. Add -Apply to perform the displayed additions/updates; use -Refresh -Apply for an explicit refresh.'}
+  return [pscustomobject]@{plan=$plan;actions=$actions}
+}
 
 # Compare the API identities with the proven local database before any mutation.
 $sql="select json_build_object('builds',(select coalesce(json_agg(b),'[]') from builds b),'gadgets',(select coalesce(json_agg(g),'[]') from build_gadgets g),'votes',(select coalesce(json_agg(v),'[]') from votes v),'comments',(select coalesce(json_agg(c),'[]') from comments c));"

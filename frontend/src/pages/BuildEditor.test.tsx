@@ -47,6 +47,35 @@ function desktopViewport() {
   return { resize: (matches: boolean) => { query.matches = matches; act(() => listener?.()); } };
 }
 
+it("waits for the patch catalog before opening recommendations for a loaded build", async () => {
+  desktopViewport();
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  const stats = { speed: 30, acceleration: 20, handling: 40, boost: 60, power: 50 };
+  const zero = { speed: 0, acceleration: 0, handling: 0, boost: 0, power: 0 };
+  const base = { ...stats, character: stats, machine: zero };
+  const passiveResult: BuildStatsResult = { ...base, passive: { base, adjustments: zero, adjusted: stats,
+    coverage: "CALCULATED", ruleset: "test", supportedVersion: "1.4.1", note: "Reviewed effects", effects: [] } };
+  let finishVersions!: (versions: typeof latestVersion[]) => void;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/game-versions") return new Promise(resolve => { finishVersions = resolve; });
+    if (path === "/builds/A") return { ...buildA, gameVersion: latestVersion };
+    if (path.startsWith("/stats/passive-build")) return passiveResult;
+    return fallback(path, options);
+  });
+  await openA();
+  const button = screen.getByRole("button", { name: "Recommend a build" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  fireEvent.click(button); expect(screen.queryByRole("dialog")).toBeNull();
+  await act(async () => finishVersions([latestVersion]));
+  expect(button.disabled).toBe(false);
+  fireEvent.click(button);
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  await screen.findByLabelText("Boost current: 60");
+  expect(screen.getByRole("dialog").textContent).toContain("Selected patch: Ver. 1.4.1");
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+  expectNoWrite();
+});
+
 it("desktop individual and machine group locks remain synchronized and protect controls", async () => {
   desktopViewport(); await openA();
   const racerLock = screen.getByRole("button", { name: "Lock Racer" });

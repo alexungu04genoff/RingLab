@@ -180,6 +180,32 @@ try{
   Assert-Fails {&$seeder -BaseUrl 'https://example.com' -Preview -CatalogSnapshotPath $snapshot} 'Remote target accepted'
   Assert-Fails {&$seeder -Preview -CatalogSnapshotPath $snapshot -SetRankingTimestamps} 'Timestamp override accepted without refresh'
 
+  $definition=Get-Content -Raw (Join-Path $PSScriptRoot 'optimizer-miku-balanced-v1.json')|ConvertFrom-Json
+  $optimizerCatalog=[pscustomobject]@{
+    racers=@([pscustomobject]@{id=$definition.racerId;name='Hatsune Miku'})
+    versions=@([pscustomobject]@{id=$definition.gameVersionId;version='1.4.1';releasedAt='2026-06-23'})
+    machines=@([pscustomobject]@{id=New-Id 901;name='Test Boost source';racingType='BOOST'})
+    parts=@([pscustomobject]@{id=$definition.frontPartId;type='FRONT';sourceMachineId=New-Id 901;racingType='BOOST'},
+      [pscustomobject]@{id=$definition.rearPartId;type='REAR';sourceMachineId=New-Id 901;racingType='BOOST'})
+    gadgets=@($definition.gadgetIds|ForEach-Object{[pscustomobject]@{id=$_;slotCost=1}});maps=@()
+  }
+  $optimizerPath="$snapshot-optimizer"
+  try {
+    $optimizerCatalog|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $optimizerPath
+    $optimizer=&$seeder -OptimizerDemoOnly -Preview -CatalogSnapshotPath $optimizerPath
+    $optimizerAgain=&$seeder -OptimizerDemoOnly -Preview -CatalogSnapshotPath $optimizerPath
+    Assert-True (($optimizer|ConvertTo-Json -Depth 20 -Compress)-ceq($optimizerAgain|ConvertTo-Json -Depth 20 -Compress)) 'Optimizer fixture was not frozen'
+    Assert-True ($optimizer.builds.Count -eq 1 -and $optimizer.users.Count -eq 1 -and !$optimizer.votes.Count -and !$optimizer.comments.Count) 'Optimizer scope expanded'
+    Assert-True ($optimizer.builds[0].key -ceq 'optimizer-miku-balanced-v1') 'Optimizer identity changed'
+    foreach($flag in @('Refresh','ProfessorDemoOnly','PromoteFeatured','ExpandedCommunity','SetRankingTimestamps')) {
+      $options=@{OptimizerDemoOnly=$true;Preview=$true;CatalogSnapshotPath=$optimizerPath};$options[$flag]=$true
+      Assert-Fails {&$seeder @options} "Optimizer accepted broad flag $flag"
+    }
+    $optimizerCatalog.racers[0].name='Invented Miku'
+    $optimizerCatalog|ConvertTo-Json -Depth 10|Set-Content -LiteralPath $optimizerPath
+    Assert-Fails {&$seeder -OptimizerDemoOnly -Preview -CatalogSnapshotPath $optimizerPath} 'Optimizer accepted a noncanonical racer'
+  } finally { Remove-Item -LiteralPath $optimizerPath -ErrorAction SilentlyContinue }
+
   $broken=$catalog|ConvertTo-Json -Depth 10|ConvertFrom-Json
   $broken.machines=@($broken.machines|Where-Object racingType -ne 'BOOST')
   $broken.parts=@($broken.parts|Where-Object racingType -ne 'BOOST')

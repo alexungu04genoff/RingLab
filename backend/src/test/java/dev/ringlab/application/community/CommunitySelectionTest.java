@@ -197,7 +197,7 @@ class CommunitySelectionTest {
 
   @Test void exactDemoPrefixesOnly() {
     for (var label : List.of("Wilson", "Comment", "Pagination", "Compare", "Remix", "Machine",
-        "Gadget", "Ownership", "Vote", "Version")) assertTrue(CommunityEligibility.controlledDemo("[" + label + " Demo] test"));
+        "Gadget", "Ownership", "Vote", "Version", "Optimizer")) assertTrue(CommunityEligibility.controlledDemo("[" + label + " Demo] test"));
     assertTrue(CommunityEligibility.controlledDemo("[DEMO] old"));
     assertFalse(CommunityEligibility.controlledDemo("My demo build"));
     assertFalse(CommunityEligibility.controlledDemo("My [DEMO] build"));

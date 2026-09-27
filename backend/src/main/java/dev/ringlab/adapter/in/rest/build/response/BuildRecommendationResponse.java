@@ -6,7 +6,8 @@ import java.util.*;
 
 public record BuildRecommendationResponse(RecommendationResult.Outcome outcome, Selection selection,
     StatsResponse currentStats, StatsResponse recommendedStats, boolean alreadyBest, String reason,
-    List<String> restrictions, String ruleset, String note, long work, long elapsedMillis) {
+    List<String> restrictions, String ruleset, String note, long work, long elapsedMillis,
+    RecommendationResult.BalancedDetails balanced) {
   public record Selection(UUID racerId, UUID frontPartId, UUID rearPartId, UUID tirePartId, List<UUID> gadgetIds) {}
 
   public static BuildRecommendationResponse from(RecommendationResult result) {
@@ -15,6 +16,6 @@ public record BuildRecommendationResponse(RecommendationResult.Outcome outcome, 
         selection.racerId(), selection.frontPartId(), selection.rearPartId(), selection.tirePartId(), selection.gadgetIds()),
         result.currentStats() == null ? null : StatsResponse.from(result.currentStats()),
         result.recommendedStats() == null ? null : StatsResponse.from(result.recommendedStats()),
-        result.alreadyBest(), result.reason(), result.restrictions(), result.ruleset(), result.note(), result.work(), result.elapsedMillis());
+        result.alreadyBest(), result.reason(), result.restrictions(), result.ruleset(), result.note(), result.work(), result.elapsedMillis(), result.balanced());
   }
 }

@@ -13,11 +13,14 @@ export const emptyLocks = (): RecommendationSelection => ({ racerId: null, front
 export interface RecommendationRequest {
   gameVersionId: string; machineType: RacingType; priorities: RacingType[];
   current: RecommendationSelection; locked: RecommendationSelection;
+  mode?: "STRICT" | "BALANCED";
+  balanced?: { maximumLossPercent: Partial<Record<RacingType, number>>; secondary: RacingType[] };
 }
 export interface RecommendationResult {
-  outcome: "ESTABLISHED" | "BEST_FOUND" | "NO_LEGAL_COMPLETION" | "UNAVAILABLE" | "LIMIT_WITHOUT_CANDIDATE";
+  outcome: "ESTABLISHED" | "BEST_FOUND" | "NO_LEGAL_COMPLETION" | "NO_FEASIBLE_CANDIDATE" | "UNAVAILABLE" | "LIMIT_WITHOUT_CANDIDATE";
   selection: RecommendationSelection | null; currentStats: BaseStats | null; recommendedStats: BaseStats | null;
   alreadyBest: boolean; reason: string; restrictions: string[]; ruleset: string; note: string; work: number; elapsedMillis: number;
+  balanced?: { minimum: Partial<Record<RacingType, number>>; secondaryTieBreakDecided: boolean } | null;
 }
 export interface RecommendationCatalog { racers: Racer[]; parts: MachinePart[]; gadgets: Gadget[] }
 
@@ -32,6 +35,20 @@ export function recommendationIdentity(draft: BuildDraft, locked: Recommendation
 
 export function validPriorities(priorities: RacingType[]): boolean {
   return priorities.length === 5 && new Set(priorities).size === 5 && priorities.every(value => defaultPriorities.includes(value));
+}
+
+export function validBalanced(priorities: RacingType[], secondary: RacingType[], losses: Record<RacingType, string>): boolean {
+  return priorities.length > 0 && validPriorities([...priorities, ...secondary])
+    && priorities.every(stat => losses[stat].trim() !== "" && Number.isFinite(Number(losses[stat]))
+      && Number(losses[stat]) >= 0 && Number(losses[stat]) <= 100);
+}
+
+/** Display only: the server evaluates exact floors and the complete objective. */
+export function signedStatChange(before: number | null, after: number | null): string {
+  if (before === null || after === null) return "Unavailable";
+  const change = before > 0 ? (after - before) / before * 100 : after - before;
+  if (change !== 0 && Math.abs(change) < .0001) return `${change > 0 ? "+" : "−"}<0.0001${before > 0 ? "%" : " points"}`;
+  return `${change > 0 ? "+" : ""}${Number(change.toFixed(4))}${before > 0 ? "%" : " points"}`;
 }
 
 export function movePriority(priorities: RacingType[], index: number, direction: -1 | 1): RacingType[] {

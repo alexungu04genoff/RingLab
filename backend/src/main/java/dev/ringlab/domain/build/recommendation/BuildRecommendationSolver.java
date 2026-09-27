@@ -3,6 +3,7 @@ package dev.ringlab.domain.build.recommendation;
 import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.gamedata.*;
 import java.time.Duration;
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.function.LongSupplier;
 import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outcome.*;
@@ -29,6 +30,10 @@ public final class BuildRecommendationSolver {
   private long work;
   private Candidate best;
   private BaseStats currentStats;
+  private BalancedObjective balanced;
+  private boolean secondaryTieBreakDecided;
+  private record Component(UUID id, BaseStats stats) {}
+  private record Components(List<List<Component>> slots, List<BaseStats> remainingMaximum) {}
 
   public BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget) {
     this(catalog, request, budget, System::nanoTime);
@@ -60,6 +65,16 @@ public final class BuildRecommendationSolver {
         }
       }
 
+      if (request.mode() == RecommendationMode.BALANCED) {
+        // Even secondary values must be known. Do not substitute base-only or zero stats.
+        if (currentStats == null || !StatPriority.complete(currentStats)
+            || Arrays.stream(StatPriority.values()).anyMatch(s -> s.value(currentStats).signum() < 0)) {
+          best = null;
+          return result(UNAVAILABLE, "Balanced unavailable: the frozen reference must be a complete legal setup with fully supported, nonnegative passive-adjusted values for all five stats.");
+        }
+        balanced = new BalancedObjective(currentStats, request.priorities(), request.balanced());
+      }
+
       // Check feasibility before data completeness: unknown contributions are not an empty legal catalog.
       var racers = catalog.racers().values().stream()
           .filter(r -> request.locked().racerId() == null || r.id().equals(request.locked().racerId()))
@@ -71,6 +86,7 @@ public final class BuildRecommendationSolver {
       if (racers.isEmpty() || fronts.isEmpty() || rears.isEmpty()
           || (request.machineType() != RacingType.BOOST && tires.isEmpty()))
         return result(NO_LEGAL_COMPLETION, "No legal catalog completion exists for the chosen machine type and locks.");
+      if (balanced != null) return solveBalanced(racers, fronts, rears, tires);
       UUID front = bestComponent(fronts.stream().map(MachinePart::id).toList(), catalog.partStats(), request.current().frontPartId());
       UUID rear = bestComponent(rears.stream().map(MachinePart::id).toList(), catalog.partStats(), request.current().rearPartId());
       UUID tire = request.machineType() == RacingType.BOOST ? null
@@ -94,19 +110,7 @@ public final class BuildRecommendationSolver {
                   + " with locked " + e.gadgetName() + ": " + e.explanation()));
           continue;
         }
-        var optional = new ArrayList<UUID>();
-        for (var gadget : catalog.gadgets().values().stream().sorted(Comparator.comparing(Gadget::id, IDS)).toList()) {
-          step();
-          if (request.locked().gadgetIds().contains(gadget.id()) || !GadgetPlate.canFit(Collections.singletonList(gadget.slotCost()))) continue;
-          var alone = passive(type, List.of(gadget.id()));
-          if (alone.coverage() != PassiveStatsResult.Coverage.CALCULATED) continue;
-          // Zero-only new gadgets cannot improve the objective and lose the new-gadget/cost tie-breaks.
-          // Retained utility gadgets remain candidates because fewer changes precedes slot consumption.
-          if (request.current().gadgetIds().contains(gadget.id())
-              || StatPriority.compare(alone.adjustments(), PassiveGadgetRules.ZERO, request.priorities()) != 0)
-            optional.add(gadget.id());
-        }
-        search(base, type, optional, 0, new ArrayList<>(request.locked().gadgetIds()));
+        search(base, type, optionalGadgets(type), 0, new ArrayList<>(request.locked().gadgetIds()), null);
       }
       return best == null ? result(UNAVAILABLE, "Legal completions exist, but no fully evaluable passive-stat candidate is available with these locks.")
           : result(ESTABLISHED, explanation(true));
@@ -117,21 +121,114 @@ public final class BuildRecommendationSolver {
     }
   }
 
-  private void search(BuildSelection base, RacingType racerType, List<UUID> optional, int start, List<UUID> selected) {
+  private List<UUID> optionalGadgets(RacingType type) {
+    var optional = new ArrayList<UUID>();
+    for (var gadget : catalog.gadgets().values().stream().sorted(Comparator.comparing(Gadget::id, IDS)).toList()) {
+      step();
+      if (request.locked().gadgetIds().contains(gadget.id()) || !GadgetPlate.canFit(Collections.singletonList(gadget.slotCost()))) continue;
+      var alone = passive(type, List.of(gadget.id()));
+      if (alone.coverage() != PassiveStatsResult.Coverage.CALCULATED) continue;
+      // Include secondary gains too. Only an all-five-zero new gadget can be omitted.
+      if (request.current().gadgetIds().contains(gadget.id())
+          || StatPriority.compare(alone.adjustments(), PassiveGadgetRules.ZERO, List.of(StatPriority.values())) != 0)
+        optional.add(gadget.id());
+    }
+    return optional;
+  }
+
+  private void search(BuildSelection base, RacingType racerType, List<UUID> optional, int start, List<UUID> selected, Components components) {
     step();
     if (!GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) return;
     var effects = passive(racerType, selected);
     // For fixed types, adding gadgets cannot cure unknown effects or an unresolved applied-modifier stack.
     if (effects.coverage() != PassiveStatsResult.Coverage.CALCULATED) return;
-    var selection = new BuildSelection(base.racerId(), base.frontPartId(), base.rearPartId(), base.tirePartId(), ordered(selected));
-    var stats = BaseStats.sum(List.of(baseStats(selection).total(), effects.adjustments()));
-    var candidate = new Candidate(selection, stats);
-    if (best == null || compare(candidate, best) > 0) best = candidate;
+    if (components == null) {
+      var selection = new BuildSelection(base.racerId(), base.frontPartId(), base.rearPartId(), base.tirePartId(), ordered(selected));
+      consider(new Candidate(selection, BaseStats.sum(List.of(baseStats(selection).total(), effects.adjustments()))));
+    } else {
+      searchComponents(components, 0, effects.adjustments(), new UUID[4], ordered(selected));
+    }
     for (int index = start; index < optional.size(); index++) {
       selected.add(optional.get(index));
-      search(base, racerType, optional, index + 1, selected);
+      search(base, racerType, optional, index + 1, selected, components);
       selected.removeLast();
     }
+  }
+
+  private RecommendationResult solveBalanced(List<Racer> racers, List<MachinePart> fronts,
+      List<MachinePart> rears, List<MachinePart> tires) {
+    var frontChoices = components(fronts.stream().map(MachinePart::id).toList(), catalog.partStats(), request.current().frontPartId());
+    var rearChoices = components(rears.stream().map(MachinePart::id).toList(), catalog.partStats(), request.current().rearPartId());
+    var tireChoices = request.machineType() == RacingType.BOOST ? List.of(new Component(null, BaseStats.ZERO))
+        : components(tires.stream().map(MachinePart::id).toList(), catalog.partStats(), request.current().tirePartId());
+    var types = new ArrayList<RacingType>(Arrays.asList(RacingType.values()));
+    types.add(null);
+    for (var type : types) {
+      var racerChoices = components(racers.stream().filter(r -> r.racingType() == type).map(Racer::id).toList(),
+          catalog.racerStats(), request.current().racerId());
+      var slots = List.of(racerChoices, frontChoices, rearChoices, tireChoices);
+      if (slots.stream().anyMatch(List::isEmpty)) continue;
+      var maximum = new ArrayList<BaseStats>(Collections.nCopies(5, BaseStats.ZERO));
+      for (int index = 3; index >= 0; index--)
+        maximum.set(index, BaseStats.sum(List.of(maximum.get(index + 1), maximum(slots.get(index)))));
+      search(null, type, optionalGadgets(type), 0, new ArrayList<>(request.locked().gadgetIds()), new Components(slots, maximum));
+    }
+    return best == null ? result(NO_FEASIBLE_CANDIDATE, "Complete supported search found no candidate satisfying every loss floor, chosen machine type and lock. Limits have not been relaxed.")
+        : result(ESTABLISHED, explanation(true));
+  }
+
+  private List<Component> components(List<UUID> ids, Map<UUID, BaseStats> values, UUID current) {
+    var choices = new ArrayList<Component>();
+    for (var id : ids) {
+      step();
+      if (StatPriority.complete(values.get(id))) choices.add(new Component(id, values.get(id)));
+      else restrictions.add("Some racers or parts have missing base values for the selected patch and are excluded.");
+    }
+    // Search promising choices first, without discarding a trade-off in any component.
+    choices.sort((left, right) -> {
+      int compared = balanced.compare(right.stats(), left.stats());
+      if (compared != 0) return compared;
+      int kept = Boolean.compare(Objects.equals(right.id(), current), Objects.equals(left.id(), current));
+      return kept != 0 ? kept : IDS.compare(left.id(), right.id());
+    });
+    return choices;
+  }
+
+  private static BaseStats maximum(List<Component> choices) {
+    var values = new EnumMap<StatPriority, BigDecimal>(StatPriority.class);
+    for (var stat : StatPriority.values())
+      values.put(stat, choices.stream().map(c -> stat.value(c.stats())).max(BigDecimal::compareTo).orElseThrow());
+    return new BaseStats(values.get(StatPriority.SPEED), values.get(StatPriority.ACCELERATION),
+        values.get(StatPriority.HANDLING), values.get(StatPriority.POWER), values.get(StatPriority.BOOST));
+  }
+
+  private void searchComponents(Components components, int slot, BaseStats partial, UUID[] ids, List<UUID> gadgets) {
+    step();
+    var upper = BaseStats.sum(List.of(partial, components.remainingMaximum().get(slot)));
+    // Each stat's independent maximum is an optimistic complete-loadout bound. Positive
+    // coefficients make Q monotone. Strict inequality preserves ALL later tie-breaks.
+    if (!balanced.feasible(upper) || (best != null && balanced.compareActive(upper, best.stats()) < 0)) return;
+    if (slot == 4) {
+      consider(new Candidate(new BuildSelection(ids[0], ids[1], ids[2], ids[3], gadgets), partial));
+      return;
+    }
+    for (var choice : components.slots().get(slot)) {
+      ids[slot] = choice.id();
+      searchComponents(components, slot + 1, BaseStats.sum(List.of(partial, choice.stats())), ids, gadgets);
+    }
+  }
+
+  private void consider(Candidate candidate) {
+    if (balanced != null) {
+      if (!balanced.feasible(candidate.stats())) return;
+      if (best != null) {
+        int active = balanced.compareActive(candidate.stats(), best.stats());
+        if (active > 0) secondaryTieBreakDecided = false;
+        else if (active == 0 && balanced.secondaryTotal(candidate.stats()).compareTo(balanced.secondaryTotal(best.stats())) != 0)
+          secondaryTieBreakDecided = true;
+      }
+    }
+    if (best == null || compare(candidate, best) > 0) best = candidate;
   }
 
   private List<UUID> ordered(List<UUID> selected) {
@@ -164,7 +261,8 @@ public final class BuildRecommendationSolver {
   }
 
   private int compare(Candidate left, Candidate right) {
-    int stats = StatPriority.compare(left.stats(), right.stats(), request.priorities());
+    int stats = balanced == null ? StatPriority.compare(left.stats(), right.stats(), request.priorities())
+        : balanced.compare(left.stats(), right.stats());
     if (stats != 0) return stats;
     int changes = Integer.compare(changes(right.selection()), changes(left.selection()));
     if (changes != 0) return changes;
@@ -270,6 +368,18 @@ public final class BuildRecommendationSolver {
 
   private String explanation(boolean complete) {
     String prefix = complete ? "Best supported result established within the reviewed catalog and locks. " : "Best found before the search limit; optimality is not established. ";
+    if (balanced != null) {
+      if (complete && best.selection().equals(request.current()))
+        return prefix + "No improvement: the frozen reference is already best under the complete Balanced comparator. Every floor and lock is respected.";
+      var changes = new ArrayList<String>();
+      for (var stat : StatPriority.values()) {
+        var delta = stat.value(best.stats()).subtract(stat.value(currentStats));
+        if (delta.signum() != 0) changes.add(stat + " " + (delta.signum() > 0 ? "+" : "") + delta.stripTrailingZeros().toPlainString() + " points");
+      }
+      return prefix + "Compared with the frozen reference: " + (changes.isEmpty() ? "all stats equal" : String.join(", ", changes))
+          + ". Every loss floor and lock is respected. Rank weights determine the primary trade-off."
+          + (complete && secondaryTieBreakDecided ? " The secondary total decided between candidates with identical active values." : "");
+    }
     if (complete && best.selection().equals(request.current())) return prefix + "Your current setup is already best under this strict priority order.";
     if (currentStats == null) return prefix + "Current passive stats are unavailable, so no numerical improvement over the current draft is claimed.";
     for (var priority : request.priorities()) {
@@ -284,7 +394,8 @@ public final class BuildRecommendationSolver {
     return new RecommendationResult(outcome, best == null ? null : best.selection(), currentStats,
         best == null ? null : best.stats(), outcome == ESTABLISHED && best != null && best.selection().equals(request.current()),
         reason, List.copyOf(restrictions), PassiveGadgetRules.RULESET, PassiveStatsCalculator.ARITHMETIC_NOTE,
-        work, Math.max(0, (clock.getAsLong() - started) / 1_000_000));
+        work, Math.max(0, (clock.getAsLong() - started) / 1_000_000),
+        balanced == null ? null : new RecommendationResult.BalancedDetails(balanced.minimum(), outcome == ESTABLISHED && secondaryTieBreakDecided));
   }
 
   private void step() {

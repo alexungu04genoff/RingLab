@@ -5,27 +5,32 @@ import type { RecommendationCatalog, RecommendationRequest, RecommendationResult
 import type { BuildDraft } from "./types";
 
 export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationSelection, context: string,
-  catalog: RecommendationCatalog, onApply: (draft: BuildDraft) => void) {
+  catalog: RecommendationCatalog, onApply: (draft: BuildDraft) => void, configuration = "", referenceIdentity?: string) {
   const [state, setState] = useState<{ busy: boolean; error: string; result: RecommendationResult | null }>(
     { busy: false, error: "", result: null });
-  const live = useRef({ draft, locks, context, catalog, onApply });
-  live.current = { draft, locks, context, catalog, onApply };
+  const live = useRef({ draft, locks, context, catalog, onApply, configuration });
+  live.current = { draft, locks, context, catalog, onApply, configuration };
   const active = useRef<AbortController | null>(null);
-  const proposal = useRef<{ request: RecommendationRequest; identity: string; context: string; session: number } | null>(null);
+  const proposal = useRef<{ request: RecommendationRequest; identity: string; context: string; session: number; configuration: string } | null>(null);
 
   const cancel = useCallback(() => {
     active.current?.abort(); active.current = null; proposal.current = null;
     setState({ busy: false, error: "", result: null });
   }, []);
-  useEffect(() => { cancel(); return () => { active.current?.abort(); active.current = null; }; }, [context, cancel]);
+  useEffect(() => { cancel(); return () => { active.current?.abort(); active.current = null; }; }, [context, configuration, cancel]);
 
   async function calculate(request: RecommendationRequest) {
     if (active.current) return;
+    if (referenceIdentity && referenceIdentity !== recommendationIdentity(live.current.draft, live.current.locks)) {
+      setState({ busy: false, error: "The draft or locks changed. Close and reopen recommendations to freeze a new reference.", result: null });
+      return;
+    }
     const controller = new AbortController(); active.current = controller;
     const snapshot = { request, identity: recommendationIdentity(live.current.draft, live.current.locks),
-      context: live.current.context, session: currentSessionGeneration() };
+      context: live.current.context, session: currentSessionGeneration(), configuration };
     const current = () => active.current === controller && !controller.signal.aborted
-      && live.current.context === snapshot.context && currentSessionGeneration() === snapshot.session;
+      && live.current.context === snapshot.context && currentSessionGeneration() === snapshot.session
+      && live.current.configuration === configuration;
     proposal.current = null;
     setState({ busy: true, error: "", result: null });
     try {
@@ -44,6 +49,8 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
     try {
       if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration())
         throw new Error("This proposal belongs to an earlier editor session. Calculate again.");
+      if (snapshot.configuration !== live.current.configuration)
+        throw new Error("This proposal belongs to an earlier configuration. Calculate again.");
       live.current.onApply(applyRecommendation(live.current.draft, live.current.locks, snapshot.identity,
         snapshot.request, state.result, live.current.catalog));
       cancel();
