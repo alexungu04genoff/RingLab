@@ -91,12 +91,14 @@ export function BuildEditor() {
   const mapSelectionMissing = draft.mapRecommendationMode === "SELECTED" && draft.recommendedMapIds.length === 0;
   return (
     <>
-      <Link className="back" to={id ? `/builds/${id}` : "/"}>
-        ← Back
-      </Link>
-      <div className="page-heading">
+      <div className="page-heading build-editor-heading">
         <div>
-          <div className="eyebrow accent">THE GARAGE</div>
+          <div className="build-editor-kicker">
+            <Link className="back" to={id ? `/builds/${id}` : "/"}>
+              ← Back
+            </Link>
+            <div className="eyebrow accent">THE GARAGE</div>
+          </div>
           <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
           <p>One racer. Your machine type and gadget combination.</p>
         </div>

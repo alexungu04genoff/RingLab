@@ -142,6 +142,8 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
     <Route path="/builds/new" element={<BuildEditor />} />
     <Route path="/builds/:id/edit" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
+  const garageKicker = screen.getByText("THE GARAGE").closest(".build-editor-kicker");
+  expect(garageKicker?.textContent).toContain("← Back");
   const checkbox=await screen.findByRole("checkbox",{name:/Drift Charge Kit/});
   expect(screen.getByLabelText("Reviewed gadget stat adjustments")).toBeTruthy();
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Handling +3");

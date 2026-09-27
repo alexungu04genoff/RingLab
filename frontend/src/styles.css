@@ -212,6 +212,9 @@ main:has(.explore-hero) {
   max-width: 1704px;
   padding-top: 30px;
 }
+main:has(.build-editor-heading) {
+  padding-top: 28px;
+}
 .page-heading {
   display: flex;
   justify-content: space-between;
@@ -1281,6 +1284,15 @@ footer {
   color: var(--muted);
   font-size: 13px;
   margin-bottom: 24px;
+}
+.build-editor-kicker {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.build-editor-kicker .back {
+  margin-bottom: 0;
 }
 .editor {
   display: grid;
