@@ -50,11 +50,12 @@ export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog }: { gadgetId:
 }
 
 export function GadgetCatalogTypeLabels({ gadgetId, catalog }: { gadgetId: string; catalog?: GadgetRulesCatalog }) {
-  const labels = [...new Set((catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
+  const labels = (catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
     .filter(effect => effect.kind === "PASSIVE" && effect.subject !== "ANY" && effect.requiredType)
-    .map(effect => `${effect.requiredType![0] + effect.requiredType!.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}`) ?? [])];
+    .map(effect => ({ type: effect.requiredType!, label: `${effect.requiredType![0] + effect.requiredType!.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}` }))
+    .filter((entry, index, entries) => entries.findIndex(candidate => candidate.label === entry.label) === index) ?? [];
   return labels.length > 0 ? <span className="gadget-type-labels" aria-label="Gadget type conditions">
-    {labels.map(label => <span key={label}>{label}</span>)}
+    {labels.map(({ type, label }) => <span className={`gadget-type-badge racing-type racing-type-${type.toLowerCase()}`} key={label}>{label}</span>)}
   </span> : null;
 }
 export function adjustmentSummary(stats: BaseStats) {

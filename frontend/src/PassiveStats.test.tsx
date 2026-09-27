@@ -199,6 +199,8 @@ it("keeps a gadget type condition separate from its stat badges",()=>{
     explanation:"Uses machine type",sources:[],stackingGroup:null}]}]};
   render(<><span className="gadget-option-meta"><small>3 slots</small><GadgetCatalogTypeLabels gadgetId="g1" catalog={catalog} /></span>
     <GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} /></>);
-  expect(screen.getByLabelText("Gadget type conditions").textContent).toBe("Acceleration machine");
+  const typeBadge=screen.getByLabelText("Gadget type conditions").firstElementChild!;
+  expect(typeBadge.textContent).toBe("Acceleration machine");
+  expect(typeBadge.classList).toContain("racing-type-acceleration");
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toBe("Acceleration +20");
 });
