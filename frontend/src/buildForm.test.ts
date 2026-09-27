@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, machineSetupError, moveGadget, savedBuildSetupIssues, stockMachineSources, switchMachineType, toggleGadget } from "./buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, machineSetupError, moveGadget, moveGadgetTo, savedBuildSetupIssues, stockMachineSources, switchMachineType, toggleGadget } from "./buildForm";
 import { machineTypes, requiredMachineSlots } from "./machineComposition";
 import type { Build, BuildDraft, Gadget, MachinePart } from "./types";
 describe("ordered gadget selection", () => {
@@ -14,6 +14,13 @@ describe("ordered gadget selection", () => {
     expect(moveGadget(ids, 0, -1)).toEqual(ids);
     expect(moveGadget(ids, 2, 1)).toEqual(ids);
     expect(ids).toEqual(["b", "a", "c"]);
+  });
+  it("moves a dragged gadget directly to its drop position", () => {
+    const ids = ["a", "b", "c", "d"];
+    expect(moveGadgetTo(ids, 0, 2)).toEqual(["b", "c", "a", "d"]);
+    expect(moveGadgetTo(ids, 3, 1)).toEqual(["a", "d", "b", "c"]);
+    expect(moveGadgetTo(ids, 1, 1)).toBe(ids);
+    expect(moveGadgetTo(ids, -1, 2)).toBe(ids);
   });
 });
 

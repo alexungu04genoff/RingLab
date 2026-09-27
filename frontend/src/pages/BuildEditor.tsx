@@ -6,7 +6,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, ApiError, currentSessionGeneration, json } from "../api";
 import { useAuth } from "../auth";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, moveGadgetTo, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
 import type { Build, BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, GameVersion, MachinePart, Racer, RacingType } from "../types";
 import { machineSetupError } from "../buildForm";
@@ -37,6 +37,7 @@ export function BuildEditor() {
   }>({});
   const [busy, setBusy] = useState(false);
   const [gadgetSearch, setGadgetSearch] = useState("");
+  const [gadgetDrag, setGadgetDrag] = useState<{ source: number; target: number } | null>(null);
   const [stockSourceId, setStockSourceId] = useState("");
   const editorContext = JSON.stringify([id, remixSourceId, user?.id, currentSessionGeneration()]);
   const [desktop, setDesktop] = useState(() => window.matchMedia?.(desktopRecommendationQuery).matches ?? false);
@@ -74,6 +75,7 @@ export function BuildEditor() {
     setFieldErrors({});
     setStockSourceId("");
     setGadgetSearch("");
+    setGadgetDrag(null);
     return () => { saveContext.current = null; };
   }, [id, remixSourceId, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
@@ -410,7 +412,17 @@ export function BuildEditor() {
                 {draft.gadgetIds.map((gadgetId, i) => {
                   const gadget = gadgets.data?.find((item) => item.id === gadgetId);
                   return (
-                    <li key={`${gadgetId}-${i}`}>
+                    <li key={`${gadgetId}-${i}`}
+                      className={gadgetDrag?.source === i ? "dragging" : gadgetDrag?.target === i ? "drag-target" : undefined}
+                      onDragEnter={() => setGadgetDrag(current => current ? { ...current, target: i } : null)}
+                      onDragOver={event => { event.preventDefault(); event.dataTransfer.dropEffect = "move"; }}
+                      onDrop={event => {
+                        event.preventDefault();
+                        const sourceValue = event.dataTransfer.getData("text/plain");
+                        const source = Number(sourceValue);
+                        if (sourceValue !== "" && Number.isInteger(source)) field("gadgetIds", moveGadgetTo(draft.gadgetIds, source, i));
+                        setGadgetDrag(null);
+                      }}>
                       <span className="gadget-number">{i + 1}</span>
                       {gadget ? (
                         <Artwork item={gadget} compact />
@@ -425,6 +437,14 @@ export function BuildEditor() {
                         <GadgetAdjustmentBadges gadgetId={gadgetId} value={draftStats.data?.passive} catalog={gadgetRules.data} />
                       </span>
                       <div>
+                        <span className="gadget-drag-handle" draggable={draft.gadgetIds.length > 1}
+                          title={draft.gadgetIds.length > 1 ? `Drag gadget ${i + 1} to reorder` : "Add another gadget to reorder"}
+                          onDragStart={event => {
+                            event.dataTransfer.setData("text/plain", String(i));
+                            event.dataTransfer.effectAllowed = "move";
+                            setGadgetDrag({ source: i, target: i });
+                          }}
+                          onDragEnd={() => setGadgetDrag(null)} aria-hidden="true">⠿</span>
                         <button
                           type="button"
                           aria-label={`Move gadget ${i + 1} up`}

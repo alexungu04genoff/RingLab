@@ -191,3 +191,11 @@ export function moveGadget(
   [copy[index], copy[target]] = [copy[target], copy[index]];
   return copy;
 }
+
+export function moveGadgetTo(ids: string[], source: number, target: number): string[] {
+  if (source < 0 || source >= ids.length || target < 0 || target >= ids.length || source === target) return ids;
+  const copy = [...ids];
+  const [moved] = copy.splice(source, 1);
+  copy.splice(target, 0, moved);
+  return copy;
+}

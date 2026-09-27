@@ -1472,6 +1472,13 @@ footer {
 .preview-gadgets li:last-child {
   border-bottom: 0;
 }
+.preview-gadgets li.dragging {
+  opacity: 0.5;
+}
+.preview-gadgets li.drag-target:not(.dragging) {
+  border-color: var(--accent);
+  background: #172533;
+}
 .preview-gadgets .gadget-number {
   width: 20px;
   color: var(--accent);
@@ -1503,8 +1510,33 @@ footer {
 }
 .preview-gadgets li > div {
   display: inline-flex;
+  align-items: center;
   gap: 3px;
   margin-left: auto;
+}
+.preview-gadgets .gadget-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid #3a4150;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  user-select: none;
+}
+.preview-gadgets .gadget-drag-handle[draggable="true"] {
+  cursor: grab;
+}
+.preview-gadgets .gadget-drag-handle[draggable="true"]:active {
+  cursor: grabbing;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.preview-gadgets .gadget-drag-handle[draggable="false"] {
+  opacity: 0.4;
 }
 .preview-gadgets button {
   padding: 1px 8px;
