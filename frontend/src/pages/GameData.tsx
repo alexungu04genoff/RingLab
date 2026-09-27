@@ -12,6 +12,8 @@ import type { StatsCatalog } from "../types";
 import type { Gadget, GameVersion, Machine, MachinePart, Racer } from "../types";
 import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
 import { StockMachineCard } from "../StockMachineCard";
+import { GadgetRuleDetails } from "../PassiveStats";
+import type { GadgetRulesCatalog } from "../types";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -50,7 +52,7 @@ function RacerCard({ racer }: { racer: Racer }) {
   );
 }
 
-function GadgetCard({ gadget }: { gadget: Gadget }) {
+function GadgetCard({ gadget, rules }: { gadget: Gadget; rules?: GadgetRulesCatalog }) {
   return (
     <article className="panel collection-item gadget-collection-item">
       <Artwork item={gadget} compact />
@@ -63,8 +65,9 @@ function GadgetCard({ gadget }: { gadget: Gadget }) {
             </span>
           )}
         </div>
-        {gadget.description && <p>{gadget.description}</p>}
       </div>
+      {gadget.description && <p className="gadget-collection-description">{gadget.description}</p>}
+      <GadgetRuleDetails id={gadget.id} catalog={rules} />
     </article>
   );
 }
@@ -85,9 +88,10 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
   );
 }
 
-function CollectionCard({ item, tab, machineParts, stats, version, loading, error }: {
+function CollectionCard({ item, tab, machineParts, stats, version, loading, error, rules }: {
   item: CollectionItem; tab: CollectionKey; machineParts: MachinePart[];
   stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
+  rules?: GadgetRulesCatalog;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("category" in item) return <article className="panel collection-item map-collection-item">
@@ -95,7 +99,7 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
     <p>{mapCategoryLabel(item.category)}{item.contentPack && ` · ${item.contentPack}`}</p>
     <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link></div>
   </article>;
-  if ("slotCost" in item) return <GadgetCard gadget={item} />;
+  if ("slotCost" in item) return <GadgetCard gadget={item} rules={rules} />;
   if (tab === "machines") return <StockMachineCard machine={item}
     parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
     catalog={stats} version={version} loading={loading} error={error} />;
@@ -106,6 +110,7 @@ export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
   const [search, setSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
+  const rules = useLoad<GadgetRulesCatalog>(tab === "gadgets" ? "/stats/gadget-rules" : "");
   const versions = useLoad<GameVersion[]>("/game-versions");
   const machineParts = useLoad<MachinePart[]>("/machine-parts");
   const latestVersion = newestGameVersion(versions.data);
@@ -153,7 +158,7 @@ export function GameData() {
       <div className={`collection collection-${tab}`}>
         {visibleItems?.map((item) => <div key={item.id}>
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
-            stats={stats.data} version={latestVersion?.version ?? null}
+            stats={stats.data} version={latestVersion?.version ?? null} rules={rules.data}
             loading={versions.loading || machineParts.loading || stats.loading}
             error={versions.error || machineParts.error || stats.error} />
           {"racingType" in item && <>

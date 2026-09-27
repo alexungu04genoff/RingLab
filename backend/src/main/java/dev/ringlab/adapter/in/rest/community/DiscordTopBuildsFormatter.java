@@ -19,6 +19,7 @@ public final class DiscordTopBuildsFormatter {
       String description = "Author: " + safe(b.author().username(), 80)
           + "\nRacer: " + safe(b.racer().name(), 80) + " · " + item.machineType()
           + "\nPatch: " + (b.gameVersion() == null ? "Unspecified" : safe(b.gameVersion().version(), 40))
+          + statsSummary(item.stats())
           + "\nRecommended maps: " + (b.mapRecommendations().maps().isEmpty() ? "All maps"
               : safe(b.mapRecommendations().maps().stream().map(m -> m.name()).collect(Collectors.joining(", ")), 350))
           + "\nVotes: ↑ " + b.upvotes() + " · ↓ " + b.downvotes() + " · Score " + b.score()
@@ -33,6 +34,24 @@ public final class DiscordTopBuildsFormatter {
     }).toList();
     return new Message(embeds.isEmpty() ? "No eligible community builds are available yet."
         : "Top 3 community builds · Overall best rated · All patches", embeds, new Mentions(List.of()));
+  }
+
+  private static String statsSummary(dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse stats) {
+    String base = "\nBase (Spd/Acc/Hnd/Pwr/Bst): " + values(stats.speed(),stats.acceleration(),stats.handling(),stats.power(),stats.boost());
+    var passive = stats.passive();
+    if (passive == null) return base;
+    if (passive.coverage() == dev.ringlab.domain.gamedata.PassiveStatsResult.Coverage.UNSUPPORTED_VERSION
+        || passive.coverage() == dev.ringlab.domain.gamedata.PassiveStatsResult.Coverage.INVALID_LOADOUT)
+      return base + "\nWith gadgets: unavailable (" + passive.coverage() + ")";
+    var adjusted = passive.adjusted();
+    return base + "\nWith gadgets (" + passive.coverage() + ", Ver. " + passive.supportedVersion() + "): "
+        + values(adjusted.speed(),adjusted.acceleration(),adjusted.handling(),adjusted.power(),adjusted.boost())
+        + "\nKnown passive arithmetic; race-time effects excluded.";
+  }
+
+  private static String values(java.math.BigDecimal... values) {
+    return java.util.Arrays.stream(values).map(value -> value == null ? "?" : value.stripTrailingZeros().toPlainString())
+        .collect(Collectors.joining(" / "));
   }
 
   /** Remove formatting/control syntax and neutralize mentions and URL autolinking. */

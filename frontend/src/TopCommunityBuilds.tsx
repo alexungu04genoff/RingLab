@@ -2,13 +2,14 @@ import { useEffect, useState } from "react";
 import { api } from "./api";
 import { BuildCard } from "./components";
 import { SnapshotTime } from "./SnapshotTime";
+import { shareStats } from "./buildSharing";
 import type { GameVersion, TopCommunitySnapshot } from "./types";
 
 export function topCommunitySummary(snapshot: TopCommunitySnapshot) {
   const text = (value: string) => value.replace(/[\r\n\t]/g, " ");
   return ["Top 3 community builds · Overall best rated · All patches",
-    ...snapshot.items.map(({ rank, build, buildUrl }) =>
-      `#${rank} ${text(build.title)} — ${text(build.author.username)}\n↑ ${build.upvotes} · ↓ ${build.downvotes} · Score ${build.score}\n${buildUrl}`),
+    ...snapshot.items.map(({ rank, build, buildUrl, stats }) =>
+      `#${rank} ${text(build.title)} — ${text(build.author.username)}\n↑ ${build.upvotes} · ↓ ${build.downvotes} · Score ${build.score}\n${shareStats(stats).join("\n")}\n${buildUrl}`),
   ].join("\n\n");
 }
 

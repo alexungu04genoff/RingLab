@@ -1,5 +1,7 @@
 import { gadgetPlateStatus } from "./buildForm";
-import type { Build } from "./types";
+import type { Build, BuildStatsResult } from "./types";
+import { statNames } from "./stats";
+import { coverageLabel, signedPoints } from "./PassiveStats";
 import { machineTypeLabel } from "./machineComposition";
 import { mapSummary } from "./mapSelection";
 
@@ -7,7 +9,18 @@ function slotLabel(cost: number): string {
   return `${cost} ${cost === 1 ? "slot" : "slots"}`;
 }
 
-export function formatBuildForSharing(build: Build, url: string): string {
+export function shareStats(stats?: BuildStatsResult): string[] {
+  if (!stats) return [];
+  const base = `Base stats: ${statNames.map(name => `${name} ${stats[name] ?? "unknown"}`).join(" · ")}`;
+  if (!stats.passive) return [base];
+  const value = stats.passive;
+  const result = value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT" ? "unavailable"
+    : statNames.map(name => `${name} ${stats[name] ?? "unknown"} ${signedPoints(value.adjustments[name])} = ${value.adjusted[name] ?? "unknown"}`).join(" · ");
+  return [base, `With gadgets (${coverageLabel(value)}; Ver. ${value.supportedVersion}): ${result}`,
+    "Known passive arithmetic only; excludes race-time effects and unresolved rules."];
+}
+
+export function formatBuildForSharing(build: Build, url: string, stats?: BuildStatsResult): string {
   const gadgetLines = build.gadgets.map((gadget) =>
     `• ${gadget.name} — ${gadget.slotCost === null ? "cost unknown" : slotLabel(gadget.slotCost)}`,
   );
@@ -33,6 +46,7 @@ export function formatBuildForSharing(build: Build, url: string): string {
     ...(build.tirePart ? [`Tires: ${build.tirePart.sourceMachineName}`] : []),
     "",
     ...gadgets,
+    ...shareStats(stats),
     "",
     `**Recommended maps:** ${mapSummary(build.mapRecommendations)}`,
     "",

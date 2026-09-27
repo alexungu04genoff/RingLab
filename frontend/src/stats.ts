@@ -2,6 +2,23 @@ import type { BaseStats, Build, BuildDraft } from "./types";
 import { savedMachineSetupError } from "./buildForm";
 
 export const statNames = ["speed", "acceleration", "handling", "power", "boost"] as const;
+// Changes with the reviewed server table; only calculation inputs participate in these keys.
+export const passiveRuleset = "crossworlds-1.4.1-passive-2026-09-27.1";
+export function passiveStatsPath(draft: Pick<BuildDraft,
+  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "gadgetIds">) {
+  const base = buildStatsPath(draft);
+  if (!base) return "";
+  const params = new URLSearchParams(base.split("?")[1]);
+  params.set("ruleset", passiveRuleset);
+  [...draft.gadgetIds].sort().forEach(id => params.append("gadgetId", id));
+  return `/stats/passive-build?${params}`;
+}
+export function persistedStatsPath(build: Build) {
+  const params = new URLSearchParams({ ruleset: passiveRuleset });
+  params.set("selection", [build.gameVersion?.id, build.racer.id, build.frontPart.id,
+    build.rearPart.id, build.tirePart?.id, ...build.gadgets.map(g => g.id).sort()].join(","));
+  return `/stats/persisted/${encodeURIComponent(build.id)}?${params}`;
+}
 export type StatName = typeof statNames[number];
 
 export type StatsBreakdown = { character: BaseStats; machine: BaseStats };

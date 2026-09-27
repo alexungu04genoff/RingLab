@@ -4,7 +4,7 @@ import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
 import dev.ringlab.application.build.SavedBuildService;
-import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.application.gamedata.PassiveStatsService;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.constraints.*;
 import jakarta.ws.rs.*;
@@ -23,7 +23,7 @@ public class SavedBuildRestResource {
   private final SavedBuildService saved;
   private final CurrentUser actor;
   private final BuildResponseAssembler responses;
-  private final BaseStatsService stats;
+  private final PassiveStatsService stats;
   private final dev.ringlab.port.out.VoteRepository votes;
   public record SavedItem(BuildResponse build, Instant savedAt) {}
   public record SavedPage(List<SavedItem> items, long total, int page, int size,
@@ -53,7 +53,7 @@ public class SavedBuildRestResource {
     String error = null;
     try {
       stats.buildPage(result.items().stream().map(SavedBuildService.Item::build).toList())
-          .forEach((id, value) -> pageStats.put(id, BuildStatsResponse.from(value)));
+          .forEach((id, value) -> pageStats.put(id, BuildStatsResponse.withPassive(value)));
     } catch (RuntimeException failure) {
       log.warn("Could not load optional saved-build page stats", failure);
       error = "Could not load base stats. Please try again.";

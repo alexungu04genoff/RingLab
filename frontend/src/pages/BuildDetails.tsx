@@ -9,9 +9,10 @@ import { RacingTypeBadge } from "../RacingTypeBadge";
 import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
+import { persistedStatsPath } from "../stats";
 import { RecommendedMapList } from "../MapRecommendations";
 import { useLoad } from "../useLoad";
-import type { Build, CommentPage, GameVersion, Vote } from "../types";
+import type { Build, BuildStatsResult, CommentPage, GameVersion, Vote } from "../types";
 
 
 export function BuildDetails() {
@@ -85,11 +86,13 @@ function BuildDetailsContent() {
   async function copySetup() {
     try {
       if (!navigator.clipboard) throw new Error("Clipboard is unavailable");
+      // Optional stats failure must not prevent sharing the saved setup itself.
+      const stats = await api<BuildStatsResult>(persistedStatsPath(shareBuild)).catch(() => undefined);
       await navigator.clipboard.writeText(formatBuildForSharing({
         ...shareBuild,
         upvotes: shareVoteSummary.upvotes,
         downvotes: shareVoteSummary.downvotes,
-      }, window.location.href));
+      }, window.location.href, stats));
       setCopyStatus("copied");
     } catch {
       setCopyStatus("error");

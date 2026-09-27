@@ -69,7 +69,9 @@ it("explains missing versions on saved builds without suggesting a nonexistent s
     racingType: "SPEED" });
   const build = { racer: { id: "r", name: "Blaze", racingType: "SPEED", imagePath: null },
     frontPart: machinePart("FRONT"), rearPart: machinePart("REAR"), tirePart: machinePart("TIRE"),
-    gameVersion: null } as Build;
+    gameVersion: null, gadgets: [], id: "saved", title: "Saved setup", description: "",
+    author: { id: "author", username: "Author" }, remixedFrom: null, mapRecommendations: { mode: "ALL", maps: [] },
+    createdAt: "2026-09-27T00:00:00Z", updatedAt: "2026-09-27T00:00:00Z", score: 0, upvotes: 0, downvotes: 0 } satisfies Build;
   render(<BuildStats build={build} />);
   expect(screen.getByText("Stats unavailable because this build has no recorded game version.")).toBeTruthy();
   expect(screen.queryByText("Select a game version to see stats.")).toBeNull();

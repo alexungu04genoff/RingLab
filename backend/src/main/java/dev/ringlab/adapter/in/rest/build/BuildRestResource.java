@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
 
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.application.gamedata.PassiveStatsService;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
 import dev.ringlab.application.community.CommunitySnapshotCache;
 import dev.ringlab.domain.build.ranking.BuildSort;
@@ -31,7 +31,7 @@ public class BuildRestResource {
   private final BuildResponseAssembler responses;
   private final CurrentUser actor;
   private final CommunitySnapshotCache communitySnapshots;
-  private final BaseStatsService stats;
+  private final PassiveStatsService stats;
 
   @GET
   public BuildPageResponse list(
@@ -73,7 +73,7 @@ public class BuildRestResource {
       try {
         pageStats = new HashMap<>();
         for (var entry : stats.buildPage(result.items()).entrySet()) {
-          pageStats.put(entry.getKey(), BuildStatsResponse.from(entry.getValue()));
+          pageStats.put(entry.getKey(), BuildStatsResponse.withPassive(entry.getValue()));
         }
         pageStats = Map.copyOf(pageStats);
       } catch (RuntimeException failure) {

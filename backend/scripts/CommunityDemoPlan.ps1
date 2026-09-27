@@ -79,27 +79,27 @@ function Get-CommunityDemoPlan {
   $legacyTitles=@('[DEMO] Cornering Showcase','[DEMO] Item Control Practice','[DEMO] Ring Route Session','[DEMO] Acceleration Lab','[DEMO] Power Recovery Run','[DEMO] Boost Timing Notes','[DEMO] Dark Reaper Sprint','[DEMO] Consistent Finish Plan','[DEMO] Drift Line Routine','[DEMO] Starting Grid Notes','[DEMO] Night Circuit Notes','[DEMO] Speedster Session','[DEMO] Boost Route Notes','[DEMO] Balanced Start','[DEMO] Power Lineup','[DEMO] Steady Lap Plan','[DEMO] Ring Collection Notes')
   $legacyOwners=@('amy','amy','amy','tails','tails','tails','shadow','shadow','amy','tails','shadow','sonic','sonic','sonic','knuckles','knuckles','knuckles')
   $wilsonFixtures=[ordered]@{
-    cornering=[pscustomobject]@{title='[Wilson Demo] rlqa-w01 wilson — 3↑ 0↓ small sample';upvotes=3;downvotes=0;description='Compare rlqa-w01 with rlqa-w02: Wilson confidence uses sample size.'}
-    items=[pscustomobject]@{title='[Wilson Demo] rlqa-w02 wilson — 40↑ 1↓ large sample';upvotes=40;downvotes=1;description='Compare rlqa-w02 with rlqa-w01: larger near-perfect sample.'}
-    'community-shadow-2'=[pscustomobject]@{title='[Wilson Demo] rlqa-w03 wilson — 15↑ 0↓ clean';upvotes=15;downvotes=0;description='Compare rlqa-w03 with rlqa-w04: equal net score, different evidence.'}
-    acceleration=[pscustomobject]@{title='[Wilson Demo] rlqa-w04 wilson — 25↑ 10↓ divided';upvotes=25;downvotes=10;description='Compare rlqa-w04 with rlqa-w03: equal net score, different evidence.'}
-    recovery=[pscustomobject]@{title='[Wilson Demo] rlqa-w05 wilson — 16↑ 0↓ near rounded tie';upvotes=16;downvotes=0;description='Wilson is about 0.80639, above rlqa-w06 despite both rounding to 0.81.'}
-    boost=[pscustomobject]@{title='[Wilson Demo] rlqa-w06 wilson — 38↑ 3↓ near rounded tie';upvotes=38;downvotes=3;description='Wilson is about 0.80572, below rlqa-w05 despite both rounding to 0.81.'}
-    shadow=[pscustomobject]@{title='[Wilson Demo] rlqa-w07 wilson — 0↑ 0↓ unrated';upvotes=0;downvotes=0;description='An unrated Wilson-zero example.'}
-    finish=[pscustomobject]@{title='[Wilson Demo] rlqa-w08 wilson — 5↑ 5↓ split';upvotes=5;downvotes=5;description='An even split still has positive Wilson confidence.'}
-    'amy-drift'=[pscustomobject]@{title='[Wilson Demo] rlqa-w09 wilson negative — 20↑ 40↓';upvotes=20;downvotes=40;description='Net negative with positive Wilson confidence can outrank an unrated build.'}
-    'tails-grid'=[pscustomobject]@{title='[Wilson Demo] rlqa-w10 wilson negative — 0↑ 8↓';upvotes=0;downvotes=8;description='Downvotes only produce Wilson zero.'}
+    cornering=[pscustomobject]@{title='[Wilson Demo] Small sample, perfect approval';upvotes=3;downvotes=0;description='Three upvotes, no downvotes. Compare with "Large sample, strong approval": Best rated also considers how many people voted.'}
+    items=[pscustomobject]@{title='[Wilson Demo] Large sample, strong approval';upvotes=40;downvotes=1;description='Forty upvotes and one downvote. More feedback gives this build stronger ranking confidence than "Small sample, perfect approval".'}
+    'community-shadow-2'=[pscustomobject]@{title='[Wilson Demo] Same score, unanimous approval';upvotes=15;downvotes=0;description='Fifteen upvotes, no downvotes. It has the same net score as "Same score, divided opinion", with stronger approval.'}
+    acceleration=[pscustomobject]@{title='[Wilson Demo] Same score, divided opinion';upvotes=25;downvotes=10;description='Twenty-five upvotes and ten downvotes. Compare with "Same score, unanimous approval": the same net score does not mean the same confidence.'}
+    recovery=[pscustomobject]@{title='[Wilson Demo] Close confidence scores: sixteen clean votes';upvotes=16;downvotes=0;description='Sixteen upvotes, no downvotes. Its Wilson confidence is about 0.80639, just above "Close confidence scores: thirty-eight approvals" even though both round to 0.81.'}
+    boost=[pscustomobject]@{title='[Wilson Demo] Close confidence scores: thirty-eight approvals';upvotes=38;downvotes=3;description='Thirty-eight upvotes and three downvotes. Its Wilson confidence is about 0.80572, just below "Close confidence scores: sixteen clean votes"; ranking keeps the full precision.'}
+    shadow=[pscustomobject]@{title='[Wilson Demo] Unrated build';upvotes=0;downvotes=0;description='No votes yet, so there is no approval evidence for Best rated.'}
+    finish=[pscustomobject]@{title='[Wilson Demo] Evenly split feedback';upvotes=5;downvotes=5;description='Five upvotes and five downvotes. Evenly divided feedback still gives more approval evidence than no votes.'}
+    'amy-drift'=[pscustomobject]@{title='[Wilson Demo] Negative score with positive votes';upvotes=20;downvotes=40;description='Twenty upvotes and forty downvotes. Despite a negative net score, the positive votes can place it above an unrated build in Best rated.'}
+    'tails-grid'=[pscustomobject]@{title='[Wilson Demo] Downvotes only';upvotes=0;downvotes=8;description='Eight downvotes and no upvotes. Without positive votes, Wilson confidence stays at zero.'}
   }
   $rankingFixtures=[ordered]@{
-    'community-amy-1'=[pscustomobject]@{title='[Wilson Demo] rlqa-n01 negative — 0↑ 0↓';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='latest'}
-    'community-amy-2'=[pscustomobject]@{title='[Wilson Demo] rlqa-n02 negative — 0↑ 1↓';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
-    'community-amy-3'=[pscustomobject]@{title='[Wilson Demo] rlqa-n03 negative — 0↑ 5↓';upvotes=0;downvotes=5;caseTime='2026-09-18T12:00:00Z';patch='latest'}
-    'community-tails-1'=[pscustomobject]@{title='[Version Demo] rlqa-p01 patch — newer 0↑ 1↓';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
-    'community-tails-2'=[pscustomobject]@{title='[Version Demo] rlqa-p02 patch — older 0↑ 0↓';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='oldest'}
-    'community-shadow-1'=[pscustomobject]@{title='[DEMO] rlqa-t01 timestamp — older submission';upvotes=8;downvotes=2;caseTime='2026-09-17T12:00:00Z';patch='latest'}
-    'community-shadow-3'=[pscustomobject]@{title='[DEMO] rlqa-t02 timestamp — newer submission';upvotes=8;downvotes=2;caseTime='2026-09-19T12:00:00Z';patch='latest'}
-    'community-sonic-1'=[pscustomobject]@{title='[DEMO] rlqa-d01 timestamp — same-time ID tie';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
-    'community-sonic-2'=[pscustomobject]@{title='[DEMO] rlqa-d02 timestamp — same-time ID tie';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-amy-1'=[pscustomobject]@{title='[Wilson Demo] Zero-confidence tie: no votes';description='No votes yet. Compare with "Zero-confidence tie: one downvote" and "Zero-confidence tie: five downvotes": all share a patch and posting time, so fewer downvotes break the tie.';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-amy-2'=[pscustomobject]@{title='[Wilson Demo] Zero-confidence tie: one downvote';description='One downvote, no upvotes. This sits between "Zero-confidence tie: no votes" and "Zero-confidence tie: five downvotes" when other ranking factors tie.';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-amy-3'=[pscustomobject]@{title='[Wilson Demo] Zero-confidence tie: five downvotes';description='Five downvotes, no upvotes. Compare with the other two garage-review examples to see how zero-confidence ties are ordered.';upvotes=0;downvotes=5;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-tails-1'=[pscustomobject]@{title='[Version Demo] Newer patch wins a confidence tie';description='One downvote on the latest patch. It ranks above "Older patch in a confidence tie" because patch recency breaks this confidence tie first.';upvotes=0;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-tails-2'=[pscustomobject]@{title='[Version Demo] Older patch in a confidence tie';description='No votes on an older patch. Compare with "Newer patch wins a confidence tie" to see the patch-recency tie-break.';upvotes=0;downvotes=0;caseTime='2026-09-18T12:00:00Z';patch='oldest'}
+    'community-shadow-1'=[pscustomobject]@{title='[DEMO] Last week''s garage pick';description='Same patch and votes as "This week''s garage pick", but posted earlier. The newer build wins this ranking tie.';upvotes=8;downvotes=2;caseTime='2026-09-17T12:00:00Z';patch='latest'}
+    'community-shadow-3'=[pscustomobject]@{title='[DEMO] This week''s garage pick';description='Same patch and votes as "Last week''s garage pick", but posted later. This demonstrates the creation-time tie-break.';upvotes=8;downvotes=2;caseTime='2026-09-19T12:00:00Z';patch='latest'}
+    'community-sonic-1'=[pscustomobject]@{title='[DEMO] A morning garage experiment';description='Same votes, patch, and posting time as "Another morning garage experiment". Build IDs provide a stable final order.';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
+    'community-sonic-2'=[pscustomobject]@{title='[DEMO] Another morning garage experiment';description='Same votes, patch, and posting time as "A morning garage experiment". This pair demonstrates a stable order when all visible ranking factors tie.';upvotes=3;downvotes=1;caseTime='2026-09-18T12:00:00Z';patch='latest'}
   }
   # The Explore UI requests 20 comments per page. These totals expose exact page boundaries.
   $commentFixtures=[ordered]@{
@@ -169,18 +169,30 @@ function Get-CommunityDemoPlan {
       machines=@(Invoke-DemoShuffle $machines $random | Select-Object -First 3)
     }
   }
-  $builds=@()
+  $builds=@();$demonstratedGadgetScenarios=@{}
+  $racerRotation=@(Invoke-DemoShuffle $racers $random)
+  $hasPassiveCatalog=@($gadgets | Where-Object name -eq 'Speed Tuner 1').Count -eq 1
   foreach($b in $blueprints){
     $availableTypes=@($standards.racingType | Sort-Object -Unique)
     $machineType=if($b.ordinal -in $boardIndexes){'BOOST'}else{$availableTypes[$random.Next($availableTypes.Count)]}
+    if($ExpandedCommunity){
+      $typeRotation=@($availableTypes)+@($boards | Select-Object -First 1 | ForEach-Object {'BOOST'})
+      $round=[int][Math]::Floor($b.ordinal/$racers.Count)
+      $machineType=$typeRotation[($b.ordinal+$round)%$typeRotation.Count]
+    }
     $profile=$profiles[$b.owner]
     $pool=@(@($standards)+@($boards) | Where-Object racingType -eq $machineType)
     $preferredMachines=@($pool | Where-Object id -in @($profile.machines.id))
     $frontPool=if($preferredMachines.Count -and $random.NextDouble() -lt .78){$preferredMachines}else{$pool}
     $fm=$frontPool[$random.Next($frontPool.Count)];$mixed=$random.NextDouble() -lt .38;$rm=if($mixed -and $pool.Count -gt 1){@($pool | Where-Object id -ne $fm.id)[$random.Next($pool.Count-1)]}else{$fm};$tm=if($machineType -ne 'BOOST' -and $mixed -and $pool.Count -gt 1 -and $random.NextDouble() -lt .5){$pool[$random.Next($pool.Count)]}else{$fm}
+    if($ExpandedCommunity -and $pool.Count -gt 1 -and (($b.ordinal+$round)%4 -ne 0 -or $b.key -in @('sonic-speed','community-blaze-1','community-metalhead-1'))){
+      $rm=@($pool | Where-Object id -ne $fm.id)[$random.Next($pool.Count-1)]
+      $tm=$pool[$random.Next($pool.Count)]
+    }
     $front=@($byMachine[[string]$fm.id] | Where-Object type -eq 'FRONT')[0];$rear=@($byMachine[[string]$rm.id] | Where-Object type -eq 'REAR')[0];$tire=if($machineType -ne 'BOOST'){@($byMachine[[string]$tm.id] | Where-Object type -eq 'TIRE')[0]}else{$null}
     $group=if($b.ordinal -lt [Math]::Round($BuildCount*.60)){$main}elseif($b.ordinal -lt [Math]::Round($BuildCount*.90)){$other}else{$guests}
     $fav=@($favorites[$b.owner] | ForEach-Object{$wanted=$_;$group | Where-Object name -ceq $wanted} | Where-Object{$_});$racer=if($fav.Count -and $random.NextDouble() -lt .82){$fav[$random.Next($fav.Count)]}else{$group[$random.Next($group.Count)]}
+    if($ExpandedCommunity){$racer=$racerRotation[$b.ordinal%$racerRotation.Count]}
     if($b.key -eq 'sonic-speed') {
       $sonic=@($racers | Where-Object name -CEQ 'Sonic the Hedgehog')
       if($sonic.Count -ne 1){throw 'Featured fixture sonic-speed requires one canonical Sonic the Hedgehog racer.'}
@@ -191,6 +203,29 @@ function Get-CommunityDemoPlan {
     $selected=@();foreach($g in $candidates){$trial=@($selected+$g);if($trial.Count -le 4 -and (Test-GadgetPlateFit @($trial.slotCost))){$selected=$trial};if($selected.Count -ge 2 -and $random.NextDouble() -lt .45){break}}
     $version=if($b.ordinal -in $olderIndexes){$older[$random.Next($older.Count)]}else{$latest}
     if($rankingFixtures.Contains($b.key)){$version=if($rankingFixtures[$b.key].patch -eq 'oldest'){$versions[-1]}else{$latest}}
+    $gadgetDemo=$null
+    if($ExpandedCommunity -and $hasPassiveCatalog -and $version.version -eq '1.4.1'){
+      $typeName=(Get-Culture).TextInfo.ToTitleCase($machineType.ToLowerInvariant())
+      $racerTypeName=(Get-Culture).TextInfo.ToTitleCase(([string]$racer.racingType).ToLowerInvariant())
+      $scenario=($b.ordinal+[int][Math]::Floor($b.ordinal/$racers.Count))%9
+      if($b.key -eq 'sonic-speed'){$scenario=1}
+      if($b.key -eq 'community-blaze-1'){$scenario=2}
+      if($b.key -eq 'community-metalhead-1'){$scenario=3}
+      $wantedNames=@(switch($scenario){
+        0 {@();$gadgetDemo='Base Stats'}
+        1 {@("$typeName Tuner 1","$typeName Tuner 2");$gadgetDemo='Verified Stacking'}
+        2 {@("$racerTypeName Character Kit");$gadgetDemo='Racer Kit'}
+        3 {@('Drift Charge Kit');$gadgetDemo='Passive Handling'}
+        4 {@("$typeName Tuner 1");$gadgetDemo='Tuner Penalty'}
+        5 {@("$typeName Machine Kit");$gadgetDemo='Machine Kit'}
+        6 {@('Panel Combo Kit');$gadgetDemo='Passive and Conditional'}
+        7 {@('Double Down');$gadgetDemo='Stat Tradeoff'}
+        8 {@('Quick Starter','Ring Evolution');$gadgetDemo='Conditional Effects'}
+      })
+      $chosen=@($gadgets | Where-Object name -in @($wantedNames))
+      if($chosen.Count -ne $wantedNames.Count){throw "Expected $($wantedNames -join ', ') for $gadgetDemo; found $($chosen.name -join ', ')."}
+      $selected=$chosen
+    }
     $stock=$fm.id -eq $rm.id -and ($machineType -eq 'BOOST' -or $fm.id -eq $tm.id);$parent=if($b.ordinal -ge 8 -and $b.ordinal%11 -eq 0){$builds[$b.ordinal-5].key}else{$null}
     $setup=if($machineType -eq 'BOOST'){if($stock){"A straightforward $($fm.name) Extreme Gear setup."}else{"An Extreme Gear mix using the $($fm.name) front and $($rm.name) rear."}}else{if($stock){"A straightforward stock $($fm.name) setup."}else{"A mixed $machineType setup with $($fm.name), $($rm.name), and $($tm.name) parts."}}
     $tone=@('I keep coming back to this one.','Still deciding whether this becomes my regular setup.','A small experiment I wanted to save.','Any thoughts on the gadget order?','Keeping a spare setup for next time.','Nothing ambitious today; just saving my current picks.')[$random.Next(6)]
@@ -202,28 +237,49 @@ function Get-CommunityDemoPlan {
     if($ExpandedCommunity){
       # Preferences belong only to this explicit synthetic fixture refresh, never real builds.
       if($b.ordinal % 4 -ne 0 -or $b.key -in @('sonic-speed','community-blaze-1','community-metalhead-1')){
-        $recommendedMaps=@(Invoke-DemoShuffle $maps $random | Select-Object -First (1+$random.Next(4)))
+        $mapOffset=$b.ordinal-[int][Math]::Floor($b.ordinal/4)
+        $recommendedMaps=@(0..($b.ordinal%3) | ForEach-Object { $maps[($mapOffset+$_*13)%$maps.Count] } | Sort-Object id -Unique)
       }
-      $titles=@("My late-night $($racer.name) pick", "$($fm.name) after a few garage visits", 'The setup I keep forgetting to save',
-        "A quieter week with $($racer.name)", 'One change before calling it a night', 'Still keeping the old favourite',
-        "$($selected[0].name) gets another try", 'A spare for our weekend lobby', "Back to $($fm.name)",
-        'Not finished tinkering with this', 'The second slot in my garage', 'Keeping this one for the group races',
-        'A small change from last weekend', "$($racer.name), for a change", 'My current comfort pick',
-        'Saving this before I change my mind', 'A different answer to the same garage', 'Lunch-break experiment')
+      $shortRacer=switch($racer.name){
+        'Sonic the Hedgehog' {'Sonic'}; 'Shadow the Hedgehog' {'Shadow'}; 'Knuckles the Echidna' {'Knuckles'}
+        'Miles "Tails" Prower' {'Tails'}; 'Espio the Chameleon' {'Espio'}; 'Vector the Crocodile' {'Vector'}
+        'Silver the Hedgehog' {'Silver'}; 'Blaze the Cat' {'Blaze'}; 'Rouge the Bat' {'Rouge'}
+        'Goro Majima (Captain Majima)' {'Captain Majima'}; default {$racer.name}
+      }
+      $typeName=$machineType.ToLowerInvariant()
+      $routeName=if($recommendedMaps.Count){$recommendedMaps[0].name}else{'the weekend lobby'}
+      $partsTitle=if($stock){"Keeping $($fm.name) stock"}else{"$($fm.name) front, $($rm.name) rear"}
+      $gadgetTitle=if($selected.Count){"$shortRacer and $($selected[0].name)"}else{"$shortRacer, no gadgets"}
+      $testingTitle=if($selected.Count){"Testing $($selected[0].name)"}else{"Keeping $shortRacer simple"}
+      $titles=@("My $shortRacer build", "$shortRacer on $($fm.name)", "$shortRacer for tonight's lobby",
+        "$shortRacer, but with $typeName parts", "$shortRacer practice setup", "Back to $shortRacer",
+        $gadgetTitle, "$shortRacer for $routeName", "My usual $shortRacer setup",
+        "$shortRacer after work", "$shortRacer for a few casual races", "$shortRacer, one more try",
+        "$shortRacer with a different setup", "$shortRacer for the group lobby", "$shortRacer - version two",
+        "$shortRacer with $($fm.name) parts", "$shortRacer, current favourite", "$shortRacer for Sunday races",
+        "$shortRacer - still tweaking this", "$shortRacer, my backup build", "$shortRacer and the $typeName setup",
+        "Trying $($fm.name)", "Back on $($fm.name)", "$($fm.name), my current pick", $partsTitle,
+        "$($fm.name) for $routeName", "$($fm.name) with $shortRacer", "A few laps with $($fm.name)",
+        "$routeName practice", "Trying this on $routeName", "$shortRacer - friends' lobby",
+        "$shortRacer, keeping it simple", "$shortRacer - saved before I forget", "Giving $shortRacer another go",
+        "$shortRacer - small changes", "$shortRacer for a change", "$shortRacer - late-night races",
+        $testingTitle, "$shortRacer - no rush tonight", "One more race with $shortRacer")
       $title=$titles[$random.Next($titles.Count)]
-      $notes=@('I changed one part from my last saved version. Leaving this here so I can compare them after the weekend.',
-        'This started as a stock setup. I liked the look of these picks together and kept the gadget list short.',
-        'My friends keep asking which loadout I meant, so this is the version I am sharing with them.',
-        'I have not settled on the last gadget yet. Suggestions are welcome, especially from anyone using a similar machine.',
-        'Saving a second option instead of overwriting my usual build. I want both available for our next lobby.',
-        'Nothing competitive claimed here. I just wanted a tidy record of what I have been trying this week.',
-        'I keep switching racers and losing track of the parts. This is the combination I want to return to.',
-        'Leaving this version alone for a while. Next time I will compare it with the stock parts instead of changing everything at once.')
+      $notes=@('Been using this for evening lobbies. Might change the last gadget later.',
+        'I mostly picked these because I like the combination. Still figuring out the rest.',
+        'Posting this so my friends can copy it without me reading out every part.',
+        'Not settled on the gadgets yet. What would you swap?',
+        'Keeping this as a second option for our next lobby.',
+        'Not chasing records with this one, just a setup I like playing.',
+        'Trying something different from my usual pick. Open to suggestions.',
+        'Giving this a few more races before I start changing things again.')
       $description="$($notes[$random.Next($notes.Count)]) $setup"
       if($recommendedMaps.Count){$description+=" I have marked $($recommendedMaps[0].name) because that is where I want to try it next."}
-      if($b.key -in @('sonic-speed','community-blaze-1','community-metalhead-1')){$title="$($racer.name) — my weekend garage pick [Top 3 Demo]"}
+      if($b.key -eq 'sonic-speed'){$title="$shortRacer and the $typeName setup [Top 3 Demo]"}
+      elseif($b.key -eq 'community-blaze-1'){$title=if($machineType -eq 'BOOST'){"$shortRacer on Extreme Gear [Top 3 Demo]"}else{"My usual $shortRacer build [Top 3 Demo]"}}
+      elseif($b.key -eq 'community-metalhead-1'){$title="$shortRacer, my weekend main [Top 3 Demo]"}
       if($b.ordinal -ge 80 -and $b.ordinal % 29 -eq 0){$title="[Remix Demo] A second take on a saved setup";$parent=$builds[$b.ordinal-5].key}
-      elseif($b.ordinal -ge 80 -and $b.ordinal % 31 -eq 0){$title='[Gadget Demo] Starting with an empty plate';$selected=@()}
+      elseif($b.ordinal -ge 80 -and $b.ordinal % 31 -eq 0){$title='[Gadget Demo] Starting with an empty plate';$selected=@();$gadgetDemo='Base Stats'}
       elseif($b.ordinal -ge 80 -and $b.ordinal % 37 -eq 0){$title='[Map Demo] Keeping every route open';$recommendedMaps=@()}
       elseif($b.ordinal -ge 80 -and $b.ordinal % 41 -eq 0){$title="[Machine Demo] My $($machineType.ToLowerInvariant()) parts combination"}
     }
@@ -233,10 +289,22 @@ function Get-CommunityDemoPlan {
       $description="$($fixture.description) $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes
     } elseif($rankingFixtures.Contains($b.key)) {
       $fixture=$rankingFixtures[$b.key];$fixtureKind='WILSON';$title=$fixture.title
-      $description="Controlled ranking case $($b.key). $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes;$caseTime=$fixture.caseTime
+      $description="$($fixture.description) $setup";$targetUpvotes=$fixture.upvotes;$targetDownvotes=$fixture.downvotes;$caseTime=$fixture.caseTime
     } elseif($commentFixtures.Contains($b.key)) {
       $fixture=$commentFixtures[$b.key];$fixtureKind='COMMENT';$title=$fixture.title
       $description="$($fixture.description) $setup";$targetComments=$fixture.comments
+    }
+    if($ExpandedCommunity){
+      # Nine dedicated loadouts demonstrate the passive-rule scenarios. Ordinary
+      # community builds use the same valid selections without QA labels or prose.
+      if($gadgetDemo -and !$demonstratedGadgetScenarios.ContainsKey($gadgetDemo) -and $title -notmatch '\[(?:[^\]]*Demo|DEMO)\]'){
+        $title="[$gadgetDemo Demo] $shortRacer - $($selected.name -join ' + ')"
+        if(!$selected.Count){$title="[Base Stats Demo] $shortRacer without gadgets"}
+        $demonstratedGadgetScenarios[$gadgetDemo]=$true
+      }
+      $isFeatureDemo=$title -match '\[(?:[^\]]*Demo|DEMO)\]'
+      if($isFeatureDemo -and $gadgetDemo){$description+=" Demo focus: $gadgetDemo. Verified passive arithmetic uses this saved patch; race-event effects are not assumed active."}
+      if($isFeatureDemo -and $recommendedMaps.Count){$description+=' Map selections are fictional author recommendations, not calculated course advantages.'}
     }
     $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;caseTime=$caseTime;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected|ForEach-Object id);gadgetNames=@($selected|ForEach-Object name);recommendedMapIds=@($recommendedMaps | Sort-Object id | ForEach-Object id);stock=$stock;remixedFromKey=$parent}
   }

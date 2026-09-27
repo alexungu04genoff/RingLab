@@ -28,7 +28,7 @@ public record TopBuildsResponse(int schemaVersion, String ranking, String scope,
               MapRecommendationsResponse.from(b.recommendedMapIds(), entry.recommendedMaps()), b.createdAt(), b.updatedAt(),
               votes.score(), votes.upvotes(), votes.downvotes());
           return new Item(index + 1, build, entry.front().source().racingType(),
-              BuildStatsResponse.from(entry.stats()), urls.build(b.id()), urls.artwork(entry.racer().imagePath()));
+              BuildStatsResponse.withPassive(entry.passiveStats()), urls.build(b.id()), urls.artwork(entry.racer().imagePath()));
         }).toList());
   }
 

@@ -81,19 +81,17 @@ try{
   Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 4) 'Timestamp and ID fixtures should use the controlled DEMO prefix'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*demo*'}).Count -eq 25) 'Demo title search does not find all controlled fixtures'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*wilson*'}).Count -eq 13) 'Wilson title search does not find exactly 13 fixtures'
-  Assert-True (@($plan.builds|Where-Object {$_.title -like '*negative*'}).Count -eq 5) 'Negative title search does not find the controlled group'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*patch*'}).Count -eq 2) 'Patch title search does not find the controlled pair'
-  Assert-True (@($plan.builds|Where-Object {$_.title -like '*timestamp*'}).Count -eq 4) 'Timestamp title search does not find the controlled groups'
-  foreach($caseId in @('rlqa-w01','rlqa-w02','rlqa-w03','rlqa-w04','rlqa-w05','rlqa-w06','rlqa-w07','rlqa-w08','rlqa-w09','rlqa-w10','rlqa-n01','rlqa-n02','rlqa-n03','rlqa-p01','rlqa-p02','rlqa-t01','rlqa-t02','rlqa-d01','rlqa-d02')){
-    Assert-True (@($plan.builds|Where-Object title -like "*$caseId*").Count -eq 1) "Scenario ID $caseId is not uniquely searchable"
-  }
-  $n01=@($plan.builds|Where-Object title -like '*rlqa-n01*')[0];$n02=@($plan.builds|Where-Object title -like '*rlqa-n02*')[0];$n03=@($plan.builds|Where-Object title -like '*rlqa-n03*')[0]
+  Assert-True (@($plan.builds|Where-Object {($_.title+' '+$_.description) -match '(?i)rlqa-|controlled ranking case'}).Count -eq 0) 'Internal fixture codes leaked into visible build text'
+  Assert-True (@($wilson.title|Select-Object -Unique).Count -eq 19) 'Ranking demos need distinct readable titles'
+  Assert-True (($plan.builds|Where-Object key -eq 'community-shadow-2').title -eq '[Wilson Demo] Same score, unanimous approval') 'The unanimous-feedback demo lost its readable name'
+  $n01=@($plan.builds|Where-Object key -eq 'community-amy-1')[0];$n02=@($plan.builds|Where-Object key -eq 'community-amy-2')[0];$n03=@($plan.builds|Where-Object key -eq 'community-amy-3')[0]
   Assert-True ($n01.gameVersionId -eq $n02.gameVersionId -and $n02.gameVersionId -eq $n03.gameVersionId -and $n01.caseTime -eq $n02.caseTime -and $n02.caseTime -eq $n03.caseTime) 'Negative evidence group does not hold patch and timestamp equal'
-  $p01=@($plan.builds|Where-Object title -like '*rlqa-p01*')[0];$p02=@($plan.builds|Where-Object title -like '*rlqa-p02*')[0]
+  $p01=@($plan.builds|Where-Object key -eq 'community-tails-1')[0];$p02=@($plan.builds|Where-Object key -eq 'community-tails-2')[0]
   Assert-True ([datetime]$p01.releasedAt -gt [datetime]$p02.releasedAt -and $p01.caseTime -eq $p02.caseTime) 'Patch group does not isolate chronology'
-  $t01=@($plan.builds|Where-Object title -like '*rlqa-t01*')[0];$t02=@($plan.builds|Where-Object title -like '*rlqa-t02*')[0]
+  $t01=@($plan.builds|Where-Object key -eq 'community-shadow-1')[0];$t02=@($plan.builds|Where-Object key -eq 'community-shadow-3')[0]
   Assert-True ($t01.gameVersionId -eq $t02.gameVersionId -and [datetime]$t01.caseTime -lt [datetime]$t02.caseTime) 'Timestamp group does not isolate creation time'
-  $d01=@($plan.builds|Where-Object title -like '*rlqa-d01*')[0];$d02=@($plan.builds|Where-Object title -like '*rlqa-d02*')[0]
+  $d01=@($plan.builds|Where-Object key -eq 'community-sonic-1')[0];$d02=@($plan.builds|Where-Object key -eq 'community-sonic-2')[0]
   Assert-True ($d01.gameVersionId -eq $d02.gameVersionId -and $d01.caseTime -eq $d02.caseTime) 'ID group does not hold patch and timestamp equal'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*comment*'}).Count -eq 6) 'Comment title search does not find exactly 6 fixtures'
   Assert-True ($featured.fixtureKind -eq $null -and $featured.title -notmatch '(?i)demo') 'Featured Sonic build was renamed as a demo fixture'
@@ -128,6 +126,36 @@ try{
   foreach($entry in $expanded.builds){
     Assert-True (@($entry.recommendedMapIds|Where-Object {$_ -notin $expandedCatalog.maps.id}).Count -eq 0) 'Unverified map ID generated'
     Assert-True ($entry.recommendedMapIds.Count -eq @($entry.recommendedMapIds|Sort-Object -Unique).Count) 'Duplicate maps generated'
+  }
+  $ordinaryBuilds=@($expanded.builds|Where-Object title -notmatch '\[(?:[^\]]*Demo|DEMO)\]')
+  Assert-True ($ordinaryBuilds.Count -gt 150) 'Most community builds should have ordinary player titles'
+  Assert-True (@($ordinaryBuilds|Where-Object description -match 'Demo focus:|Verified passive arithmetic|fictional author recommendations|rlqa-').Count -eq 0) 'QA prose leaked into ordinary community descriptions'
+  foreach($racer in $racers){
+    $entries=@($expanded.builds|Where-Object racerId -eq $racer.id)
+    Assert-True ($entries.Count -ge 3) 'A catalog racer lacks multiple demo builds'
+    Assert-True (@($entries.machineType|Sort-Object -Unique).Count -ge 2) 'A racer lacks varied machine types'
+  }
+  $passiveCatalog=$expandedCatalog | ConvertTo-Json -Depth 15 | ConvertFrom-Json
+  $passiveCatalog.versions=@($versions|Where-Object version -ne '1.10.0')
+  foreach($racer in $passiveCatalog.racers){$racer|Add-Member NoteProperty racingType 'BOOST'}
+  $nextId=700
+  foreach($typeName in @('Speed','Acceleration','Handling','Power','Boost')){
+    foreach($suffix in @('Tuner 1','Tuner 2','Machine Kit','Character Kit')){
+      $nextId++;$passiveCatalog.gadgets+=[pscustomobject]@{id=New-Id $nextId;name="$typeName $suffix";slotCost=if($suffix -like 'Tuner*'){1}else{3}}
+    }
+  }
+  foreach($name in @('Drift Charge Kit','Panel Combo Kit','Double Down','Quick Starter','Ring Evolution')){
+    $nextId++;$passiveCatalog.gadgets+=[pscustomobject]@{id=New-Id $nextId;name=$name;slotCost=if($name -in @('Quick Starter','Ring Evolution')){1}else{3}}
+  }
+  $passivePlan=Get-CommunityDemoPlan $passiveCatalog -BuildCount 240 -ExpandedCommunity
+  Assert-True (@($passivePlan.builds|Where-Object {$_.title -match '(?:\band\s*|^Testing\s*)$'}).Count -eq 0) 'An empty gadget plate left an unfinished title'
+  foreach($label in @('Verified Stacking','Racer Kit','Passive Handling','Tuner Penalty','Machine Kit','Passive and Conditional','Stat Tradeoff','Conditional Effects','Base Stats')){
+    Assert-True (@($passivePlan.builds|Where-Object description -like "*Demo focus: $label.*").Count -gt 0) "Missing $label examples"
+  }
+  foreach($entry in $passivePlan.builds){
+    Assert-True (Test-GadgetPlateFit @($passiveCatalog.gadgets|Where-Object id -in $entry.gadgetIds|ForEach-Object slotCost)) 'Passive example violates Gadget Plate rules'
+    if($entry.description -like '*Demo focus: Racer Kit.*'){Assert-True ($entry.gadgetNames -contains 'Boost Character Kit') 'Character kit uses machine type instead of racer type'}
+    if($entry.gadgetIds.Count -eq 0){Assert-True ($entry.description -notmatch 'Demo focus: (?!Base Stats)') 'Empty plate claims a passive gadget scenario'}
   }
   foreach($build in $plan.builds){
     $front=@($parts|Where-Object id -eq $build.frontPartId)[0]

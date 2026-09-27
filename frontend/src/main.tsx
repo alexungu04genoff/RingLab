@@ -18,7 +18,8 @@ import { SavedBuildsProvider } from "./SavedBuilds";
 import { SavedBuildsPage } from "./pages/SavedBuildsPage";
 import { SiteFooter } from "./components";
 import { BuildComparisonProvider } from "./BuildComparison";
-import "./styles.css";
+// Keep public dev browsers from pairing cached CSS with newer components.
+import "./styles.css?v=20260927-content-sized-map";
 function App() {
   const { user, logout, loading } = useAuth();
   return (

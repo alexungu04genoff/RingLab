@@ -12,6 +12,7 @@ import { LibraryIcon } from "./icons";
 import { CompareToggle } from "./BuildComparison";
 import { SaveBuildButton } from "./SavedBuilds";
 import { MapRecommendationControl } from "./MapRecommendations";
+import { gadgetArtworkById } from "./gadgetArtwork";
 
 const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
 const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";
@@ -63,10 +64,11 @@ export function Artwork({
   portrait?: boolean;
 }) {
   const [failed, setFailed] = useState(false);
-  const local = item.imagePath?.startsWith("/assets/");
-  const imageUrl = item.imagePath?.startsWith("/assets/racers/")
-    ? `${item.imagePath}?v=left-facing-artwork`
-    : item.imagePath;
+  const imagePath = item.imagePath ?? ("slotCost" in item ? gadgetArtworkById[item.id] : undefined);
+  const local = imagePath?.startsWith("/assets/");
+  const imageUrl = imagePath?.startsWith("/assets/racers/")
+    ? `${imagePath}?v=left-facing-artwork`
+    : imagePath;
   const racingType = "racingType" in item ? item.racingType ?? "unknown" : "gadget";
   return (
     <div

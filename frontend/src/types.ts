@@ -14,6 +14,31 @@ export interface BaseStats {
 export interface BuildStatsResult extends BaseStats {
   character: BaseStats;
   machine: BaseStats;
+  passive?: PassiveStatsResult;
+}
+export type StatsMode = "base" | "gadgets";
+export interface PassiveStatsResult {
+  base: BuildStatsResult;
+  adjustments: BaseStats;
+  adjusted: BaseStats;
+  coverage: "CALCULATED" | "PARTIAL" | "UNSUPPORTED_VERSION" | "INVALID_LOADOUT";
+  ruleset: string;
+  supportedVersion: string;
+  note: string;
+  effects: {
+    gadgetId: string; gadgetName: string; effectId: string; label: string;
+    status: "APPLIED" | "NOT_MATCHED" | "REQUIRES_SELECTION" | "CONDITIONAL" | "NON_STAT" | "UNSUPPORTED";
+    adjustment: BaseStats; explanation: string; sources: string[];
+  }[];
+}
+export interface GadgetRulesCatalog {
+  ruleset: string; supportedVersion: string; note: string;
+  gadgets: { gadgetId: string; effects: {
+    effectId: string; label: string; kind: "PASSIVE" | "CONDITIONAL" | "NON_STAT" | "UNSUPPORTED";
+    subject: "ANY" | "MACHINE" | "RACER"; requiredType: RacingType | null;
+    matching: BaseStats; nonMatching: BaseStats; explanation: string; sources: string[];
+    stackingGroup: string | null;
+  }[] }[];
 }
 export interface StatsCatalog {
   gameVersionId: string;

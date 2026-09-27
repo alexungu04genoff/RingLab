@@ -2,9 +2,9 @@ package dev.ringlab.adapter.in.rest.build;
 
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.application.build.SavedBuildService;
-import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.application.gamedata.PassiveStatsService;
 import dev.ringlab.domain.build.Build;
-import dev.ringlab.domain.gamedata.BaseStatsBreakdown;
+import dev.ringlab.domain.gamedata.PassiveStatsResult;
 import java.util.*;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,8 +18,8 @@ class SavedBuildRestResourceTest {
       }
     };
     var actor = new CurrentUser(null,null) { @Override public UUID id() { return actorId; } };
-    var stats = new BaseStatsService(null,null) {
-      @Override public Map<UUID,BaseStatsBreakdown> buildPage(List<Build> builds) {
+    var stats = new PassiveStatsService(null,null) {
+      @Override public Map<UUID,PassiveStatsResult> buildPage(List<Build> builds) {
         throw new IllegalStateException("Internal database detail");
       }
     };

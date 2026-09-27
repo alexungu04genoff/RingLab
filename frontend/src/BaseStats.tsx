@@ -1,7 +1,9 @@
-import type { BaseStats, Build, BuildDraft, BuildStatsResult, GameVersion } from "./types";
+import { useState } from "react";
+import type { BaseStats, Build, BuildDraft, BuildStatsResult, GameVersion, StatsMode } from "./types";
+import { PassiveStatsPanel, StatsModeControl } from "./PassiveStats";
 import { useLoad } from "./useLoad";
 import { ErrorNotice } from "./components";
-import { buildStatsPath, buildStatsWarning, statNames, statPresentation } from "./stats";
+import { buildStatsPath, buildStatsWarning, passiveStatsPath, persistedStatsPath, statNames, statPresentation } from "./stats";
 import type { StatsBreakdown } from "./stats";
 import { RacerIcon, SteeringWheelIcon } from "./icons";
 
@@ -9,7 +11,7 @@ export { buildStatsPath } from "./stats";
 
 const statMaximum = 100;
 type StatsDraft = Pick<BuildDraft,
-  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineType">;
+  "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "machineType"> & { gadgetIds?: string[] };
 export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   missingVersionMessage = "Select a game version to see stats.", warning }: {
   stats?: BaseStats; version: string | null; title?: string; breakdown?: StatsBreakdown;
@@ -54,33 +56,46 @@ export function StatsBlock({ stats, version, title = "Base stats", breakdown,
   </section>;
 }
 
-function StatsRequest({ path, version, warning }: {
-  path: string; version: string | null; warning?: string | null;
+function StatsRequest({ path, version, warning, saved = false }: {
+  path: string; version: string | null; warning?: string | null; saved?: boolean;
 }) {
   const result = useLoad<BuildStatsResult>(path);
   return <div className="base-stats-request">
     {path && result.loading ? <p role="status">Loading base stats…</p>
       : result.error ? <ErrorNotice message={`Could not load base stats: ${result.error}`} />
-        : <StatsBlock stats={result.data} version={version} breakdown={result.data} warning={warning} />}
+        : <StatsBlock stats={result.data} version={version} breakdown={result.data} warning={warning}
+          missingVersionMessage={saved ? "Stats unavailable because this build has no recorded game version." : undefined} />}
     <p className="muted">Base stats only. Gadget effects are not included.</p>
   </div>;
 }
 
-export function DraftStats({ draft, version, warning }: {
-  draft: StatsDraft; version: GameVersion | null; warning?: string | null;
-}) {
-  const path = buildStatsPath(draft);
-  // Remount on selection changes so an earlier response cannot flash as the new setup's stats.
-  return <StatsRequest key={path} path={path} version={version?.version ?? null} warning={warning} />;
+function PassiveRequest({ path, basePath, version, warning }: { path: string; basePath: string; version: string | null; warning?: string | null }) {
+  const result = useLoad<BuildStatsResult>(path);
+  return <>{result.loading ? <p role="status">Loading passive gadget stats…</p>
+    : result.error ? <><ErrorNotice message={`Could not load gadget stats: ${result.error}`} />
+      <StatsRequest path={basePath} version={version} warning={warning} /></>
+      : <>{warning && <p role="note" className="stats-compatibility-warning">{warning}</p>}
+        <PassiveStatsPanel value={result.data?.passive} /></>}</>;
 }
 
-export function BuildStats({ build }: { build: Build }) {
-  if (!build.gameVersion) {
-    return <StatsBlock version={null} missingVersionMessage="Stats unavailable because this build has no recorded game version." />;
-  }
+export function DraftStats({ draft, version, warning, mode: controlledMode, persistedPath }: {
+  draft: StatsDraft; version: GameVersion | null; warning?: string | null;
+  mode?: StatsMode; persistedPath?: string;
+}) {
+  const [localMode, setMode] = useState<StatsMode>("base");
+  const mode = controlledMode ?? localMode;
+  const path = buildStatsPath(draft);
+  const passivePath = persistedPath ?? passiveStatsPath({ ...draft, gadgetIds: draft.gadgetIds ?? [] });
+  // Remount on selection changes so an earlier response cannot flash as the new setup's stats.
+  return <>{controlledMode === undefined && <StatsModeControl mode={mode} onChange={setMode} />}
+    {mode === "base" ? <StatsRequest key={path} path={path} version={version?.version ?? null} warning={warning} saved={!!persistedPath} />
+      : <PassiveRequest key={passivePath} path={passivePath} basePath={path} version={version?.version ?? null} warning={warning} />}</>;
+}
+
+export function BuildStats({ build, mode }: { build: Build; mode?: StatsMode }) {
   return <DraftStats draft={{ gameVersionId: build.gameVersion?.id ?? null,
     racerId: build.racer.id, frontPartId: build.frontPart.id,
     rearPartId: build.rearPart.id, tirePartId: build.tirePart?.id ?? null,
-    machineType: build.frontPart.racingType }} version={build.gameVersion}
-    warning={buildStatsWarning(build)} />;
+    machineType: build.frontPart.racingType, gadgetIds: build.gadgets.map(gadget => gadget.id) }} version={build.gameVersion}
+    mode={mode} persistedPath={persistedStatsPath(build)} warning={buildStatsWarning(build)} />;
 }

@@ -43,7 +43,10 @@ public abstract class ApiContract {
     var statsParams = new HashMap<String,Object>();
     for (String field : List.of("racerId","frontPartId","rearPartId","tirePartId","gameVersionId")) statsParams.put(field,body.get(field));
     var canonical = request(null).queryParams(statsParams).get("/api/stats/build").then().statusCode(200).extract().jsonPath().getMap("$");
-    assertThat(savedPage.getMap("statsByBuildId").get(id),equalTo(canonical));
+    var savedStats = new HashMap<String, Object>(savedPage.getMap("statsByBuildId.'" + id + "'"));
+    var savedPassive = (Map<?, ?>) savedStats.remove("passive");
+    assertThat(savedStats, equalTo(canonical));
+    assertThat(savedPassive.get("base"), equalTo(canonical));
     assertThat(request(null).get("/api/builds/"+id).asString(),equalTo(before));
     body.put("title","Updated live saved build");
     request(author.token()).body(body).put("/api/builds/"+id).then().statusCode(200);
@@ -165,7 +168,10 @@ public abstract class ApiContract {
     var params = new HashMap<String, Object>();
     for (String field : List.of("racerId", "frontPartId", "rearPartId", "tirePartId", "gameVersionId")) params.put(field, body.get(field));
     var single = given().queryParams(params).get("/api/stats/build").then().statusCode(200).extract().jsonPath().getMap("$");
-    assertThat(enriched.getMap("statsByBuildId").get(id), equalTo(single));
+    var pageStats = new HashMap<String, Object>(enriched.getMap("statsByBuildId.'" + id + "'"));
+    var passive = (Map<?, ?>) pageStats.remove("passive");
+    assertThat(pageStats, equalTo(single));
+    assertThat(passive.get("base"), equalTo(single));
     given().queryParam("authorId", author.id).queryParam("includeStats", true).queryParam("excludeId", id)
         .get("/api/builds").then().statusCode(200).body("items", empty()).body("total", equalTo(0))
         .body("statsByBuildId.size()", equalTo(0));

@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.application.gamedata.PassiveStatsService;
 import dev.ringlab.application.vote.VoteService;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.domain.build.Build;
@@ -48,8 +48,8 @@ class BuildRestResourceTest {
     var builds = new BuildService(null, null, null, null) {
       @Override public Page list(Query query) { return new Page(List.of(), 19); }
     };
-    var stats = new BaseStatsService(null, null) {
-      @Override public Map<UUID, BaseStatsBreakdown> buildPage(List<Build> page) {
+    var stats = new PassiveStatsService(null, null) {
+      @Override public Map<UUID, PassiveStatsResult> buildPage(List<Build> page) {
         assertTrue(page.isEmpty());
         throw new IllegalStateException("Internal database detail");
       }

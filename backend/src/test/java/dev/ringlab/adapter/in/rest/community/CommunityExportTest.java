@@ -12,6 +12,29 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class CommunityExportTest {
+  @Test void exportsBaseAndReviewedPassiveValuesFromTheSnapshotWithoutReinterpretingThem() {
+    var machine=new Machine(UUID.randomUUID(),"Speed machine",RacingType.SPEED,null);
+    var racer=new Racer(UUID.randomUUID(),"Boost racer",RacingType.BOOST,null);
+    var front=new MachinePart(UUID.randomUUID(),machine.id(),MachinePartType.FRONT);
+    var rear=new MachinePart(UUID.randomUUID(),machine.id(),MachinePartType.REAR);
+    var tire=new MachinePart(UUID.randomUUID(),machine.id(),MachinePartType.TIRE);
+    var patch=new GameVersion(UUID.randomUUID(),"1.4.1",LocalDate.of(2026,6,24));
+    var gadget=new Gadget(PassiveGadgetRules.id(52),"Speed Tuner 1",null,1,null);
+    var build=new Build(UUID.randomUUID(),"Example","",UUID.randomUUID(),racer.id(),front.id(),rear.id(),tire.id(),patch.id(),null,List.of(gadget.id()),Instant.EPOCH,Instant.EPOCH);
+    var base=new BaseStatsBreakdown(PassiveGadgetRules.points(90,30,40,50,60),BaseStats.UNKNOWN,BaseStats.UNKNOWN);
+    var entry=new CommunitySnapshot.Entry(build,"author",racer,new CommunitySnapshot.Part(front,machine),
+        new CommunitySnapshot.Part(rear,machine),new CommunitySnapshot.Part(tire,machine),patch,List.of(gadget),new VoteSummary(8,1),base,null,List.of());
+    var response=TopBuildsResponse.from(new CommunitySnapshot(UUID.randomUUID(),Instant.EPOCH,List.of(entry)),
+        new CommunityPublicUrls("http://localhost:5175","http://localhost:5175"));
+    var stats=response.items().getFirst().stats();
+    assertEquals(new java.math.BigDecimal("90"),stats.speed());
+    assertEquals(new java.math.BigDecimal("110"),stats.passive().adjusted().speed());
+    assertEquals(new java.math.BigDecimal("-4"),stats.passive().adjustments().acceleration());
+    var text=DiscordTopBuildsFormatter.format(response).embeds().getFirst().description();
+    assertTrue(text.contains("Base (Spd/Acc/Hnd/Pwr/Bst): 90 / 30 / 40 / 50 / 60"));
+    assertTrue(text.contains("110 / 26 / 40 / 50 / 60"));
+    assertTrue(text.contains("Recommended maps: All maps"));
+  }
   @Test void urlsUseTrustedOriginsAndRejectUnsafeArtwork() {
     var urls = new CommunityPublicUrls("https://site.example/", "https://assets.example");
     assertTrue(urls.build(UUID.randomUUID()).startsWith("https://site.example/builds/"));

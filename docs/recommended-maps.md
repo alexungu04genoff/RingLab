@@ -102,6 +102,40 @@ The expanded generator accepts `-ExpandedCommunity -BuildCount 240` and an expli
 requests at least two seconds apart (at most 30/minute), leaving capacity for normal browsing.
 It does not change server rate limits. Reusing its manifest resumes completed work safely.
 
+### Diverse community refresh (2026-09-27)
+
+The expanded planner now rotates through every catalog racer and all available machine
+types, with mostly mixed parts from the same type. The current plan separates 184 ordinary
+community builds with natural titles/descriptions from 56 labelled feature demos. Ordinary
+builds have no demo suffix or QA prose. The 1.4.1 examples cover empty plates, matching tuners, verified Tuner 1 + 2
+stacking, racer kits, machine kits, Drift Charge, Panel Combo, Double Down, and excluded
+race-condition effects. These are demonstrations, not an optimizer or a promise of race
+performance. Maps are fictional author preferences; they do not activate gadget effects.
+
+The applied plan uses `-ExpandedCommunity -BuildCount 240 -RandomSeed 20260927
+-ReferenceTime '2026-09-27T01:00:00Z'`. It contains all 52 racers (at least four builds
+each), 48 builds per machine type, 203 mixed and 37 stock setups, all 44 map IDs, 19
+controlled ranking examples, and six exact comment-pagination examples. Pure planner
+tests and real-catalog preflight both passed, including compatibility and Gadget Plate
+validation. No backend or frontend application code changed for this refresh.
+
+Local dev `ringlab` now has 244 builds: 240 regenerated fixtures, the existing Amy demo
+with its human engagement preserved, and three unrelated builds. The Amy build remains
+on its original ID with refreshed parts/maps and the ordinary title "Amy Rose, my usual build"; its zero-vote Wilson
+scenario has a separate new ID. Human votes on other fixtures remain intact, so the
+public top-three order can differ from the pristine preview. The isolated
+`ringlab_gadgets_preview` database has 245 builds, preserving its original five stat
+examples. Both datasets were verified through their frontend/API paths.
+
+Backups and apply artifacts are local, ignored files under `E:\RingLab\.tools`:
+`ringlab-before-diverse-demos-20260927.dump`, `diverse-demo-preview-before.json`, and
+the `diverse-demo-*-payload.json`/SQL files. The refresh used explicit local transactions
+with ownership, concurrent-edit, non-demo preservation, and exact fixture-count checks.
+The normal dev manifest is `backend/.ringlab-demo-state.json`; the isolated worktree has
+its own manifest. Keep these manifests with their databases. A future refresh should
+first preview the same plan parameters through the normal seeder's conflict checks.
+No production database, server configuration, or running services were changed.
+
 The editor allows choosing a stock machine or first part without choosing a machine type
 first. The selected source sets the type and filters the remaining parts. Map selection uses
 an artwork grid, aligned controls, and a live summary under Your combination.

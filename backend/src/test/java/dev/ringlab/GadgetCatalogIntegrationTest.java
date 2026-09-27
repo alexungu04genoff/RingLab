@@ -21,7 +21,7 @@ class GadgetCatalogIntegrationTest {
   @Test
   void expandedCatalogPreservesSeedIdsAndMapsVerifiedMetadataThroughRest() throws Exception {
     var gadgets = game.listGadgets();
-    assertEquals(68, gadgets.size());
+    assertEquals(79, gadgets.size());
     assertEquals(68, gadgets.stream().filter(g -> g.imagePath() != null).count());
     assertEquals(62, game.listMachines().stream().filter(m -> m.imagePath() != null).count());
     assertEquals(52, game.listRacers().stream().filter(r -> r.imagePath() != null).count());

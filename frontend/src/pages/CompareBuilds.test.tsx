@@ -58,6 +58,16 @@ function route(entry: string) {
   </Routes></MemoryRouter>);
 }
 
+it("shares one stats mode control across both builds",async()=>{
+  route("/compare?left=left&right=right");
+  expect(screen.getAllByRole("group",{name:"Statistics mode"})).toHaveLength(1);
+  await userEvent.click(screen.getByRole("button",{name:"With gadgets"}));
+  const calls=vi.mocked(useLoad).mock.calls.map(([path])=>path);
+  expect(calls.some(path=>path.startsWith("/stats/persisted/left?"))).toBe(true);
+  expect(calls.some(path=>path.startsWith("/stats/persisted/right?"))).toBe(true);
+  expect(screen.getByRole("button",{name:"With gadgets"}).getAttribute("aria-pressed")).toBe("true");
+});
+
 it("renders both URL-selected builds and preserves gadget order and plate usage", () => {
   route("/compare?left=left&right=right");
   expect(screen.getByRole("article", { name: "Left build: Sonic speed line" })).toBeTruthy();

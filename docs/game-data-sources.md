@@ -560,6 +560,37 @@ The existing catalog boundary tests were also updated for the larger inventory; 
 `mvn "-Dtest=GameDataRepositoryIntegrationTest,AcceptanceTest" test` manually against the disposable
 test database. From `frontend`, `npm run build` remains the manual TypeScript/production build check.
 
+## Missing passive-gadget artwork (2026-09-27)
+
+The ten Tuners and Boost Machine Kit added in V32 have nullable `image_path` values.
+`frontend/src/gadgetArtwork.ts` supplies reviewed local assets by their stable gadget
+IDs when that field is absent. The shared `Artwork` component uses them in Game
+Collection, the editor picker and selected loadout, build cards, details, and comparison.
+Explicit catalog paths still take precedence. This presentation-only change requires
+no database migration and changes no gadget rules, costs, or saved builds.
+
+Artwork was explicitly requested by the project owner. The exact image links below
+were read from the corresponding rows in the
+[Sonic Wiki Zone gadget table](https://sonic.fandom.com/wiki/Gadget_(Sonic_Racing:_CrossWorlds))
+on 2026-09-27. Fandom's image CDN returned WebP bytes for these PNG-named originals;
+local `.webp` files preserve those bytes without editing the artwork. Game imagery
+belongs to SEGA and the respective rights holders; Sonic Wiki Zone is the source,
+not a transfer of image ownership. Existing site-footer wiki attribution is retained.
+
+| Local file under `frontend/public/assets/gadgets/` | Original wiki image |
+| --- | --- |
+| `speed-tuner-1.webp` | [Speed Tuner 1](https://static.wikia.nocookie.net/sonic/images/4/45/Speed_Tuner_1.png/revision/latest?cb=20251101145931) |
+| `speed-tuner-2.webp` | [Speed Tuner 2](https://static.wikia.nocookie.net/sonic/images/6/60/Speed_Tuner_2.png/revision/latest?cb=20251101145938) |
+| `acceleration-tuner-1.webp` | [Acceleration Tuner 1](https://static.wikia.nocookie.net/sonic/images/f/f2/Acceleration_Tuner_1.png/revision/latest?cb=20251101145950) |
+| `acceleration-tuner-2.webp` | [Acceleration Tuner 2](https://static.wikia.nocookie.net/sonic/images/8/86/Acceleration_Tuner_2.png/revision/latest?cb=20251101145957) |
+| `handling-tuner-1.webp` | [Handling Tuner 1](https://static.wikia.nocookie.net/sonic/images/6/6e/Handling_Tuner_1.png/revision/latest?cb=20251101150004) |
+| `handling-tuner-2.webp` | [Handling Tuner 2](https://static.wikia.nocookie.net/sonic/images/d/d3/Handling_Tuner_2.png/revision/latest?cb=20251101150015) |
+| `power-tuner-1.webp` | [Power Tuner 1](https://static.wikia.nocookie.net/sonic/images/c/ca/Power_Tuner_1.png/revision/latest?cb=20251101150023) |
+| `power-tuner-2.webp` | [Power Tuner 2](https://static.wikia.nocookie.net/sonic/images/a/a9/Power_Tuner_2.png/revision/latest?cb=20251101150134) |
+| `boost-tuner-1.webp` | [Boost Tuner 1](https://static.wikia.nocookie.net/sonic/images/5/51/Boost_Tuner_1.png/revision/latest?cb=20251101150143) |
+| `boost-tuner-2.webp` | [Boost Tuner 2](https://static.wikia.nocookie.net/sonic/images/4/46/Boost_Tuner_2.png/revision/latest?cb=20251101150154) |
+| `boost-machine-kit.webp` | [Boost Machine Kit](https://static.wikia.nocookie.net/sonic/images/4/47/Boost_Machine_Kit.png/revision/latest?cb=20251101144606) |
+
 ## Official source index
 
 [roster]: https://asia.sega.com/SonicRacingCrossWorlds/en/racers.html

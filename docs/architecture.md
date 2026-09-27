@@ -418,3 +418,13 @@ Response assembly loads the map catalog once per page, and collection hydration 
 The global community snapshot includes preferences under its existing cache lifetime.
 Frontend selection, dialogs, comparisons and sharing use shared map helpers. See
 [Recommended Maps](recommended-maps.md) for contracts, isolated startup and the optional demo.
+
+## Passive gadget statistics
+
+The base-stat contract stays unchanged. `PassiveGadgetRules` holds typed reviewed data for
+an explicit patch; `PassiveStatsCalculator` evaluates loadout conditions and arithmetic in
+the domain. `PassiveStatsService` resolves racer and machine types separately, validates
+draft gadget IDs and the existing plate, and reuses batched base contributions for lists.
+Community snapshots calculate with already resolved catalog metadata. REST adds passive
+results without replacing base fields. See [passive-gadget-sources.md](passive-gadget-sources.md)
+for evidence, partial coverage and unresolved stacking. Maps never affect these calculations.

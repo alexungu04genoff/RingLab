@@ -16,7 +16,8 @@ it("searches every collection tab and links maps to explicit recommendations", (
   const map = { id: "map-a", name: "E-Stadium", category: "MAIN_COURSE", contentPack: null, imagePath: null, catalogOrder: 1 };
   const patch = { id: "v", version: "1.4.1", releasedAt: "2026-06-23" };
   vi.mocked(useLoad).mockImplementation(path => ({ loading: false, error: "", data:
-    path === "/racers" ? [racer] : path === "/machines" ? [machine] : path === "/gadgets" ? [gadget]
+    path === "/stats/gadget-rules" ? { ruleset: "test", supportedVersion: "1.4.1", note: "Reviewed subset", gadgets: [] }
+      : path === "/racers" ? [racer] : path === "/machines" ? [machine] : path === "/gadgets" ? [gadget]
       : path === "/maps" ? [map] : path === "/game-versions" ? [patch] : path === "/machine-parts" ? []
         : { gameVersionId: "v", racers: {}, machines: {}, machineParts: {} },
   }));
@@ -45,7 +46,7 @@ it("renders verified gadget artwork, effects and singular/plural costs without f
     { id: "one", name: "Crash Pads", description: null, slotCost: 1, imagePath: null },
     { id: "unknown", name: "Ring Engine", description: null, slotCost: null, imagePath: null },
   ];
-  vi.mocked(useLoad).mockReturnValue({ data: gadgets, loading: false, error: "" });
+  vi.mocked(useLoad).mockImplementation(path => ({ data: path === "" || path === "/stats/gadget-rules" ? undefined : gadgets, loading: false, error: "" }));
   const html = renderToStaticMarkup(<GameData />);
   expect(html).toContain('src="/assets/gadgets/handling-character-kit.png"');
   expect(html).toContain("Supports collisions and Ring theft.");
