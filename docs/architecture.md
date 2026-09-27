@@ -405,3 +405,16 @@ exclusions and response assembly precede enrichment. Failure omits the map and a
 a safe `statsError` while preserving the normal page. Default callers receive the
 original four fields. Explore/My Builds consume this map; Top 3 keeps snapshot stats.
 See [browsing improvements](browsing-improvements.md) for UI behavior and validation.
+
+## Author-selected map preferences
+
+`RaceMap` is a catalog concept with an explicit course category and separate optional
+content pack. `GameDataRepository` exposes the ordered catalog; `Build` owns an immutable
+set of recommended map IDs. V30/V31 add the catalog and association table, with zero
+associations representing an unspecified preference (All maps). `BuildDraftValidator`
+validates IDs; omitted update fields preserve selections. Persistence uses membership
+and emptiness predicates before ranking/counting/pagination, shared with private bookmarks.
+Response assembly loads the map catalog once per page, and collection hydration is batched.
+The global community snapshot includes preferences under its existing cache lifetime.
+Frontend selection, dialogs, comparisons and sharing use shared map helpers. See
+[Recommended Maps](recommended-maps.md) for contracts, isolated startup and the optional demo.

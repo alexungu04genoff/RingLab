@@ -45,6 +45,7 @@ it("copies only editable configuration and preserves gadget order", () => {
     description: "Keep this setup note",
     racerId: "racer", frontPartId: "front", rearPartId: "rear", tirePartId: "tire",
     machineType: "SPEED",
+    recommendedMapIds: [], mapRecommendationMode: "ALL",
     gameVersionId: "version", remixedFromBuildId: "source", gadgetIds: ["second", "first"],
   });
   expect(draftFromRemix(source)).not.toHaveProperty("author");

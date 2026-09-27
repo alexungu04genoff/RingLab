@@ -605,6 +605,68 @@ class BuildServiceTest {
         title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of(gadgetId));
   }
 
+  @Test
+  void recommendationsDefaultToAllPreserveOmittedEditsAndClearOnlyExplicitly() {
+    UUID first = addMap("First", 1);
+    UUID second = addMap("Second", 2);
+    assertTrue(service.create(authorId, draft("Old client")).recommendedMapIds().isEmpty());
+    var selected = service.create(authorId, mapDraft(List.of(second, first)));
+    assertEquals(Set.of(first, second), selected.recommendedMapIds());
+    assertThrows(UnsupportedOperationException.class, () -> selected.recommendedMapIds().clear());
+    var retained = service.edit(selected.id(), authorId, draft("Title change"));
+    assertEquals(selected.recommendedMapIds(), retained.recommendedMapIds());
+    assertEquals(selected.createdAt(), retained.createdAt());
+    var removed = service.edit(selected.id(), authorId, mapDraft(List.of(first)));
+    assertEquals(Set.of(first), removed.recommendedMapIds());
+    assertThrows(ForbiddenException.class,
+        () -> service.edit(selected.id(), UUID.randomUUID(), mapDraft(List.of())));
+    assertEquals(Set.of(first), service.get(selected.id()).recommendedMapIds());
+    assertTrue(service.edit(selected.id(), authorId, mapDraft(List.of())).recommendedMapIds().isEmpty());
+  }
+
+  @Test
+  void rejectsInvalidMapSetsAndUnknownFilterWithoutChangingSavedBuild() {
+    UUID first = addMap("Known", 1);
+    var existing = service.create(authorId, mapDraft(List.of(first)));
+    for (var ids : List.of(List.of(first, first), List.of(UUID.randomUUID()),
+        Arrays.asList(first, null), List.of(first, UUID.randomUUID()))) {
+      var error = assertThrows(ValidationException.class,
+          () -> service.edit(existing.id(), authorId, mapDraft(ids)));
+      assertEquals("recommendedMapIds", error.field());
+      assertEquals(existing, service.get(existing.id()));
+    }
+    assertThrows(ValidationException.class, () -> service.list(new BuildService.Query(
+        new BuildRepository.Filter(null, null, null, null, null, Set.of(), UUID.randomUUID(), true),
+        BuildSort.NEWEST, 0, 12)));
+    assertDoesNotThrow(() -> service.list(new BuildService.Query(
+        new BuildRepository.Filter(null, null, null, null, null, Set.of(), first, false),
+        BuildSort.NEWEST, 0, 12)));
+  }
+
+  @Test
+  void copiedRemixRecommendationsRemainIndependentAndAllCatalogIdsRemainSelected() {
+    var ids = java.util.stream.IntStream.rangeClosed(1, 5)
+        .mapToObj(i -> addMap("Map " + i, i)).toList();
+    var source = service.create(authorId, mapDraft(ids));
+    var remix = service.create(UUID.randomUUID(), new BuildService.Draft("Remix", "", racerId,
+        frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of(), ids));
+    assertEquals(Set.copyOf(ids), remix.recommendedMapIds());
+    service.edit(source.id(), authorId, mapDraft(List.of()));
+    assertEquals(Set.copyOf(ids), service.get(remix.id()).recommendedMapIds());
+  }
+
+  private UUID addMap(String name, int order) {
+    UUID id = UUID.randomUUID();
+    gameData.maps.add(new dev.ringlab.domain.gamedata.RaceMap(id, name,
+        dev.ringlab.domain.gamedata.RaceMap.Category.MAIN_COURSE, null, null, order));
+    return id;
+  }
+
+  private BuildService.Draft mapDraft(List<UUID> ids) {
+    return new BuildService.Draft("Map setup", "", racerId, frontPartId, rearPartId, tirePartId,
+        gameVersionId, null, List.of(), ids);
+  }
+
   private BuildService.Draft draftWithGadgets(List<UUID> gadgetIds) {
     return new BuildService.Draft(
         "Build", "", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, gadgetIds);

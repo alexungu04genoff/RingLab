@@ -45,7 +45,8 @@ function Get-CommunityDemoPlan {
     [ValidateRange(1,500)][int]$BuildCount=60,
     [int]$RandomSeed=20260920,
     [datetime]$ReferenceTime=[datetime]::Parse('2026-09-20T12:00:00Z'),
-    [ValidateRange(0,1)][double]$BoostMachineRatio=.20
+    [ValidateRange(0,1)][double]$BoostMachineRatio=.20,
+    [switch]$ExpandedCommunity
   )
   $random=[System.Random]::new($RandomSeed)
   $racers=@(ConvertTo-DemoArray $Catalog.racers | Sort-Object name,id)
@@ -66,9 +67,13 @@ function Get-CommunityDemoPlan {
   $main=@($racers | Where-Object name -in $mainNames);$other=@($racers | Where-Object {$_.name -notin $mainNames -and $_.name -notin $guestNames});$guests=@($racers | Where-Object name -in $guestNames)
   if(!$main.Count){$main=$racers};if(!$other.Count){$other=$main};if(!$guests.Count){$guests=$other}
   $authors=@('amy','tails','shadow','sonic','knuckles','rouge','cream','blaze','silver','vector','blueblur','ultimatefan','rosegrid','metalhead','chaotix','eggman','bigfan','phantom','megafan','crossover')
+  if($ExpandedCommunity){$authors+=@('moonlit','coffeelaps','lastcorner','mintgear','weekendgrid','raincheck','nightowl','copperline','cloudnine','secondlap','peachpit','pocketboost','smallturns','arcadehour','spareparts','sundaydriver','neonroute','quietgarage','driftjournal','latebraker')}
   $favorites=@{amy=@('Amy Rose','Cream & Cheese');tails=@('Miles "Tails" Prower','Sonic the Hedgehog');shadow=@('Shadow the Hedgehog','Rouge the Bat');sonic=@('Sonic the Hedgehog','Miles "Tails" Prower');knuckles=@('Knuckles the Echidna','Big the Cat');rouge=@('Rouge the Bat','Shadow the Hedgehog');cream=@('Cream & Cheese','Amy Rose');blaze=@('Blaze the Cat','Silver the Hedgehog');silver=@('Silver the Hedgehog','Blaze the Cat');vector=@('Vector the Crocodile','Espio the Chameleon');blueblur=@('Sonic the Hedgehog','Classic Sonic');ultimatefan=@('Shadow the Hedgehog','Sonic the Hedgehog');rosegrid=@('Amy Rose','Cream & Cheese');metalhead=@('Metal Sonic','Dr. Eggman');chaotix=@('Espio the Chameleon','Vector the Crocodile');eggman=@('Dr. Eggman','Metal Sonic');bigfan=@('Big the Cat');phantom=@('Joker','Shadow the Hedgehog');megafan=@('Mega Man','Sonic the Hedgehog');crossover=@('SpongeBob SquarePants','Joker')}
   $users=@();foreach($key in $authors){$users+=[pscustomobject]@{key=$key;username="ringlab_demo_$key";email="ringlab_demo_$key@example.test";author=$true}}
-  foreach($n in 1..80){$s=$n.ToString('00');$users+=[pscustomobject]@{key="member$s";username="ringlab_demo_member_$s";email="ringlab_demo_member_$s@example.test";author=$false}}
+  $memberCount=if($ExpandedCommunity){120}else{80}
+  foreach($n in 1..$memberCount){$s=$n.ToString('00');$users+=[pscustomobject]@{key="member$s";username="ringlab_demo_member_$s";email="ringlab_demo_member_$s@example.test";author=$false}}
+  $maps=@(ConvertTo-DemoArray $Catalog.maps | Where-Object id | Sort-Object catalogOrder,id)
+  if($ExpandedCommunity -and $maps.Count -lt 3){throw 'Expanded community requires the verified map catalog.'}
 
   $legacyKeys=@('cornering','items','route','acceleration','recovery','boost','shadow','finish','amy-drift','tails-grid','shadow-laps','sonic-speed','sonic-boost','sonic-route','knuckles-power','knuckles-endurance','knuckles-ring')
   $legacyTitles=@('[DEMO] Cornering Showcase','[DEMO] Item Control Practice','[DEMO] Ring Route Session','[DEMO] Acceleration Lab','[DEMO] Power Recovery Run','[DEMO] Boost Timing Notes','[DEMO] Dark Reaper Sprint','[DEMO] Consistent Finish Plan','[DEMO] Drift Line Routine','[DEMO] Starting Grid Notes','[DEMO] Night Circuit Notes','[DEMO] Speedster Session','[DEMO] Boost Route Notes','[DEMO] Balanced Start','[DEMO] Power Lineup','[DEMO] Steady Lap Plan','[DEMO] Ring Collection Notes')
@@ -133,8 +138,6 @@ function Get-CommunityDemoPlan {
       $communityBlueprints += [pscustomobject]@{owner=$profile.Key;key="community-$($profile.Key)-$($index+1)";title=$profile.Value[$index]}
     }
   }
-  $activity=@(6,5,5,4,4,4,4,3,3,3,3,3,3,2,2,2,2,1,1,1);$ownerList=@();for($i=0;$i -lt $authors.Count;$i++){1..$activity[$i]|ForEach-Object{$ownerList+=$authors[$i]}}
-  $ownerList=@($ownerList|Select-Object -First $BuildCount);while($ownerList.Count -lt $BuildCount){$ownerList+=$authors[$ownerList.Count%$authors.Count]}
   $blueprints=@();$ownerCounts=@{};foreach($a in $authors){$ownerCounts[$a]=0}
   for($i=0;$i -lt $BuildCount;$i++){
     if($i -lt $legacyKeys.Count){
@@ -195,6 +198,35 @@ function Get-CommunityDemoPlan {
     if($b.key -eq 'sonic-speed'){$title='Sonic — my regular garage pick'}
     $description="$setup $tone"
     if($b.ordinal % 3 -ne 0){$description+=" Keeping $($selected[0].name) with $($selected[1].name) for this version of the loadout."}
+    $recommendedMaps=@()
+    if($ExpandedCommunity){
+      # Preferences belong only to this explicit synthetic fixture refresh, never real builds.
+      if($b.ordinal % 4 -ne 0 -or $b.key -in @('sonic-speed','community-blaze-1','community-metalhead-1')){
+        $recommendedMaps=@(Invoke-DemoShuffle $maps $random | Select-Object -First (1+$random.Next(4)))
+      }
+      $titles=@("My late-night $($racer.name) pick", "$($fm.name) after a few garage visits", 'The setup I keep forgetting to save',
+        "A quieter week with $($racer.name)", 'One change before calling it a night', 'Still keeping the old favourite',
+        "$($selected[0].name) gets another try", 'A spare for our weekend lobby', "Back to $($fm.name)",
+        'Not finished tinkering with this', 'The second slot in my garage', 'Keeping this one for the group races',
+        'A small change from last weekend', "$($racer.name), for a change", 'My current comfort pick',
+        'Saving this before I change my mind', 'A different answer to the same garage', 'Lunch-break experiment')
+      $title=$titles[$random.Next($titles.Count)]
+      $notes=@('I changed one part from my last saved version. Leaving this here so I can compare them after the weekend.',
+        'This started as a stock setup. I liked the look of these picks together and kept the gadget list short.',
+        'My friends keep asking which loadout I meant, so this is the version I am sharing with them.',
+        'I have not settled on the last gadget yet. Suggestions are welcome, especially from anyone using a similar machine.',
+        'Saving a second option instead of overwriting my usual build. I want both available for our next lobby.',
+        'Nothing competitive claimed here. I just wanted a tidy record of what I have been trying this week.',
+        'I keep switching racers and losing track of the parts. This is the combination I want to return to.',
+        'Leaving this version alone for a while. Next time I will compare it with the stock parts instead of changing everything at once.')
+      $description="$($notes[$random.Next($notes.Count)]) $setup"
+      if($recommendedMaps.Count){$description+=" I have marked $($recommendedMaps[0].name) because that is where I want to try it next."}
+      if($b.key -in @('sonic-speed','community-blaze-1','community-metalhead-1')){$title="$($racer.name) — my weekend garage pick [Top 3 Demo]"}
+      if($b.ordinal -ge 80 -and $b.ordinal % 29 -eq 0){$title="[Remix Demo] A second take on a saved setup";$parent=$builds[$b.ordinal-5].key}
+      elseif($b.ordinal -ge 80 -and $b.ordinal % 31 -eq 0){$title='[Gadget Demo] Starting with an empty plate';$selected=@()}
+      elseif($b.ordinal -ge 80 -and $b.ordinal % 37 -eq 0){$title='[Map Demo] Keeping every route open';$recommendedMaps=@()}
+      elseif($b.ordinal -ge 80 -and $b.ordinal % 41 -eq 0){$title="[Machine Demo] My $($machineType.ToLowerInvariant()) parts combination"}
+    }
     $fixtureKind=$null;$targetUpvotes=$null;$targetDownvotes=$null;$targetComments=$null;$caseTime=$null
     if($wilsonFixtures.Contains($b.key)){
       $fixture=$wilsonFixtures[$b.key];$fixtureKind='WILSON';$title=$fixture.title
@@ -206,7 +238,7 @@ function Get-CommunityDemoPlan {
       $fixture=$commentFixtures[$b.key];$fixtureKind='COMMENT';$title=$fixture.title
       $description="$($fixture.description) $setup";$targetComments=$fixture.comments
     }
-    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;caseTime=$caseTime;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected.id);gadgetNames=@($selected.name);stock=$stock;remixedFromKey=$parent}
+    $builds+=[pscustomobject]@{key=$b.key;owner=$b.owner;title=$title;legacyTitle=$b.title;description=$description;fixtureKind=$fixtureKind;targetUpvotes=$targetUpvotes;targetDownvotes=$targetDownvotes;targetComments=$targetComments;caseTime=$caseTime;racerId=$racer.id;racerName=$racer.name;machineType=$machineType;frontPartId=$front.id;frontMachine=$fm.name;rearPartId=$rear.id;rearMachine=$rm.name;tirePartId=if($tire){$tire.id}else{$null};tireMachine=if($tire){$tm.name}else{$null};gameVersionId=$version.id;version=$version.version;releasedAt=$version.releasedAt;gadgetIds=@($selected|ForEach-Object id);gadgetNames=@($selected|ForEach-Object name);recommendedMapIds=@($recommendedMaps | Sort-Object id | ForEach-Object id);stock=$stock;remixedFromKey=$parent}
   }
   $votes=@();$comments=@()
   foreach($b in $builds){
@@ -222,9 +254,12 @@ function Get-CommunityDemoPlan {
     }
     # A visible Sonic entry is an explicit editorial fixture, not a ranking rule.
     if($b.key -eq 'sonic-speed'){$attention=65}
+    if($ExpandedCommunity -and $b.key -eq 'community-blaze-1'){$attention=64}
+    if($ExpandedCommunity -and $b.key -eq 'community-metalhead-1'){$attention=62}
     for($i=0;$i -lt [Math]::Min($attention,$candidates.Count);$i++){
       $down=if($roll -ge 84 -and $roll -lt 92){.45}else{.12}
       if($b.key -eq 'sonic-speed'){$down=0}
+      if($ExpandedCommunity -and $b.key -in @('community-blaze-1','community-metalhead-1')){$down=0}
       $votes+=[pscustomobject]@{key="vote/$($candidates[$i].key)/$($b.key)";user=$candidates[$i].key;build=$b.key;value=if($random.NextDouble() -lt $down){-1}else{1}}
     }
     if($b.fixtureKind -eq 'COMMENT'){continue}

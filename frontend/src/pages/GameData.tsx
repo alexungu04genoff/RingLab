@@ -90,10 +90,10 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
   stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
-  if ("category" in item) return <article className="panel map-collection-item">
-    <MapThumbnail map={item} /><h2>{item.name}</h2><p>{mapCategoryLabel(item.category)}</p>
-    {item.contentPack && <p className="muted">{item.contentPack}</p>}
-    <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link>
+  if ("category" in item) return <article className="panel collection-item map-collection-item">
+    <MapThumbnail map={item} /><div className="collection-copy"><h2>{item.name}</h2>
+    <p>{mapCategoryLabel(item.category)}{item.contentPack && ` · ${item.contentPack}`}</p>
+    <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link></div>
   </article>;
   if ("slotCost" in item) return <GadgetCard gadget={item} />;
   if (tab === "machines") return <StockMachineCard machine={item}
@@ -104,12 +104,15 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
 
 export function GameData() {
   const [tab, setTab] = useState<CollectionKey>("racers");
-  const [mapSearch, setMapSearch] = useState("");
+  const [search, setSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
   const versions = useLoad<GameVersion[]>("/game-versions");
   const machineParts = useLoad<MachinePart[]>("/machine-parts");
   const latestVersion = newestGameVersion(versions.data);
   const stats = useLoad<StatsCatalog>(latestVersion ? `/stats/catalog?gameVersionId=${latestVersion.id}` : "");
+  const searchLabel = collections.find(collection => collection.key === tab)!.label.toLowerCase();
+  const visibleItems = items.data?.filter(item => ("version" in item ? item.version : item.name)
+    .toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   return (
     <>
       <div className="page-heading collection-heading">
@@ -134,7 +137,7 @@ export function GameData() {
             key={key}
             className={key === tab ? "selected" : ""}
             aria-pressed={key === tab}
-            onClick={() => setTab(key)}
+            onClick={() => { setTab(key); setSearch(""); }}
           >
             <Icon /> {label}
           </button>
@@ -143,10 +146,12 @@ export function GameData() {
       <ErrorNotice message={items.error} />
       <ErrorNotice message={versions.error || stats.error || machineParts.error} />
       {items.loading && <p role="status">Loading collection…</p>}
-      {tab === "maps" && <label className="collection-map-search">Search maps
-        <input type="search" value={mapSearch} onChange={event => setMapSearch(event.target.value)} /></label>}
+      <label className="collection-search">Search {searchLabel}
+        <input type="search" value={search} onChange={event => setSearch(event.target.value)} /></label>
+      {!items.loading && !items.error && visibleItems?.length === 0
+        && <p>No {searchLabel} match your search. Try another name.</p>}
       <div className={`collection collection-${tab}`}>
-        {items.data?.filter(item => tab !== "maps" || ("name" in item && item.name.toLocaleLowerCase().includes(mapSearch.trim().toLocaleLowerCase()))).map((item) => <div key={item.id}>
+        {visibleItems?.map((item) => <div key={item.id}>
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
             stats={stats.data} version={latestVersion?.version ?? null}
             loading={versions.loading || machineParts.loading || stats.loading}

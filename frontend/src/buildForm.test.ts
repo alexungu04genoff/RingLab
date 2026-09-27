@@ -40,8 +40,8 @@ it.each(machineTypes)("%s filters all slots and presets independently of the rac
   expect(switchMachineType(selected, machineType, parts)).toBe(selected);
   expect(switchMachineType(selected, other, parts)).toMatchObject({ racerId: "independent", title: "Keep", gadgetIds: ["g"], frontPartId: "", rearPartId: "", tirePartId: null });
   expect(machineSetupError({ ...selected, machineType: null }, parts)).toContain("Select a machine type");
-  expect(stockMachineSources(parts, null)).toEqual([]);
-  expect(machinePartsForType(parts, null, "FRONT")).toEqual([]);
+  expect(stockMachineSources(parts, null)).toHaveLength(5);
+  expect(machinePartsForType(parts, null, "FRONT")).toHaveLength(5);
   expect(machineSetupError({ ...selected, machineType: "BOOST", frontPartId: "BOOST-FRONT", rearPartId: "BOOST-REAR", tirePartId: "POWER-TIRE" }, parts)).toContain("cannot have tires");
 });
 
@@ -147,6 +147,11 @@ it("filters stock and individual parts by family and applies the correct family 
 
   expect(stockMachineSources(parts, "SPEED").map((part) => part.sourceMachineName))
     .toEqual(["Standard"]);
+  expect(stockMachineSources(parts, null).map(part => part.sourceMachineName)).toEqual(["Board", "Standard"]);
+  expect(machinePartsForType(parts, null, "FRONT").map(part => part.id)).toEqual(["board-FRONT", "standard-FRONT"]);
+  expect(applyStockMachine({ ...draft, machineType: null }, parts, "board")).toMatchObject({
+    machineType: "BOOST", frontPartId: "board-FRONT", rearPartId: "board-REAR", tirePartId: null,
+  });
   expect(stockMachineSources(parts, "BOOST").map((part) => part.sourceMachineName))
     .toEqual(["Board"]);
   expect(machinePartsForType(parts, "SPEED", "FRONT").map((part) => part.id))

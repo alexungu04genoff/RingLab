@@ -1,11 +1,42 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { fireEvent, render, screen } from "@testing-library/react";
-import { expect, it, vi } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it, vi } from "vitest";
+import { MemoryRouter } from "react-router-dom";
 import { useLoad } from "../useLoad";
 import { GameData, newestGameVersion, patchNotesUrl } from "./GameData";
 import type { BaseStats, Gadget, Machine, MachinePart, Racer } from "../types";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
+afterEach(cleanup);
+
+it("searches every collection tab and links maps to explicit recommendations", () => {
+  const racer = { id: "r", name: "Sonic", racingType: "SPEED", imagePath: null };
+  const machine = { id: "m", name: "Speedster", racingType: "SPEED", imagePath: null };
+  const gadget = { id: "g", name: "Ring Engine", description: null, slotCost: 1, imagePath: null };
+  const map = { id: "map-a", name: "E-Stadium", category: "MAIN_COURSE", contentPack: null, imagePath: null, catalogOrder: 1 };
+  const patch = { id: "v", version: "1.4.1", releasedAt: "2026-06-23" };
+  vi.mocked(useLoad).mockImplementation(path => ({ loading: false, error: "", data:
+    path === "/racers" ? [racer] : path === "/machines" ? [machine] : path === "/gadgets" ? [gadget]
+      : path === "/maps" ? [map] : path === "/game-versions" ? [patch] : path === "/machine-parts" ? []
+        : { gameVersionId: "v", racers: {}, machines: {}, machineParts: {} },
+  }));
+  render(<MemoryRouter><GameData /></MemoryRouter>);
+  for (const [tab, label, match] of [
+    ["Racers", "Search racers", "Sonic"], ["Stock Machines", "Search stock machines", "Speedster"],
+    ["Gadgets", "Search gadgets", "Ring Engine"], ["Maps", "Search maps", "E-Stadium"],
+    ["Versions / Patches", "Search versions / patches", "1.4.1"],
+  ]) {
+    fireEvent.click(screen.getByRole("button", { name: tab }));
+    const search = screen.getByLabelText(label);
+    expect((search as HTMLInputElement).value).toBe("");
+    fireEvent.change(search, { target: { value: "no-such-entry" } });
+    expect(screen.getByText(/match your search/)).toBeTruthy();
+    fireEvent.change(search, { target: { value: match.toUpperCase() } });
+    expect(screen.queryByText(/match your search/)).toBeNull();
+    if (tab === "Maps") expect(screen.getByRole("link", { name: "Find recommended builds →" }).getAttribute("href"))
+      .toBe("/?mapId=map-a&includeAllMaps=false");
+  }
+});
 
 it("renders verified gadget artwork, effects and singular/plural costs without filling unknown values", () => {
   const gadgets: Gadget[] = [

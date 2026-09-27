@@ -30,12 +30,15 @@ class CommunityExportTest {
       var front = new MachinePart(UUID.randomUUID(), source.id(), MachinePartType.FRONT);
       var rear = new MachinePart(UUID.randomUUID(), source.id(), MachinePartType.REAR);
       var racer = new Racer(UUID.randomUUID(), "Guest", RacingType.SPEED, "/assets/racers/tails.png");
+      var maps = i == 0 ? List.of(new RaceMap(UUID.randomUUID(), "@everyone **Map** " + "😀".repeat(300),
+          RaceMap.Category.MAIN_COURSE, null, null, 1)) : List.<RaceMap>of();
       var b = new Build(UUID.randomUUID(), "@everyone [click](https://bad.example) **title**", "x".repeat(10000),
-          UUID.randomUUID(), racer.id(), front.id(), rear.id(), null, null, null, List.of(), Instant.EPOCH, Instant.EPOCH);
+          UUID.randomUUID(), racer.id(), front.id(), rear.id(), null, null, null, List.of(),
+          maps.stream().map(RaceMap::id).collect(java.util.stream.Collectors.toSet()), Instant.EPOCH, Instant.EPOCH);
       entries.add(new CommunitySnapshot.Entry(b, "author", racer, new CommunitySnapshot.Part(front, source),
           new CommunitySnapshot.Part(rear, source), null, null,
           List.of(new Gadget(UUID.randomUUID(), "😀".repeat(1000), null, 1, null)), new VoteSummary(3, 1),
-            new BaseStatsBreakdown(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null, List.of()));
+            new BaseStatsBreakdown(BaseStats.UNKNOWN, BaseStats.UNKNOWN, BaseStats.UNKNOWN), null, maps));
     }
     var snapshot = new CommunitySnapshot(UUID.randomUUID(), Instant.EPOCH, entries);
     var response = TopBuildsResponse.from(snapshot, new CommunityPublicUrls("http://localhost:5173", "http://localhost:5173"));
@@ -54,8 +57,12 @@ class CommunityExportTest {
       assertFalse(embed.title().contains("["));
       assertFalse(embed.title().contains("**"));
       assertTrue(embed.description().contains("None (Boost)"));
+      assertFalse(embed.description().contains("@everyone"));
+      assertTrue(embed.description().contains("Recommended maps:"));
     }
     assertNull(response.items().getFirst().stats().speed());
+    assertEquals(MapRecommendationsResponse.Mode.SELECTED, response.items().getFirst().build().mapRecommendations().mode());
+    assertTrue(message.embeds().get(1).description().contains("Recommended maps: All maps"));
     assertNull(response.items().getFirst().build().tirePart());
     var json = new com.fasterxml.jackson.databind.ObjectMapper().findAndRegisterModules().writeValueAsString(response);
     assertFalse(json.contains("email"));

@@ -16,7 +16,7 @@ it.each([
 
 it.each([
   "/api/builds?search=%25%5F&excludeId=winner",
-  "/api/auth/login", "/api/auth/google/link", "/api/racers",
+  "/api/auth/login", "/api/auth/google/link", "/api/racers", "/api/maps",
   "/api/community/top-builds", "/api/stats/build?gameVersionId=patch",
   "/api/saved-builds", "/api/saved-builds/status?buildId=one", "/api/saved-builds/one",
 ])("preserves public API forwarding for %s", (url) => {

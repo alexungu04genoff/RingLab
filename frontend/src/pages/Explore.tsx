@@ -242,6 +242,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             updateUrl({ gameVersionId: value });
           }}
         />
+        <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
+          onChange={(id, include) => updateUrl({ mapId: id, includeAllMaps: id ? String(include) : "" })} />
         <label>
           <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span></span></span>
           <select
@@ -257,8 +259,6 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             <option value="rated">Best rated</option>
           </select>
         </label>
-        <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
-          onChange={(id, include) => updateUrl({ mapId: id, includeAllMaps: id ? String(include) : "" })} />
       </section>
       {activeChips.length > 0 && (
         <div className="active-filters" aria-label="Active filters">

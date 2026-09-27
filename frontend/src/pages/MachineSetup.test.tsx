@@ -35,6 +35,7 @@ beforeEach(() => {
           part("REAR", "Speedster Lightning"), part("TIRE", "Speedster Lightning")]
       : path === "/racers" ? [stock.racer]
       : path === "/gadgets" ? stock.gadgets
+      : path === "/maps" ? []
       : path === "/game-versions" ? [{ id: "version", version: "1.4.1", releasedAt: "2026-06-23" }]
       : path.includes("/comments") ? { items: [], total: 0, page: 0, size: 20 }
       : build;
@@ -42,15 +43,15 @@ beforeEach(() => {
   });
 });
 
-it("disables machine selectors until a type is chosen and keeps gadgets separate", () => {
+it("offers machine parts before choosing a type and keeps gadgets separate", () => {
   const html = renderToStaticMarkup(<MemoryRouter><BuildEditor /></MemoryRouter>);
   const selectors = [...html.matchAll(/<label class="part-select">(Front|Rear|Tires)<select([^>]*)>(.*?)<\/select>/g)];
   expect(selectors.map((match) => match[1])).toEqual(["Front", "Rear"]);
   selectors.forEach((match) => {
     expect(match[2]).toContain("required");
-    expect(match[2]).toContain("disabled");
+    expect(match[2]).not.toContain("disabled");
     expect(match[3]).not.toContain("Ring Engine");
-    expect([...match[3].matchAll(/<option/g)]).toHaveLength(1);
+    expect([...match[3].matchAll(/<option/g)].length).toBeGreaterThan(1);
   });
   expect(html).toContain('type="checkbox"');
   expect(html).toContain("Ring Engine");

@@ -20,6 +20,8 @@ const buildA: Build = {
 };
 const buildB = { ...buildA, id: "B", title: "Build B draft" };
 const latestVersion = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
+const map = { id: "map-a", name: "E-Stadium", category: "MAIN_COURSE" as const,
+  contentPack: null, imagePath: null, catalogOrder: 1 };
 let loadB: () => Promise<Build>;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -30,6 +32,7 @@ beforeEach(() => {
     if (path === "/racers") return [buildA.racer];
     if (path === "/machine-parts") return [buildA.frontPart, buildA.rearPart, buildA.tirePart];
     if (path === "/game-versions") return [latestVersion];
+    if (path === "/maps") return [map];
     return [];
   });
 });
@@ -83,6 +86,30 @@ function expectNoWrite() {
 function selectLatestPatch() {
   fireEvent.change(screen.getByLabelText("Game version / Patch"), { target: { value: latestVersion.id } });
 }
+
+it("preserves loaded maps through setup edits and requires an explicit All choice to clear them", async () => {
+  const original = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async (path, options) => path === "/builds/A" && !options?.method
+    ? { ...buildA, mapRecommendations: { mode: "SELECTED", maps: [map] } } : original(path, options));
+  await openA();
+  selectLatestPatch();
+  fireEvent.change(screen.getByLabelText("Racer"), { target: { value: "racer" } });
+  fireEvent.change(screen.getByLabelText(/^Front/), { target: { value: "FRONT" } });
+  expect((screen.getByRole("checkbox", { name: /E-Stadium/ }) as HTMLInputElement).checked).toBe(true);
+  expect(screen.getByLabelText("Your combination recommended maps").textContent).toContain("E-Stadium");
+  fireEvent.click(screen.getByRole("checkbox", { name: /E-Stadium/ }));
+  expect(screen.getByLabelText("Your combination recommended maps").textContent).toContain("Choose at least one map.");
+  expect((screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  expectNoWrite();
+  fireEvent.click(screen.getByRole("radio", { name: "All maps" }));
+  expect(screen.getByLabelText("Your combination recommended maps").textContent).toContain("Recommended maps · All");
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await screen.findByText("Saved destination");
+  const write = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "PUT")!;
+  expect(JSON.parse(write[1]!.body as string)).toMatchObject({ recommendedMapIds: [] });
+  expect(JSON.parse(write[1]!.body as string)).not.toHaveProperty("mapRecommendationMode");
+});
 
 it("keeps an incompatible legacy rear visible and requires explicit correction", async () => {
   const invalid = { ...buildA, rearPart: { ...part("REAR"), id: "wrong-rear", racingType: "POWER" as const, sourceMachineName: "Power source" } };
@@ -214,10 +241,12 @@ it("filters family choices, applies both stock shapes, and clears selections on 
     <Route path="/builds/new" element={<BuildEditor />} />
   </Routes></MemoryRouter>);
   const stock = await screen.findByLabelText("Use stock machine") as HTMLSelectElement;
-  expect(stock.disabled).toBe(true);
-  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "SPEED" } });
-  expect(within(stock).getByRole("option", { name: "Speedster Lightning" })).toBeTruthy();
-  expect(within(stock).queryByRole("option", { name: "Diva Macchina" })).toBeNull();
+  expect(stock.disabled).toBe(false);
+  expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).disabled).toBe(false);
+  fireEvent.change(screen.getByLabelText(/^Front/), { target: { value: "standard-FRONT" } });
+  expect((screen.getByLabelText("Machine type") as HTMLSelectElement).value).toBe("SPEED");
+  expect(within(stock).getByRole("option", { name: /Speedster Lightning/ })).toBeTruthy();
+  expect(within(stock).queryByRole("option", { name: /Diva Macchina/ })).toBeNull();
   for (const label of ["Front", "Rear", "Tires"]) {
     const select = screen.getByLabelText(new RegExp(`^${label}`));
     expect(within(select).getByRole("option", { name: /Speedster Lightning/ })).toBeTruthy();
@@ -237,7 +266,7 @@ it("filters family choices, applies both stock shapes, and clears selections on 
   expect(screen.queryByLabelText(/^Tires/)).toBeNull();
   expect((screen.getByLabelText(/^Front/) as HTMLSelectElement).value).toBe("");
   expect((screen.getByLabelText(/^Rear/) as HTMLSelectElement).value).toBe("");
-  expect(within(stock).getByRole("option", { name: "Diva Macchina" })).toBeTruthy();
+  expect(within(stock).getByRole("option", { name: /Diva Macchina/ })).toBeTruthy();
   expect(within(stock).queryByRole("option", { name: "Speedster Lightning" })).toBeNull();
   for (const label of ["Front", "Rear"]) {
     const select = screen.getByLabelText(new RegExp(`^${label}`));

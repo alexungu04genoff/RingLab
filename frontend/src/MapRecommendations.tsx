@@ -26,13 +26,12 @@ export function RecommendedMapList({ recommendations }: { recommendations: MapRe
     </li>)}</ul>;
 }
 
-function RecommendationDialog({ recommendations, title, onClose }: {
-  recommendations: MapRecommendations; title: string; onClose: () => void;
+function RecommendationDialog({ recommendations, title, onClose, returnFocus }: {
+  recommendations: MapRecommendations; title: string; onClose: () => void; returnFocus: HTMLButtonElement | null;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const headingId = useId();
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
     const previousOverflow = document.body.style.overflow;
     const element = dialog.current!;
     element.showModal();
@@ -40,10 +39,16 @@ function RecommendationDialog({ recommendations, title, onClose }: {
     return () => {
       element.close();
       document.body.style.overflow = previousOverflow;
-      previous?.focus();
+      returnFocus?.focus();
     };
-  }, []);
+  }, [returnFocus]);
   return createPortal(<dialog ref={dialog} className="map-dialog" aria-labelledby={headingId}
+    onClick={event => {
+      if (event.target !== event.currentTarget) return;
+      const bounds = event.currentTarget.getBoundingClientRect();
+      if (event.clientX < bounds.left || event.clientX > bounds.right
+        || event.clientY < bounds.top || event.clientY > bounds.bottom) onClose();
+    }}
     onCancel={event => { event.preventDefault(); onClose(); }}>
     <div className="map-dialog-heading"><h2 id={headingId}>Recommended maps</h2>
       <button type="button" autoFocus onClick={onClose} aria-label="Close recommended maps">×</button></div>
@@ -56,12 +61,13 @@ export function MapRecommendationControl({ recommendations, title }: {
   recommendations: MapRecommendations; title: string;
 }) {
   const [open, setOpen] = useState(false);
+  const trigger = useRef<HTMLButtonElement>(null);
   const count = recommendations.mode === "ALL" ? "All" : String(recommendations.maps.length);
   return <>
-    <button type="button" className="map-control" aria-haspopup="dialog" aria-expanded={open}
+    <button ref={trigger} type="button" className="map-control" aria-haspopup="dialog" aria-expanded={open}
       aria-label={`Recommended maps for ${title}: ${count}`} title="View recommended maps"
-      onClick={() => setOpen(true)}><CompassIcon /><span>{count}</span></button>
-    {open && <RecommendationDialog recommendations={recommendations} title={title} onClose={() => setOpen(false)} />}
+      onClick={() => setOpen(true)}><span className="map-control-badge"><CompassIcon /><span>Map {count}</span></span></button>
+    {open && <RecommendationDialog recommendations={recommendations} title={title} returnFocus={trigger.current} onClose={() => setOpen(false)} />}
   </>;
 }
 

@@ -123,18 +123,19 @@ function canFitGadget(
 export function machinePartsForType(
   parts: MachinePart[], machineType: RacingType | null, type: MachinePartType,
 ): MachinePart[] {
-  return machineType ? parts.filter((part) => part.racingType === machineType && part.type === type) : [];
+  return parts.filter((part) => part.type === type && part.racingType && (!machineType || part.racingType === machineType));
 }
 
 export function stockMachineSources(parts: MachinePart[], machineType: RacingType | null): MachinePart[] {
-  if (!machineType) return [];
   const bySource = new Map<string, MachinePart[]>();
   parts
     .forEach((part) => bySource.set(part.sourceMachineId, [...(bySource.get(part.sourceMachineId) ?? []), part]));
   return [...bySource.values()]
     .filter((sourceParts) => {
-      const required = requiredMachineSlots(machineType);
-      return sourceParts.every((part) => part.racingType === machineType)
+      const sourceType = sourceParts[0].racingType;
+      if (!sourceType || (machineType && sourceType !== machineType)) return false;
+      const required = requiredMachineSlots(sourceType);
+      return sourceParts.every((part) => part.racingType === sourceType)
         && sourceParts.length === required.length
         && required.every((slot) => sourceParts.filter((part) => part.type === slot).length === 1);
     })
@@ -144,14 +145,15 @@ export function stockMachineSources(parts: MachinePart[], machineType: RacingTyp
 
 export function applyStockMachine(draft: BuildDraft, parts: MachinePart[], sourceMachineId: string): BuildDraft {
   if (!stockMachineSources(parts, draft.machineType).some((part) => part.sourceMachineId === sourceMachineId)) return draft;
+  const machineType = parts.find(part => part.sourceMachineId === sourceMachineId)!.racingType!;
   const partId = (type: MachinePartType) =>
     parts.find((part) => part.sourceMachineId === sourceMachineId && part.type === type)?.id;
   const frontPartId = partId("FRONT");
   const rearPartId = partId("REAR");
   const tirePartId = partId("TIRE");
   return frontPartId && rearPartId
-    ? { ...draft, frontPartId, rearPartId,
-      tirePartId: requiredMachineSlots(draft.machineType).includes("TIRE") ? tirePartId! : null }
+    ? { ...draft, machineType, frontPartId, rearPartId,
+      tirePartId: requiredMachineSlots(machineType).includes("TIRE") ? tirePartId! : null }
     : draft;
 }
 

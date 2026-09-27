@@ -102,10 +102,10 @@ function BuildSelector({ leftId }: { leftId: string }) {
   );
 }
 
-function DiffValue({ different, children, label }: {
-  different: boolean; children: ReactNode; label: string;
+function DiffValue({ different, children, label, className = "" }: {
+  different: boolean; children: ReactNode; label: string; className?: string;
 }) {
-  return <div className={different ? "compare-value different" : "compare-value"}
+  return <div className={`compare-value ${different ? "different" : ""} ${className}`}
     data-difference={different ? label : undefined}>{children}</div>;
 }
 
@@ -155,13 +155,6 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
           </span></div>
         <GadgetList build={build} other={other} side={side} />
       </section>
-      <DiffValue different={diff.maps.different} label="Recommended maps">
-        <h2>Recommended maps</h2><RecommendedMapList recommendations={build.mapRecommendations} />
-        {build.mapRecommendations.mode === "SELECTED" && other.mapRecommendations.mode === "SELECTED" && <>
-          <p>Common: {diff.maps.common.map(map => map.name).join(", ") || "None"}</p>
-          <p>Only this build: {diff.maps.onlyLeft.map(map => map.name).join(", ") || "None"}</p>
-        </>}
-      </DiffValue>
       <section className="panel compare-meta"><h2>Community & metadata</h2>
         <p aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
           <span className="upvote-count">↑ {build.upvotes}</span> · <span className="downvote-count">↓ {build.downvotes}</span>
@@ -169,6 +162,13 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
         <p className="muted">Created {date(build.createdAt)}{build.updatedAt !== build.createdAt
           ? ` · Updated ${date(build.updatedAt)}` : ""}</p>
       </section>
+      <DiffValue different={diff.maps.different} label="Recommended maps" className="compare-maps">
+        <h2>Recommended maps</h2><RecommendedMapList recommendations={build.mapRecommendations} />
+        {build.mapRecommendations.mode === "SELECTED" && other.mapRecommendations.mode === "SELECTED" && <>
+          <p>Common: {diff.maps.common.map(map => map.name).join(", ") || "None"}</p>
+          <p>Only this build: {diff.maps.onlyLeft.map(map => map.name).join(", ") || "None"}</p>
+        </>}
+      </DiffValue>
     </article>
   );
 }
@@ -191,7 +191,7 @@ export function CompareBuilds() {
     {backToBrowse}
     <Link className="back" to={`/builds/${leftId}`}>← Back to build details</Link>
     <div className="page-heading"><div><div className="eyebrow accent">STRUCTURED COMPARISON</div>
-      <h1>Compare builds</h1><p>Compare racers, machine parts, gadgets, patches, and community response.</p></div></div>
+      <h1>Compare builds</h1><p>Compare racers, recommended maps, machine parts, gadgets, patches, and community response.</p></div></div>
     {!rightId && <BuildSelector leftId={leftId} />}
     {rightId && !right.data && <><ErrorNotice message={right.error} />
       {right.loading && <p role="status">Loading comparison…</p>}</>}

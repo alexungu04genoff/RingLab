@@ -10,7 +10,7 @@ import type { Build, BuildDraft, Gadget, GameVersion, MachinePart, Racer, Racing
 import { machineSetupError } from "../buildForm";
 import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
 import { useBuildDraft } from "./useBuildDraft";
-import { MapRecommendationPicker } from "../MapRecommendations";
+import { MapRecommendationPicker, RecommendedMapList } from "../MapRecommendations";
 import type { RaceMap } from "../types";
 
 const partSlots = [
@@ -173,13 +173,13 @@ export function BuildEditor() {
                 <div className="machine-setup-controls">
                   <label className="stock-machine-control">
                     Use stock machine
-                    <select value={stockSourceId} disabled={!draft.machineType} onChange={(e) => {
+                    <select value={stockSourceId} disabled={parts.loading} onChange={(e) => {
                       setStockSourceId(e.target.value);
                       if (e.target.value) setDraft((current) => applyStockMachine(current, parts.data ?? [], e.target.value));
                     }}>
                       <option value="">Choose a complete stock setup</option>
                       {stockMachineSources(parts.data ?? [], draft.machineType).map((part) => (
-                        <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName}</option>
+                        <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName} · {racingTypeLabel(part.racingType)}</option>
                       ))}
                     </select>
                   </label>
@@ -189,7 +189,7 @@ export function BuildEditor() {
                       setStockSourceId("");
                       setDraft((current) => switchMachineType(current, (e.target.value || null) as RacingType | null, parts.data ?? []));
                     }}>
-                      <option value="">Choose a machine type</option>
+                      <option value="">Any type — choose a machine or part</option>
                       {machineTypes.map((type) => <option key={type} value={type}>{machineTypeLabel(type)}</option>)}
                     </select>
                   </label>
@@ -220,10 +220,13 @@ export function BuildEditor() {
                     const incompatible = !!draft[slot.key] && !options.some((part) => part.id === draft[slot.key]);
                     return <label key={slot.key} className="part-select">
                       {slot.label}
-                      <select required value={draft[slot.key] ?? ""} disabled={!draft.machineType} aria-invalid={incompatible}
+                      <select required value={draft[slot.key] ?? ""} disabled={parts.loading} aria-invalid={incompatible}
                         onChange={(e) => {
                           setStockSourceId("");
-                          field(slot.key, e.target.value);
+                          const partId = e.target.value;
+                          const chosen = parts.data?.find(part => part.id === partId);
+                          setDraft(current => ({ ...current, [slot.key]: partId,
+                            machineType: current.machineType ?? chosen?.racingType ?? null }));
                         }}>
                         <option value="">Choose a source machine</option>
                         {incompatible && <option value={draft[slot.key]!} disabled>{selectedPart?.sourceMachineName ?? "Unknown stored part"} — incompatible</option>}
@@ -385,6 +388,14 @@ export function BuildEditor() {
                   );
                 })}
               </ol>
+              <section className="preview-maps" aria-label="Your combination recommended maps">
+                <h3>Recommended maps · {draft.mapRecommendationMode === "ALL" ? "All" : draft.recommendedMapIds.length}</h3>
+                {draft.mapRecommendationMode === "ALL" ? <p className="muted">No map-specific preference.</p>
+                  : draft.recommendedMapIds.length === 0 ? <p className="field-warning">Choose at least one map.</p>
+                    : maps.data ? <RecommendedMapList recommendations={{ mode: "SELECTED",
+                      maps: maps.data.filter(map => draft.recommendedMapIds.includes(map.id)) }} />
+                      : <p className="muted">{maps.error ? "Map names unavailable. Your selection is preserved." : "Loading selected maps…"}</p>}
+              </section>
               <button
                 className="primary"
                 disabled={

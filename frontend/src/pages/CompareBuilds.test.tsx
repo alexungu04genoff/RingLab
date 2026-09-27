@@ -4,7 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { useLoad } from "../useLoad";
-import type { Build, MachinePart } from "../types";
+import type { Build, MachinePart, RaceMap } from "../types";
 import { BuildDetails } from "./BuildDetails";
 import { buildDiff, CompareBuilds, compareUrl } from "./CompareBuilds";
 
@@ -101,6 +101,27 @@ it("does not mark matching values as different", () => {
     racer: false, patch: false, front: false, rear: false, tires: false, composition: false, plate: false,
   });
   expect(buildDiff(left, { ...left, id: "another" }).gadgetAt(0)).toBe(false);
+});
+
+it("shows map differences and shared selections even when the racing setup is identical", () => {
+  const maps: RaceMap[] = ["E-Stadium", "Sky Road"].map((name, index) => ({
+    id: String(index), name, category: "MAIN_COURSE", contentPack: null, imagePath: null, catalogOrder: index,
+  }));
+  const selectedLeft: Build = { ...left, mapRecommendations: { mode: "SELECTED", maps } };
+  const selectedRight: Build = { ...left, id: "right", title: "Same setup, one map",
+    mapRecommendations: { mode: "SELECTED", maps: [maps[0]] } };
+  const original = vi.mocked(useLoad).getMockImplementation()!;
+  vi.mocked(useLoad).mockImplementation((path, ...rest) => path === "/builds/left"
+    ? { data: selectedLeft, loading: false, error: "" } : path === "/builds/right"
+      ? { data: selectedRight, loading: false, error: "" } : original(path, ...rest));
+  route("/compare?left=left&right=right");
+  expect(document.querySelectorAll('[data-difference="Recommended maps"]')).toHaveLength(2);
+  expect(screen.getAllByText("Common: E-Stadium")).toHaveLength(2);
+  expect(screen.getByText("Only this build: Sky Road")).toBeTruthy();
+  expect(screen.getByText("Only this build: None")).toBeTruthy();
+  document.querySelectorAll(".compare-column").forEach(column =>
+    expect(column.lastElementChild?.textContent).toContain("Recommended maps"));
+  expect(buildDiff(selectedLeft, { ...selectedLeft, mapRecommendations: { mode: "SELECTED", maps: [...maps].reverse() } }).maps.different).toBe(false);
 });
 
 it("shows safe states for missing, invalid, and repeated build IDs", () => {

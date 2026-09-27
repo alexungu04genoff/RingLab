@@ -53,7 +53,7 @@ class BuildRankingIntegrationTest {
 
     var rated = List.of(strong, perfect, good, eight, tiny, poor, zero, down);
     assertEquals(rated, ids(author, "rated", 0, 50));
-    assertEquals(rated, buildResource.list(null, null, null, author, null, false, List.of(), "rated", 0, 50, false)
+    assertEquals(rated, buildResource.list(null, null, null, author, null, null, "true", false, List.of(), "rated", 0, 50, false)
         .items().stream().map(response -> response.id()).toList());
     assertEquals(List.of(down, zero, poor, tiny, eight, good, perfect, strong),
         ids(author, "newest", 0, 50));
@@ -68,8 +68,8 @@ class BuildRankingIntegrationTest {
     assertEquals(rated, paged);
     for (String sort : List.of("rated", "newest", "score")) {
       for (int page = 0; page < 5; page++) {
-        var plain = buildResource.list(null, null, null, author, null, false, List.of(strong), sort, page, 2, false);
-        var enriched = buildResource.list(null, null, null, author, null, false, List.of(strong), sort, page, 2, true);
+        var plain = buildResource.list(null, null, null, author, null, null, "true", false, List.of(strong), sort, page, 2, false);
+        var enriched = buildResource.list(null, null, null, author, null, null, "true", false, List.of(strong), sort, page, 2, true);
         assertEquals(plain.items(), enriched.items());
         assertEquals(plain.total(), enriched.total());
         assertEquals(plain.page(), enriched.page());
@@ -167,7 +167,7 @@ class BuildRankingIntegrationTest {
     em.flush();
 
     var expected = List.of(olderNegative, newerUnrated, newerDown, olderUnrated);
-    assertEquals(expected, buildResource.list("qa patch", null, null, author, null, false, List.of(),
+    assertEquals(expected, buildResource.list("qa patch", null, null, author, null, null, "true", false, List.of(),
         "rated", 0, 50, false).items().stream().map(response -> response.id()).toList());
     assertEquals(expected.subList(0, 2), list("qa patch", null, null, author, null,
         BuildSort.BEST_RATED, 0, 2).items().stream().map(Build::id).toList());

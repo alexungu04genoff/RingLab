@@ -110,6 +110,25 @@ try{
     Assert-True ($build.title -match "[[]Comment Demo[]] $($build.targetComments) comments") "Comment title count disagrees with the plan: $($build.key)"
   }
   Assert-True (@($repeat.builds|Where-Object fixtureKind).Count -eq 25) 'Deterministic rerun duplicated or dropped controlled fixtures'
+  $expandedCatalog=$catalog.PSObject.Copy()
+  $expandedCatalog|Add-Member NoteProperty maps @(
+    [pscustomobject]@{id=New-Id 601;name='E-Stadium';catalogOrder=1},
+    [pscustomobject]@{id=New-Id 602;name='Rainbow Garden';catalogOrder=2},
+    [pscustomobject]@{id=New-Id 603;name='Sky Road';catalogOrder=3})
+  $expanded=Get-CommunityDemoPlan $expandedCatalog -BuildCount 240 -ExpandedCommunity
+  Assert-True ($expanded.users.Count -eq 160 -and $expanded.builds.Count -eq 240) 'Expanded population was not generated'
+  Assert-True (@($expanded.builds.owner|Sort-Object -Unique).Count -eq 40) 'Expanded community must have 40 authors'
+  foreach($featuredKey in @('sonic-speed','community-blaze-1','community-metalhead-1')){
+    $entry=@($expanded.builds|Where-Object key -eq $featuredKey)[0]
+    Assert-True ($entry.recommendedMapIds.Count -gt 0 -and $entry.title -like '*[[]Top 3 Demo[]]') 'Featured build lacks maps or its demo label'
+    Assert-True (@($expanded.votes|Where-Object {$_.build -eq $featuredKey -and $_.value -eq 1}).Count -ge 62) 'Featured votes missing'
+  }
+  Assert-True (@($expanded.builds|Where-Object {$_.recommendedMapIds.Count -eq 0}).Count -gt 0) 'Expanded plan lacks All maps cases'
+  Assert-True (@($expanded.builds|Where-Object {$_.recommendedMapIds.Count -gt 1}).Count -gt 0) 'Expanded plan lacks multi-map cases'
+  foreach($entry in $expanded.builds){
+    Assert-True (@($entry.recommendedMapIds|Where-Object {$_ -notin $expandedCatalog.maps.id}).Count -eq 0) 'Unverified map ID generated'
+    Assert-True ($entry.recommendedMapIds.Count -eq @($entry.recommendedMapIds|Sort-Object -Unique).Count) 'Duplicate maps generated'
+  }
   foreach($build in $plan.builds){
     $front=@($parts|Where-Object id -eq $build.frontPartId)[0]
     $rear=@($parts|Where-Object id -eq $build.rearPartId)[0]

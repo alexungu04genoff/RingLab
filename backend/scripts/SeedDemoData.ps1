@@ -3,20 +3,25 @@ param(
   [string]$CatalogSnapshotPath,
   [string]$ExportCatalogSnapshot,
   [string]$StatePath=(Join-Path $PSScriptRoot '../.ringlab-demo-state.json'),
+  [ValidatePattern('^ringlab(?:_[a-z0-9_]+)?$')][string]$DatabaseName='ringlab',
   [ValidateRange(1,500)][int]$BuildCount=60,
   [int]$RandomSeed=20260920,
   [datetime]$ReferenceTime=[datetime]::Parse('2026-09-20T12:00:00Z'),
   [ValidateRange(0,1)][double]$BoostMachineRatio=.20,
+  [ValidateRange(2000,60000)][int]$RequestIntervalMilliseconds=2000,
   [switch]$Preview,
   [switch]$ValidateOnly,
   [switch]$Refresh,
   [switch]$ProfessorDemoOnly,
   [switch]$PromoteFeatured,
+  [switch]$ExpandedCommunity,
   [switch]$SetRankingTimestamps,
   [switch]$Apply
 )
 $ErrorActionPreference='Stop'
 $DemoPassword='RingLabDemo!2026'
+$requestClock=[Diagnostics.Stopwatch]::StartNew()
+$lastRequestMilliseconds=-$RequestIntervalMilliseconds
 . "$PSScriptRoot/CommunityDemoPlan.ps1"
 
 function Assert-LoopbackUrl([string]$Url) {
@@ -35,6 +40,10 @@ function Invoke-RingLabApi {
   $request=@{Uri="$($BaseUrl.TrimEnd('/'))/api$Path";Method=$Method;Headers=$headers}
   if($null -ne $Body){$request.ContentType='application/json';$request.Body=$Body|ConvertTo-Json -Depth 20}
   for($attempt=0;;$attempt++){
+    # Leave room in the shared loopback rate limit for normal browser traffic.
+    $remaining=$RequestIntervalMilliseconds-($requestClock.ElapsedMilliseconds-$script:lastRequestMilliseconds)
+    if($remaining -gt 0){Start-Sleep -Milliseconds $remaining}
+    $script:lastRequestMilliseconds=$requestClock.ElapsedMilliseconds
     try{return Invoke-RestMethod @request}catch{
       if((Get-StatusCode $_) -ne 429 -or $attempt -ge $MaxRetries){throw}
       $retryAfter=1
@@ -53,6 +62,7 @@ function Get-LiveCatalog {
     machines=Invoke-RingLabApi GET '/machines'
     parts=Invoke-RingLabApi GET '/machine-parts'
     gadgets=Invoke-RingLabApi GET '/gadgets'
+    maps=Invoke-RingLabApi GET '/maps'
     versions=Invoke-RingLabApi GET '/game-versions'
     stats=@{}
   }
@@ -81,21 +91,21 @@ function Assert-LocalDevelopmentDatabase {
   $service=$json|ConvertFrom-Json
   if($service.State -ne 'running' -or $service.Health -ne 'healthy' -or @($service.Publishers|Where-Object {$_.PublishedPort -eq 5432 -and $_.URL -in @('127.0.0.1','::1')}).Count -ne 1){throw 'PostgreSQL is not the healthy RingLab service bound to loopback port 5432.'}
   $required=[int](Get-ChildItem (Join-Path $root 'backend/src/main/resources/db/migration') -Filter 'V*__*.sql'|ForEach-Object{if($_.Name-match'^V(\d+)__'){[int]$Matches[1]}}|Measure-Object -Maximum).Maximum
-  $applied=& docker compose -f $compose exec -T postgres psql -U ringlab -d ringlab -Atc 'select coalesce(max(version::integer),0) from flyway_schema_history where success' 2>&1
+  $applied=& docker compose -f $compose exec -T postgres psql -U ringlab -d $DatabaseName -Atc 'select coalesce(max(version::integer),0) from flyway_schema_history where success' 2>&1
   if($LASTEXITCODE -ne 0 -or [int]$applied -lt $required){throw "Local database migrations are stale: required V$required, applied V$applied."}
-  [pscustomobject]@{compose=$compose;requiredMigration=$required;appliedMigration=[int]$applied}
+  [pscustomobject]@{compose=$compose;name=$DatabaseName;requiredMigration=$required;appliedMigration=[int]$applied}
 }
 
-function Set-LocalFixtureTimestamp($Database,[string]$BuildId,[string]$OwnerId,[string]$CaseTime,[string]$CreatedAt,[string]$UpdatedAt) {
+function Set-LocalFixtureTimestamp($Database,[string]$BuildId,[string]$OwnerId,[string]$CaseTime,[datetimeoffset]$CreatedAt,[datetimeoffset]$UpdatedAt) {
   if($BuildId -notmatch '^[0-9a-fA-F-]{36}$' -or $OwnerId -notmatch '^[0-9a-fA-F-]{36}$' -or
       $CaseTime -notmatch '^2026-09-(17|18|19)T12:00:00Z$') {
     throw 'Refusing an invalid fixture-only timestamp update.'
   }
-  $created=[datetimeoffset]::Parse($CreatedAt).ToUniversalTime().ToString('o')
-  $updated=[datetimeoffset]::Parse($UpdatedAt).ToUniversalTime().ToString('o')
+  $created=$CreatedAt.ToUniversalTime().ToString('o')
+  $updated=$UpdatedAt.ToUniversalTime().ToString('o')
   # Exact original timestamps prevent a concurrent edit from being retimestamped.
   $sql="UPDATE builds SET created_at = '$CaseTime'::timestamptz, updated_at = '$CaseTime'::timestamptz WHERE id = '$BuildId'::uuid AND author_id = '$OwnerId'::uuid AND created_at = '$created'::timestamptz AND updated_at = '$updated'::timestamptz RETURNING id;"
-  $changed=@(& docker compose -f $Database.compose exec -T postgres psql -X -q -U ringlab -d ringlab -Atc $sql)
+  $changed=@(& docker compose -f $Database.compose exec -T postgres psql -X -q -U ringlab -d $Database.name -Atc $sql)
   if($LASTEXITCODE -ne 0 -or $changed.Count -ne 1 -or $changed[0] -ne $BuildId) {
     throw "Fixture-only timestamp update failed for manifest build $BuildId."
   }
@@ -117,6 +127,9 @@ function Assert-Plan($Plan,$Catalog) {
     if(!$versionIds.ContainsKey([string]$b.gameVersionId)){$errors+="$($b.key): unknown version"}
     $costs=@();$seen=@{};foreach($id in $b.gadgetIds){if($seen.ContainsKey([string]$id)){$errors+="$($b.key): duplicate gadget"};$seen[[string]$id]=$true;$g=$gadgetById[[string]$id];if(!$g -or $null -eq $g.slotCost){$errors+="$($b.key): unknown gadget cost"}else{$costs+=[int]$g.slotCost}}
     if(!(Test-GadgetPlateFit $costs)){$errors+="$($b.key): gadgets do not fit the 2x3 plate"}
+    $selectedMaps=@($b.recommendedMapIds)
+    if(@($selectedMaps | Sort-Object -Unique).Count -ne $selectedMaps.Count){$errors+="$($b.key): duplicate recommended map"}
+    foreach($mapId in $selectedMaps){if($mapId -notin @($Catalog.maps.id)){$errors+="$($b.key): unknown recommended map"}}
     if($b.machineType -eq 'BOOST' -and $b.description -match '(?i)tires?'){$errors+="$($b.key): Boost description mentions a tire"}
     if($b.caseTime -and [datetime]::Parse($b.caseTime) -gt [datetime]::Parse($Plan.referenceTime)){$errors+="$($b.key): fixed timestamp is after the plan reference time"}
     if($b.stock -and $b.description -match '(?i)mixed'){$errors+="$($b.key): stock description says mixed"}
@@ -132,7 +145,7 @@ function Assert-Plan($Plan,$Catalog) {
 }
 
 function Get-Request($Build,$BuildIds) {
-  [ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racerId;frontPartId=$Build.frontPartId;rearPartId=$Build.rearPartId;tirePartId=$Build.tirePartId;gameVersionId=$Build.gameVersionId;remixedFromBuildId=if($Build.remixedFromKey){$BuildIds[$Build.remixedFromKey]}else{$null};gadgetIds=@($Build.gadgetIds)}
+  [ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racerId;frontPartId=$Build.frontPartId;rearPartId=$Build.rearPartId;tirePartId=$Build.tirePartId;gameVersionId=$Build.gameVersionId;remixedFromBuildId=if($Build.remixedFromKey){$BuildIds[$Build.remixedFromKey]}else{$null};gadgetIds=@($Build.gadgetIds);recommendedMapIds=@($Build.recommendedMapIds | Sort-Object)}
 }
 
 function Get-Fingerprint($Value) {
@@ -140,8 +153,10 @@ function Get-Fingerprint($Value) {
   $bytes=[Text.Encoding]::UTF8.GetBytes($json);[Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($bytes)).ToLowerInvariant()
 }
 
-function Get-ActualRequest($Build) {
-  [ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racer.id;frontPartId=$Build.frontPart.id;rearPartId=$Build.rearPart.id;tirePartId=if($Build.tirePart){$Build.tirePart.id}else{$null};gameVersionId=if($Build.gameVersion){$Build.gameVersion.id}else{$null};remixedFromBuildId=if($Build.remixedFrom){$Build.remixedFrom.id}else{$null};gadgetIds=@($Build.gadgets.id)}
+function Get-ActualRequest($Build,[switch]$WithoutMaps) {
+  $request=[ordered]@{title=$Build.title;description=$Build.description;racerId=$Build.racer.id;frontPartId=$Build.frontPart.id;rearPartId=$Build.rearPart.id;tirePartId=if($Build.tirePart){$Build.tirePart.id}else{$null};gameVersionId=if($Build.gameVersion){$Build.gameVersion.id}else{$null};remixedFromBuildId=if($Build.remixedFrom){$Build.remixedFrom.id}else{$null};gadgetIds=@($Build.gadgets | ForEach-Object id)}
+  if(!$WithoutMaps){$request.recommendedMapIds=@($Build.mapRecommendations.maps | Sort-Object id | ForEach-Object id)}
+  $request
 }
 
 function Read-State {
@@ -179,13 +194,13 @@ if($SetRankingTimestamps -and !$Refresh){throw 'SetRankingTimestamps requires -R
 if($Preview){
   if(!$CatalogSnapshotPath){throw 'Offline preview requires -CatalogSnapshotPath. Use -ExportCatalogSnapshot with live read-only validation first.'}
   $catalog=Get-Content -Raw -LiteralPath $CatalogSnapshotPath|ConvertFrom-Json
-  $plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
+  $plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity;Assert-Plan $plan $catalog;Show-Summary $plan $null $null;return $plan
 }
 
 $database=Assert-LocalDevelopmentDatabase
 $catalog=Get-LiveCatalog
 if($ExportCatalogSnapshot){$catalog|ConvertTo-Json -Depth 12|Set-Content -LiteralPath $ExportCatalogSnapshot -Encoding utf8;Write-Host "Wrote explicit live catalog snapshot to $ExportCatalogSnapshot";return}
-$plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio
+$plan=Get-CommunityDemoPlan $catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity
 Assert-Plan $plan $catalog
 $types=@(ConvertTo-DemoArray $catalog.machines|Select-Object -Expand racingType -Unique)
 if('BOOST' -notin $types){throw 'Running backend catalog does not expose Boost / Extreme Gear support.'}
@@ -215,6 +230,8 @@ foreach($b in $plan.builds){
     continue
   }
   $buildIds[$b.key]=[string]$actual.id;$actualFingerprint=Get-Fingerprint (Get-ActualRequest $actual)
+  # Accept an old manifest only if all pre-map fields still match and no maps were added manually.
+  if($actual.mapRecommendations.mode -eq 'ALL' -and $record.fingerprint -eq (Get-Fingerprint (Get-ActualRequest $actual -WithoutMaps))){$record.fingerprint=$actualFingerprint}
   if($actual.author.username -cne "ringlab_demo_$($b.owner)") {throw "Fixture owner mismatch: $($b.key)"}
   if($b.caseTime -and $record.caseTime -and $actual.createdAt -ne $record.caseTime){
     $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture timestamp changed';id=$actual.id};continue
@@ -248,7 +265,7 @@ if(!$Apply){Write-Host 'Preview only. Add -Apply to perform the displayed additi
 
 # Compare the API identities with the proven local database before any mutation.
 $sql="select json_build_object('builds',(select coalesce(json_agg(b),'[]') from builds b),'gadgets',(select coalesce(json_agg(g),'[]') from build_gadgets g),'votes',(select coalesce(json_agg(v),'[]') from votes v),'comments',(select coalesce(json_agg(c),'[]') from comments c));"
-$beforeJson=& docker compose -f $database.compose exec -T postgres psql -U ringlab -d ringlab -Atc $sql
+$beforeJson=& docker compose -f $database.compose exec -T postgres psql -U ringlab -d $database.name -Atc $sql
 if($LASTEXITCODE -ne 0){throw 'Could not read the verified local database before apply.'}
 $before=$beforeJson | ConvertFrom-Json
 if(Compare-Object @($before.builds.id|Sort-Object) @($allBuilds.id|Sort-Object)){throw 'API builds do not match the verified local database. Refusing writes.'}
@@ -264,13 +281,21 @@ $bootstrap=Invoke-RingLabApi POST '/dev-fixtures/demo-accounts' @{accounts=@($pl
 $sessions=@{};foreach($entry in (ConvertTo-DemoArray $bootstrap)){$sessions[$entry.key]=$entry.session}
 $sessionKeyByUserId=@{};foreach($key in $sessions.Keys){$sessionKeyByUserId[[string]$sessions[$key].user.id]=$key}
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
+  $action=@($actions|Where-Object key -eq $fixture.key)[0]
   $id=[string]$buildIds[$fixture.key]
   $foreign=@($before.votes|Where-Object build_id -eq $id|Where-Object {!$sessionKeyByUserId.ContainsKey([string]$_.user_id)})
-  if($foreign.Count){throw "$($fixture.key): controlled Wilson fixture has $($foreign.Count) vote(s) outside the demo accounts; refusing to rewrite engagement."}
+  if($foreign.Count){
+    $action.action='conflict';$action.reason='votes outside the reserved demo accounts'
+    Write-Warning "Retained $($fixture.key) unchanged: $($foreign.Count) vote(s) belong to other accounts."
+  }
 }
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
+  $action=@($actions|Where-Object key -eq $fixture.key)[0]
   $id=[string]$buildIds[$fixture.key];$currentCount=@($before.comments|Where-Object build_id -eq $id).Count
-  if($currentCount -gt $fixture.targetComments){throw "$($fixture.key): current comments ($currentCount) exceed the controlled target ($($fixture.targetComments)); refusing to delete comments."}
+  if($currentCount -gt $fixture.targetComments){
+    $action.action='conflict';$action.reason='comments exceed the controlled target'
+    Write-Warning "Retained $($fixture.key) unchanged: preserving its $currentCount comments."
+  }
 }
 foreach($b in $plan.builds){
   $action=@($actions|Where-Object key -eq $b.key)[0];if($action.action -in @('conflict','retain')){continue}
@@ -305,7 +330,7 @@ if($SetRankingTimestamps){
     $current=Invoke-RingLabApi GET "/builds/$($record.id)"
     if($current.author.id -ne $sessions[$b.owner].user.id -or (Get-Fingerprint (Get-ActualRequest $current)) -ne $record.fingerprint){throw "Fixture changed before timestamp update: $($b.key)."}
     if($current.createdAt -eq $b.caseTime){continue}
-    Set-LocalFixtureTimestamp $database ([string]$record.id) ([string]$current.author.id) $b.caseTime ([string]$current.createdAt) ([string]$current.updatedAt)
+    Set-LocalFixtureTimestamp $database ([string]$record.id) ([string]$current.author.id) $b.caseTime $current.createdAt $current.updatedAt
     $record|Add-Member -NotePropertyName caseTime -NotePropertyValue $b.caseTime -Force
     Save-State $state
     Write-Host "Set fixed ranking timestamp for $($b.key)."
@@ -336,7 +361,7 @@ foreach($vote in $plan.votes){
   if($vote.key -in @($state.votes)){continue};if(!$buildIds.ContainsKey($vote.build)){continue}
   if(@($actions|Where-Object {$_.key -eq $vote.build -and $_.action -eq 'conflict'}).Count){continue}
   $record=@($state.builds|Where-Object key -eq $vote.build)|Select-Object -First 1
-  if(!$record -or ($record.preserveEngagement -and !($PromoteFeatured -and $vote.build -eq 'sonic-speed'))){continue}
+  if(!$record -or ($record.preserveEngagement -and !($PromoteFeatured -and $vote.build -in @('sonic-speed','community-blaze-1','community-metalhead-1')))){continue}
   $current=Invoke-RingLabApi GET "/builds/$($buildIds[$vote.build])/vote" $null $sessions[$vote.user].token
   if($current.myVote -eq 0){Invoke-RingLabApi PUT "/builds/$($buildIds[$vote.build])/vote" @{value=$vote.value} $sessions[$vote.user].token|Out-Null}
   $state.votes=@($state.votes)+$vote.key;Save-State $state

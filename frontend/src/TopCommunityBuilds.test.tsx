@@ -65,10 +65,10 @@ it("keeps one showcase request across every filter, preference, sort and page ch
   expect(topCalls()).toHaveLength(1);
   expect(vi.mocked(api).mock.calls.filter(([path]) => path.startsWith("/stats/"))).toHaveLength(0);
   expect(topCalls()[0][1]).toMatchObject({ anonymous: true, credentials: "omit", cache: "no-cache" });
-  expect(vi.mocked(api).mock.calls.some(([path]) =>
+  await waitFor(() => expect(vi.mocked(api).mock.calls.some(([path]) =>
     path.startsWith("/builds?") && new URLSearchParams(path.split("?")[1]).getAll("excludeId").includes("top")))
-    .toBe(true);
-  for (const query of ["search=wilson", "search=comment", "racerId=r", "machineId=m", "gameVersionId=v1", "sort=score", "page=1"]) {
+    .toBe(true));
+  for (const query of ["search=wilson", "search=comment", "racerId=r", "machineId=m", "gameVersionId=v1", "mapId=map-a", "mapId=map-a&includeAllMaps=false", "sort=score", "page=1"]) {
     await act(async () => { await router.navigate(`/?${query}`); });
     expect(screen.getByText("Top snapshot winner")).toBeTruthy();
     expect(screen.getByText("25 builds")).toBeTruthy();
