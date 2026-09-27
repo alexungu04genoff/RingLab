@@ -1294,6 +1294,21 @@ footer {
 .build-editor-kicker .back {
   margin-bottom: 0;
 }
+.build-editor-heading {
+  margin-bottom: 22px;
+}
+.build-editor-title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+}
+.build-editor-title-row h1 {
+  flex: 0 0 auto;
+  margin-bottom: 0;
+}
+.build-editor-title-row p {
+  color: var(--muted);
+}
 .editor {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
@@ -2572,6 +2587,12 @@ hr {
   }
   .page-heading p {
     font-size: 13px;
+  }
+  .build-editor-title-row {
+    display: block;
+  }
+  .build-editor-title-row h1 {
+    margin-bottom: 10px;
   }
   .collection-heading-content {
     grid-template-columns: 1fr;

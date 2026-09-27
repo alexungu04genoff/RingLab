@@ -99,8 +99,10 @@ export function BuildEditor() {
               ← Back
             </Link>
           </div>
-          <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
-          <p>One racer. Your machine type and gadget combination.</p>
+          <div className="build-editor-title-row">
+            <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
+            <p>One racer. Your machine type and gadget combination.</p>
+          </div>
         </div>
       </div>
       <ErrorNotice
