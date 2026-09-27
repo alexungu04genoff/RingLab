@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { buildStatsPath, BuildStats, DraftStats, StatsBlock } from "./BaseStats";
 import { BuildCard } from "./components";
+import { passiveRuleset } from "./stats";
 import type { BaseStats, Build, BuildDraft, BuildStatsResult, MachinePart } from "./types";
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
@@ -83,7 +84,7 @@ it("keeps backend base totals readable when passive metadata is unavailable", as
   render(<DraftStats draft={draft} version={version} />);
   expect(screen.getByText("Loading passive gadget stats…")).toBeTruthy();
   await screen.findByRole("progressbar", { name: "Speed: 17.5" });
-  expect(fetch.mock.calls[0][0]).toBe("/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
+  expect(fetch.mock.calls[0][0]).toBe(`/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&tirePartId=t&ruleset=${passiveRuleset}`);
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 12.5")).toBeTruthy();
   expect(screen.queryByRole("group", { name: "Statistics mode" })).toBeNull();
@@ -102,7 +103,7 @@ it("uses the backend breakdown for a Board draft without requesting a tire or ca
   await screen.findByRole("progressbar", { name: "Speed: 13" });
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toBe(
-    "/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
+    `/api/stats/passive-build?gameVersionId=v&racerId=r&frontPartId=f&rearPartId=b&ruleset=${passiveRuleset}`);
   expect(screen.getByLabelText("Speed components: Character 5 plus Machine 8")).toBeTruthy();
 });
 
@@ -118,7 +119,7 @@ it("preserves unknown values in an incomplete draft without fetching the catalog
   render(<DraftStats draft={{ ...draft, frontPartId: "", rearPartId: "", tirePartId: null }} version={version} />);
   await screen.findByRole("progressbar", { name: "Speed: 5" });
   expect(fetch).toHaveBeenCalledTimes(1);
-  expect(fetch.mock.calls[0][0]).toBe("/api/stats/passive-build?gameVersionId=v&racerId=r&ruleset=crossworlds-1.4.1-passive-2026-09-27.1");
+  expect(fetch.mock.calls[0][0]).toBe(`/api/stats/passive-build?gameVersionId=v&racerId=r&ruleset=${passiveRuleset}`);
   expect(screen.queryByLabelText(/Speed components/)).toBeNull();
   expect(document.querySelector(".stat-speed .stat-fill")?.getAttribute("style")).toContain("5%");
 });
@@ -142,7 +143,7 @@ it("shows compact version-aware stat bars on build cards", async () => {
   expect(document.querySelectorAll(".card-stat-character-fill")).toHaveLength(5);
   expect(document.querySelectorAll(".card-stat-machine-fill")).toHaveLength(5);
   expect(fetch).toHaveBeenCalledWith(
-    "/api/stats/persisted/build?ruleset=crossworlds-1.4.1-passive-2026-09-27.1&selection=v%2Cr%2CFRONT%2CREAR%2CTIRE",
+    `/api/stats/persisted/build?ruleset=${passiveRuleset}&selection=v%2Cr%2CFRONT%2CREAR%2CTIRE`,
     expect.anything(),
   );
 });
