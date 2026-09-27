@@ -1457,24 +1457,20 @@ footer {
   font-size: 12px;
   line-height: 1.5;
 }
-.selected-gadgets.preview-gadgets {
+.preview-gadgets {
   list-style: none;
   padding: 0;
   margin: 0;
 }
-.selected-gadgets.preview-gadgets li {
-  display: grid;
-  grid-template-columns: 20px 52px minmax(0, 1fr) auto;
+.preview-gadgets li {
+  display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 8px;
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  background: #12171f;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
 }
-.selected-gadgets.preview-gadgets li:last-child {
-  margin-bottom: 0;
+.preview-gadgets li:last-child {
+  border-bottom: 0;
 }
 .preview-gadgets .gadget-number {
   width: 20px;
@@ -1485,8 +1481,9 @@ footer {
 }
 .preview-gadgets .artwork,
 .gadget-placeholder {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
   border-radius: 5px;
 }
 .preview-gadgets .artwork > span {
@@ -1500,23 +1497,17 @@ footer {
   color: var(--muted);
 }
 .preview-gadgets .gadget-name {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
   min-width: 0;
   overflow-wrap: anywhere;
   font-size: 13px;
 }
-.preview-gadgets .gadget-reorder-controls {
-  display: grid;
-  gap: 4px;
-  margin-left: 0;
+.preview-gadgets li > div {
+  display: inline-flex;
+  gap: 3px;
+  margin-left: auto;
 }
-.selected-gadgets.preview-gadgets button {
-  width: 28px;
-  min-height: 26px;
-  padding: 0;
+.preview-gadgets button {
+  padding: 1px 8px;
   font-size: 12px;
 }
 hr {

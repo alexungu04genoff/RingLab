@@ -424,7 +424,7 @@ export function BuildEditor() {
                         {gadget && <small>{gadget.slotCost === null ? "Cost unknown" : `${gadget.slotCost} ${gadget.slotCost === 1 ? "slot" : "slots"}`}</small>}
                         <GadgetAdjustmentBadges gadgetId={gadgetId} value={draftStats.data?.passive} catalog={gadgetRules.data} />
                       </span>
-                      {draft.gadgetIds.length > 1 && <div className="gadget-reorder-controls">
+                      <div>
                         <button
                           type="button"
                           aria-label={`Move gadget ${i + 1} up`}
@@ -445,7 +445,7 @@ export function BuildEditor() {
                         >
                           ↓
                         </button>
-                      </div>}
+                      </div>
                     </li>
                   );
                 })}
