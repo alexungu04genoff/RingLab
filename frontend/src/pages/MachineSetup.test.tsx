@@ -101,7 +101,8 @@ it("renders Board setups with two parts and no fake tire", () => {
   expect(card).toContain('aria-label="Rear · Boost: Board source"');
   expect(card).toContain('class="type-badge machine-type racing-type racing-type-boost"');
   expect(card).toContain(">BOOST</span>");
-  expect(card).not.toContain("Extreme Gear");
+  expect(card).toContain("Machine / Extreme Gear");
+  expect(card).not.toContain(">Extreme Gear</span>");
   expect(card).not.toContain('aria-label="Tires:');
   expect(details).toContain("Boost · Extreme Gear parts by source machine");
   expect(details).not.toContain("Boards use front and rear parts only; they do not use tires.");

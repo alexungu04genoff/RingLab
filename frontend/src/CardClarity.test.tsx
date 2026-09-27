@@ -32,11 +32,11 @@ it("explains base stats by disclosure activation without changing partial values
     gadgets: [], score: 0, upvotes: 0, downvotes: 0, createdAt: "2026-01-01", updatedAt: "2026-01-01" };
   const values = { speed: 0, acceleration: 2.75, handling: null, power: 5, boost: null };
   const { container } = render(<MemoryRouter><BuildCard build={build} stats={{ ...values, character: values, machine: values }} /></MemoryRouter>);
-  expect(screen.getByRole("heading", { name: "Base stats" })).toBeTruthy();
-  const summary = screen.getByText("About base stats");
+  expect(screen.getByRole("heading", { name: "Stats" })).toBeTruthy();
+  const summary = screen.getByText("About stats");
   await userEvent.click(summary);
   expect(summary.closest("details")!.open).toBe(true);
-  expect(screen.getByText("Racer + machine parts. Gadget effects not included.")).toBeTruthy();
+  expect(screen.getByText(/Racer \+ machine parts, including verified passive gadget adjustments where supported/)).toBeTruthy();
   expect(screen.getByText("2.75")).toBeTruthy();
   expect(screen.getByText("0")).toBeTruthy();
   expect(container.querySelectorAll(".card-stat-track.unknown")).toHaveLength(2);

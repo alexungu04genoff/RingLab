@@ -142,7 +142,7 @@ it("shows compact version-aware stat bars on build cards", async () => {
   expect(document.querySelectorAll(".card-stat-character-fill")).toHaveLength(5);
   expect(document.querySelectorAll(".card-stat-machine-fill")).toHaveLength(5);
   expect(fetch).toHaveBeenCalledWith(
-    "/api/stats/build?gameVersionId=v&racerId=r&frontPartId=FRONT&rearPartId=REAR&tirePartId=TIRE",
+    "/api/stats/persisted/build?ruleset=crossworlds-1.4.1-passive-2026-09-27.1&selection=v%2Cr%2CFRONT%2CREAR%2CTIRE",
     expect.anything(),
   );
 });
