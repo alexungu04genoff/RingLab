@@ -2969,9 +2969,9 @@ hr {
 .gadget-option-copy small { color: var(--accent); }
 .gadget-option-copy > span { color: var(--muted); font-size: 11px; }
 .gadget-option-meta { display:flex; flex-wrap:wrap; align-items:center; gap:5px; min-height:20px; }
-.gadget-option-meta > small { display:inline-flex; align-items:center; height:20px; line-height:20px; }
+.gadget-option-meta > .gadget-slot-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:20px; padding:0 7px; border:1px solid #3385bc; border-radius:999px; background:#142b3b; color:#79ccff; font-size:10px; font-weight:750; line-height:18px; letter-spacing:.25px; white-space:nowrap; }
 .gadget-type-labels { display:inline-flex; flex-wrap:wrap; align-items:center; height:20px; gap:4px; }
-.gadget-type-labels > .gadget-type-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:20px; padding:0 7px; font-size:9px; line-height:18px; letter-spacing:.35px; text-transform:none; }
+.gadget-type-labels > .gadget-type-badge { display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box; height:20px; padding:0 7px; font-size:10px; line-height:18px; letter-spacing:.25px; text-transform:none; white-space:nowrap; }
 .gadget-option-copy > .gadget-adjustments { align-self:end; margin-top:5px; }
 .gadget-option-copy > .gadget-adjustments .gadget-adjustment { font-size:10px; padding:2px 5px; }
 .gadget-adjustment-group { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }

@@ -335,7 +335,7 @@ export function BuildEditor() {
                       <Artwork item={g} compact />
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <span className="gadget-option-meta">
-                          <small>{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
+                          <small className="gadget-slot-badge">{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
                           <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules.data} />
                         </span>
                         {g.description && <span>{g.description}</span>}
