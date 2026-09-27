@@ -1331,6 +1331,25 @@ footer {
   position: sticky;
   top: 24px;
 }
+.build-preview {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+}
+.build-preview-scroll {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding-right: 8px;
+  scrollbar-color: #50627a transparent;
+  scrollbar-width: thin;
+}
+.build-preview-scroll::-webkit-scrollbar { width: 6px; }
+.build-preview-scroll::-webkit-scrollbar-track { background: transparent; }
+.build-preview-scroll::-webkit-scrollbar-thumb { background: #50627a; border-radius: 999px; }
+.build-preview-scroll::-webkit-scrollbar-thumb:hover { background: #6c829e; }
 .selection h2 {
   overflow-wrap: anywhere;
 }
@@ -1338,8 +1357,9 @@ footer {
   font-size: 13px;
 }
 .selection > .primary {
+  flex: 0 0 auto;
   width: 100%;
-  margin-top: 20px;
+  margin-top: 14px;
 }
 .build-preview h2 {
   margin: 7px 0 20px;
@@ -1525,7 +1545,7 @@ hr {
 .gadget-choice.has-lock > .gadget-option { padding-left: 12px; }
 .gadget-choice.has-lock > .gadget-option input { transform: translateY(16px); }
 .gadget-choice > .selection-lock { position: absolute; left: 12px; top: calc(50% - 16px); transform: translateY(-50%); margin: 0; z-index: 1; }
-.recommendation-entry { position: sticky; top: 12px; z-index: 3; padding: 12px 0; margin: -12px 0 18px; background: var(--panel, #12171f); }
+.recommendation-entry { flex: 0 0 auto; padding: 12px 0; margin: -12px 0 18px; background: var(--panel, #12171f); }
 .recommend-action { width: 100%; border-color: var(--accent); color: var(--accent); }
 .recommendation-entry small { display: block; text-align: center; color: var(--muted); margin-top: 7px; }
 .build-recommendation-dialog { color: var(--text); background: #111822; border: 1px solid var(--border); border-radius: 12px; width: min(900px, calc(100vw - 64px)); max-height: calc(100dvh - 64px); padding: 0; }
@@ -2590,6 +2610,14 @@ hr {
   }
   .selection {
     position: static;
+  }
+  .build-preview {
+    max-height: none;
+    overflow: visible;
+  }
+  .build-preview-scroll {
+    overflow: visible;
+    padding-right: 0;
   }
   .panel {
     padding: 20px;

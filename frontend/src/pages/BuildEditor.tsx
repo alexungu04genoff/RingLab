@@ -357,6 +357,7 @@ export function BuildEditor() {
                 disabled={busy || !racers.data || !parts.data || !gadgets.data}
                 onClick={() => setRecommendationContext(editorContext)}>Recommend a build</button>
                 <small>Lock selections, then preview a recommendation.</small></div>}
+              <div className="build-preview-scroll" role="region" aria-label="Build summary details" tabIndex={0}>
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
               <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} loadedResult={draftStats} />
@@ -455,6 +456,7 @@ export function BuildEditor() {
                       maps: maps.data.filter(map => draft.recommendedMapIds.includes(map.id)) }} />
                       : <p className="muted">{maps.error ? "Map names unavailable. Your selection is preserved." : "Loading selected maps…"}</p>}
               </section>
+              </div>
               <button
                 className="primary"
                 disabled={
