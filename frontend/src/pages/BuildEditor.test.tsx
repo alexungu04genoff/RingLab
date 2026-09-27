@@ -49,6 +49,8 @@ function desktopViewport() {
 
 it("desktop individual and machine group locks remain synchronized and protect controls", async () => {
   desktopViewport(); await openA();
+  const racerLock = screen.getByRole("button", { name: "Lock Racer" });
+  expect(racerLock.parentElement?.firstElementChild).toBe(racerLock);
   fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
   expect((screen.getByLabelText("Racer") as HTMLSelectElement).disabled).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Lock Tires" }));
@@ -77,6 +79,9 @@ it("gadget lock click never toggles its checkbox or submits and locks reset for 
   fireEvent.click(screen.getByRole("checkbox", { name: /Supported gadget/ }));
   fireEvent.click(screen.getByRole("button", { name: "Lock Supported gadget" }));
   const checkbox = screen.getByRole("checkbox", { name: /Supported gadget/ }) as HTMLInputElement;
+  const choice = checkbox.closest(".gadget-choice")!;
+  expect(choice.firstElementChild).toBe(screen.getByRole("button", { name: "Unlock Supported gadget" }));
+  expect(choice.classList).toContain("has-lock");
   expect(checkbox.checked).toBe(true); expect(checkbox.disabled).toBe(true); expectNoWrite();
   fireEvent.click(screen.getByRole("button", { name: "Unlock Supported gadget" })); expect(checkbox.checked).toBe(true);
   fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
@@ -143,8 +148,8 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
   }
   const picker = checkbox.closest(".gadget-option")!;
   const meta = picker.querySelector(".gadget-option-meta")!;
-  expect(within(meta).getByText("1 slot")).toBeTruthy();
-  expect(within(meta).getByLabelText("Applied gadget adjustments")).toBeTruthy();
+  expect(within(meta as HTMLElement).getByText("1 slot")).toBeTruthy();
+  expect(within(meta as HTMLElement).getByLabelText("Applied gadget adjustments")).toBeTruthy();
   expect(screen.getByRole("button",{name:"Handling gadget adjustment +3"})).toBeTruthy();
   expect(vi.mocked(api).mock.calls.filter(([path])=>path.includes("gadgetId=drift"))).toHaveLength(1);
   fireEvent.click(checkbox);

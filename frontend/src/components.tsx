@@ -327,6 +327,6 @@ export function ItemSelect({
         ))}
       </select>;
   return labelAction ? <div><div className="selection-field-heading">
-    <label htmlFor={selectId}><span className="field-label">{icon}{label}</span></label>{labelAction}
+    {labelAction}<label htmlFor={selectId}><span className="field-label">{icon}{label}</span></label>
   </div>{select}</div> : <label><span className="field-label">{icon}{label}</span>{select}</label>;
 }

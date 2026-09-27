@@ -198,9 +198,10 @@ export function BuildEditor() {
                 </h2>
                 <div className="machine-setup-controls">
                   <div className="stock-machine-control">
-                    <div className="selection-field-heading"><label htmlFor={`${editorId}-stock`}>Use stock machine</label>
+                    <div className="selection-field-heading">
                       {desktop && <SelectionLock label="machine setup" locked={groupLockState(draft, locks, parts.data ?? [])}
                         disabled={!!setupError} onClick={() => setLocks(toggleMachineLocks(draft, locks, parts.data ?? []))} />}
+                      <label htmlFor={`${editorId}-stock`}>Use stock machine</label>
                     </div>
                     <select id={`${editorId}-stock`} value={stockSourceId} disabled={parts.loading || !!locks.frontPartId || !!locks.rearPartId || !!locks.tirePartId} onChange={(e) => {
                       setStockSourceId(e.target.value);
@@ -254,9 +255,10 @@ export function BuildEditor() {
                     const options = machinePartsForType(parts.data ?? [], draft.machineType, slot.type);
                     const incompatible = !!draft[slot.key] && !options.some((part) => part.id === draft[slot.key]);
                     return <div key={slot.key} className="part-select">
-                      <div className="selection-field-heading"><label htmlFor={`${editorId}-${slot.key}`}>{slot.label}</label>
+                      <div className="selection-field-heading">
                         {desktop && <SelectionLock label={slot.label} locked={!!locks[slot.key]} disabled={!selectedPart}
                           onClick={() => toggleLock(slot.key)} />}
+                        <label htmlFor={`${editorId}-${slot.key}`}>{slot.label}</label>
                       </div>
                       <select id={`${editorId}-${slot.key}`} required value={draft[slot.key] ?? ""} disabled={parts.loading || !!locks[slot.key]} aria-invalid={incompatible}
                         onChange={(e) => {
@@ -307,6 +309,8 @@ export function BuildEditor() {
                 <div className="gadget-options">
                   {filterGadgets(gadgets.data ?? [], gadgetSearch, draft.gadgetIds).map((g) => (
                     <div className={`gadget-choice ${desktop && draft.gadgetIds.includes(g.id) ? "has-lock" : ""}`} key={g.id}>
+                    {desktop && draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
+                      onClick={() => setLocks({ ...locks, gadgetIds: toggleGadget(locks.gadgetIds, g.id) })} />}
                     <label
                       className={`gadget-option ${draft.gadgetIds.includes(g.id) ? "selected" : ""}`}
                     >
@@ -330,8 +334,6 @@ export function BuildEditor() {
                         {g.description && <span>{g.description}</span>}
                       </span>
                     </label>
-                    {desktop && draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
-                      onClick={() => setLocks({ ...locks, gadgetIds: toggleGadget(locks.gadgetIds, g.id) })} />}
                     </div>
                   ))}
                 </div>
