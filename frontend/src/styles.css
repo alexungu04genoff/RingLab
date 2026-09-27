@@ -1287,7 +1287,7 @@ footer {
 }
 .build-editor-kicker {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 12px;
   margin-bottom: 10px;
 }

@@ -94,10 +94,10 @@ export function BuildEditor() {
       <div className="page-heading build-editor-heading">
         <div>
           <div className="build-editor-kicker">
+            <div className="eyebrow accent">THE GARAGE</div>
             <Link className="back" to={id ? `/builds/${id}` : "/"}>
               ← Back
             </Link>
-            <div className="eyebrow accent">THE GARAGE</div>
           </div>
           <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
           <p>One racer. Your machine type and gadget combination.</p>
