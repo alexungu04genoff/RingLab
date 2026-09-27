@@ -66,8 +66,16 @@ is edited and no derived total is stored.
 ## Stacking, caps and exclusions
 
 Independent tuner documentation explicitly supports a same-type Tuner 1 + Tuner 2 pair.
-This release sums that pair including penalties, and supports any single applicable
-passive modifier. Modifiers affecting disjoint stats are evaluated independently:
+The 2026-09-28 review also inspected the public [SRCW Gadget Builder](https://www.srcgadgetbuilder.com/build)
+calculation module (`/_next/static/immutable/chunks/3fo_6rojgq9h9.js`): it chooses each
+gadget's matching/nonmatching stat row and adds its signed values per stat, without
+excluding bonuses that offset penalties. This is community-model corroboration,
+not an independent in-game measurement. Ruleset `2026-09-28.3` applies that arithmetic
+to all ten machine tuners via one `machine-tuners` stacking group. On a Speed machine,
+both Speed, Acceleration and Power tuners give +40 Speed, +10 Acceleration,
++16 Power and −2 Boost. Other gadget families retain the existing overlap checks.
+
+Any single applicable passive modifier is supported. Modifiers affecting disjoint stats are evaluated independently:
 on a Handling machine, Drift Charge Kit (+3 Handling), Acceleration Tuner 2
 (+8 Acceleration) and Boost Tuner 2 (+8 Boost) do not stack on the same stat.
 This is arithmetic over the reviewed individual rules, not new evidence for arbitrary
@@ -218,3 +226,12 @@ Drift Charge Kit's Handling marker and arithmetic `53 +3 = 56`; switching its mo
 changed the displayed Handling value to 56 with an explicit partial-calculation label.
 The marker was checked on desktop and at 390 CSS pixels. No production access,
 community regeneration, commit or push was performed.
+
+## Drift Spinner Kit clarification (2026-09-28)
+
+The catalog description and [Gadget reference](https://sonic.fandom.com/wiki/Gadget_(Sonic_Racing%3A_CrossWorlds))
+describe faster Level 1 drift charging and knockback while drifting. These are
+non-stat race-time effects, with no five-stat point adjustment. Rule `drift-spinner`
+now classifies them explicitly, allowing a complete starting setup with Drift Spinner
+Kit and Inventory Swap to serve as a Balanced reference. No charge-time percentage,
+knockback strength, or Handling bonus is inferred. Unknown gadgets remain unsupported.

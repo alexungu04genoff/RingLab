@@ -127,6 +127,29 @@ it("sends one async request, displays honest deltas/explanation and explicitly a
   expect(applied).toHaveBeenCalledWith({ ...draft, frontPartId: "f2" }); expect(screen.queryByRole("dialog")).toBeNull();
 });
 
+it("explains stat gains and losses on hover, keyboard focus and tap without applying the result", async () => {
+  render(<Harness />); open(); calculate();
+  await screen.findByRole("heading", { name: "Recommended setup" });
+  const gain = screen.getByRole("button", { name: "Acceleration change: +1 points" });
+  const loss = screen.getByRole("button", { name: "Speed change: -1 points" });
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  fireEvent.mouseEnter(gain);
+  expect(screen.getByRole("tooltip").textContent).toContain("Starting 20 → Recommended 21");
+  expect(screen.getByRole("tooltip").textContent).toContain("Lighter segment: increase");
+  fireEvent.mouseLeave(gain);
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  fireEvent.focus(loss);
+  expect(screen.getByRole("tooltip").textContent).toContain("Starting 30 → Recommended 29");
+  expect(screen.getByRole("tooltip").textContent).toContain("Darker segment: decrease");
+  expect(loss.getAttribute("aria-describedby")).toBe(screen.getByRole("tooltip").id);
+  fireEvent.keyDown(loss, { key: "Escape" });
+  expect(screen.queryByRole("tooltip")).toBeNull();
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  fireEvent.click(gain);
+  expect(screen.getByRole("tooltip").textContent).toContain("Acceleration · +1 points");
+  expect(applied).not.toHaveBeenCalled();
+});
+
 it("shows unavailable current stats and result outcome without claiming improvement", async () => {
   vi.mocked(api).mockResolvedValue({ ...result, currentStats: null, recommendedStats: null, outcome: "BEST_FOUND" });
   render(<Harness initial={{ ...draft, machineType: "BOOST", tirePartId: null }} />); open(); calculate();
@@ -302,6 +325,34 @@ it("shows a changed gadget list and correctly labels an unchanged empty list", a
   expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("No change");
 });
 
+it("names unsupported gadget effects and offers a usable Strict fallback", () => {
+  const partial: BuildStatsResult = { ...loadedStats, passive: { ...loadedStats.passive!, coverage: "PARTIAL", effects: [{
+    gadgetId: "a", gadgetName: "Gadget A", effectId: "unreviewed", label: "Unverified effects", status: "UNSUPPORTED",
+    adjustment: zeroStats, explanation: "No reviewed rule for this gadget.", sources: [],
+  }] } };
+  render(<Harness referenceStats={partial} />); open();
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  const button = screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement;
+  expect(button.disabled).toBe(true);
+  expect(screen.getByRole("status").textContent).toContain("Gadget A: No reviewed rule");
+  expect(screen.getByRole("status").textContent).not.toContain("complete your racer");
+  expect(screen.getByRole("button", { name: "Edit starting setup" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Use Strict" }));
+  expect(button.disabled).toBe(false);
+  expect(api).not.toHaveBeenCalled();
+});
+
+it("allows Balanced with reviewed non-stat gadgets without inventing stat bonuses", () => {
+  const nonStat: BuildStatsResult = { ...loadedStats, passive: { ...loadedStats.passive!, effects: [{
+    gadgetId: "a", gadgetName: "Drift Spinner Kit", effectId: "drift-spinner", label: "Drift charge timing and knockback",
+    status: "NON_STAT", adjustment: zeroStats, explanation: "Race-time effects, not five-stat point adjustments.", sources: [],
+  }] } };
+  render(<Harness referenceStats={nonStat} />); open();
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(screen.getByLabelText("Handling current: 40")).toBeTruthy();
+});
+
 it("explains a missing patch beside Calculate and requires reopening after the draft changes", async () => {
   vi.mocked(api).mockResolvedValue({ passive: { coverage: "CALCULATED", adjusted: stats } });
   const mounted = render(<Harness initial={{ ...draft, gameVersionId: null }} />); open();
@@ -344,8 +395,7 @@ it("requires one active stat and valid finite losses, preserves mode settings, a
 it("reports unsupported or negative reference values instead of offering Balanced calculation", async () => {
   vi.mocked(api).mockResolvedValue({ passive: { coverage: "CALCULATED", adjusted: { ...stats, power: -1 } } });
   render(<Harness />); open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByRole("alert");
-  expect(screen.getByRole("alert").textContent).toContain("Balanced unavailable");
+  await screen.findByText("Balanced cannot use a starting stat below zero. Change your setup in the editor, or use Strict.");
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
 });
 

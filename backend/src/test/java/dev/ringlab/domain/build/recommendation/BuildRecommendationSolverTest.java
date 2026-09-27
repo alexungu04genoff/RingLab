@@ -130,6 +130,24 @@ class BuildRecommendationSolverTest {
     assertEquals(UNAVAILABLE, solve(f, request(EMPTY, EMPTY, RacingType.SPEED)).outcome());
   }
 
+  @Test void mixedTunersRemainACompleteLockedReferenceInBothModes() {
+    var f = new Fixture();
+    var ids = new ArrayList<UUID>();
+    for (int number : new int[] {52,53,54,55,58,59}) { f.addGadget(number,1); ids.add(PassiveGadgetRules.id(number)); }
+    var current = selection(ids);
+    var zeroLosses = new EnumMap<StatPriority,BigDecimal>(StatPriority.class);
+    ORDER.forEach(stat -> zeroLosses.put(stat,BigDecimal.ZERO));
+    for (var mode : RecommendationMode.values()) {
+      var request = new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,current,mode,
+          mode == RecommendationMode.BALANCED ? new BalancedConfiguration(zeroLosses,List.of()) : null);
+      var result = solve(f,request);
+      assertEquals(ESTABLISHED,result.outcome());
+      assertEquals(current,result.selection());
+      assertEquals(points(44,14,4,20,2),result.currentStats());
+      assertEquals(result.currentStats(),result.recommendedStats());
+    }
+  }
+
   @Test void unknownTypeDoesNotBecomeAZeroEffectAndPenaltiesRemainPenalties() {
     var f = new Fixture(); f.racers.put(RACER, new Racer(RACER, "Unknown type", null, null)); f.addGadget(20, 1);
     var current = selection(List.of(PassiveGadgetRules.id(20)));

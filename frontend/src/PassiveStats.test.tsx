@@ -66,10 +66,25 @@ it("keeps reviewed values visible when a selected gadget is not active for the c
     explanation:"Uses racer type",sources:[],stackingGroup:null}]}]};
   const inactive={...result,adjustments:{speed:0,acceleration:0,handling:0,power:0,boost:0},adjusted:base,
     effects:[{...result.effects[0],status:"NOT_MATCHED" as const,adjustment:{speed:0,acceleration:0,handling:0,power:0,boost:0}}]};
-  render(<GadgetAdjustmentBadges gadgetId="g1" value={inactive} catalog={catalog} />);
+  const selection = { racerType: "HANDLING" as const, machineType: "ACCELERATION" as const };
+  const {rerender} = render(<><GadgetCatalogTypeLabels gadgetId="g1" catalog={catalog} selection={selection} />
+    <GadgetAdjustmentBadges gadgetId="g1" value={inactive} catalog={catalog} selection={selection} /></>);
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Acceleration +7");
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Boost −5");
-  expect(screen.getByText("Not active for this setup")).toBeTruthy();
+  expect(screen.getByText("Stat adjustment inactive · type does not match")).toBeTruthy();
+  expect(screen.getByTitle("Not met: requires Acceleration racer").classList.contains("gadget-condition-unmet")).toBe(true);
+  expect(screen.getByText("Acceleration +7").closest(".gadget-condition-unmet")).toBeTruthy();
+  rerender(<><GadgetCatalogTypeLabels gadgetId="g1" catalog={catalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} />
+    <GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} /></>);
+  expect(screen.getByTitle("Met: requires Acceleration racer").classList.contains("gadget-condition-unmet")).toBe(false);
+  expect(screen.getByText("Acceleration +7").closest(".gadget-condition-unmet")).toBeNull();
+  const machineCatalog = {...catalog,gadgets:[{...catalog.gadgets[0],effects:[{...catalog.gadgets[0].effects[0],subject:"MACHINE" as const}]}]};
+  rerender(<GadgetCatalogTypeLabels gadgetId="g1" catalog={machineCatalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} />);
+  expect(screen.getByTitle("Not met: requires Acceleration machine")).toBeTruthy();
+  rerender(<GadgetCatalogTypeLabels gadgetId="g1" catalog={machineCatalog} selection={selection} />);
+  expect(screen.getByTitle("Met: requires Acceleration machine")).toBeTruthy();
+  rerender(<GadgetCatalogTypeLabels gadgetId="g1" catalog={machineCatalog} />);
+  expect(screen.getByText("Acceleration machine").classList.contains("gadget-condition-unmet")).toBe(false);
 });
 
 it("uses page enrichment without issuing a per-card request and stops control bubbling",async()=>{
@@ -203,6 +218,26 @@ it("renders collection rules from the shared API metadata",()=>{
     explanation:"Uses racer type",sources:["https://example.test/source"],stackingGroup:null}]}]}} />);
   expect(screen.getByText("Racer type BOOST: Power −5, Boost +7")).toBeTruthy();
   expect(screen.getByText("Other known types: No stat-point adjustment")).toBeTruthy();
+});
+
+it("shows nonmatching tuner values instead of matching bonuses and penalties in previews and unresolved fallbacks",()=>{
+  const catalog={ruleset:"test",supportedVersion:"1.4.1",note:"Known arithmetic",gadgets:[{gadgetId:"g1",effects:[{
+    effectId:"stats",label:"Machine tuner",kind:"PASSIVE" as const,subject:"MACHINE" as const,requiredType:"ACCELERATION" as const,
+    matching:{speed:0,acceleration:20,handling:-2,power:0,boost:-2},nonMatching:{speed:0,acceleration:8,handling:0,power:0,boost:0},
+    explanation:"Uses machine type",sources:[],stackingGroup:"machine-tuners"}]}]};
+  const selection={racerType:"POWER" as const,machineType:"SPEED" as const};
+  const {rerender}=render(<GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} selection={selection} />);
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toBe("Acceleration +8");
+  expect(screen.getByText("Acceleration +8").closest(".gadget-condition-unmet")).toBeNull();
+  const unresolved={...result,effects:[{...result.effects[0],status:"UNSUPPORTED" as const}]};
+  rerender(<GadgetAdjustmentBadges gadgetId="g1" catalog={catalog} selection={selection} value={unresolved} />);
+  expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toBe("Acceleration +8");
+  expect(screen.getByText("Not added · stacking unresolved")).toBeTruthy();
+  expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
+  rerender(<GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} selection={{...selection,machineType:"ACCELERATION"}} />);
+  expect(screen.getByText("Acceleration +20")).toBeTruthy();
+  expect(screen.getByText("Handling −2")).toBeTruthy();
+  expect(screen.getByText("Boost −2")).toBeTruthy();
 });
 
 it("keeps a gadget type condition separate from its stat badges",()=>{

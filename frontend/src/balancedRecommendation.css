@@ -3,6 +3,9 @@
 .build-recommendation-dialog .recommendation-heading h2 { font-size: 28px; }
 .build-recommendation-dialog .recommendation-body h3 { font-size: 20px; }
 .build-recommendation-dialog .recommendation-item { font-size: 16px; }
+.build-recommendation-dialog .recommendation-gadget-item { width: 100%; min-width: 0; align-items: center; }
+.recommendation-gadget-item > span { min-width: 0; overflow-wrap: anywhere; }
+.recommendation-gadget-item .recommendation-gadget-cost { display: inline-flex; align-items: center; justify-content: center; margin-left: auto; flex: 0 0 auto; align-self: center; padding: 2px 8px; border: 1px solid #3385bc; border-radius: 999px; background: #142b3b; color: #79ccff; font-size: 14px; font-weight: 750; line-height: 22px; white-space: nowrap; }
 .build-recommendation-dialog .recommendation-machine-type select { font-size: 17px; }
 .build-recommendation-dialog .recommendation-priorities .type-badge { font-size: 15px; }
 .build-recommendation-dialog .recommendation-draft-note { font-size: 14px; }
@@ -12,11 +15,16 @@
 .recommendation-stat-label { display: flex; align-items: baseline; flex-wrap: wrap; gap: 12px; font-size: 18px; margin-bottom: 10px; }
 .recommendation-stat-label > span:first-of-type { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
 .recommendation-stat-delta { min-width: 95px; text-align: right; font-weight: 700; }
-.recommendation-stat-track { position: relative; height: 12px; border-radius: 20px; background: #0d131d; }
+.recommendation-stat-meter { position: relative; }
+.build-recommendation-dialog .recommendation-stat-hit-area { display: block; width: 100%; padding: 10px 0; border: 0; background: transparent; border-radius: 6px; cursor: help; }
+.recommendation-stat-hit-area:focus-visible { outline: 2px solid var(--stat-color); outline-offset: 2px; }
+.recommendation-stat-track { display: block; position: relative; height: 12px; border-radius: 20px; background: #0d131d; }
+.recommendation-stat-tooltip { position: absolute; bottom: 100%; left: 0; z-index: 5; display: grid; gap: 4px; width: max-content; max-width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--stat-color); border-radius: 8px; background: #101925; color: #e4edff; font-size: 14px; line-height: 1.5; box-shadow: 0 4px 16px #0006; }
 .recommendation-stat-base { display: block; height: 100%; border-radius: inherit; background: var(--stat-color); }
 .recommendation-stat-segment { position: absolute; top: 0; height: 100%; border-radius: 3px; }
-.recommendation-stat-segment.recommendation-gain { background: #73df8b; border: 1px solid #a4ffb8; }
-.recommendation-stat-segment.recommendation-loss { background: repeating-linear-gradient(135deg, #ff786866, #ff786866 3px, #ff7868 3px, #ff7868 5px); border: 1px dashed #ff998d; }
+.recommendation-stat-segment.recommendation-gain { background: color-mix(in srgb, var(--stat-color) 40%, #fff); border: 1px solid color-mix(in srgb, var(--stat-color) 20%, #fff); }
+.recommendation-stat-segment.recommendation-loss { background: color-mix(in srgb, var(--stat-color) 40%, #101925); border: 1px dashed var(--stat-color); }
+.recommendation-stat-row .recommendation-stat-delta { color: color-mix(in srgb, var(--stat-color) 65%, #fff); }
 .recommendation-stat-marker { position: absolute; top: -3px; height: 18px; border-left: 2px solid #e4edff; }
 .recommendation-stat-limit { display: block; margin-top: 8px; color: var(--muted); font-size: 14px; }
 .recommendation-modes button { min-height: 48px; }
@@ -101,8 +109,8 @@
 .balanced-result .recommendation-stats th,
 .balanced-result .recommendation-stats td { padding: 9px 10px; }
 .balanced-result .recommendation-stats thead { background: #171e28; font-size: 16px; }
-.recommendation-gain { color: #81df9d; font-weight: 700; }
-.recommendation-loss { color: #ffb081; font-weight: 700; }
+.recommendation-gain { color: #fff; font-weight: 700; }
+.recommendation-loss { color: #c4cbd4; font-weight: 700; }
 .recommendation-neutral { color: var(--muted); }
 .balanced-comparison-head,
 .balanced-selection-changes dl > div {

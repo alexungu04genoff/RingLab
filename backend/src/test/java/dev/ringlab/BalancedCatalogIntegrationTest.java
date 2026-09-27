@@ -89,12 +89,14 @@ class BalancedCatalogIntegrationTest {
           .then().statusCode(200).body("outcome", equalTo("ESTABLISHED")).body("selection.tirePartId", nullValue()).extract().jsonPath();
       assertEquals(116, result.getDouble("currentStats.boost"));
       assertEquals(110.2, result.getDouble("balanced.minimum.BOOST"));
-      assertEquals(112, result.getDouble("recommendedStats.boost"));
-      assertEquals(31, result.getDouble("recommendedStats.speed"));
-      // Independent passive effects expand the legal gadget combinations beyond the original demo.
-      // Preserve its trade-off and require the lower priorities to be at least as good.
-      assertTrue(result.getDouble("recommendedStats.acceleration") >= 47);
-      assertTrue(result.getDouble("recommendedStats.handling") >= 61);
+      var referenceStats = json.convertValue(result.getMap("currentStats"), BaseStats.class);
+      var recommendedStats = json.convertValue(result.getMap("recommendedStats"), BaseStats.class);
+      var objective = new BalancedObjective(referenceStats, ACTIVE, CONFIG);
+      // Expanded tuner combinations may improve the old winner; preserve every floor
+      // and require at least the original demonstration's weighted result.
+      assertTrue(objective.feasible(recommendedStats));
+      assertTrue(objective.compare(recommendedStats, referenceStats) >= 0);
+      assertTrue(objective.compare(recommendedStats, PassiveGadgetRules.points(31,47,61,24,112)) >= 0);
       given().get("/api/builds/" + id).then().statusCode(200).body("frontPart.id", equalTo(definition.get("frontPartId")))
           .body("rearPart.id", equalTo(definition.get("rearPartId"))).body("title", equalTo(definition.get("title")));
       System.out.printf("BALANCED FROZEN FIXTURE isolatedId=%s outcome=%s work=%d ms=%d%n", id, result.getString("outcome"), result.getLong("work"), result.getLong("elapsedMillis"));

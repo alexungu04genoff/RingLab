@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 /** Small, version-specific reviewed table. See docs/passive-gadget-sources.md. */
 public final class PassiveGadgetRules {
   public static final String VERSION = "1.4.1";
-  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-28.1";
+  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-28.3";
   public static final String ORIGINAL = "https://docs.google.com/spreadsheets/u/0/d/1_B2mHZUP6J6jeZfcwbM2HkLvjkwMYuACE4l6Ktt-UkI/htmlview/sheet?headers=true&gid=0";
   public static final String SEGA = "https://asia.sega.com/SonicRacingCrossWorlds/en/update/v-1-4-1.html";
   public static final BaseStats ZERO = points(0, 0, 0, 0, 0);
@@ -80,11 +80,15 @@ public final class PassiveGadgetRules {
     for (String id : List.of("5a000a58-7d7a-581c-80e3-6ae8661215b7","182bdfa8-44d3-5de8-941b-d525381dd0a3"))
       extra(rules,UUID.fromString(id),CONDITIONAL,"Ring-dependent engine","Requires held rings. Physical top-speed changes in km/h are not Speed points.",null);
     extra(rules,UUID.fromString("174ea0a3-43bb-5001-bbd4-8b598482fe59"),NON_STAT,"Item order","Changes held-item order, not five-stat values.",null);
+    rules.add(new GadgetEffectRule(id(22), "drift-spinner", "Drift charge timing and knockback", NON_STAT,
+        ANY, null, ZERO, ZERO,
+        "Faster Level 1 drift charging and knockback while drifting are race-time effects, not five-stat point adjustments.",
+        List.of("https://sonic.fandom.com/wiki/Gadget_(Sonic_Racing%3A_CrossWorlds)"), null));
     return List.copyOf(rules);
   }
 
   private static void tuner(List<GadgetEffectRule> rules, int id, RacingType type, BaseStats yes, BaseStats no) {
-    passive(rules,id(id),MACHINE,type,yes,no,"Machine tuner","45","tuner-" + type);
+    passive(rules,id(id),MACHINE,type,yes,no,"Machine tuner","45","machine-tuners");
   }
   private static void machineKit(List<GadgetEffectRule> rules, int id, RacingType type, BaseStats yes, String other) {
     passive(rules,id(id),MACHINE,type,yes,ZERO,"Matching machine bonus","37",null);

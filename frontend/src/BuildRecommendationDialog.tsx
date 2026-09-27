@@ -38,12 +38,43 @@ function SelectionItem({ id, slot, catalog, showType = false }: {
   const part = slot && slot !== "racerId" ? catalog.parts.find(item => item.id === id) : undefined;
   const gadget = !slot ? catalog.gadgets.find(item => item.id === id) : undefined;
   const item = racer ?? gadget ?? (part ? { id: part.id, name: part.sourceMachineName, racingType: part.racingType, imagePath: part.sourceMachineImagePath } : null);
-  return <span className="recommendation-item">{item && <Artwork item={item} compact />}
+  return <span className={`recommendation-item${gadget ? " recommendation-gadget-item" : ""}`}>{item && <Artwork item={item} compact />}
     <span className={showType ? "recommendation-item-copy" : undefined}>
       <span>{item?.name ?? (id ? "Unknown selection" : "Not selected")}</span>
       {showType && (racer || part) && <RacingTypeBadge kind={racer ? "racer" : "machine"}
         type={racer?.racingType ?? part?.racingType ?? null} />}
-    </span></span>;
+    </span>
+    {gadget && <small className="gadget-slot-badge recommendation-gadget-cost">
+      {gadget.slotCost === null ? "Cost unknown" : `${gadget.slotCost} ${gadget.slotCost === 1 ? "slot" : "slots"}`}
+    </small>}</span>;
+}
+
+function RecommendationStatBar({ label, before, after, difference, scale, changeClass }: {
+  label: string; before: number | null; after: number | null; difference: number | null; scale: number; changeClass: string;
+}) {
+  const tooltipId = useId();
+  const [open, setOpen] = useState(false);
+  const change = difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference} points`;
+  const bar = <span className="recommendation-stat-track" role="img" aria-label={`${label}: ${before ?? "Unavailable"} to ${after ?? "Unavailable"}`}>
+    {before !== null && after !== null && <>
+      <span className="recommendation-stat-base" style={{ width: `${Math.max(0, Math.min(before, after)) / scale * 100}%` }} />
+      <span className={`recommendation-stat-segment ${changeClass}`} style={{ left: `${Math.max(0, Math.min(before, after)) / scale * 100}%`, width: `${Math.abs(difference!) / scale * 100}%` }} />
+      <span className="recommendation-stat-marker" style={{ left: `${Math.max(0, before) / scale * 100}%` }} />
+    </>}
+  </span>;
+  if (difference === null) return bar;
+  return <div className="recommendation-stat-meter" onMouseEnter={() => setOpen(true)} onMouseLeave={() => setOpen(false)}>
+    <button type="button" className="recommendation-stat-hit-area" aria-label={`${label} change: ${change}`}
+      aria-describedby={open ? tooltipId : undefined} onFocus={() => setOpen(true)} onBlur={() => setOpen(false)}
+      onClick={() => setOpen(true)} onKeyDown={event => {
+        if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); setOpen(false); }
+      }}>{bar}</button>
+    {open && <span className="recommendation-stat-tooltip" id={tooltipId} role="tooltip">
+      <strong>{label} · {change}</strong>
+      <span>Starting {before} → Recommended {after}</span>
+      <span>{difference > 0 ? "Lighter segment: increase." : difference < 0 ? "Darker segment: decrease." : "The value stays the same."} Marker: starting value.</span>
+    </span>}
+  </div>;
 }
 
 function BalancedSelectionChanges({ reference, selected, locks, catalog, machineType }: {
@@ -154,8 +185,20 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       calculationBlocker = "Loading the current setup's stats…";
     else if (loadedReferenceStats.error)
       calculationBlocker = `Could not load reference stats: ${loadedReferenceStats.error}`;
-    else if (!referenceAvailable)
-      calculationBlocker = "Balanced needs a complete setup with supported, nonnegative stats. Close this popup to complete your racer and parts, or use Strict to generate a setup.";
+    else if (!referenceAvailable) {
+      const unresolved = passiveReference?.effects?.filter(effect => effect.status === "UNSUPPORTED" || effect.status === "REQUIRES_SELECTION") ?? [];
+      const missing = slots.filter(slot => slot.key !== "tirePartId" && !reference[slot.key]).map(slot => slot.label);
+      if (missing.length)
+        calculationBlocker = `Choose ${missing.join(", ")} in the editor before using Balanced. Strict can recommend a starting setup instead.`;
+      else if (passiveReference?.coverage === "INVALID_LOADOUT")
+        calculationBlocker = "The starting setup has an invalid part combination or gadget plate. Return to the editor to fix it before using Balanced.";
+      else if (unresolved.length)
+        calculationBlocker = `Balanced cannot compare this setup yet: ${unresolved.map(effect => `${effect.gadgetName}: ${effect.explanation}`).join(" ")} Return to the editor to change these gadgets, or use Strict to search without this baseline.`;
+      else if (passiveReference?.adjusted && Object.values(passiveReference.adjusted).some(value => value != null && value < 0))
+        calculationBlocker = "Balanced cannot use a starting stat below zero. Change your setup in the editor, or use Strict.";
+      else
+        calculationBlocker = "Some starting stats are unavailable for this patch. Check the selected parts in the editor, or use Strict to find a supported setup.";
+    }
     else if (!validBalanced(activePriorities, secondary, losses))
       calculationBlocker = "Enter a maximum loss from 0 to 100 for each prioritized stat. Leave 0 to allow no decrease.";
   }
@@ -217,8 +260,6 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
           </span>)}</div>
           {!reference.gadgetIds.length && <p className="muted">None selected</p>}
         </section>
-        {mode === "BALANCED" && (loadedReferenceStats.loading ? <p role="status">Loading reference stats…</p> : !referenceAvailable &&
-          <p role="alert">Balanced unavailable: choose a complete legal reference with fully supported, nonnegative passive-adjusted values. {loadedReferenceStats.error}</p>)}
         </details></section>
       {recommendation.busy && <p className="recommendation-activity" role="status">Calculating recommendation…</p>}
       {!result ? <>
@@ -298,7 +339,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
           </dl>}{machineType === "BOOST" && <p className="recommendation-setup-note">Boost uses Front and Rear only. The proposed setup has no tire.</p>}
           <section className="recommendation-stat-comparison" aria-label="Stat comparison">
             <h3>Passive-adjusted stats · same selected patch</h3>
-            <p className="recommendation-stat-legend">Starting value → new value · <span className="recommendation-gain">+ Gain</span> · <span className="recommendation-loss">− Loss</span></p>
+            <p className="recommendation-stat-legend">Starting value → new value · Lighter: + Gain · Darker: − Loss. Hover, focus or tap a bar for details.</p>
             {[...activePriorities, ...(mode === "BALANCED" ? secondary : [])].map(priority => {
               const before = stat(result.currentStats, priority), after = stat(result.recommendedStats, priority);
               const difference = before === null || after === null ? null : Number((after - before).toFixed(8));
@@ -309,13 +350,8 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
                   <span className={`recommendation-stat-delta ${changeClass}`}>{difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference}`}
                     {mode === "BALANCED" && difference !== null && difference !== 0 && <small> ({signedStatChange(before, after)})</small>}</span>
                 </div>
-                <div className="recommendation-stat-track" role="img" aria-label={`${racingTypeLabel(priority)}: ${before ?? "Unavailable"} to ${after ?? "Unavailable"}`}>
-                  {before !== null && after !== null && <>
-                    <span className="recommendation-stat-base" style={{ width: `${Math.max(0, Math.min(before, after)) / comparisonScale * 100}%` }} />
-                    <span className={`recommendation-stat-segment ${changeClass}`} style={{ left: `${Math.max(0, Math.min(before, after)) / comparisonScale * 100}%`, width: `${Math.abs(difference!) / comparisonScale * 100}%` }} />
-                    <span className="recommendation-stat-marker" style={{ left: `${Math.max(0, before) / comparisonScale * 100}%` }} />
-                  </>}
-                </div>
+                <RecommendationStatBar label={racingTypeLabel(priority)} before={before} after={after} difference={difference}
+                  scale={comparisonScale} changeClass={changeClass} />
                 {mode === "BALANCED" && <small className="recommendation-stat-limit">{secondary.includes(priority) ? "Tie-break / Ignore — no minimum"
                   : `Maximum loss ${losses[priority]}% · Minimum allowed ${result.balanced?.minimum[priority] ?? "Unavailable"}`}</small>}
               </div>;
@@ -337,7 +373,9 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
           maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), secondary } } : {}) })}>Calculate recommendation</button>}
       {selected && <button type="button" className="primary" onClick={() => { if (recommendation.apply()) onClose(); }}>Apply to draft</button>}
       {result && <button type="button" onClick={recommendation.cancel}>Back to priorities</button>}
-      <button type="button" onClick={close}>Cancel</button></div>
+      {!result && mode === "BALANCED" && !referenceAvailable && passiveReference &&
+        <button type="button" onClick={() => { recommendation.cancel(); setMode("STRICT"); }}>Use Strict</button>}
+      <button type="button" onClick={close}>{!result && mode === "BALANCED" && !referenceAvailable && passiveReference ? "Edit starting setup" : "Cancel"}</button></div>
     {selected && <p className="recommendation-draft-note">Apply changes only your unsaved draft. Publish or save separately.</p>}
   </dialog>, document.body);
 }

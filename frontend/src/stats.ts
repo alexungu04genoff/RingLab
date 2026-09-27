@@ -3,7 +3,7 @@ import { savedMachineSetupError } from "./buildForm";
 
 export const statNames = ["speed", "acceleration", "handling", "power", "boost"] as const;
 // Changes with the reviewed server table; only calculation inputs participate in these keys.
-export const passiveRuleset = "crossworlds-1.4.1-passive-2026-09-27.1";
+export const passiveRuleset = "crossworlds-1.4.1-passive-2026-09-28.3";
 export function passiveStatsPath(draft: Pick<BuildDraft,
   "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "gadgetIds">) {
   const base = buildStatsPath(draft);

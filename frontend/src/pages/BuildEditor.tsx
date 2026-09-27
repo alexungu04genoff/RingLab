@@ -90,6 +90,7 @@ export function BuildEditor() {
   const plateStatus = gadgetPlateStatus(selectedGadgets);
   const activePartSlots = partSlots.filter((slot) => !draft.machineType ? slot.type !== "TIRE" : requiredMachineSlots(draft.machineType).includes(slot.type));
   const setupError = machineSetupError(draft, parts.data ?? []);
+  const gadgetTypeSelection = { racerType: selectedRacer?.racingType ?? null, machineType: setupError ? null : draft.machineType };
   const mapSelectionMissing = draft.mapRecommendationMode === "SELECTED" && draft.recommendedMapIds.length === 0;
   return (
     <>
@@ -309,7 +310,7 @@ export function BuildEditor() {
                 </h2>
                 <p>Select gadgets in the order you want them displayed.</p>
                 <label className="gadget-search">
-                  Search gadgets
+                  <span className="sr-only">Search gadgets</span>
                   <input type="search" value={gadgetSearch} onChange={(e) => setGadgetSearch(e.target.value)}
                     placeholder="Search gadgets..." />
                 </label>
@@ -336,12 +337,12 @@ export function BuildEditor() {
                       <span className="gadget-option-copy"><strong>{g.name}</strong>
                         <span className="gadget-option-meta">
                           <small className="gadget-slot-badge">{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
-                          <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules.data} />
+                          <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules.data} selection={gadgetTypeSelection} />
                         </span>
                         {g.description && <span>{g.description}</span>}
                         {draft.gadgetIds.includes(g.id) && draftStats.data?.passive
-                          ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} catalog={gadgetRules.data} />
-                          : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} />}
+                          ? <GadgetAdjustmentBadges gadgetId={g.id} value={draftStats.data.passive} catalog={gadgetRules.data} selection={gadgetTypeSelection} />
+                          : <GadgetCatalogAdjustmentBadges gadgetId={g.id} catalog={gadgetRules.data} selection={gadgetTypeSelection} />}
                       </span>
                     </label>
                     </div>

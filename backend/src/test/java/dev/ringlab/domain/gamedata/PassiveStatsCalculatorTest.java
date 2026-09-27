@@ -27,6 +27,18 @@ class PassiveStatsCalculatorTest {
     assertTrue(result.effects().isEmpty());
   }
 
+  @Test void driftSpinnerAndInventorySwapDoNotBlockTheFiveStatBaseline() {
+    var inventorySwap = new Gadget(UUID.fromString("174ea0a3-43bb-5001-bbd4-8b598482fe59"), "Inventory Swap", null, 3, null);
+    var spinner = new Gadget(id(22), "Drift Spinner Kit", null, 3, null);
+    var result = PassiveStatsCalculator.calculate(BASE, "1.4.1", BOOST, ACCELERATION,
+        List.of(spinner, inventorySwap), true);
+    assertEquals(CALCULATED, result.coverage());
+    assertEquals(TOTAL, result.adjusted());
+    assertEquals(points(0,0,0,0,0), result.adjustments());
+    assertEquals(2, result.effects().size());
+    assertTrue(result.effects().stream().allMatch(effect -> effect.status() == NON_STAT));
+  }
+
   @Test void everyTunerUsesMachineTypeIncludingAllVerifiedPenaltiesAndNonMatchingValues() {
     // Independent fixtures transcribed from the original Gadget List (1.4), corroborated by atwiki /45.
     int[][] expected = {{20,-4,0,0,0},{20,-2,0,0,-2},{0,20,-4,0,0},{0,20,-2,0,-2},
@@ -78,6 +90,21 @@ class PassiveStatsCalculatorTest {
     assertEquals(new BigDecimal("42.125"),result.adjusted().handling());
     assertEquals(result.adjusted(),calculate(BOOST,SPEED,53,52).adjusted());
     assertEquals(points(16,0,0,0,0),calculate(SPEED,BOOST,52,53).adjustments());
+  }
+
+  @Test void mixedTunersOffsetPenaltiesAndKeepEveryIndependentBonus() {
+    var base = new BaseStatsBreakdown(points(62,30,43,62,43), points(11,9,7,20,13), points(51,21,36,42,30));
+    var gadgets = List.of(gadget(54), gadget(55), gadget(52), gadget(53), gadget(58), gadget(59));
+    var result = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,SPEED,gadgets,true);
+    assertEquals(CALCULATED,result.coverage());
+    assertEquals(points(40,10,0,16,-2),result.adjustments());
+    assertEquals(points(102,40,43,78,41),result.adjusted());
+    assertTrue(result.effects().stream().allMatch(effect -> effect.status() == APPLIED));
+    assertEquals(result.adjusted(),PassiveStatsCalculator.calculate(base,"1.4.1",POWER,SPEED,gadgets.reversed(),true).adjusted());
+    // The same gadgets on an Acceleration machine use different bonuses and penalties.
+    var acceleration = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,ACCELERATION,gadgets,true);
+    assertEquals(CALCULATED,acceleration.coverage());
+    assertEquals(points(16,40,-6,16,-2),acceleration.adjustments());
   }
 
   @Test void unresolvedStackingIsExplicitAndDoesNotPickAnOrderDependentWinner() {

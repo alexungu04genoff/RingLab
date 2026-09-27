@@ -1,32 +1,40 @@
 import { useId, useState } from "react";
-import type { BaseStats, GadgetRulesCatalog, PassiveStatsResult } from "./types";
+import type { BaseStats, GadgetRulesCatalog, PassiveStatsResult, RacingType } from "./types";
 import { statNames, type StatName } from "./stats";
 import { GearIcon, RacerIcon, SteeringWheelIcon } from "./icons";
 
 
 export function signedPoints(value: number | null) { return value == null ? "Unknown" : `${value >= 0 ? "+" : "−"}${Math.abs(value)}`; }
 
-export function GadgetAdjustmentBadges({ gadgetId, value, catalog }: {
-  gadgetId: string; value?: PassiveStatsResult; catalog?: GadgetRulesCatalog;
+type GadgetTypeSelection = { racerType: RacingType | null; machineType: RacingType | null };
+type GadgetRule = GadgetRulesCatalog["gadgets"][number]["effects"][number];
+function unmetTypeCondition(rule: GadgetRule, selection?: GadgetTypeSelection) {
+  if (!selection || rule.subject === "ANY" || !rule.requiredType) return false;
+  return (rule.subject === "RACER" ? selection.racerType : selection.machineType) !== rule.requiredType;
+}
+
+export function GadgetAdjustmentBadges({ gadgetId, value, catalog, selection }: {
+  gadgetId: string; value?: PassiveStatsResult; catalog?: GadgetRulesCatalog; selection?: GadgetTypeSelection;
 }) {
-  if (!value) return <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />;
+  if (!value) return <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} selection={selection} />;
   const effects = value.effects.filter(effect => effect.gadgetId === gadgetId && effect.status === "APPLIED");
   const adjustments = statNames.map(name => ({name,
     points: effects.reduce((total, effect) => total + (effect.adjustment[name] ?? 0), 0),
   })).filter(({points}) => points !== 0);
   if (!adjustments.length) {
-    const status = value.effects.find(effect => effect.gadgetId === gadgetId && effect.effectId === "stats")?.status;
+    const inactiveEffect = value.effects.find(effect => effect.gadgetId === gadgetId && effect.effectId === "stats");
+    const status = inactiveEffect?.status;
     const message = value.coverage === "UNSUPPORTED_VERSION" ? "Unavailable for this patch"
       : value.coverage === "INVALID_LOADOUT" ? "Not calculated · invalid loadout"
       : status === "UNSUPPORTED" ? "Not added · stacking unresolved"
       : status === "REQUIRES_SELECTION" ? "Choose the required racer or machine"
-      : status === "NOT_MATCHED" ? "Not active for this setup" : null;
+      : status === "NOT_MATCHED" ? "Stat adjustment inactive · type does not match" : null;
     return message ? <span className="gadget-adjustments gadget-selection-feedback" aria-label="Gadget adjustment not included">
-      <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />
-      <span className="gadget-adjustment unresolved" title="This combination's passive-stat stacking has not been verified.">
+      <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} selection={selection} />
+      <span className="gadget-adjustment unresolved" title={inactiveEffect?.explanation}>
         {message}
       </span>
-    </span> : <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} />;
+    </span> : <GadgetCatalogAdjustmentBadges gadgetId={gadgetId} catalog={catalog} selection={selection} />;
   }
   return <span className="gadget-adjustments" aria-label="Applied gadget adjustments">
     {adjustments.map(({name,points}) => <span key={name}
@@ -38,31 +46,44 @@ export function GadgetAdjustmentBadges({ gadgetId, value, catalog }: {
 }
 
 /** Shows reviewed passive values before selection; type-dependent values retain their condition. */
-export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog }: { gadgetId: string; catalog?: GadgetRulesCatalog }) {
+export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog, selection }: {
+  gadgetId: string; catalog?: GadgetRulesCatalog; selection?: GadgetTypeSelection;
+}) {
   const effects = (catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
     .filter(effect => effect.kind === "PASSIVE") ?? [];
-  const groups = effects.map(effect => ({ effect, adjustments: statNames
-    .map(name => ({ name, points: effect.matching[name] }))
-    .filter(({ points }) => points != null && points !== 0) }));
+  const groups = effects.map(effect => {
+    const actualType = effect.subject === "RACER" ? selection?.racerType : selection?.machineType;
+    const unmet = unmetTypeCondition(effect, selection);
+    const useNonMatching = unmet && actualType != null && statNames.some(name => (effect.nonMatching[name] ?? 0) !== 0);
+    const values = useNonMatching ? effect.nonMatching : effect.matching;
+    const condition = useNonMatching ? ` for the selected ${actualType!.toLowerCase()} ${effect.subject.toLowerCase()}`
+      : effect.subject === "ANY" ? "" : ` for a ${effect.requiredType?.toLowerCase()} ${effect.subject.toLowerCase()}`;
+    return { effect, inactive: unmet && !useNonMatching, condition, adjustments: statNames
+      .map(name => ({ name, points: values[name] }))
+      .filter(({ points }) => points != null && points !== 0) };
+  });
   if (!groups.some(group => group.adjustments.length)) return null;
   return <span className="gadget-adjustments gadget-catalog-adjustments" aria-label="Reviewed gadget stat adjustments">
-    {groups.map(({ effect, adjustments }) => adjustments.length > 0 && <span className="gadget-adjustment-group" key={effect.effectId}>
+    {groups.map(({ effect, adjustments, inactive, condition }) => adjustments.length > 0 && <span className={`gadget-adjustment-group${inactive ? " gadget-condition-unmet" : ""}`} key={effect.effectId}>
       {adjustments.map(({ name, points }) => <span key={name}
         className={`gadget-adjustment stat-row stat-${name} ${points! > 0 ? "bonus" : "penalty"}`}
-        title={`Reviewed passive effect${effect.subject === "ANY" ? "" : ` for a ${effect.requiredType?.toLowerCase()} ${effect.subject.toLowerCase()}`}`}>
+        title={`Reviewed passive effect${condition}; inclusion depends on the selected combination.`}>
         {name[0].toUpperCase() + name.slice(1)} {signedPoints(points)}
       </span>)}
     </span>)}
   </span>;
 }
 
-export function GadgetCatalogTypeLabels({ gadgetId, catalog }: { gadgetId: string; catalog?: GadgetRulesCatalog }) {
+export function GadgetCatalogTypeLabels({ gadgetId, catalog, selection }: {
+  gadgetId: string; catalog?: GadgetRulesCatalog; selection?: GadgetTypeSelection;
+}) {
   const labels = (catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
     .filter(effect => effect.kind === "PASSIVE" && effect.subject !== "ANY" && effect.requiredType)
-    .map(effect => ({ type: effect.requiredType!, label: `${effect.requiredType![0] + effect.requiredType!.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}` }))
+    .map(effect => ({ type: effect.requiredType!, unmet: unmetTypeCondition(effect, selection), label: `${effect.requiredType![0] + effect.requiredType!.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}` }))
     .filter((entry, index, entries) => entries.findIndex(candidate => candidate.label === entry.label) === index) ?? [];
   return labels.length > 0 ? <span className="gadget-type-labels" aria-label="Gadget type conditions">
-    {labels.map(({ type, label }) => <span className={`gadget-type-badge racing-type racing-type-${type.toLowerCase()}`} key={label}>{label}</span>)}
+    {labels.map(({ type, label, unmet }) => <span className={`gadget-type-badge racing-type racing-type-${type.toLowerCase()}${unmet ? " gadget-condition-unmet" : ""}`}
+      title={selection ? `${unmet ? "Not met" : "Met"}: requires ${label}` : undefined} key={label}>{label}</span>)}
   </span> : null;
 }
 export function adjustmentSummary(stats: BaseStats) {
@@ -165,7 +186,7 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
             : <p>{rule.kind === "CONDITIONAL" ? "Race condition — excluded" : rule.kind === "NON_STAT" ? "Separate from stat points" : "Unverified"}</p>}
           <p>{rule.explanation}</p><a href={rule.sources[0]} target="_blank" rel="noreferrer">Rule source ↗</a>
         </li>)}</ul>}
-      <p>{catalog.note}</p><p>Stacking is supported for a single passive modifier or a same-type Tuner 1 + Tuner 2 pair. Other combinations are reported as unresolved.</p></>}
+      <p>{catalog.note}</p><p>Machine tuner bonuses and penalties add together, including different tuner types. Modifiers affecting separate stats also combine. Other overlapping effects are reported as unresolved.</p></>}
   </details>;
 }
 

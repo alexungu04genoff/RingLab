@@ -52,7 +52,8 @@ public final class PassiveStatsCalculator {
     }
 
     // Independent stat adjustments do not stack with one another. Only overlapping
-    // modifiers need reviewed stacking evidence (same-type Tuner 1 + Tuner 2).
+    // modifiers need a supported stacking group. All machine tuners use additive
+    // stat points, including penalties that offset another tuner's bonus.
     var applied = effects.stream().filter(e -> e.status() == APPLIED).toList();
     if (applied.size() > 1) {
       for (int i = 0; i < effects.size(); i++) {
