@@ -93,11 +93,14 @@ export function OwnershipCheckbox({ category, id, name }: { category: Collection
   const collection = useCollection();
   if (collection.status === "anonymous") return null;
   const excluded = isExcluded(collection.data, category, id);
-  return <label className="ownership-checkbox"><input type="checkbox" checked={collection.status === "ready" && !excluded}
+  const state = collection.busy ? "Saving…" : collection.status === "error" ? "Unavailable"
+    : collection.status === "loading" ? "Loading…" : excluded ? "Not owned" : "Owned";
+  const tone = collection.status !== "ready" || collection.busy ? "pending" : excluded ? "missing" : "owned";
+  return <label className={`ownership-control ownership-${tone}`}><input type="checkbox" checked={collection.status === "ready" && !excluded}
     ref={input => { if (input) input.indeterminate = collection.status !== "ready"; }}
-    disabled={collection.status !== "ready" || collection.busy} aria-label={`Owned / unlocked: ${name}`}
-    onChange={event => void collection.update(category, id, event.target.checked)} />Owned / unlocked
-    {collection.status === "ready" && excluded && <strong>Not owned</strong>}</label>;
+    disabled={collection.status !== "ready" || collection.busy} aria-label={`Owned: ${name}`}
+    onChange={event => void collection.update(category, id, event.target.checked)} />
+    <span aria-live="polite">{state}</span></label>;
 }
 type AvailabilitySelection = Pick<Build, "racer" | "gadgets"> & Partial<Pick<Build, "frontPart" | "rearPart" | "tirePart">>;
 export function missingBuildItems(build: AvailabilitySelection, data: CollectionExclusions) {

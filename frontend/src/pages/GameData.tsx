@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { CollectionStatus, OwnershipCheckbox } from "../Collection";
+import { CollectionStatus, OwnershipCheckbox, useCollection } from "../Collection";
 import { Link } from "react-router-dom";
+import type { ReactNode } from "react";
 import { MapThumbnail } from "../MapRecommendations";
 import { mapCategoryLabel } from "../mapSelection";
 import type { RaceMap } from "../types";
@@ -41,7 +42,7 @@ export function newestGameVersion(versions: GameVersion[] | undefined) {
     !newest || version.releasedAt > newest.releasedAt ? version : newest, undefined);
 }
 
-function RacerCard({ racer }: { racer: Racer }) {
+function RacerCard({ racer, ownership }: { racer: Racer; ownership?: ReactNode }) {
   return (
     <article className="panel collection-item racer-collection-item">
       <Artwork item={racer} compact portrait />
@@ -49,11 +50,12 @@ function RacerCard({ racer }: { racer: Racer }) {
         <h2>{racer.name}</h2>
         <RacingTypeBadge kind="racer" type={racer.racingType} className="collection-type" />
       </div>
+      {ownership}
     </article>
   );
 }
 
-function GadgetCard({ gadget, rules }: { gadget: Gadget; rules?: GadgetRulesCatalog }) {
+function GadgetCard({ gadget, rules, ownership }: { gadget: Gadget; rules?: GadgetRulesCatalog; ownership?: ReactNode }) {
   return (
     <article className="panel collection-item gadget-collection-item">
       <Artwork item={gadget} compact />
@@ -69,6 +71,7 @@ function GadgetCard({ gadget, rules }: { gadget: Gadget; rules?: GadgetRulesCata
       </div>
       {gadget.description && <p className="gadget-collection-description">{gadget.description}</p>}
       <GadgetRuleDetails id={gadget.id} catalog={rules} />
+      {ownership}
     </article>
   );
 }
@@ -89,10 +92,10 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
   );
 }
 
-function CollectionCard({ item, tab, machineParts, stats, version, loading, error, rules }: {
+function CollectionCard({ item, tab, machineParts, stats, version, loading, error, rules, ownership }: {
   item: CollectionItem; tab: CollectionKey; machineParts: MachinePart[];
   stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
-  rules?: GadgetRulesCatalog;
+  rules?: GadgetRulesCatalog; ownership?: ReactNode;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("category" in item) return <article className="panel collection-item map-collection-item">
@@ -100,15 +103,15 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
     <p>{mapCategoryLabel(item.category)}{item.contentPack && ` · ${item.contentPack}`}</p>
     <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link></div>
   </article>;
-  if ("slotCost" in item) return <GadgetCard gadget={item} rules={rules} />;
+  if ("slotCost" in item) return <GadgetCard gadget={item} rules={rules} ownership={ownership} />;
   if (tab === "machines") return <StockMachineCard machine={item}
     parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
-    catalog={stats} version={version} loading={loading} error={error} />;
-  return <RacerCard racer={item} />;
+    catalog={stats} version={version} loading={loading} error={error} ownership={ownership} />;
+  return <RacerCard racer={item} ownership={ownership} />;
 }
 
 export function GameData() {
-  const [showExplanation, setShowExplanation] = useState(true);
+  const collection = useCollection();
   const [tab, setTab] = useState<CollectionKey>("racers");
   const [search, setSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
@@ -150,9 +153,9 @@ export function GameData() {
           </button>
         ))}
       </div>
-      {showExplanation && <aside className="collection-explanation"><p>Everything starts marked as owned. Uncheck items you don't have.
-        You can still browse them, but recommendations won't use them.</p>
-        <button type="button" onClick={() => setShowExplanation(false)} aria-label="Dismiss collection explanation">Dismiss</button></aside>}
+      {collection.status === "anonymous" && <aside className="collection-notice"><p><strong>Log in to manage your collection.</strong> Mark items you don't own to exclude them from recommendations. While logged out, everything is treated as available. <Link to="/guide#your-collection">Collection guide →</Link></p>
+        <Link className="button" to="/login" state={{ from: "/game-data" }}>Log in</Link></aside>}
+      {collection.status === "ready" && <aside className="collection-explanation"><p>Everything is owned by default. Uncheck items you don't own to exclude them from recommendations. <Link to="/guide#your-collection">Collection guide →</Link></p></aside>}
       <CollectionStatus />
       <ErrorNotice message={items.error} />
       <ErrorNotice message={versions.error || stats.error || machineParts.error} />
@@ -163,12 +166,13 @@ export function GameData() {
         && <p>No {searchLabel} match your search. Try another name.</p>}
       <div className={`collection collection-${tab}`}>
         {visibleItems?.map((item) => <div key={item.id}>
-          {(tab === "racers" || tab === "machines" || tab === "gadgets") && "name" in item && <OwnershipCheckbox
-            category={tab === "racers" ? "RACER" : tab === "machines" ? "MACHINE" : "GADGET"} id={item.id} name={item.name} />}
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
             stats={stats.data} version={latestVersion?.version ?? null} rules={rules.data}
             loading={versions.loading || machineParts.loading || stats.loading}
-            error={versions.error || machineParts.error || stats.error} />
+            error={versions.error || machineParts.error || stats.error}
+            ownership={(tab === "racers" || tab === "machines" || tab === "gadgets") && "name" in item
+              ? <OwnershipCheckbox category={tab === "racers" ? "RACER" : tab === "machines" ? "MACHINE" : "GADGET"}
+                id={item.id} name={item.name} /> : undefined} />
           {"racingType" in item && <>
             {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
               : !versions.error && !stats.error && <StatsBlock

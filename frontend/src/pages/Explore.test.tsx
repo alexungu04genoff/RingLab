@@ -73,6 +73,7 @@ it("offers all versions by default and newest-first patches alongside existing f
   expect(html.indexOf("Ver. 1.4.1")).toBeLessThan(html.indexOf("Ver. 1.3.1"));
   expect(html).toContain("Uses parts from");
   expect(html).toContain('value="rated" selected="">Best rated');
+  expect(html).toContain('href="/guide#finding-builds"');
   expect(vi.mocked(useLoad).mock.calls.find(([path]) => path.startsWith("/builds?"))![0])
     .not.toContain("gameVersionId");
 });

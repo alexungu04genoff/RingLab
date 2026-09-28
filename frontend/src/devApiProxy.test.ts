@@ -20,6 +20,7 @@ it.each([
   "/api/build-recommendations",
   "/api/community/top-builds", "/api/stats/build?gameVersionId=patch",
   "/api/saved-builds", "/api/saved-builds/status?buildId=one", "/api/saved-builds/one",
+  "/api/collection", "/api/collection/RACER/60000000-0000-4000-8000-000000000022",
 ])("preserves public API forwarding for %s", (url) => {
   expect(publicApiProxy["/api"].bypass({ url })).toBeUndefined();
 });

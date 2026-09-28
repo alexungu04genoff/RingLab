@@ -227,6 +227,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       </button></div>
     <div className="recommendation-body" ref={body}>
       <p className="recommendation-patch">Selected patch: {referenceVersion ? `Ver. ${referenceVersion.version}` : "Not selected"} · Reviewed rules: Ver. 1.4.1</p>
+      <a className="contextual-help recommendation-guide-link" href="/guide#recommendations" target="_blank" rel="noreferrer">How recommendations work ↗</a>
       {(!result || mode === "STRICT" || lockedSlots.length > 0 || locks.gadgetIds.length > 0) && <section aria-label="Locked selections"><h3>{result ? "Kept · locked selections" : "Locked selections"}</h3>
         {!lockedSlots.length && !locks.gadgetIds.length ? <p className="muted">Nothing is locked. All selections may change.</p>
           : <ul className="recommendation-locks">{lockedSlots.map(slot => <li key={slot.key}><strong>{slot.label}</strong>

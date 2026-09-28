@@ -93,6 +93,9 @@ function calculate() { fireEvent.click(screen.getByRole("button", { name: "Calcu
 it("opens configuration with current stats without requesting, exposes priorities/type and cancels without mutation", () => {
   render(<Harness referenceStats={loadedStats} />); open();
   expect(api).not.toHaveBeenCalled(); expect(screen.getByRole("heading", { name: "Recommend a build" })).toBe(document.activeElement);
+  const guide = screen.getByRole("link", { name: "How recommendations work ↗" });
+  expect(guide.getAttribute("href")).toBe("/guide#recommendations");
+  expect(guide.getAttribute("target")).toBe("_blank");
   const reference = screen.getByLabelText("Frozen reference");
   expect(reference.querySelector("details")?.open).toBe(true);
   expect(within(reference).getByRole("img", { name: "This setup stays fixed for this recommendation session." })).toBeTruthy();

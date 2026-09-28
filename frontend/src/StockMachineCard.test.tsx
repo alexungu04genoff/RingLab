@@ -16,7 +16,7 @@ afterEach(cleanup);
 
 it("opens by keyboard and tap, survives pointer leave, and unmounts hidden controls", async () => {
   const { container } = render(<StockMachineCard {...props} />);
-  const trigger = screen.getByRole("button", { name: "View part stats" });
+  const trigger = screen.getByRole("button", { name: "Part stats" });
   expect(trigger.getAttribute("aria-expanded")).toBe("false");
   expect(panelRegion()).toBeNull();
   trigger.focus(); await userEvent.keyboard("{Enter}");
@@ -37,7 +37,7 @@ it("opens by keyboard and tap, survives pointer leave, and unmounts hidden contr
 
 it("does not steal focus from another control when the panel closes", () => {
   render(<><button>Elsewhere</button><StockMachineCard {...props} /></>);
-  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Part stats" }));
   const outside = screen.getByRole("button", { name: "Elsewhere" }); outside.focus();
   fireEvent.keyDown(outside, { key: "Escape" });
   expect(panelRegion()).toBeTruthy();
@@ -47,7 +47,7 @@ it("does not steal focus from another control when the panel closes", () => {
 
 it("orders slots explicitly, shows partial values and uses the catalog machine total without the racer", () => {
   render(<StockMachineCard {...props} />);
-  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Part stats" }));
   const panel = panelRegion()!;
   expect(within(panel).getAllByRole("heading", { level: 3 }).map((heading) => heading.textContent))
     .toEqual(["Stock machine", "Front", "Rear", "Tire", "Machine contribution"]);
@@ -61,7 +61,7 @@ it("orders slots explicitly, shows partial values and uses the catalog machine t
 
 it("shows only front and rear for Boost / Extreme Gear even if a stale catalog includes a tire", () => {
   render(<StockMachineCard {...props} machine={{ ...machine, racingType: "BOOST" }} />);
-  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Part stats" }));
   expect(screen.getByLabelText("Front part stats")).toBeTruthy();
   expect(screen.getByLabelText("Rear part stats")).toBeTruthy();
   expect(screen.queryByLabelText("Tire part stats")).toBeNull();
@@ -69,7 +69,7 @@ it("shows only front and rear for Boost / Extreme Gear even if a stale catalog i
 
 it("distinguishes pending data, network failure and unavailable stats without fabricating a patch", () => {
   const { rerender } = render(<StockMachineCard {...props} loading />);
-  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Part stats" }));
   expect(screen.getByRole("status").textContent).toBe("Loading part stats…");
   rerender(<StockMachineCard {...props} error="Network unavailable" />);
   expect(screen.getByRole("alert").textContent).toContain("Couldn’t load part stats");

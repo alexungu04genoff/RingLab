@@ -14,7 +14,8 @@ import { ResetPasswordPage } from "./pages/ResetPasswordPage";
 import { AccountPage } from "./pages/AccountPage";
 import { GameData } from "./pages/GameData";
 import { CompareBuilds } from "./pages/CompareBuilds";
-import { BookmarkIcon, CompassIcon, HammerIcon, LibraryIcon } from "./icons";
+import { GuidePage } from "./pages/Guide";
+import { BookmarkIcon, CompassIcon, GuideIcon, HammerIcon, LibraryIcon } from "./icons";
 import { SavedBuildsProvider } from "./SavedBuilds";
 import { SavedBuildsPage } from "./pages/SavedBuildsPage";
 import { SiteFooter } from "./components";
@@ -39,6 +40,7 @@ function App() {
               <CompassIcon /> Explore
             </NavLink>
             <NavLink to="/game-data" aria-label="Game Collection"><LibraryIcon /> Game<span className="mobile-optional"> Collection</span></NavLink>
+            <NavLink className="nav-guide" to="/guide"><GuideIcon /> Guide</NavLink>
             <NavLink to="/my-builds"><HammerIcon /> My Builds</NavLink>
             <NavLink to="/saved-builds" aria-label="Saved Builds"><BookmarkIcon /> Saved<span className="mobile-optional"> Builds</span></NavLink>
           </nav>
@@ -110,6 +112,7 @@ function App() {
             element={<RequireAuth><AccountPage /></RequireAuth>}
           />
           <Route path="/game-data" element={<GameData />} />
+          <Route path="/guide" element={<GuidePage />} />
           <Route
             path="*"
             element={

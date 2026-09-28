@@ -71,4 +71,5 @@ it("credits Meohong visibly and links the documented sources", () => {
   expect(html).toContain("Special thanks to Meohong, creator of");
   expect(html).toContain('href="https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds"');
   expect(html).toContain('href="https://w.atwiki.jp/sonicracingcw/"');
+  expect(html).toContain('href="/guide"');
 });

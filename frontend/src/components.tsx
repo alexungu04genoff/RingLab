@@ -13,7 +13,7 @@ import { RacingTypeBadge, racingTypeClass, racingTypeLabel } from "./RacingTypeB
 export { racingTypeClass, racingTypeLabel } from "./RacingTypeBadge";
 import { machineTypeLabel } from "./machineComposition";
 import { savedBuildSetupIssues } from "./buildForm";
-import { LibraryIcon } from "./icons";
+import { GuideIcon, LibraryIcon } from "./icons";
 import { CompareToggle } from "./BuildComparison";
 import { SaveBuildButton } from "./SavedBuilds";
 import { MapRecommendationControl } from "./MapRecommendations";
@@ -47,7 +47,8 @@ export function SiteFooter() {
           </p>
         </div>
       </details>
-      <Link className="footer-collection-link" to="/game-data"><LibraryIcon /> Game collection ↗</Link>
+      <span className="footer-links"><Link to="/guide"><GuideIcon /> Guide</Link>
+        <Link to="/game-data"><LibraryIcon /> Game collection ↗</Link></span>
     </footer>
   );
 }

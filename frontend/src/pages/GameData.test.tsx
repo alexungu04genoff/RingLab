@@ -47,7 +47,7 @@ it("renders verified gadget artwork, effects and singular/plural costs without f
     { id: "unknown", name: "Ring Engine", description: null, slotCost: null, imagePath: null },
   ];
   vi.mocked(useLoad).mockImplementation(path => ({ data: path === "" || path === "/stats/gadget-rules" ? undefined : gadgets, loading: false, error: "" }));
-  const html = renderToStaticMarkup(<GameData />);
+  const html = renderToStaticMarkup(<MemoryRouter><GameData /></MemoryRouter>);
   expect(html).toContain('src="/assets/gadgets/handling-character-kit.png"');
   expect(html).toContain("Supports collisions and Ring theft.");
   expect(html).toContain("3 slots");
@@ -65,7 +65,7 @@ it("uses the shared racing type colors in racer collection cards", () => {
     { id: "sonic", name: "Sonic the Hedgehog", racingType: "SPEED", imagePath: "/assets/racers/sonic.png" },
   ];
   vi.mocked(useLoad).mockReturnValue({ data: racers, loading: false, error: "" });
-  const html = renderToStaticMarkup(<GameData />);
+  const html = renderToStaticMarkup(<MemoryRouter><GameData /></MemoryRouter>);
   expect(html).toContain("racer-collection-item");
   expect(html).toContain("racing-type-speed");
   expect(html).toContain(">SPEED</span>");
@@ -92,7 +92,7 @@ it("uses the newest released patch for collection stats regardless of API orderi
       : { gameVersionId: "latest", racers: { known: { speed: 20, acceleration: 5, handling: null, power: 15, boost: 7 } },
         machineParts: {}, machines: {} },
   }));
-  const html = renderToStaticMarkup(<GameData />);
+  const html = renderToStaticMarkup(<MemoryRouter><GameData /></MemoryRouter>);
   expect(html).toContain("Historical racer");
   expect(html).toContain("Later racer");
   expect(html).toContain("Partial stats");
@@ -123,12 +123,12 @@ it("shows loaded stock parts when explicitly opened without another catalog requ
         machineParts: Object.fromEntries(parts.map(({ id }) => [id, values])) },
   }));
 
-  render(<GameData />);
+  render(<MemoryRouter><GameData /></MemoryRouter>);
   fireEvent.click(screen.getByRole("button", { name: /Stock Machines/ }));
 
   const calls = vi.mocked(useLoad).mock.calls.length;
   expect(screen.queryByLabelText("Front part stats")).toBeNull();
-  fireEvent.click(screen.getByRole("button", { name: "View part stats" }));
+  fireEvent.click(screen.getByRole("button", { name: "Part stats" }));
   expect(vi.mocked(useLoad).mock.calls.length).toBe(calls);
 
   expect(screen.getByLabelText("Front part stats").textContent).toContain("Speed11");

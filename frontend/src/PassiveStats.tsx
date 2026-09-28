@@ -166,7 +166,6 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
           <li key={`${effect.gadgetId}-${effect.effectId}`}><strong>{effect.gadgetName} · {effect.label}</strong>
             {effect.status === "APPLIED" && <span>{adjustmentSummary(effect.adjustment)}</span>}
             <p>{effect.explanation}</p>
-            {effect.sources.length > 0 && <a href={effect.sources[0]} target="_blank" rel="noreferrer">Rule source ↗</a>}
           </li>)}</ul></section>;
       })}
       {value.effects.length === 0 && <p>No gadgets selected.</p>}
@@ -184,7 +183,7 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
           {rule.kind === "PASSIVE" ? <><p>{rule.subject === "ANY" ? "Always" : `${rule.subject === "RACER" ? "Racer" : "Machine"} type ${rule.requiredType}`}: {adjustmentSummary(rule.matching)}</p>
             {rule.subject !== "ANY" && <p>Other known types: {adjustmentSummary(rule.nonMatching)}</p>}</>
             : <p>{rule.kind === "CONDITIONAL" ? "Race condition — excluded" : rule.kind === "NON_STAT" ? "Separate from stat points" : "Unverified"}</p>}
-          <p>{rule.explanation}</p><a href={rule.sources[0]} target="_blank" rel="noreferrer">Rule source ↗</a>
+          <p>{rule.explanation}</p>
         </li>)}</ul>}
       <p>{catalog.note}</p><p>Machine tuner bonuses and penalties add together, including different tuner types. Modifiers affecting separate stats also combine. Other overlapping effects are reported as unresolved.</p></>}
   </details>;

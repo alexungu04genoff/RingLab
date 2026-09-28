@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 import { Artwork } from "./components";
 import { RacingTypeBadge } from "./RacingTypeBadge";
 import { StatsBlock } from "./BaseStats";
@@ -8,9 +8,9 @@ import type { BaseStats, Machine, MachinePart, StatsCatalog } from "./types";
 const slotOrder = ["FRONT", "REAR", "TIRE"];
 const slotLabel = (type: MachinePart["type"]) => type[0] + type.slice(1).toLowerCase();
 
-export function StockMachineCard({ machine, parts, catalog, version, loading, error }: {
+export function StockMachineCard({ machine, parts, catalog, version, loading, error, ownership }: {
   machine: Machine; parts: MachinePart[]; catalog?: StatsCatalog; version: string | null;
-  loading: boolean; error: string;
+  loading: boolean; error: string; ownership?: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -29,10 +29,13 @@ export function StockMachineCard({ machine, parts, catalog, version, loading, er
     <article className="panel collection-item machine-collection-item">
       <Artwork item={machine} compact />
       <div className="collection-copy"><span className="eyebrow">Machine</span><h2>{machine.name}</h2>
-        <RacingTypeBadge kind="machine" type={machine.racingType} className="collection-type" />
-        <button type="button" className="part-stats-trigger" ref={trigger} aria-expanded={open} aria-controls={id}
-          onClick={() => open ? close() : setOpen(true)}>{open ? "Hide part stats" : "View part stats"}</button>
+        <div className="machine-collection-actions">
+          <RacingTypeBadge kind="machine" type={machine.racingType} className="collection-type" />
+          <button type="button" className="part-stats-trigger" ref={trigger} aria-expanded={open} aria-controls={id}
+            onClick={() => open ? close() : setOpen(true)}>{open ? "Hide stats" : "Part stats"}</button>
+        </div>
       </div>
+      {ownership}
     </article>
     {open && <div className="machine-stats-disclosure" id={id} ref={panel} role="region" aria-label={`${machine.name} part stats`}>
       <div className="machine-stats-disclosure-heading"><Artwork item={machine} compact />

@@ -244,7 +244,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         />
         <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
           onChange={(id, include) => updateUrl({ mapId: id, includeAllMaps: id ? String(include) : "" })} />
-        <label>
+        <div className="filter-with-help"><label>
           <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span></span></span>
           <select
             value={sort}
@@ -258,7 +258,7 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             <option value="score">Highest score</option>
             <option value="rated">Best rated</option>
           </select>
-        </label>
+        </label><Link className="contextual-help" to="/guide#finding-builds">Sorting help →</Link></div>
       </section>
       {activeChips.length > 0 && (
         <div className="active-filters" aria-label="Active filters">
