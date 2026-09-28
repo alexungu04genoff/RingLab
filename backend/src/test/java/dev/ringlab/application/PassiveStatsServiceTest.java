@@ -14,6 +14,7 @@ class PassiveStatsServiceTest {
   private final UUID version=UUID.randomUUID(), racer=UUID.randomUUID(), car=UUID.randomUUID(), board=UUID.randomUUID();
   private final UUID front=UUID.randomUUID(), rear=UUID.randomUUID(), tire=UUID.randomUUID(), boardFront=UUID.randomUUID(), boardRear=UUID.randomUUID();
   private final Catalog game=new Catalog();
+  private RacingType carType = RacingType.POWER;
   private int baseReads;
   private final BaseStatsRepository values=new BaseStatsRepository() {
     public Map<UUID,BaseStats> racerStats(UUID id) { baseReads++;return Map.of(racer,PassiveGadgetRules.points(10,10,10,10,10)); }
@@ -57,6 +58,19 @@ class PassiveStatsServiceTest {
     assertThrows(ValidationException.class,()->service.draft(version,racer,front,rear,tire,List.of(PassiveGadgetRules.id(11),PassiveGadgetRules.id(38),PassiveGadgetRules.id(23))));
   }
 
+  @Test void verifiedTunerKitPairAgreesForDraftAndPersistedBuildInEitherOrder() {
+    carType = RacingType.ACCELERATION;
+    for (var ids : List.of(List.of(PassiveGadgetRules.id(55),PassiveGadgetRules.id(34)),
+        List.of(PassiveGadgetRules.id(34),PassiveGadgetRules.id(55)))) {
+      var draft = service.draft(version,racer,front,rear,tire,ids);
+      var saved = build(front,rear,tire,ids);
+      assertEquals(draft,service.buildPage(List.of(saved)).get(saved.id()));
+      assertEquals(PassiveStatsResult.Coverage.CALCULATED,draft.coverage());
+      assertEquals(PassiveGadgetRules.points(0,40,-2,0,-2),draft.adjustments());
+      assertEquals(new BigDecimal("53.75"),draft.adjusted().acceleration());
+    }
+  }
+
   @Test void incompleteDraftsExposeKnownSubtotalsAndCoherentMachineBonuses() {
     var partial=service.draft(version,racer,front,null,null,List.of(PassiveGadgetRules.id(38)));
     assertEquals(PassiveStatsResult.Coverage.PARTIAL,partial.coverage());
@@ -83,13 +97,14 @@ class PassiveStatsServiceTest {
     public Optional<GameVersion> findGameVersion(UUID id) { return listGameVersions().stream().filter(v->v.id().equals(id)).findFirst(); }
     public List<Racer> listRacers() { catalogReads++;return List.of(new Racer(racer,"Boost racer",RacingType.BOOST,null)); }
     public Optional<Racer> findRacer(UUID id) { return listRacers().stream().filter(r->r.id().equals(id)).findFirst(); }
-    public List<Machine> listMachines() { catalogReads++;return List.of(new Machine(car,"Power car",RacingType.POWER,null),new Machine(board,"Board",RacingType.BOOST,null)); }
+    public List<Machine> listMachines() { catalogReads++;return List.of(new Machine(car,"Car",carType,null),new Machine(board,"Board",RacingType.BOOST,null)); }
     public Optional<Machine> findMachine(UUID id) { return listMachines().stream().filter(m->m.id().equals(id)).findFirst(); }
     public List<MachinePart> listMachineParts() { catalogReads++;return List.of(new MachinePart(front,car,MachinePartType.FRONT),
         new MachinePart(rear,car,MachinePartType.REAR),new MachinePart(tire,car,MachinePartType.TIRE),
         new MachinePart(boardFront,board,MachinePartType.FRONT),new MachinePart(boardRear,board,MachinePartType.REAR)); }
     public Optional<MachinePart> findMachinePart(UUID id) { return listMachineParts().stream().filter(p->p.id().equals(id)).findFirst(); }
     public List<Gadget> listGadgets() { catalogReads++;return List.of(new Gadget(PassiveGadgetRules.id(11),"Boost Character Kit",null,3,null),
+        new Gadget(PassiveGadgetRules.id(55),"Acceleration Tuner 2",null,1,null),new Gadget(PassiveGadgetRules.id(34),"Acceleration Machine Kit",null,3,null),
         new Gadget(PassiveGadgetRules.id(38),"Power Machine Kit",null,3,null),new Gadget(PassiveGadgetRules.id(23),"Panel Combo Kit",null,3,null)); }
     public Optional<Gadget> findGadget(UUID id) { return listGadgets().stream().filter(g->g.id().equals(id)).findFirst(); }
   }

@@ -156,6 +156,7 @@ public final class BuildRecommendationSolver {
     if (!GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) return;
     var effects = passive(racerType, selected);
     // For fixed types, adding gadgets cannot cure unknown effects or an unresolved applied-modifier stack.
+    // Verified pairs are context-independent: adding a third gadget cannot legalize a rejected pair.
     if (effects.coverage() != PassiveStatsResult.Coverage.CALCULATED) return;
     if (components == null) {
       var selection = new BuildSelection(base.racerId(), base.frontPartId(), base.rearPartId(), base.tirePartId(), ordered(selected));

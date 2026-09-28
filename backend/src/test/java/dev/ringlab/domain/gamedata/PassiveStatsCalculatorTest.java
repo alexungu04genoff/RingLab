@@ -180,6 +180,24 @@ class PassiveStatsCalculatorTest {
     assertEquals(result.adjusted(),calculate(BOOST,POWER,11,38).adjusted());
   }
 
+  @Test void accelerationTunerTwoAndMachineKitMatchTheExecutedReferenceCalculator() {
+    var base = new BaseStatsBreakdown(points(58,65,29,54,34),points(13,8,5,18,16),points(45,57,24,36,18));
+    assertEquals(points(0,20,-2,0,-2),calculate(POWER,ACCELERATION,55).adjustments());
+    assertEquals(points(0,20,0,0,0),calculate(POWER,ACCELERATION,34).adjustments());
+    for (var machine : RacingType.values()) for (var ids : List.of(List.of(55,34),List.of(34,55))) {
+      var result = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,machine,ids.stream().map(this::gadget).toList(),true);
+      assertEquals(CALCULATED,result.coverage());
+      assertEquals(machine == ACCELERATION ? points(0,40,-2,0,-2) : points(0,8,0,0,0),result.adjustments());
+      assertEquals(machine == ACCELERATION ? points(58,105,27,54,32) : points(58,73,29,54,34),result.adjusted());
+      assertEquals(CONDITIONAL,result.effects().stream().filter(e -> e.gadgetId().equals(id(34)) && !e.effectId().equals("stats")).findFirst().orElseThrow().status());
+    }
+    // Pair evidence is not transitive and does not authorize other tuner/kit pairs.
+    assertEquals(PARTIAL,calculate(POWER,ACCELERATION,54,34).coverage());
+    assertEquals(PARTIAL,calculate(POWER,ACCELERATION,55,34,54).coverage());
+    assertEquals(PARTIAL,calculate(POWER,SPEED,52,49).coverage());
+    assertEquals(points(0,40,-2,8,-2),calculate(POWER,ACCELERATION,55,34,58).adjustments());
+  }
+
   @Test void alwaysActiveKitEffectsAreSeparateFromExcludedCapabilities() {
     assertEquals(points(0,0,3,0,0),calculate(null,null,50).adjustments());
     assertEquals(NON_STAT,calculate(null,null,50).effects().getLast().status());

@@ -12,6 +12,38 @@ import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outco
 import static dev.ringlab.domain.gamedata.PassiveGadgetRules.points;
 
 class BuildRecommendationSolverTest {
+  @Test void verifiedTunerKitPairIsRetainedAndDiscoveredInStrictAndBalancedSearch() {
+    var f = new Fixture(); f.addGadget(55,1); f.addGadget(34,3);
+    f.machines.put(id(5),new Machine(id(5),"Acceleration source",RacingType.ACCELERATION,null));
+    f.racerStats.put(RACER,points(55,62,26,51,31));
+    var pair = List.of(PassiveGadgetRules.id(55),PassiveGadgetRules.id(34));
+    var losses = new EnumMap<StatPriority,BigDecimal>(StatPriority.class);
+    ORDER.forEach(stat -> losses.put(stat,BigDecimal.valueOf(100)));
+    for (var mode : RecommendationMode.values()) for (var order : List.of(pair,pair.reversed())) {
+      var current = selection(order);
+      var config = mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses,List.of()) : null;
+      var locked = new RecommendationRequest(VERSION,RacingType.ACCELERATION,ORDER,current,current,mode,config);
+      var retained = solve(f,locked);
+      assertEquals(ESTABLISHED,retained.outcome());
+      assertEquals(current,retained.selection());
+      assertEquals(points(58,105,27,54,32),retained.currentStats());
+      assertEquals(retained.currentStats(),retained.recommendedStats());
+      // Starting from no gadgets exercises search-prefix pruning, not just the existing baseline.
+      var discovered = solve(f,new RecommendationRequest(VERSION,RacingType.ACCELERATION,ORDER,
+          selection(List.of()),selection(List.of()),mode,config));
+      assertEquals(ESTABLISHED,discovered.outcome());
+      assertEquals(new HashSet<>(pair),new HashSet<>(discovered.selection().gadgetIds()));
+      assertEquals(points(58,105,27,54,32),discovered.recommendedStats());
+    }
+    f.addGadget(54,1);
+    var unresolved = selection(List.of(PassiveGadgetRules.id(54),PassiveGadgetRules.id(34)));
+    for (var mode : RecommendationMode.values()) {
+      var result = solve(f,new RecommendationRequest(VERSION,RacingType.ACCELERATION,ORDER,unresolved,unresolved,mode,
+          mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses,List.of()) : null));
+      assertEquals(UNAVAILABLE,result.outcome());
+      assertNull(result.selection());
+    }
+  }
   @Test void exclusionsFilterEveryPoolInBothModesWithoutChangingReferenceStats() {
     var f = new Fixture(); f.addGadget(45, 1);
     f.machines.put(id(6), new Machine(id(6), "Alternative", RacingType.SPEED, null));

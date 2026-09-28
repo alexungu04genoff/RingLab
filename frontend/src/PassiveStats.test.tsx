@@ -41,7 +41,7 @@ it("distinguishes partial, unsupported, conditional and non-stat effects",()=>{
   const effects=result.effects.map(effect=>({...effect,status:"CONDITIONAL" as const}));
   const {rerender}=render(<PassiveStatsPanel value={{...result,coverage:"PARTIAL",effects}} />);
   expect(screen.getByText("Conditional effects — not included")).toBeTruthy();
-  expect(screen.getByText(/Known subtotal only/)).toBeTruthy();
+  expect(screen.getByText("Base stats shown — this gadget combination is not fully calculated.")).toBeTruthy();
   rerender(<PassiveStatsPanel value={{...result,coverage:"UNSUPPORTED_VERSION"}} />);
   expect(screen.getByText("Gadget rules unavailable for this patch")).toBeTruthy();
   expect(screen.getByLabelText("speed result").textContent).toBe("= —");
@@ -55,8 +55,17 @@ it("makes unresolved stacking visible instead of presenting the catalog bonus as
       explanation:"Individual modifier is verified, but stacking is unresolved."}]};
   render(<><GadgetAdjustmentBadges gadgetId="g1" value={unresolved} /><PassiveStatsPanel value={unresolved} /></>);
   expect(screen.getByLabelText("Gadget adjustment not included").textContent).toContain("stacking unresolved");
-  expect(screen.getByText(/Gadget bonuses not added/).textContent).toContain("Acceleration Machine Kit");
-  expect(screen.getByLabelText("Gadget acceleration adjustment").textContent).toBe("+0");
+  expect(screen.getByText("Base stats shown — this gadget combination is not fully calculated.")).toBeTruthy();
+  expect(screen.getByLabelText("Gadget acceleration adjustment").textContent).toBe("Not calculated");
+  expect(screen.getByText(/Individual modifier is verified/).closest("details")).toBeTruthy();
+});
+
+it("labels a partial result with surviving adjustments as a known subtotal",()=>{
+  render(<PassiveStatsPanel value={{...result,coverage:"PARTIAL",effects:[...result.effects,
+    {...result.effects[0],gadgetId:"unknown",status:"UNSUPPORTED",explanation:"Unknown interaction"}]}} />);
+  expect(screen.getByText("Known subtotal — this setup is not fully calculated.")).toBeTruthy();
+  expect(screen.getByLabelText("Gadget speed adjustment").textContent).toBe("Known +40");
+  expect(screen.getByLabelText("Gadget handling adjustment").textContent).toBe("Not calculated");
 });
 
 it("keeps reviewed values visible when a selected gadget is not active for the current setup",()=>{

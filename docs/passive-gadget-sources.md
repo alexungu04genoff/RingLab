@@ -119,8 +119,61 @@ and the separate Substitute Item slot-cost discrepancy.
 
 ## Implementation and compatibility
 
+### Acceleration Tuner 2 + Acceleration Machine Kit (2026-09-28)
+
+Ruleset `2026-09-28.5` adds **only** the pair of `stats` effects on stable catalog
+IDs ending `055` and `034`. Their existing individual values and slot costs are
+unchanged. Other Tuner/Kit pairs have not been enabled by this review, nor does this
+pair grant transitive permission to a third overlapping effect.
+
+Reproduced through the existing local read-only draft endpoint: Knuckles the Echidna
+and all three Giganto Liner parts on 1.4.1 returned base `(58,65,29,54,34)`, `PARTIAL`,
+zero included adjustments and both passive effects `UNSUPPORTED`. The tuner had
+`machine-tuners`; the kit had no stacking group. No saved build was edited.
+
+Individual evidence: the original Gadget List's current 1.4 sheet, rows 133 and 159,
+was read again. Tuner 2 gives matching `+20 Acceleration, -2 Handling, -2 Boost`,
+otherwise `+8 Acceleration`; the kit gives matching `+20 Acceleration`, otherwise
+no passive adjustment. SEGA's 1.4.1 notice confirms changed bonuses and the removed
+kit penalty, but is **not** evidence of this pair's stacking.
+
+Combined evidence: fetched the reference builder's publicly served calculation
+module `/_next/static/immutable/chunks/3fo_6rojgq9h9.js` and data module
+`/_next/static/immutable/chunks/252-neok-oop8.js`. Executed its actual exported
+`computeBuildStats` function in an isolated Node VM with actual `gadget_041` and
+`gadget_080` records. With the above base and an Acceleration machine it returned:
+
+| Selection | Speed | Acceleration | Handling | Power | Boost |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Tuner 2 alone | 58 | 85 | 27 | 54 | 32 |
+| Machine Kit alone | 58 | 85 | 29 | 54 | 34 |
+| Both, either order | 58 | 105 | 27 | 54 | 32 |
+| Both on a Speed machine, same numeric base | 58 | 73 | 29 | 54 | 34 |
+
+Module SHA-256s, respectively:
+`03875e8b15748b7122103179865058015e71f9f78a3db041d2817135b662133d` and
+`0632652888229f510a4afa63f51215bed6a61304cae5190174cedd134e2f3fca`.
+The function chooses type-dependent rows and sums signed points; this is observed
+community-calculator behavior, not an independent in-game experiment. The original
+sheet and builder remain one evidence lineage. No effective cap or in-game rounding
+was established. Acceleration 105 is an unclamped raw subtotal, not a performance
+guarantee. Recovery remains a separate race-time capability, never extra points.
+
+Both recommendation modes use this same domain arithmetic. Pairwise rejection is
+still monotone for fixed types: adding a third effect cannot make a rejected pair
+supported. Tests exercise discovery from an empty gadget selection, both locked
+orders, unresolved pairs, and draft/persisted agreement.
+
+Verification: 37 pure backend tests passed (`PassiveStatsCalculatorTest`,
+`PassiveStatsServiceTest`, `BuildRecommendationSolverTest`) using an offline Maven
+run in a temporary source copy; 16 `PassiveStats.test.tsx` tests and the frontend
+build passed. The running local API then returned `CALCULATED`, ruleset `.5`,
+adjustments `(0,40,-2,0,-2)` and result `(58,105,27,54,32)` for the same read-only
+draft request. No services were stopped and no saved data was changed. Integration
+and full-suite tests were not run.
+
 `PassiveGadgetRules` is a typed local table keyed by UUID, ruleset
-`crossworlds-1.4.1-passive-2026-09-28.4`. `PassiveStatsCalculator` is pure domain arithmetic;
+`crossworlds-1.4.1-passive-2026-09-28.5`. `PassiveStatsCalculator` is pure domain arithmetic;
 `PassiveStatsService` validates drafts, resolves actual racer/machine types separately, and
 batches page data. Top-three exports reuse it with already resolved metadata. No new rules
 engine, live scraping, ranking, ownership, publication or map mechanics are introduced.

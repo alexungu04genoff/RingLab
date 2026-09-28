@@ -90,9 +90,12 @@ export function adjustmentSummary(stats: BaseStats) {
   return statNames.filter(name => stats[name] !== 0 && stats[name] != null)
     .map(name => `${name[0].toUpperCase() + name.slice(1)} ${signedPoints(stats[name])}`).join(", ") || "No stat-point adjustment";
 }
+const hasKnownAdjustments = (value: PassiveStatsResult) => value.effects.some(effect => effect.status === "APPLIED"
+  && statNames.some(name => effect.adjustment[name] != null && effect.adjustment[name] !== 0));
 export const coverageLabel = (value: PassiveStatsResult) => ({
   CALCULATED: "Reviewed passive effects calculated",
-  PARTIAL: "Partial calculation",
+  PARTIAL: hasKnownAdjustments(value) ? "Known subtotal — this setup is not fully calculated."
+    : "Base stats shown — this gadget combination is not fully calculated.",
   UNSUPPORTED_VERSION: "Gadget rules unavailable for this patch",
   INVALID_LOADOUT: "Gadget calculation unavailable for this loadout",
 })[value.coverage];
@@ -108,14 +111,15 @@ const groups = [
 export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveStatsResult; compact?: boolean }) {
   if (!value) return <p className="muted">Passive gadget information is unavailable. Base stats remain available.</p>;
   const unavailable = value.coverage === "UNSUPPORTED_VERSION" || value.coverage === "INVALID_LOADOUT";
-  const unresolvedGadgets = [...new Set(value.effects
-    .filter(effect => effect.effectId === "stats" && effect.status === "UNSUPPORTED")
-    .map(effect => effect.gadgetName))];
+  const partial = value.coverage === "PARTIAL";
+  const adjustmentLabel = (name: StatName) => unavailable ? "Unknown"
+    : partial ? (value.effects.some(effect => effect.status === "APPLIED" && (effect.adjustment[name] ?? 0) !== 0)
+      ? `Known ${signedPoints(value.adjustments[name])}` : "Not calculated") : signedPoints(value.adjustments[name]);
   const calculations = <dl className="passive-stat-grid" aria-label="Base plus gadget adjustment equals result">
     {statNames.map(name => <div key={name} className={`stat-${name}`}>
       <dt>{name[0].toUpperCase() + name.slice(1)}</dt>
       <dd><span aria-label={`Base ${name}`}>{value.base[name] ?? "—"}</span>
-        <span className="passive-delta" aria-label={`Gadget ${name} adjustment`}>{unavailable ? "Unknown" : signedPoints(value.adjustments[name])}</span>
+        <span className="passive-delta" aria-label={`Gadget ${name} adjustment`}>{adjustmentLabel(name)}</span>
         <strong aria-label={`${name} result`}>= {unavailable ? "—" : value.adjusted[name] ?? "—"}</strong></dd>
     </div>)}
   </dl>;
@@ -136,7 +140,7 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
         const scale = 100 / Math.max(100, base ?? 0, total ?? 0);
         const racer = Math.min(100, Math.max(0, value.base.character?.[name] ?? 0) * scale);
         const machine = Math.min(100 - racer, Math.max(0, value.base.machine?.[name] ?? 0) * scale);
-        const explanation = `${label}: base ${base ?? "unknown"}; gadget ${signedPoints(delta)}; ${unavailable ? "base shown" : "result"} ${total ?? "unknown"}`;
+        const explanation = `${label}: base ${base ?? "unknown"}; gadget ${adjustmentLabel(name)}; ${unavailable ? "base shown" : partial ? "known subtotal" : "result"} ${total ?? "unknown"}`;
         return <div className={`stat-row stat-${name}`} key={name}>
           <div className="stat-label"><dt>{label}</dt><dd>{total ?? "—"}</dd></div>
           <div className="card-stat-meter">
@@ -150,12 +154,9 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
           </div>
         </div>;
       })}</dl></>}
-    {unresolvedGadgets.length > 0 && <p className="passive-stacking-warning" role="note">
-      Gadget bonuses not added: stacking is unresolved for {unresolvedGadgets.join(" + ")}.
-    </p>}
     <p className="passive-coverage" role="note">{coverageLabel(value)}</p>
     {compact && calculations}
-    <p className="muted passive-note">{value.coverage === "PARTIAL" ? "Known subtotal only. " : ""}Passive effects only · Ver. {value.supportedVersion}</p>
+    <p className="muted passive-note">Passive effects only · Ver. {value.supportedVersion}</p>
     <details className="passive-effects" onClick={event => event.stopPropagation()}>
       <summary>Gadget effect details</summary>
       {!compact && calculations}
@@ -185,7 +186,7 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
             : <p>{rule.kind === "CONDITIONAL" ? "Race condition — excluded" : rule.kind === "NON_STAT" ? "Separate from stat points" : "Unverified"}</p>}
           <p>{rule.explanation}</p>
         </li>)}</ul>}
-      <p>{catalog.note}</p><p>Machine tuner bonuses and penalties add together, including different tuner types. Modifiers affecting separate stats also combine. Other overlapping effects are reported as unresolved.</p></>}
+      <p>{catalog.note}</p><p>Machine tuner bonuses and penalties add together, including different tuner types. Acceleration Tuner 2 also adds to Acceleration Machine Kit. Modifiers affecting separate stats also combine. Other overlapping effects are reported as unresolved.</p></>}
   </details>;
 }
 

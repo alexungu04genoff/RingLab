@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 /** Small, version-specific reviewed table. See docs/passive-gadget-sources.md. */
 public final class PassiveGadgetRules {
   public static final String VERSION = "1.4.1";
-  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-28.4";
+  public static final String RULESET = "crossworlds-1.4.1-passive-2026-09-28.5";
   public static final String ORIGINAL = "https://docs.google.com/spreadsheets/u/0/d/1_B2mHZUP6J6jeZfcwbM2HkLvjkwMYuACE4l6Ktt-UkI/htmlview/sheet?headers=true&gid=0";
   public static final String SEGA = "https://asia.sega.com/SonicRacingCrossWorlds/en/update/v-1-4-1.html";
   public static final BaseStats ZERO = points(0, 0, 0, 0, 0);
@@ -26,6 +26,16 @@ public final class PassiveGadgetRules {
     return UUID.fromString("70000000-0000-4000-8000-" + String.format("%012d", suffix));
   }
   public static List<GadgetEffectRule> forGadget(UUID id) { return RULES.getOrDefault(id, List.of()); }
+  /** Pairwise evidence only: never implies that other kits or effects share a stacking group. */
+  public static boolean verifiedStack(GadgetEffectRule first, GadgetEffectRule second) {
+    if (first.gadgetId().equals(second.gadgetId())) return false;
+    if (first.stackingGroup() != null && first.stackingGroup().equals(second.stackingGroup())) return true;
+    if (!first.effectId().equals("stats") || !second.effectId().equals("stats")) return false;
+    // Executed reference calculator with its actual gadget_041/gadget_080 records in both orders.
+    // See docs/passive-gadget-sources.md; recovery remains a separate, excluded effect.
+    return first.gadgetId().equals(id(55)) && second.gadgetId().equals(id(34))
+        || first.gadgetId().equals(id(34)) && second.gadgetId().equals(id(55));
+  }
   public static BaseStats points(int speed, int acceleration, int handling, int power, int boost) {
     return new BaseStats(BigDecimal.valueOf(speed), BigDecimal.valueOf(acceleration),
         BigDecimal.valueOf(handling), BigDecimal.valueOf(power), BigDecimal.valueOf(boost));

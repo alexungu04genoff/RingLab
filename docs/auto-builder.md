@@ -103,8 +103,10 @@ the objective and lose the addition/slot tie-breaks. Current utility gadgets
 remain candidates because avoiding a removal is an earlier tie-break. Branches
 with an invalid plate or unsupported combination are pruned. For fixed types,
 adding an item cannot repair an unknown effect or an unresolved applied-modifier
-stack. The only supported multiple-applied-modifier stack is the reviewed same-type
-Tuner 1 + Tuner 2 pair; adding a third cannot restore support. No pruning assumes
+stack. Disjoint stat adjustments, all machine-tuner pairs, and the explicitly
+reviewed Acceleration Tuner 2 / Acceleration Machine Kit passive pair are supported.
+Pair permissions use fixed effect identities and are not transitive: adding a third
+cannot restore support for a rejected pair. No pruning assumes
 that an individually strongest gadget is globally best.
 
 No full component Cartesian product is allocated. With R racers, P parts, G

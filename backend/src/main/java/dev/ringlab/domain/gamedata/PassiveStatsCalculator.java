@@ -52,7 +52,7 @@ public final class PassiveStatsCalculator {
     }
 
     // Independent stat adjustments do not stack with one another. Only overlapping
-    // modifiers need a supported stacking group. All machine tuners use additive
+    // modifiers need a supported stacking group or an explicitly reviewed pair. All machine tuners use additive
     // stat points, including penalties that offset another tuner's bonus.
     var applied = effects.stream().filter(e -> e.status() == APPLIED).toList();
     if (applied.size() > 1) {
@@ -84,7 +84,7 @@ public final class PassiveStatsCalculator {
         .filter(r -> r.effectId().equals(effects.get(0).effectId())).findFirst().orElseThrow();
     var second = PassiveGadgetRules.forGadget(effects.get(1).gadgetId()).stream()
         .filter(r -> r.effectId().equals(effects.get(1).effectId())).findFirst().orElseThrow();
-    return first.stackingGroup() != null && first.stackingGroup().equals(second.stackingGroup());
+    return PassiveGadgetRules.verifiedStack(first, second);
   }
 
   private static boolean overlaps(BaseStats first, BaseStats second) {
