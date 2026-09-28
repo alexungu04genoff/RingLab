@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Artwork, ErrorNotice, racingTypeClass, racingTypeLabel } from "./components";
+import { CollectionStatus } from "./Collection";
 import { useBuildRecommendation } from "./useBuildRecommendation";
 import { defaultPriorities, draftSelection, lockTypeConflict, movePriority, movePriorityTo, validPriorities, validBalanced, signedStatChange, recommendationIdentity } from "./recommendation";
 import { useLoad } from "./useLoad";
@@ -37,8 +38,8 @@ function SelectionItem({ id, slot, catalog, showType = false }: {
   const racer = slot === "racerId" ? catalog.racers.find(item => item.id === id) : undefined;
   const part = slot && slot !== "racerId" ? catalog.parts.find(item => item.id === id) : undefined;
   const gadget = !slot ? catalog.gadgets.find(item => item.id === id) : undefined;
-  const item = racer ?? gadget ?? (part ? { id: part.id, name: part.sourceMachineName, racingType: part.racingType, imagePath: part.sourceMachineImagePath } : null);
-  return <span className={`recommendation-item${gadget ? " recommendation-gadget-item" : ""}`}>{item && <Artwork item={item} compact />}
+  const item = racer ?? gadget ?? (part ? { id: part.sourceMachineId, name: part.sourceMachineName, racingType: part.racingType, imagePath: part.sourceMachineImagePath } : null);
+  return <span className={`recommendation-item${gadget ? " recommendation-gadget-item" : ""}`}>{item && <Artwork item={item} category={racer ? "RACER" : gadget ? "GADGET" : "MACHINE"} compact />}
     <span className={showType ? "recommendation-item-copy" : undefined}>
       <span>{item?.name ?? (id ? "Unknown selection" : "Not selected")}</span>
       {showType && (racer || part) && <RacingTypeBadge kind={racer ? "racer" : "machine"}
@@ -233,6 +234,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
             {locks.gadgetIds.map(id => <li key={id}><SelectionItem id={id} catalog={catalog} /><span>Locked gadget</span></li>)}</ul>}
       </section>}
       <ErrorNotice message={recommendation.error} />
+      <CollectionStatus />
       <div className="recommendation-toolbar">
       <div className="recommendation-modes" role="group" aria-label="Recommendation mode">
         {(["STRICT", "BALANCED"] as const).map(value => <button type="button" key={value} aria-pressed={mode === value}
@@ -372,7 +374,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       onClick={() => recommendation.calculate({ gameVersionId: reference.gameVersionId!, machineType: machineType!, priorities: activePriorities,
         current: draftSelection(reference), locked: locks, ...(mode === "BALANCED" ? { mode, balanced: {
           maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), secondary } } : {}) })}>Calculate recommendation</button>}
-      {selected && <button type="button" className="primary" onClick={() => { if (recommendation.apply()) onClose(); }}>Apply to draft</button>}
+      {selected && <button type="button" className="primary" disabled={recommendation.busy} onClick={async () => { if (await recommendation.apply()) onClose(); }}>Apply to draft</button>}
       {result && <button type="button" onClick={recommendation.cancel}>Back to priorities</button>}
       {!result && mode === "BALANCED" && !referenceAvailable && passiveReference &&
         <button type="button" onClick={() => { recommendation.cancel(); setMode("STRICT"); }}>Use Strict</button>}

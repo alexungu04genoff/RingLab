@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import { CollectionProvider } from "./Collection";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, Link, NavLink, Route, Routes } from "react-router-dom";
 import { AuthProvider, RequireAuth, useAuth } from "./auth";
@@ -129,7 +130,7 @@ createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <BrowserRouter>
       <AuthProvider>
-        <SavedBuildsProvider><BuildComparisonProvider><App /></BuildComparisonProvider></SavedBuildsProvider>
+        <CollectionProvider><SavedBuildsProvider><BuildComparisonProvider><App /></BuildComparisonProvider></SavedBuildsProvider></CollectionProvider>
       </AuthProvider>
     </BrowserRouter>
   </StrictMode>,

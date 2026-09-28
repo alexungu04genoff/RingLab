@@ -1,4 +1,6 @@
 import { useId, useState } from "react";
+import { isExcluded, MissingItems, useCollection } from "./Collection";
+import type { CollectionCategory } from "./Collection";
 import { Link, useLocation } from "react-router-dom";
 import type { ReactNode } from "react";
 import type { Build, BuildStatsResult, Gadget, GameVersion, Machine, MachinePart, Racer, PassiveStatsResult } from "./types";
@@ -61,12 +63,17 @@ export function Artwork({
   item,
   compact = false,
   portrait = false,
+  category,
 }: {
   item: Racer | Machine | Gadget;
   compact?: boolean;
   portrait?: boolean;
+  category?: CollectionCategory;
 }) {
   const [failed, setFailed] = useState(false);
+  const collection = useCollection();
+  const itemCategory = category ?? ("slotCost" in item ? "GADGET" : portrait ? "RACER" : "MACHINE");
+  const unavailable = collection.status === "ready" && isExcluded(collection.data, itemCategory, item.id);
   const imagePath = item.imagePath ?? ("slotCost" in item ? gadgetArtworkById[item.id] : undefined);
   const local = imagePath?.startsWith("/assets/");
   const imageUrl = imagePath?.startsWith("/assets/racers/")
@@ -75,7 +82,8 @@ export function Artwork({
   const racingType = "racingType" in item ? item.racingType ?? "unknown" : "gadget";
   return (
     <div
-      className={`artwork ${compact ? "compact" : ""} ${portrait ? "portrait" : ""} type-${racingType.toLowerCase()}`}
+      className={`artwork ${unavailable ? "not-owned-artwork" : ""} ${compact ? "compact" : ""} ${portrait ? "portrait" : ""} type-${racingType.toLowerCase()}`}
+      title={unavailable ? `${item.name} — Not owned` : undefined}
     >
       {local && !failed ? (
         <img
@@ -175,6 +183,7 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
   const passive = resolvedPageStats ? (resolvedPageStats.status === "ready" ? resolvedPageStats.value.passive : undefined) : stats?.passive;
   return (
     <article className="build-card">
+      <MissingItems build={build} />
       <div className="card-art">
         {rank != null && <span className="top-community-rank" aria-label={`Rank ${rank}`}>#{rank}</span>}
         <Artwork item={build.racer} portrait />
@@ -306,6 +315,7 @@ export function ItemSelect({
   labelAction?: ReactNode;
 }) {
   const selectId = useId();
+  const collection = useCollection();
   const select = <select
         id={selectId}
         value={value}
@@ -322,6 +332,7 @@ export function ItemSelect({
           <option key={i.id} value={i.id}
             className={`typed-option ${racingTypeClass(i.racingType)}`}>
             {i.name}
+            {collection.status === "ready" && isExcluded(collection.data, label === "Racer" ? "RACER" : "MACHINE", i.id) ? " — Not owned" : ""}
             {` · ● ${racingTypeLabel(i.racingType)}`}
           </option>
         ))}

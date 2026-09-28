@@ -88,7 +88,7 @@ export function ComparisonTray() {
     <strong>{selected.length} of 2 selected</strong>
     {comparison.state.limitReached && <p className="comparison-tray-message" role="status">{comparison.state.announcement}</p>}
     <ul>{selected.map((build) => <li key={build.id}>
-      <Artwork item={build.racer} compact />
+      <Artwork item={build.racer} category="RACER" compact />
       <div className="comparison-selection-title"><strong>{build.title}</strong>
         {errors[build.id] && <p role="alert">{errors[build.id]}</p>}</div>
       <button type="button" aria-label={`Remove ${build.title} from comparison`}

@@ -5,6 +5,7 @@ import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api, ApiError, currentSessionGeneration, json } from "../api";
 import { useAuth } from "../auth";
+import { MissingItems, useCollection } from "../Collection";
 import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
 import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, moveGadgetTo, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
 import { useLoad } from "../useLoad";
@@ -24,6 +25,9 @@ const partSlots = [
   { key: "tirePartId", type: "TIRE", label: "Tires" },
 ] as const;
 export function BuildEditor() {
+  const collection = useCollection();
+  const ownershipLabel = (category: "racers" | "machines" | "gadgets", id: string) =>
+    collection.status === "ready" && collection.data[category].includes(id) ? " — Not owned" : "";
   const editorId = useId();
   const { id } = useParams();
   const [searchParams] = useSearchParams();
@@ -104,6 +108,11 @@ export function BuildEditor() {
           </div>
           <div className="build-editor-title-row">
             <h1>{id ? "Fine-tune your build." : "Make it your own."}</h1>
+            {selectedRacer && <MissingItems build={{ racer: selectedRacer,
+              frontPart: parts.data?.find(part => part.id === draft.frontPartId),
+              rearPart: parts.data?.find(part => part.id === draft.rearPartId),
+              tirePart: parts.data?.find(part => part.id === draft.tirePartId) ?? null,
+              gadgets: selectedGadgets.filter((g): g is Gadget => !!g) }} />}
             <p>One racer. Your machine type and gadget combination.</p>
           </div>
         </div>
@@ -217,7 +226,7 @@ export function BuildEditor() {
                     }}>
                       <option value="">Choose a complete stock setup</option>
                       {stockMachineSources(parts.data ?? [], draft.machineType).map((part) => (
-                        <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName} · {racingTypeLabel(part.racingType)}</option>
+                        <option key={part.sourceMachineId} value={part.sourceMachineId}>{part.sourceMachineName} · {racingTypeLabel(part.racingType)}{ownershipLabel("machines", part.sourceMachineId)}</option>
                       ))}
                     </select>
                   </div>
@@ -281,7 +290,7 @@ export function BuildEditor() {
                         {options.map((part) => (
                           <option key={part.id} value={part.id}
                             className={`typed-option ${racingTypeClass(part.racingType)}`}>
-                            {part.sourceMachineName} · ● {racingTypeLabel(part.racingType)}
+                            {part.sourceMachineName} · ● {racingTypeLabel(part.racingType)}{ownershipLabel("machines", part.sourceMachineId)}
                           </option>
                         ))}
                       </select>
@@ -334,7 +343,7 @@ export function BuildEditor() {
                         }
                       />
                       <Artwork item={g} compact />
-                      <span className="gadget-option-copy"><strong>{g.name}</strong>
+                      <span className="gadget-option-copy"><strong>{g.name}{ownershipLabel("gadgets", g.id)}</strong>
                         <span className="gadget-option-meta">
                           <small className="gadget-slot-badge">{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
                           <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules.data} selection={gadgetTypeSelection} />

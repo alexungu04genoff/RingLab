@@ -6,6 +6,9 @@ import type { Build, BuildStatsResult, MachinePart } from "../types";
 import { BuildEditor } from "./BuildEditor";
 
 vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
+vi.mock("../Collection", async original => ({ ...await original<typeof import("../Collection")>(),
+  useCollection: () => ({ status: "ready", busy: false, revision: 0, data: { racers: [], machines: [], gadgets: [] },
+    refresh: async () => ({ racers: [], machines: [], gadgets: [] }) }) }));
 vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine",

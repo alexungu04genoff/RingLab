@@ -9,6 +9,10 @@ import type { RecommendationCatalog, RecommendationRequest, RecommendationResult
 import type { BuildDraft, BuildStatsResult } from "./types";
 
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api: vi.fn() }));
+const collection = vi.hoisted(() => ({ status: "ready", busy: false, revision: 0,
+  data: { racers: [] as string[], machines: [] as string[], gadgets: [] as string[] },
+  refresh: vi.fn(async () => ({ racers: [] as string[], machines: [] as string[], gadgets: [] as string[] })) }));
+vi.mock("./Collection", async original => ({ ...await original<typeof import("./Collection")>(), useCollection: () => collection }));
 const draft: BuildDraft = { title: "Keep", description: "Details", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
   machineType: "SPEED", gameVersionId: "patch", gadgetIds: ["a"], recommendedMapIds: ["map"], mapRecommendationMode: "SELECTED", remixedFromBuildId: "source" };
 const catalog: RecommendationCatalog = { racers: [{ id: "r", name: "Sonic", racingType: "SPEED", imagePath: null }],
@@ -25,7 +29,49 @@ const result: RecommendationResult = { outcome: "ESTABLISHED", selection: { ...d
   reason: "Compared with current: first differing priority is ACCELERATION.", restrictions: ["Unreviewed rules are excluded."],
   ruleset: "test-rules", note: "Caps are not established.", work: 123, elapsedMillis: 2 };
 const request: RecommendationRequest = { gameVersionId: "patch", machineType: "SPEED", priorities: defaultPriorities, current: draftSelection(draft), locked: emptyLocks() };
+it("blocks failed collection loads and revalidates every selected source before Apply", async () => {
+  const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
+  collection.status = "error"; hook.rerender();
+  await act(async () => { await hook.result.current.calculate(request); });
+  expect(api).not.toHaveBeenCalled();
+  collection.status = "ready"; hook.rerender();
+  await act(async () => { await hook.result.current.calculate(request); });
+  collection.refresh.mockResolvedValue({ racers: [], machines: ["b"], gadgets: [] });
+  await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
+  expect(hook.result.current.error).toContain("no longer own");
+  expect(applied).not.toHaveBeenCalled();
+  expect(api).toHaveBeenCalledTimes(1);
+});
+
+it("invalidates proposals when collection changes during calculation", async () => {
+  let resolve!: (value: RecommendationResult) => void;
+  vi.mocked(api).mockReturnValue(new Promise(done => { resolve = done; }));
+  const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
+  act(() => { void hook.result.current.calculate(request); });
+  collection.revision++; hook.rerender();
+  await act(async () => resolve(result));
+  await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
+  expect(hook.result.current.error).toContain("Collection settings changed");
+  expect(applied).not.toHaveBeenCalled();
+});
+
+it("Cancel or unmount during Apply's collection check never writes the draft", async () => {
+  for (const unmount of [false, true]) {
+    let resolve!: (value: typeof collection.data) => void;
+    collection.refresh.mockReturnValueOnce(new Promise(done => { resolve = done; }));
+    const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
+    await act(async () => { await hook.result.current.calculate(request); });
+    let applying!: Promise<boolean>;
+    act(() => { applying = hook.result.current.apply(); });
+    if (unmount) hook.unmount(); else act(() => hook.result.current.cancel());
+    await act(async () => { resolve({ racers: [], machines: [], gadgets: [] }); expect(await applying).toBe(false); });
+    expect(applied).not.toHaveBeenCalled();
+    hook.unmount();
+  }
+});
 beforeEach(() => {
+  collection.status = "ready"; collection.busy = false; collection.revision = 0;
+  collection.refresh.mockResolvedValue({ racers: [], machines: [], gadgets: [] });
   vi.clearAllMocks(); vi.mocked(api).mockResolvedValue(result);
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function(this: HTMLDialogElement) { this.open = true; } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });
@@ -123,7 +169,7 @@ it("sends one async request, displays honest deltas/explanation and explicitly a
   expect(within(comparison).getByRole("img", { name: "Acceleration: 20 to 21" })).toBeTruthy();
   expect(within(comparison).getByRole("img", { name: "Speed: 30 to 29" })).toBeTruthy();
   expect(screen.getByLabelText("Recommendation explanation").textContent).toContain(result.reason);
-  expect(applied).not.toHaveBeenCalled(); fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
+  expect(applied).not.toHaveBeenCalled(); await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Apply to draft" })); });
   expect(applied).toHaveBeenCalledWith({ ...draft, frontPartId: "f2" }); expect(screen.queryByRole("dialog")).toBeNull();
 });
 
@@ -194,11 +240,11 @@ it("hook ignores stale session/context replies, rejects stale apply and prevents
   act(() => { void hook.result.current.calculate(request); });
   await act(async () => resolve(result));
   hook.rerender({ context: "B", value: { ...draft, frontPartId: "f2" } });
-  act(() => { expect(hook.result.current.apply()).toBe(false); }); expect(hook.result.current.error).toContain("stale");
+  await act(async () => { expect(await hook.result.current.apply()).toBe(false); }); expect(hook.result.current.error).toContain("stale");
   hook.rerender({ context: "B", value: draft }); setToken("new-session");
-  act(() => { expect(hook.result.current.apply()).toBe(false); }); expect(hook.result.current.error).toContain("earlier editor session");
+  await act(async () => { expect(await hook.result.current.apply()).toBe(false); }); expect(hook.result.current.error).toContain("earlier editor session");
   expect(applied).not.toHaveBeenCalled();
-  act(() => hook.result.current.cancel()); act(() => { expect(hook.result.current.apply()).toBe(false); });
+  act(() => hook.result.current.cancel()); await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
 });
 
 it("aborts on unmount and ignores superseded responses after another calculation", async () => {
@@ -253,7 +299,7 @@ it("freezes Balanced reference, defaults to zero losses and restores previous se
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   const repeated = vi.mocked(api).mock.calls.filter(([path]) => path === "/build-recommendations");
   expect(JSON.parse(repeated[1][1]!.body as string).current).toEqual(draftSelection(draft));
-  fireEvent.click(screen.getByRole("button", { name: "Apply to draft" }));
+  await act(async () => { fireEvent.click(screen.getByRole("button", { name: "Apply to draft" })); });
   expect(applied).toHaveBeenCalledWith({ ...draft, frontPartId: "f2" });
 });
 
@@ -437,7 +483,7 @@ it("configuration changes abort calculations and discard late responses and prop
   await act(async () => responses[1](result)); expect(hook.result.current.result).toEqual(result);
   for (const configuration of ["balanced-reordered", "balanced-loss10", "balanced-secondary", "balanced-boost"]) {
     hook.rerender({ configuration }); expect(hook.result.current.result).toBeNull();
-    act(() => { expect(hook.result.current.apply()).toBe(false); });
+    await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
   }
   expect(applied).not.toHaveBeenCalled();
 });

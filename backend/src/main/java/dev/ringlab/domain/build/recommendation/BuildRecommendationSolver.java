@@ -1,6 +1,7 @@
 package dev.ringlab.domain.build.recommendation;
 
 import dev.ringlab.domain.build.GadgetPlate;
+import dev.ringlab.domain.collection.CollectionExclusions;
 import dev.ringlab.domain.gamedata.*;
 import java.time.Duration;
 import java.math.BigDecimal;
@@ -22,6 +23,7 @@ public final class BuildRecommendationSolver {
       PassiveGadgetRules.ZERO, PassiveGadgetRules.ZERO, PassiveGadgetRules.ZERO);
 
   private final RecommendationCatalog catalog;
+  private final CollectionExclusions availability;
   private final RecommendationRequest request;
   private final Budget budget;
   private final LongSupplier clock;
@@ -39,8 +41,19 @@ public final class BuildRecommendationSolver {
     this(catalog, request, budget, System::nanoTime);
   }
 
+  public BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget,
+      CollectionExclusions availability) {
+    this(catalog, request, budget, System::nanoTime, availability);
+  }
+
   BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget, LongSupplier clock) {
+    this(catalog, request, budget, clock, CollectionExclusions.NONE);
+  }
+
+  private BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget,
+      LongSupplier clock, CollectionExclusions availability) {
     this.catalog = Objects.requireNonNull(catalog);
+    this.availability = Objects.requireNonNull(availability);
     this.request = Objects.requireNonNull(request);
     this.budget = Objects.requireNonNull(budget);
     this.clock = clock;
@@ -61,7 +74,7 @@ public final class BuildRecommendationSolver {
         var evaluation = evaluate(request.current(), currentType);
         if (evaluation.coverage() == PassiveStatsResult.Coverage.CALCULATED) {
           currentStats = evaluation.adjusted();
-          if (currentType == request.machineType()) best = new Candidate(request.current(), currentStats);
+          if (currentType == request.machineType() && available(request.current())) best = new Candidate(request.current(), currentStats);
         }
       }
 
@@ -77,6 +90,7 @@ public final class BuildRecommendationSolver {
 
       // Check feasibility before data completeness: unknown contributions are not an empty legal catalog.
       var racers = catalog.racers().values().stream()
+          .filter(r -> availability.racerAvailable(r.id()))
           .filter(r -> request.locked().racerId() == null || r.id().equals(request.locked().racerId()))
           .sorted(Comparator.comparing(Racer::id, IDS)).toList();
       var fronts = parts(MachinePartType.FRONT, request.locked().frontPartId());
@@ -124,6 +138,7 @@ public final class BuildRecommendationSolver {
   private List<UUID> optionalGadgets(RacingType type) {
     var optional = new ArrayList<UUID>();
     for (var gadget : catalog.gadgets().values().stream().sorted(Comparator.comparing(Gadget::id, IDS)).toList()) {
+      if (!availability.gadgetAvailable(gadget.id())) continue;
       step();
       if (request.locked().gadgetIds().contains(gadget.id()) || !GadgetPlate.canFit(Collections.singletonList(gadget.slotCost()))) continue;
       var alone = passive(type, List.of(gadget.id()));
@@ -255,6 +270,7 @@ public final class BuildRecommendationSolver {
 
   private List<MachinePart> parts(MachinePartType slot, UUID locked) {
     return catalog.parts().values().stream().filter(part -> part.type() == slot
+        && availability.machineAvailable(part.sourceMachineId())
         && (locked == null || part.id().equals(locked)) && catalog.machines().containsKey(part.sourceMachineId())
         && catalog.machines().get(part.sourceMachineId()).racingType() == request.machineType())
         .sorted(Comparator.comparing(MachinePart::id, IDS)).toList();
@@ -327,6 +343,8 @@ public final class BuildRecommendationSolver {
     if (!catalog.version().id().equals(request.gameVersionId())) throw new IllegalArgumentException("Patch does not match the catalog snapshot");
     validateSelection(request.current());
     validateSelection(request.locked());
+    var unavailableLocks = unavailableNames(request.locked());
+    if (!unavailableLocks.isEmpty()) throw new IllegalArgumentException("Not owned — locked: " + String.join(", ", unavailableLocks));
     var locks = request.locked();
     var current = request.current();
     requireKept("Racer", locks.racerId(), current.racerId());
@@ -360,6 +378,22 @@ public final class BuildRecommendationSolver {
     if (selection.gadgetIds().size() > 6 || new HashSet<>(selection.gadgetIds()).size() != selection.gadgetIds().size())
       throw new IllegalArgumentException("Select distinct gadget IDs (at most six)");
     if (!catalog.gadgets().keySet().containsAll(selection.gadgetIds())) throw new IllegalArgumentException("Unknown gadget ID");
+  }
+
+  private boolean available(BuildSelection selection) { return unavailableNames(selection).isEmpty(); }
+
+  private Set<String> unavailableNames(BuildSelection selection) {
+    var names = new LinkedHashSet<String>();
+    if (selection.racerId() != null && !availability.racerAvailable(selection.racerId()))
+      names.add("racer " + catalog.racers().get(selection.racerId()).name());
+    for (var id : Arrays.asList(selection.frontPartId(), selection.rearPartId(), selection.tirePartId())) {
+      if (id == null) continue;
+      var source = catalog.parts().get(id).sourceMachineId();
+      if (!availability.machineAvailable(source)) names.add("source machine " + catalog.machines().get(source).name());
+    }
+    for (var id : selection.gadgetIds()) if (!availability.gadgetAvailable(id))
+      names.add("gadget " + catalog.gadgets().get(id).name());
+    return names;
   }
 
   private static void requireKept(String slot, UUID locked, UUID current) {

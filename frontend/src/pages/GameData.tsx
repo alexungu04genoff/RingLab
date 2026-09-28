@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { CollectionStatus, OwnershipCheckbox } from "../Collection";
 import { Link } from "react-router-dom";
 import { MapThumbnail } from "../MapRecommendations";
 import { mapCategoryLabel } from "../mapSelection";
@@ -107,6 +108,7 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
 }
 
 export function GameData() {
+  const [showExplanation, setShowExplanation] = useState(true);
   const [tab, setTab] = useState<CollectionKey>("racers");
   const [search, setSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
@@ -148,6 +150,10 @@ export function GameData() {
           </button>
         ))}
       </div>
+      {showExplanation && <aside className="collection-explanation"><p>Everything starts marked as owned. Uncheck items you don't have.
+        You can still browse them, but recommendations won't use them.</p>
+        <button type="button" onClick={() => setShowExplanation(false)} aria-label="Dismiss collection explanation">Dismiss</button></aside>}
+      <CollectionStatus />
       <ErrorNotice message={items.error} />
       <ErrorNotice message={versions.error || stats.error || machineParts.error} />
       {items.loading && <p role="status">Loading collection…</p>}
@@ -157,6 +163,8 @@ export function GameData() {
         && <p>No {searchLabel} match your search. Try another name.</p>}
       <div className={`collection collection-${tab}`}>
         {visibleItems?.map((item) => <div key={item.id}>
+          {(tab === "racers" || tab === "machines" || tab === "gadgets") && "name" in item && <OwnershipCheckbox
+            category={tab === "racers" ? "RACER" : tab === "machines" ? "MACHINE" : "GADGET"} id={item.id} name={item.name} />}
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
             stats={stats.data} version={latestVersion?.version ?? null} rules={rules.data}
             loading={versions.loading || machineParts.loading || stats.loading}

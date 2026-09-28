@@ -3504,3 +3504,10 @@ nav,
   .stat-handling .card-stat-impact-copy, .stat-boost .card-stat-impact-copy { left:0; right:auto; }
   .stat-acceleration .card-stat-impact-copy, .stat-power .card-stat-impact-copy { left:auto; right:0; }
 }
+.not-owned-artwork img, .not-owned-artwork > span { filter: grayscale(1); }
+.ownership-checkbox { display: flex; align-items: center; gap: .5rem; padding: .6rem; flex-wrap: wrap; }
+.ownership-checkbox input { width: auto; }
+.ownership-checkbox strong, .missing-items { color: var(--text); font-size: .85rem; }
+.missing-items { padding: .5rem .75rem; }
+.missing-items summary { cursor: pointer; }
+.collection-explanation { display: flex; align-items: center; gap: 1rem; margin-block: 1rem; }

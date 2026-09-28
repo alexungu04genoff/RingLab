@@ -12,6 +12,61 @@ import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outco
 import static dev.ringlab.domain.gamedata.PassiveGadgetRules.points;
 
 class BuildRecommendationSolverTest {
+  @Test void exclusionsFilterEveryPoolInBothModesWithoutChangingReferenceStats() {
+    var f = new Fixture(); f.addGadget(45, 1);
+    f.machines.put(id(6), new Machine(id(6), "Alternative", RacingType.SPEED, null));
+    for (var type : MachinePartType.values()) {
+      var partId = id(30 + type.ordinal());
+      f.parts.put(partId, new MachinePart(partId, id(6), type));
+      f.partStats.put(partId, points(1, 1, 1, 1, 1));
+    }
+    var current = selection(List.of(PassiveGadgetRules.id(45)));
+    var losses = new EnumMap<StatPriority, BigDecimal>(StatPriority.class);
+    ORDER.forEach(stat -> losses.put(stat, BigDecimal.valueOf(100)));
+    for (var mode : RecommendationMode.values()) {
+      var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode,
+          mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses, List.of()) : null);
+      var allOwned = new BuildRecommendationSolver(f.snapshot(), request, BUDGET).solve();
+      for (var excluded : List.of(
+          new dev.ringlab.domain.collection.CollectionExclusions(Set.of(RACER), Set.of(), Set.of()),
+          new dev.ringlab.domain.collection.CollectionExclusions(Set.of(), Set.of(id(5)), Set.of()),
+          new dev.ringlab.domain.collection.CollectionExclusions(Set.of(), Set.of(), Set.of(PassiveGadgetRules.id(45))))) {
+        var result = new BuildRecommendationSolver(f.snapshot(), request, BUDGET, excluded).solve();
+        assertEquals(ESTABLISHED, result.outcome());
+        assertEquals(allOwned.currentStats(), result.currentStats());
+        assertFalse(result.alreadyBest());
+        assertTrue(excluded.racerAvailable(result.selection().racerId()));
+        for (var part : List.of(result.selection().frontPartId(), result.selection().rearPartId(), result.selection().tirePartId()))
+          assertTrue(excluded.machineAvailable(f.parts.get(part).sourceMachineId()));
+        assertTrue(result.selection().gadgetIds().stream().allMatch(excluded::gadgetAvailable));
+        var locked = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, current, mode,
+            mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses, List.of()) : null);
+        var conflict = assertThrows(IllegalArgumentException.class,
+            () -> new BuildRecommendationSolver(f.snapshot(), locked, BUDGET, excluded).solve());
+        assertTrue(conflict.getMessage().contains("Not owned — locked:"));
+        assertTrue(conflict.getMessage().contains("Racer") || conflict.getMessage().contains("Speed source") || conflict.getMessage().contains("Gadget 45"));
+      }
+      assertEquals(allOwned.selection(), new BuildRecommendationSolver(f.snapshot(), request, BUDGET,
+          dev.ringlab.domain.collection.CollectionExclusions.NONE).solve().selection());
+    }
+  }
+
+  @Test void unavailableMixedSourceAndBalancedZeroLossReferenceCannotBypassFeasibility() {
+    var f = new Fixture();
+    f.machines.put(id(6), new Machine(id(6), "Mixed rear", RacingType.SPEED, null));
+    f.parts.put(REAR, new MachinePart(REAR, id(6), MachinePartType.REAR));
+    var excluded = new dev.ringlab.domain.collection.CollectionExclusions(Set.of(), Set.of(id(6)), Set.of());
+    var current = selection(List.of());
+    assertEquals(NO_LEGAL_COMPLETION, new BuildRecommendationSolver(f.snapshot(), request(current, EMPTY, RacingType.SPEED), BUDGET, excluded).solve().outcome());
+    var losses = new EnumMap<StatPriority, BigDecimal>(StatPriority.class);
+    ORDER.forEach(stat -> losses.put(stat, BigDecimal.ZERO));
+    var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY,
+        RecommendationMode.BALANCED, new BalancedConfiguration(losses, List.of()));
+    var racerExcluded = new dev.ringlab.domain.collection.CollectionExclusions(Set.of(RACER), Set.of(), Set.of());
+    var result = new BuildRecommendationSolver(f.snapshot(), request, BUDGET, racerExcluded).solve();
+    assertEquals(NO_FEASIBLE_CANDIDATE, result.outcome());
+    assertNotNull(result.currentStats()); assertNull(result.selection());
+  }
   static final UUID VERSION = id(1), RACER = id(2), OTHER = id(3), FRONT = id(10), REAR = id(11), TIRE = id(12);
   static final List<StatPriority> ORDER = List.of(StatPriority.ACCELERATION, StatPriority.SPEED,
       StatPriority.HANDLING, StatPriority.BOOST, StatPriority.POWER);

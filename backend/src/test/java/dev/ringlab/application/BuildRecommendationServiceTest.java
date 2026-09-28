@@ -12,6 +12,13 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class BuildRecommendationServiceTest {
+  private static final UUID ACTOR = UUID.randomUUID();
+  private final dev.ringlab.application.collection.CollectionService collection = new dev.ringlab.application.collection.CollectionService(null, null) {
+    @Override public dev.ringlab.domain.collection.CollectionExclusions load(UUID actor) {
+      assertEquals(ACTOR, actor);
+      return dev.ringlab.domain.collection.CollectionExclusions.NONE;
+    }
+  };
   private static final UUID VERSION = UUID.randomUUID();
   private static final BuildSelection EMPTY = new BuildSelection(null, null, null, null, List.of());
   private static RecommendationRequest request() {
@@ -25,21 +32,21 @@ class BuildRecommendationServiceTest {
   };
 
   @Test void snapshotLoadsEveryFactOnceAndNeverUsesBuildOrCommunityPorts() {
-    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats));
-    assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, service.recommend(request()).outcome());
+    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats), collection);
+    assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, service.recommend(ACTOR, request()).outcome());
     assertEquals(5, game.reads); assertEquals(2, statReads);
-    assertThrows(ValidationException.class, () -> service.recommend(null));
+    assertThrows(ValidationException.class, () -> service.recommend(ACTOR, null));
     var invalid = new RecommendationRequest(UUID.randomUUID(), RacingType.SPEED, List.of(StatPriority.values()), EMPTY, EMPTY);
-    assertThrows(ValidationException.class, () -> service.recommend(invalid));
+    assertThrows(ValidationException.class, () -> service.recommend(ACTOR, invalid));
   }
 
   @Test void translatesDomainValidationAndReleasesCapacityAfterFailure() {
-    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats));
+    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats), collection);
     var unknown = new BuildSelection(UUID.randomUUID(), null, null, null, List.of());
     var invalid = new RecommendationRequest(VERSION, RacingType.SPEED, List.of(StatPriority.values()), unknown, EMPTY);
     for (int attempt = 0; attempt < 4; attempt++)
-      assertTrue(assertThrows(ValidationException.class, () -> service.recommend(invalid)).getMessage().contains("Unknown racer"));
-    assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, service.recommend(request()).outcome());
+      assertTrue(assertThrows(ValidationException.class, () -> service.recommend(ACTOR, invalid)).getMessage().contains("Unknown racer"));
+    assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, service.recommend(ACTOR, request()).outcome());
   }
 
   @Test void concurrentSearchesHaveTwoPermitsAndNeverQueueUnboundedWork() throws Exception {
@@ -54,19 +61,19 @@ class BuildRecommendationServiceTest {
         return snapshot;
       }
     };
-    var service = new BuildRecommendationService(loader);
+    var service = new BuildRecommendationService(loader, collection);
     try (var executor = Executors.newFixedThreadPool(2)) {
-      var first = executor.submit(() -> service.recommend(request()));
-      var second = executor.submit(() -> service.recommend(request()));
+      var first = executor.submit(() -> service.recommend(ACTOR, request()));
+      var second = executor.submit(() -> service.recommend(ACTOR, request()));
       try {
         assertTrue(entered.await(10, TimeUnit.SECONDS));
-        assertThrows(ExternalServiceUnavailableException.class, () -> service.recommend(request()));
+        assertThrows(ExternalServiceUnavailableException.class, () -> service.recommend(ACTOR, request()));
         assertEquals(2, loads.get());
       } finally { release.countDown(); }
       assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, first.get(10, TimeUnit.SECONDS).outcome());
       second.get(10, TimeUnit.SECONDS);
     }
-    service.recommend(request()); assertEquals(3, loads.get());
+    service.recommend(ACTOR, request()); assertEquals(3, loads.get());
   }
 
   private static final class Catalog implements GameDataRepository {

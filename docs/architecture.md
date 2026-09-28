@@ -8,11 +8,11 @@ Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `p
 
 ```text
 dev.ringlab/
-  domain/{auth,build,comment,gamedata,news,vote}/
-  application/{auth,build,comment,gamedata,news,validation,vote}/
+  domain/{auth,build,collection,comment,gamedata,news,vote}/
+  application/{auth,build,collection,comment,gamedata,news,validation,vote}/
   port/out/
-    {User,Build,SavedBuild,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
-  adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
+    {User,Build,SavedBuild,Collection,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
+  adapter/in/rest/{auth,build,collection,comment,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
   adapter/out/steam/
@@ -462,3 +462,10 @@ calculation supplies both reference and candidate values. Configuration changes
 invalidate pending requests and Apply proposals. No preferences or locks are
 persisted. See [Balanced mode](balanced-auto-builder.md) for the bound proof,
 reference requirements and exact comparison order.
+## Personal collection availability
+
+`CollectionExclusions` models explicit exclusions only: absent and newly added catalog items are owned by default. `CollectionService` validates typed catalog references through `GameDataRepository`; `CollectionRepository` persists private racer, source-machine, and gadget exclusions. V33 adds three foreign-key-backed tables with `(user_id, item_id)` primary keys. Idempotent PUT updates serialize on the authenticated user's row. No migration backfills owned rows.
+
+The authenticated `/api/collection` adapter returns private, non-cacheable data. Recommendation orchestration loads the actor's exclusions separately from the full catalog. The existing Strict/Balanced solver filters candidate pools, rejects named unavailable locks, and retains full reference stats without seeding an unavailable incumbent. Ownership does not change scoring, manual build validation, public queries, top-three membership, or Discord snapshots.
+
+`CollectionProvider` shares session-scoped frontend state, guards late account responses, and distinguishes loading/errors from all-owned data. Missing-item summaries deduplicate source machines while artwork alone becomes grayscale. Selections remain editable and publishable. Recommendation Apply reloads private availability and checks every proposed source, racer, and gadget; local collection changes invalidate the proposal. Cross-device changes are observed on focus and at Apply, rather than pushed live.

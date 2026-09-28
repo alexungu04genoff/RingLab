@@ -25,9 +25,8 @@ public class BuildRecommendationRestResource {
   @POST
   @Blocking
   public Response recommend(@NotNull @Valid BuildRecommendationRequest request) {
-    actor.id();
     try {
-      return Response.ok(BuildRecommendationResponse.from(recommendations.recommend(request.toDomain())))
+      return Response.ok(BuildRecommendationResponse.from(recommendations.recommend(actor.id(), request.toDomain())))
           .header("Cache-Control", "private, no-store").header("Vary", "Authorization").build();
     } catch (IllegalArgumentException invalid) {
       throw new ValidationException(invalid.getMessage());

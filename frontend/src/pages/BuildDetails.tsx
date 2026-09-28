@@ -5,6 +5,7 @@ import { api, json } from "../api";
 import { useAuth } from "../auth";
 import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../commentPagination";
 import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge } from "../components";
+import { MissingItems } from "../Collection";
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { BuildStats } from "../BaseStats";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
@@ -113,6 +114,7 @@ function BuildDetailsContent() {
             </Link>
           </div>
           <h1>{b.title}</h1>
+          <MissingItems build={b} />
           <p>
             by <strong>@{b.author.username}</strong>{" "}
             <span className="muted">· {date(b.createdAt)}</span>

@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { gadgetPlateStatus } from "../buildForm";
 import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, isStockSetup, MachineSetup } from "../components";
+import { MissingItems } from "../Collection";
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
 import { BuildStats } from "../BaseStats";
@@ -133,6 +134,7 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
       <div className="compare-side-label">{side} build</div>
       <section className="panel compare-summary">
         <Artwork item={build.racer} portrait />
+        <MissingItems build={build} />
         <div><h2>{build.title}</h2><p>by <strong>@{build.author.username}</strong></p>
           <Link to={`/builds/${build.id}`}>Open build details →</Link></div>
       </section>
