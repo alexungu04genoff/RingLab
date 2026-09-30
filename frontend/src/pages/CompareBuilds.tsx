@@ -7,6 +7,7 @@ import { MissingItems } from "../Collection";
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { useLoad } from "../useLoad";
 import { BuildStats } from "../BaseStats";
+import { ScenarioPreview, scenarioSelection } from "../ScenarioPreview";
 import { RecommendedMapList } from "../MapRecommendations";
 import { compareMapRecommendations } from "../mapSelection";
 import type { Build, BuildPage, Gadget } from "../types";
@@ -197,7 +198,10 @@ export function CompareBuilds() {
     {!rightId && <BuildSelector leftId={leftId} />}
     {rightId && !right.data && <><ErrorNotice message={right.error} />
       {right.loading && <p role="status">Loading comparison…</p>}</>}
-    {right.data && <><div className="compare-grid"><BuildColumn build={left.data} other={right.data} side="Left" />
+    {right.data && <><ScenarioPreview selections={[
+      { label: `Left: ${left.data.title}`, selection: scenarioSelection(left.data) },
+      { label: `Right: ${right.data.title}`, selection: scenarioSelection(right.data) },
+    ]} /><div className="compare-grid"><BuildColumn build={left.data} other={right.data} side="Left" />
       <BuildColumn build={right.data} other={left.data} side="Right" /></div></>}
   </>;
 }

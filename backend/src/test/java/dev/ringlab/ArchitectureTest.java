@@ -31,6 +31,12 @@ class ArchitectureTest {
         persistence_does_not_own_ranking.check(classes);
         ports_depend_only_on_jdk_or_domain.check(classes);
         adapters_do_not_execute_recommendations.check(classes);
+        noClasses().that().resideInAnyPackage("..adapter..", "..domain.build.recommendation..", "..application.build.recommendation..")
+                .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
+                .check(classes);
+        noClasses().that().haveSimpleName("ScenarioStatsService").should().dependOnClassesThat()
+                .resideInAnyPackage("..domain.build.recommendation..", "..domain.collection..", "..adapter..")
+                .check(classes);
     }
 
     private static final ArchRule domain_depends_only_on_jdk_or_domain = classes()

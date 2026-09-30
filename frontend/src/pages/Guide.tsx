@@ -62,6 +62,7 @@ export function GuidePage() {
     <section id="understanding-stats" className="guide-section">
       <h2>Understanding stats: numbers aren’t the whole race</h2>
       <p>Stats help you compare setups, but they don’t capture every useful gadget effect. A gadget can help with items, recovery, or landing boosts without adding points to the displayed totals.</p>
+      <p>Some gadgets depend on what is happening during a race. Scenario Preview lets you try supported conditions without changing the saved build.</p>
       <p><strong>Lock gadgets you enjoy using.</strong> Otherwise, recommendations may replace them with gadgets that improve the numbers instead.</p>
       <p>Recommended maps are the author’s suggestions. <strong>All maps</strong> simply means they haven’t picked particular tracks.</p>
       <p>Use a recommendation as a starting point, take it racing, and see how it feels. Higher numbers alone don’t guarantee a better lap.</p>

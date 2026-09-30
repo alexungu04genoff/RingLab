@@ -65,6 +65,7 @@ it("automatically includes gadget stats for both builds without a mode control",
   expect(calls.some(path=>path.startsWith("/stats/persisted/left?"))).toBe(true);
   expect(calls.some(path=>path.startsWith("/stats/persisted/right?"))).toBe(true);
   expect(screen.queryByRole("group",{name:"Statistics mode"})).toBeNull();
+  expect(screen.getAllByRole("button",{name:"Try a scenario"})).toHaveLength(1);
 });
 
 it("renders both URL-selected builds and preserves gadget order and plate usage", () => {

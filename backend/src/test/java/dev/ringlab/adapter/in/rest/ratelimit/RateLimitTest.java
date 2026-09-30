@@ -20,6 +20,10 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class RateLimitTest {
+  @Test void scenarioCalculationUsesThePublicIpReadBudget() {
+    assertEquals(RequestRateLimitPolicy.GENERAL_READ, policy("POST", "/api/stats/scenario-build"));
+    assertEquals("ip:127.0.0.1", RateLimitIdentity.resolve(RequestRateLimitPolicy.GENERAL_READ, Optional.of("user"), "127.0.0.1"));
+  }
   @Test
   void recommendationsHaveTheirOwnAuthenticatedBudget() {
     assertEquals(RequestRateLimitPolicy.BUILD_RECOMMENDATION, policy("POST", "/api/build-recommendations"));

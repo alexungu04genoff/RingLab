@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { DraftStats } from "../BaseStats";
+import { ScenarioPreview } from "../ScenarioPreview";
 import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels } from "../PassiveStats";
 import { passiveStatsPath } from "../stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
@@ -375,6 +376,7 @@ export function BuildEditor() {
               <div className="eyebrow accent">YOUR COMBINATION</div>
               <h2>{draft.title || "Untitled build"}</h2>
               <DraftStats draft={draft} version={versions.data?.find((v) => v.id === draft.gameVersionId) ?? null} loadedResult={draftStats} />
+              <ScenarioPreview selections={[{ label: "Current draft", selection: draft }]} />
               <div className="preview-core">
                 <section className="preview-item">
                   <span className="preview-label">Selected racer</span>

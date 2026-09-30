@@ -8,6 +8,7 @@ import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNo
 import { MissingItems } from "../Collection";
 import { RacingTypeBadge } from "../RacingTypeBadge";
 import { BuildStats } from "../BaseStats";
+import { ScenarioPreview, scenarioSelection } from "../ScenarioPreview";
 import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
 import { formatBuildForSharing } from "../buildSharing";
 import { persistedStatsPath } from "../stats";
@@ -259,6 +260,7 @@ function BuildDetailsContent() {
                   </section>
                   <div className="hero-stats">
                     <BuildStats build={b} loadedResult={stats} />
+                    <ScenarioPreview selections={[{ label: b.title, selection: scenarioSelection(b) }]} />
                   </div>
                   <div className="hero-context">
                     <section className="hero-gadgets" aria-label="Selected gadgets">

@@ -3596,3 +3596,25 @@ nav,
   .machine-collection-item { grid-template-columns:96px minmax(0, 1fr); }
   .ownership-control { gap:8px; }
 }
+/* Optional, ephemeral race context; existing passive bars remain the default. */
+.scenario-preview { margin-block: 1rem; padding-block: 1rem; border-block: 1px solid var(--border, #303746); min-width: 0; }
+.scenario-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; justify-content: space-between; }
+.scenario-heading h3 { margin: 0; }
+.scenario-preview p { font-size: .875rem; overflow-wrap: anywhere; }
+.scenario-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: .8rem; margin-block: 1rem; }
+.scenario-controls label { display: flex; flex-direction: column; gap: .35rem; min-width: 0; font-size: .875rem; }
+.scenario-controls input, .scenario-controls select { width: 100%; min-width: 0; }
+.scenario-controls small { font-weight: normal; color: var(--muted, #a9b5c7); }
+.scenario-results > div { min-width: 0; }
+.scenario-coverage { color: var(--muted, #a9b5c7); }
+.scenario-stat { padding: .55rem 0; border-bottom: 1px solid var(--border, #303746); }
+.scenario-stat > div { display: flex; justify-content: space-between; gap: .5rem; }
+.scenario-stat dl { display: flex; flex-wrap: wrap; gap: .4rem 1rem; margin: .35rem 0 0; font-size: .75rem; color: var(--muted, #a9b5c7); }
+.scenario-stat dl > div { display: flex; gap: .35rem; }
+.scenario-stat dd { margin: 0; font-variant-numeric: tabular-nums; }
+.scenario-effects { margin-top: 1rem; font-size: .875rem; }
+.scenario-effects summary { cursor: pointer; padding-block: .5rem; }
+.scenario-effects h4 { margin-block: 1rem .5rem; }
+.scenario-effects ul { padding-left: 1.2rem; }
+.scenario-effects li { margin-bottom: .75rem; overflow-wrap: anywhere; }
+.scenario-effects li p { margin-block: .25rem; }

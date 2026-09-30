@@ -50,6 +50,25 @@ function desktopViewport() {
   return { resize: (matches: boolean) => { query.matches = matches; act(() => listener?.()); } };
 }
 
+it("previews the unsaved selection without adding scenario fields to saving", async () => {
+  const fallback=vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async(path,options)=> {
+    if(path==="/stats/scenario-rules") return {supportedVersion:"1.4.1",controls:[]};
+    if(path==="/stats/scenario-build") return new Promise(()=>{});
+    return fallback(path,options);
+  });
+  await openA(); selectLatestPatch();
+  fireEvent.click(screen.getByRole("button",{name:"Try a scenario"}));
+  await waitFor(()=>expect(vi.mocked(api).mock.calls.some(([path])=>path==="/stats/scenario-build")).toBe(true));
+  const preview=vi.mocked(api).mock.calls.find(([path])=>path==="/stats/scenario-build")!;
+  expect(JSON.parse(preview[1]!.body as string)).toMatchObject({racerId:"racer",frontPartId:"FRONT",gameVersionId:"latest"});
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await screen.findByText("Saved destination");
+  const saved=vi.mocked(api).mock.calls.find(([,options])=>options?.method==="PUT")!;
+  expect(JSON.parse(saved[1]!.body as string)).not.toHaveProperty("scenario");
+  expect(preview[1]?.signal?.aborted).toBe(true);
+});
+
 it("waits for the patch catalog before opening recommendations for a loaded build", async () => {
   desktopViewport();
   const fallback = vi.mocked(api).getMockImplementation()!;

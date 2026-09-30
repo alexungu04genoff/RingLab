@@ -51,6 +51,45 @@ Build title and description validation failures include an optional field identi
 error response. The shared create/edit/remix editor displays these errors beside the corresponding
 input; failures without a field remain at form level.
 
+## Scenario Preview
+
+Scenario Preview is an optional, read-only layer after passive stats. The JDK-only
+`ScenarioContext`, `ScenarioEffectRule`, `ScenarioGadgetRules`, `ScenarioStatsCalculator`
+and `ScenarioStatsResult` live in `domain/gamedata`. The calculator consumes the
+existing `PassiveStatsResult`; it never executes a second copy of passive arithmetic.
+Its reviewed 1.4.1 scope and every conditional-effect audit entry are documented in
+[Scenario Preview evidence](scenario-preview-evidence.md). Unknown is distinct from
+inactive; unsupported numeric interactions retain a known subtotal but no exact total.
+
+`ScenarioStatsService` resolves catalog selections through `GameDataRepository` and
+`BaseStatsService`/`BaseStatsRepository`, loading gadget metadata once rather than per
+selected gadget. It reuses `PassiveStatsService.resolved`. There are no persistence,
+ownership or recommendation mutations and no additional outbound port.
+
+`POST /api/stats/scenario-build` accepts version/racer/front/rear/nullable-tire UUIDs,
+up to six distinct gadget UUIDs and a structured `scenario`. Current nullable inputs
+are `lap` (1–3), `vehicleForm` (`NORMAL`, `WATER`, `FLIGHT`), `ringsHeld` (0–999),
+`landingBoostActive` (boolean), and `distanceToFinish` (0–50,000 metres). Limits are
+request bounds, not effective game caps. Fractional counts are rejected before
+integer conversion. Client-supplied stats/types are ignored; the server owns facts.
+The public POST consumes the existing client-IP general-read rate bucket. REST maps
+DTOs and validation only. The response contains `passive` (including base, deltas,
+coverage and effects), scenario `adjustments`, `knownSubtotal`, nullable exact `total`,
+coverage, effect statuses, explanation, version and ruleset.
+
+`GET /api/stats/scenario-rules` supplies relevant input metadata, never browser-side
+formulas. The shared React `ScenarioPreview` defaults closed/passive-only in the
+editor, details, and Compare; Explore remains passive. Compare owns one context and
+submits it for both selections. Per-side errors never silently substitute passive
+values for scenario totals. Context lives only in the mounted preview; resetting
+unmounts it. Serialized calculation keys and AbortControllers invalidate results on
+selection/patch/context changes and unmount, including the render before effect
+cleanup. Maps and titles are not inputs, and no scenario fields enter saving/remixing.
+
+Strict/Balanced, passive rule values and stacking, ownership and database schema are
+unchanged. Architecture guards also prohibit adapters/recommendation code from
+calling the scenario calculator.
+
 ## HTTP rate limiting
 
 `RateLimitFilter` is an inbound REST filter. It selects one of a small fixed set of endpoint

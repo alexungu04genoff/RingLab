@@ -25,6 +25,7 @@ class PassiveStatsServiceTest {
     }
   };
   private final PassiveStatsService service=new PassiveStatsService(new BaseStatsService(values,game),game);
+  private final ScenarioStatsService scenarios=new ScenarioStatsService(new BaseStatsService(values,game),game);
   private Build build(UUID f,UUID r,UUID t,List<UUID> gadgets) {
     return new Build(UUID.randomUUID(),"Example","",UUID.randomUUID(),racer,f,r,t,version,null,gadgets,Instant.EPOCH,Instant.EPOCH);
   }
@@ -47,6 +48,31 @@ class PassiveStatsServiceTest {
         Map.of(car,game.findMachine(car).orElseThrow()),List.of(game.findGadget(ids.getFirst()).orElseThrow()),true);
     assertEquals(draft,snapshot);
     assertTrue(service.buildPage(List.of()).isEmpty());
+  }
+
+  @Test void scenarioUsesTheSameDraftAndSavedPassiveResultAndOneGadgetCatalogRead() {
+    var ids=List.of(PassiveGadgetRules.id(45));
+    var draft=service.draft(version,racer,front,rear,tire,ids);
+    var saved=build(front,rear,tire,ids);
+    game.gadgetReads=0; baseReads=0;
+    var preview=scenarios.preview(version,racer,front,rear,tire,ids,new ScenarioContext(1,null,null,null,null));
+    assertEquals(1,game.gadgetReads);assertEquals(2,baseReads);
+    assertEquals(draft,preview.passive());
+    assertEquals(service.buildPage(List.of(saved)).get(saved.id()),preview.passive());
+    assertEquals(new BigDecimal("33.75"),preview.total().speed());
+    assertEquals(ids,saved.gadgetIds());
+    var boardPreview=scenarios.preview(version,racer,boardFront,boardRear,null,ids,new ScenarioContext(1,null,null,null,null));
+    assertEquals(new BigDecimal("32.50"),boardPreview.total().speed());
+    assertEquals(ScenarioStatsResult.Coverage.UNAVAILABLE,scenarios.preview(version,racer,boardFront,boardRear,tire,
+        ids,ScenarioContext.UNSPECIFIED).coverage());
+  }
+
+  @Test void scenarioRejectsInvalidReferencesAndPlateBeforeCalculation() {
+    assertThrows(ValidationException.class,()->scenarios.preview(version,racer,front,rear,tire,List.of(),null));
+    assertThrows(ValidationException.class,()->scenarios.preview(version,racer,front,rear,tire,null,ScenarioContext.UNSPECIFIED));
+    assertThrows(ValidationException.class,()->scenarios.preview(version,racer,front,rear,tire,List.of(PassiveGadgetRules.id(45),PassiveGadgetRules.id(45)),ScenarioContext.UNSPECIFIED));
+    assertThrows(NotFoundException.class,()->scenarios.preview(version,racer,front,rear,tire,List.of(UUID.randomUUID()),ScenarioContext.UNSPECIFIED));
+    assertThrows(ValidationException.class,()->scenarios.preview(version,racer,front,rear,tire,List.of(PassiveGadgetRules.id(11),PassiveGadgetRules.id(38),PassiveGadgetRules.id(23)),ScenarioContext.UNSPECIFIED));
   }
 
   @Test void invalidGadgetIdsDuplicatesAndPlateViolationsAreRejectedForDrafts() {
@@ -91,7 +117,7 @@ class PassiveStatsServiceTest {
   }
 
   private class Catalog implements GameDataRepository {
-    int catalogReads;
+    int catalogReads, gadgetReads;
     public List<RaceMap> listRaceMaps() { throw new AssertionError("Maps must not participate in stats"); }
     public List<GameVersion> listGameVersions() { catalogReads++;return List.of(new GameVersion(version,"1.4.1",LocalDate.of(2026,6,24))); }
     public Optional<GameVersion> findGameVersion(UUID id) { return listGameVersions().stream().filter(v->v.id().equals(id)).findFirst(); }
@@ -103,7 +129,7 @@ class PassiveStatsServiceTest {
         new MachinePart(rear,car,MachinePartType.REAR),new MachinePart(tire,car,MachinePartType.TIRE),
         new MachinePart(boardFront,board,MachinePartType.FRONT),new MachinePart(boardRear,board,MachinePartType.REAR)); }
     public Optional<MachinePart> findMachinePart(UUID id) { return listMachineParts().stream().filter(p->p.id().equals(id)).findFirst(); }
-    public List<Gadget> listGadgets() { catalogReads++;return List.of(new Gadget(PassiveGadgetRules.id(11),"Boost Character Kit",null,3,null),
+    public List<Gadget> listGadgets() { catalogReads++;gadgetReads++;return List.of(new Gadget(PassiveGadgetRules.id(45),"Quick Starter",null,1,null),new Gadget(PassiveGadgetRules.id(11),"Boost Character Kit",null,3,null),
         new Gadget(PassiveGadgetRules.id(55),"Acceleration Tuner 2",null,1,null),new Gadget(PassiveGadgetRules.id(34),"Acceleration Machine Kit",null,3,null),
         new Gadget(PassiveGadgetRules.id(38),"Power Machine Kit",null,3,null),new Gadget(PassiveGadgetRules.id(23),"Panel Combo Kit",null,3,null)); }
     public Optional<Gadget> findGadget(UUID id) { return listGadgets().stream().filter(g->g.id().equals(id)).findFirst(); }

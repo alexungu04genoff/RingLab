@@ -76,6 +76,9 @@ enum RequestRateLimitPolicy {
     if (method.equals("POST") && path.equals("/api/build-recommendations")) {
       return Optional.of(BUILD_RECOMMENDATION);
     }
+    if (method.equals("POST") && path.equals("/api/stats/scenario-build")) {
+      return Optional.of(GENERAL_READ);
+    }
     if (method.equals("POST") && COMMENT_PATH.matcher(path).matches()) {
       return Optional.of(COMMENT_CREATION);
     }

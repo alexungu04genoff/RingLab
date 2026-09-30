@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -54,6 +54,24 @@ it("does not navigate away from B when A's pending deletion completes", async ()
   expect(screen.getByRole("heading", { name: "Build B" })).toBeTruthy();
 });
 afterEach(cleanup);
+
+it("uses saved selections for a public scenario request without editing the build", async () => {
+  const fallback=vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async(path,options)=> {
+    if(path==="/stats/scenario-rules") return {supportedVersion:"1.4.1",controls:[]};
+    if(path==="/stats/scenario-build") return new Promise(()=>{});
+    return fallback(path,options);
+  });
+  render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>);
+  await userEvent.click(await screen.findByRole("button",{name:"Try a scenario"}));
+  await waitFor(()=>expect(vi.mocked(api).mock.calls.some(([path])=>path==="/stats/scenario-build")).toBe(true));
+  const preview=vi.mocked(api).mock.calls.find(([path])=>path==="/stats/scenario-build")!;
+  expect(JSON.parse(preview[1]!.body as string)).toMatchObject({racerId:"racer",frontPartId:"FRONT",rearPartId:"REAR",tirePartId:"TIRE",gameVersionId:null});
+  expect(preview[1]?.anonymous).toBe(true);
+  expect(vi.mocked(api).mock.calls.filter(([path,options])=>options?.method && !path.startsWith("/stats/"))).toHaveLength(0);
+});
 
 it("isolates drafts, confirmation, pagination and a delayed vote across a remix-source navigation", async () => {
   const view = render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
