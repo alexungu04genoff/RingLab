@@ -1,6 +1,8 @@
 $ErrorActionPreference='Stop'
 $seeder=Join-Path $PSScriptRoot 'SeedDemoData.ps1'
 . (Join-Path $PSScriptRoot 'CommunityDemoPlan.ps1')
+. (Join-Path $PSScriptRoot 'OptimizerDemoPlan.ps1')
+. (Join-Path $PSScriptRoot 'FeatureDemoPlan.ps1')
 function Assert-True($Condition,[string]$Message){if(!$Condition){throw $Message}}
 function Assert-Fails([scriptblock]$Action,[string]$Message){$failed=$false;try{&$Action|Out-Null}catch{$failed=$true};Assert-True $failed $Message}
 function New-Id([int]$Number){'00000000-0000-4000-8000-'+$Number.ToString('000000000000')}
@@ -75,16 +77,16 @@ try{
   $commentDemos=@($plan.builds|Where-Object fixtureKind -eq 'COMMENT')
   Assert-True ($wilson.Count -eq 19) 'Expected 19 controlled ranking fixtures'
   Assert-True ($commentDemos.Count -eq 6) 'Expected 6 comment pagination fixtures'
-  Assert-True (@($wilson|Where-Object {$_.title -cnotmatch '^\[(Wilson|Version) Demo\]|^\[DEMO\]'}).Count -eq 0) 'Ranking fixture lacks a controlled title prefix'
-  Assert-True (@($commentDemos|Where-Object {$_.title -cnotlike '[[]Comment Demo[]]*'}).Count -eq 0) 'Comment fixture lacks the exact title prefix'
+  Assert-True (@($wilson|Where-Object {$_.title -cnotmatch '^\[Demo · Ranking\] '}).Count -eq 0) 'Ranking fixture lacks a controlled title prefix'
+  Assert-True (@($commentDemos|Where-Object {$_.title -cnotmatch '^\[Demo · Comments\] '}).Count -eq 0) 'Comment fixture lacks the exact title prefix'
   Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]Pagination Demo[]]*'}).Count -eq 0) 'Current fixture still uses the Pagination Demo prefix'
-  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 4) 'Timestamp and ID fixtures should use the controlled DEMO prefix'
+  Assert-True (@($plan.builds|Where-Object {$_.title -clike '[[]DEMO[]]*'}).Count -eq 0) 'Legacy generic prefix remains'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*demo*'}).Count -eq 25) 'Demo title search does not find all controlled fixtures'
-  Assert-True (@($plan.builds|Where-Object {$_.title -like '*wilson*'}).Count -eq 13) 'Wilson title search does not find exactly 13 fixtures'
+  Assert-True (@($plan.builds|Where-Object {$_.title -like '*ranking*'}).Count -eq 19) 'Ranking title search does not find all ranking fixtures'
   Assert-True (@($plan.builds|Where-Object {$_.title -like '*patch*'}).Count -eq 2) 'Patch title search does not find the controlled pair'
   Assert-True (@($plan.builds|Where-Object {($_.title+' '+$_.description) -match '(?i)rlqa-|controlled ranking case'}).Count -eq 0) 'Internal fixture codes leaked into visible build text'
   Assert-True (@($wilson.title|Select-Object -Unique).Count -eq 19) 'Ranking demos need distinct readable titles'
-  Assert-True (($plan.builds|Where-Object key -eq 'community-shadow-2').title -eq '[Wilson Demo] Same score, unanimous approval') 'The unanimous-feedback demo lost its readable name'
+  Assert-True (($plan.builds|Where-Object key -eq 'community-shadow-2').title -eq '[Demo · Ranking] Same score, unanimous approval') 'The unanimous-feedback demo lost its readable name'
   $n01=@($plan.builds|Where-Object key -eq 'community-amy-1')[0];$n02=@($plan.builds|Where-Object key -eq 'community-amy-2')[0];$n03=@($plan.builds|Where-Object key -eq 'community-amy-3')[0]
   Assert-True ($n01.gameVersionId -eq $n02.gameVersionId -and $n02.gameVersionId -eq $n03.gameVersionId -and $n01.caseTime -eq $n02.caseTime -and $n02.caseTime -eq $n03.caseTime) 'Negative evidence group does not hold patch and timestamp equal'
   $p01=@($plan.builds|Where-Object key -eq 'community-tails-1')[0];$p02=@($plan.builds|Where-Object key -eq 'community-tails-2')[0]
@@ -105,7 +107,7 @@ try{
   }
   foreach($build in $commentDemos){
     Assert-True (@($plan.comments|Where-Object build -eq $build.key).Count -eq $build.targetComments) "Wrong planned comment total: $($build.key)"
-    Assert-True ($build.title -match "[[]Comment Demo[]] $($build.targetComments) comments") "Comment title count disagrees with the plan: $($build.key)"
+    Assert-True ($build.title -match "[[]Demo · Comments[]] $($build.targetComments) comments") "Comment title count disagrees with the plan: $($build.key)"
   }
   Assert-True (@($repeat.builds|Where-Object fixtureKind).Count -eq 25) 'Deterministic rerun duplicated or dropped controlled fixtures'
   $expandedCatalog=$catalog.PSObject.Copy()
@@ -118,7 +120,7 @@ try{
   Assert-True (@($expanded.builds.owner|Sort-Object -Unique).Count -eq 40) 'Expanded community must have 40 authors'
   foreach($featuredKey in @('sonic-speed','community-blaze-1','community-metalhead-1')){
     $entry=@($expanded.builds|Where-Object key -eq $featuredKey)[0]
-    Assert-True ($entry.recommendedMapIds.Count -gt 0 -and $entry.title -like '*[[]Top 3 Demo[]]') 'Featured build lacks maps or its demo label'
+    Assert-True ($entry.recommendedMapIds.Count -gt 0 -and $entry.title -like '[[]Demo · Ranking[]]*') 'Featured build lacks maps or its demo label'
     Assert-True (@($expanded.votes|Where-Object {$_.build -eq $featuredKey -and $_.value -eq 1}).Count -ge 62) 'Featured votes missing'
   }
   Assert-True (@($expanded.builds|Where-Object {$_.recommendedMapIds.Count -eq 0}).Count -gt 0) 'Expanded plan lacks All maps cases'
@@ -127,7 +129,7 @@ try{
     Assert-True (@($entry.recommendedMapIds|Where-Object {$_ -notin $expandedCatalog.maps.id}).Count -eq 0) 'Unverified map ID generated'
     Assert-True ($entry.recommendedMapIds.Count -eq @($entry.recommendedMapIds|Sort-Object -Unique).Count) 'Duplicate maps generated'
   }
-  $ordinaryBuilds=@($expanded.builds|Where-Object title -notmatch '\[(?:[^\]]*Demo|DEMO)\]')
+  $ordinaryBuilds=@($expanded.builds|Where-Object title -notmatch '^\[Demo · ')
   Assert-True ($ordinaryBuilds.Count -gt 150) 'Most community builds should have ordinary player titles'
   Assert-True (@($ordinaryBuilds|Where-Object description -match 'Demo focus:|Verified passive arithmetic|fictional author recommendations|rlqa-').Count -eq 0) 'QA prose leaked into ordinary community descriptions'
   foreach($racer in $racers){
@@ -172,9 +174,6 @@ try{
   Assert-True ((Get-DemoRefreshDecision 'manual-edit' 'old' 'new') -eq 'conflict') 'Manual edit was overwritten'
   Assert-True ((Get-DemoRefreshDecision 'old' 'old' 'new') -eq 'update') 'Unchanged managed record was not refreshable'
   Assert-True ((Get-DemoRefreshDecision 'same' 'same' 'same') -eq 'retain') 'Idempotent rerun was not retained'
-  Assert-True (Test-DemoLegacyAdoptable 1 '2026-01-01Z' '2026-01-01Z') 'Unedited unambiguous legacy record was not adoptable'
-  Assert-True (!(Test-DemoLegacyAdoptable 2 '2026-01-01Z' '2026-01-01Z')) 'Ambiguous legacy record was adoptable'
-  Assert-True (!(Test-DemoLegacyAdoptable 1 '2026-01-01Z' '2026-01-02Z')) 'Edited legacy record was adoptable'
   $renamed=$plan.builds[0].PSObject.Copy();$renamed.title='A renamed generated title'
   Assert-True ($renamed.key -eq $plan.builds[0].key) 'Title change altered stable fixture identity'
   Assert-Fails {&$seeder -BaseUrl 'https://example.com' -Preview -CatalogSnapshotPath $snapshot} 'Remote target accepted'
@@ -197,6 +196,42 @@ try{
     Assert-True (($optimizer|ConvertTo-Json -Depth 20 -Compress)-ceq($optimizerAgain|ConvertTo-Json -Depth 20 -Compress)) 'Optimizer fixture was not frozen'
     Assert-True ($optimizer.builds.Count -eq 1 -and $optimizer.users.Count -eq 1 -and !$optimizer.votes.Count -and !$optimizer.comments.Count) 'Optimizer scope expanded'
     Assert-True ($optimizer.builds[0].key -ceq 'optimizer-miku-balanced-v1') 'Optimizer identity changed'
+    $featureCatalog=$optimizerCatalog|ConvertTo-Json -Depth 15|ConvertFrom-Json
+    $featureCatalog.racers+=@([pscustomobject]@{id=New-Id 902;name='Amy Rose'})
+    $featureCatalog.machines+=@([pscustomobject]@{id=New-Id 903;name='Speed source';racingType='SPEED'})
+    $counter=910
+    foreach($type in @('FRONT','REAR','TIRE')){
+      $counter++;$featureCatalog.parts+=@([pscustomobject]@{id=New-Id $counter;type=$type;sourceMachineId=New-Id 903;racingType='SPEED'})
+    }
+    foreach($number in @(45,48,15,17,18,2,4,7)){
+      $featureCatalog.gadgets+=@([pscustomobject]@{id=('70000000-0000-4000-8000-'+$number.ToString('000000000000'));slotCost=if($number -in @(48,15,17,18)){3}else{1}})
+    }
+    $featureCatalog.gadgets+=@([pscustomobject]@{id='5a000a58-7d7a-581c-80e3-6ae8661215b7';slotCost=1})
+    function New-FeatureBase { [pscustomobject]@{users=@();builds=@();votes=@();comments=@()} }
+    $features=Add-CurrentFeatureDemos (New-FeatureBase) $featureCatalog
+    $again=Add-CurrentFeatureDemos (New-FeatureBase) $featureCatalog
+    Assert-True (($features|ConvertTo-Json -Depth 20 -Compress) -ceq ($again|ConvertTo-Json -Depth 20 -Compress)) 'Feature planning is not deterministic'
+    Assert-True ($features.builds.Count -eq 11 -and $features.users.Count -eq 1) 'Feature scope changed'
+    Assert-True (@($features.builds|Where-Object fixtureKind -eq 'SCENARIO').Count -eq 8) 'Scenario examples missing'
+    Assert-True (!$features.votes.Count -and !$features.comments.Count) 'Teaching fixtures were promoted with engagement'
+    foreach($entry in $features.builds){
+      Assert-True ($entry.title -match '^\[Demo · (Scenario|Recommendation|Ownership)\] ') 'Teaching fixture can enter Top 3'
+      Assert-True ($entry.gameVersionId -eq $definition.gameVersionId) 'Scenario example uses an unverified patch'
+      Assert-True (!$entry.PSObject.Properties['scenario']) 'Ephemeral scenario settings were stored on a build'
+      Assert-True (Test-GadgetPlateFit @($featureCatalog.gadgets|Where-Object id -in $entry.gadgetIds|ForEach-Object slotCost)) 'Illegal feature plate'
+    }
+    $locks=$features.builds|Where-Object key -eq 'feature-locks-v1'
+    $combined=$features.builds|Where-Object key -eq 'feature-quick-v1'
+    Assert-True ($combined.title -eq '[Demo · Scenario] Quick Starter + Sea Dog' -and $combined.gadgetIds.Count -eq 2) 'Combined scenario fixture missing'
+    Assert-True ((Get-ControlledDemoTitle 'Ordinary weekend setup') -eq 'Ordinary weekend setup') 'Ordinary community title changed'
+    Assert-True ((Get-ControlledDemoTitle '[Demo · Scenario] Quick Starter + Sea Dog') -eq '[Demo · Scenario] Quick Starter + Sea Dog') 'Normalization is not idempotent'
+    Assert-True ((Get-ControlledDemoTitle '[Wilson Demo] Strong approval') -eq '[Demo · Ranking] Strong approval') 'Legacy ranking mapping failed'
+    Assert-True ((Get-ControlledDemoTitle '[Pagination Demo] 21 comments') -eq '[Demo · Comments] 21 comments') 'Legacy pagination mapping failed'
+    Assert-True ($locks.gadgetIds.Count -eq 2 -and $locks.tirePartId) 'Combined locks example lacks multiple gadgets or legal parts'
+    $featureCatalog.gadgets=@($featureCatalog.gadgets|Where-Object id -ne '5a000a58-7d7a-581c-80e3-6ae8661215b7')
+    Assert-Fails {Add-CurrentFeatureDemos (New-FeatureBase) $featureCatalog} 'Missing reviewed gadget was replaced silently'
+    Assert-Fails {&$seeder -CurrentFeatures -Refresh -Preview -CatalogSnapshotPath $snapshot} 'Current features allowed destructive refresh scope'
+    Assert-Fails {&$seeder -CurrentFeatures -OptimizerDemoOnly -Preview -CatalogSnapshotPath $snapshot} 'Conflicting plan modes accepted'
     foreach($flag in @('Refresh','ProfessorDemoOnly','PromoteFeatured','ExpandedCommunity','SetRankingTimestamps')) {
       $options=@{OptimizerDemoOnly=$true;Preview=$true;CatalogSnapshotPath=$optimizerPath};$options[$flag]=$true
       Assert-Fails {&$seeder @options} "Optimizer accepted broad flag $flag"

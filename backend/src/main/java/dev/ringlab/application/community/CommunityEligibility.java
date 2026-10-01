@@ -6,17 +6,19 @@ import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.GadgetPlate;
 import dev.ringlab.domain.gamedata.*;
 import java.util.*;
+import java.util.regex.Pattern;
 
 /** Read-only selection policy; normal browsing deliberately does not use these exclusions. */
 public final class CommunityEligibility {
   private CommunityEligibility() {}
+  private static final Pattern CONTROLLED_DEMO_TITLE = Pattern.compile("^\\[Demo · [^\\]\\r\\n]+\\] .+");
   private static final List<String> DEMO_PREFIXES = List.of(
       "[Wilson Demo]", "[Comment Demo]", "[Pagination Demo]", "[Compare Demo]",
       "[Remix Demo]", "[Machine Demo]", "[Gadget Demo]", "[Ownership Demo]",
-      "[Vote Demo]", "[Version Demo]", "[Map Demo]", "[Optimizer Demo]", "[DEMO]");
+      "[Vote Demo]", "[Version Demo]", "[Map Demo]", "[Optimizer Demo]", "[DEMO]", "[Demo]");
 
   public static boolean controlledDemo(String title) {
-    return DEMO_PREFIXES.stream().anyMatch(title::startsWith);
+    return CONTROLLED_DEMO_TITLE.matcher(title).matches() || DEMO_PREFIXES.stream().anyMatch(title::startsWith);
   }
 
   public static boolean valid(Build b, Map<UUID, MachinePart> parts,

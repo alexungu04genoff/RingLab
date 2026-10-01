@@ -1,4 +1,23 @@
 # Pure demo planning: no network, database, or filesystem writes.
+function Get-ControlledDemoTitle([string]$Title) {
+  if($Title -match '^\[Demo · [^\]]+\] '){return $Title}
+  if($Title -match '^(.*?) \[Top 3 Demo\]$'){return "[Demo · Ranking] $($Matches[1])"}
+  if($Title -notmatch '^\[([^\]]* Demo|DEMO|Demo)\] (.+)$'){return $Title}
+  $prefix=$Matches[1];$name=$Matches[2]
+  $feature=switch -Regex ($prefix) {
+    '^(Wilson|Version|Vote) Demo$|^DEMO$|^Demo$' {'Ranking';break}
+    '^(Comment|Pagination) Demo$' {'Comments';break}
+    '^Optimizer Demo$' {'Recommendation';break}
+    '^Ownership Demo$' {'Ownership';break}
+    '^Remix Demo$' {'Remix';break}
+    '^Compare Demo$' {'Compare';break}
+    '^Map Demo$' {'Maps';break}
+    '^Machine Demo$' {'Machines';break}
+    default {'Stats'}
+  }
+  "[Demo · $feature] $name"
+}
+
 function Test-GadgetPlateFit([int[]]$Costs) {
   if (@($Costs | Where-Object { $_ -lt 1 -or $_ -gt 3 }).Count) { return $false }
   $ordered = @($Costs | Sort-Object -Descending)
@@ -33,10 +52,6 @@ function Get-DemoRefreshDecision {
   if($CurrentFingerprint -ne $PreviousFingerprint){return 'conflict'}
   if($CurrentFingerprint -eq $DesiredFingerprint){return 'retain'}
   'update'
-}
-
-function Test-DemoLegacyAdoptable([int]$ExactIdentityMatches,$CreatedAt,$UpdatedAt) {
-  $ExactIdentityMatches -eq 1 -and $null -ne $CreatedAt -and $CreatedAt -eq $UpdatedAt
 }
 
 function Get-CommunityDemoPlan {
@@ -354,5 +369,6 @@ function Get-CommunityDemoPlan {
       $comments+=[pscustomobject]@{key="comment/$($b.key)/page-$i";user=$speaker.key;build=$b.key;text=$discussionTexts[$i%$discussionTexts.Count]}
     }
   }
+  foreach($build in $builds){$build.title=Get-ControlledDemoTitle $build.title}
   [pscustomobject]@{schemaVersion=2;seed=$RandomSeed;referenceTime=$ReferenceTime.ToUniversalTime().ToString('o');newestVersion=$latest;users=$users;builds=$builds;votes=$votes;comments=$comments}
 }

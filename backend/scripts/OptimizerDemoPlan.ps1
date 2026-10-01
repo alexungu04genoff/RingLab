@@ -9,6 +9,7 @@ function Get-OptimizerDemoPlan($Catalog) {
   $fixture|Add-Member -NotePropertyMembers @{
     owner='optimizer';legacyTitle=$fixture.title;fixtureKind='OPTIMIZER';machineType='BOOST';version='1.4.1';stock=$true
   }
+  $fixture.title=Get-ControlledDemoTitle $fixture.title
   [pscustomobject]@{
     users=@([pscustomobject]@{key='optimizer';username='ringlab_demo_optimizer';email='ringlab_demo_optimizer@example.test';author=$true})
     builds=@($fixture);votes=@();comments=@();newestVersion=$version[0];referenceTime='2026-09-28T00:00:00Z'

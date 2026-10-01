@@ -16,6 +16,8 @@ param(
   [switch]$OptimizerDemoOnly,
   [switch]$PromoteFeatured,
   [switch]$ExpandedCommunity,
+  [switch]$CurrentFeatures,
+  [switch]$NormalizeControlledFixtures,
   [switch]$SetRankingTimestamps,
   [switch]$Apply
 )
@@ -25,10 +27,13 @@ $requestClock=[Diagnostics.Stopwatch]::StartNew()
 $lastRequestMilliseconds=-$RequestIntervalMilliseconds
 . "$PSScriptRoot/CommunityDemoPlan.ps1"
 . "$PSScriptRoot/OptimizerDemoPlan.ps1"
+. "$PSScriptRoot/FeatureDemoPlan.ps1"
 
 function Get-SelectedDemoPlan($Catalog) {
   if($OptimizerDemoOnly){return Get-OptimizerDemoPlan $Catalog}
-  Get-CommunityDemoPlan $Catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity
+  $plan=Get-CommunityDemoPlan $Catalog $BuildCount $RandomSeed $ReferenceTime $BoostMachineRatio -ExpandedCommunity:$ExpandedCommunity
+  if($CurrentFeatures){$plan=Add-CurrentFeatureDemos $plan $Catalog}
+  $plan
 }
 
 function Assert-LoopbackUrl([string]$Url) {
@@ -44,7 +49,7 @@ function Get-StatusCode($Failure) {
 function Invoke-RingLabApi {
   param([string]$Method,[string]$Path,$Body,[string]$Token,[int]$MaxRetries=3)
   $headers=@{};if($Token){$headers.Authorization="Bearer $Token"}
-  $request=@{Uri="$($BaseUrl.TrimEnd('/'))/api$Path";Method=$Method;Headers=$headers}
+  $request=@{Uri="$($BaseUrl.TrimEnd('/'))/api$Path";Method=$Method;Headers=$headers;TimeoutSec=30}
   if($null -ne $Body){$request.ContentType='application/json';$request.Body=$Body|ConvertTo-Json -Depth 20}
   for($attempt=0;;$attempt++){
     # Leave room in the shared loopback rate limit for normal browser traffic.
@@ -122,6 +127,7 @@ function Assert-Plan($Plan,$Catalog) {
   $errors=@();$buildKeys=@{};$partById=@{};$versionIds=@{};$gadgetById=@{}
   foreach($p in (ConvertTo-DemoArray $Catalog.parts)){$partById[[string]$p.id]=$p};foreach($v in (ConvertTo-DemoArray $Catalog.versions)){$versionIds[[string]$v.id]=$true};foreach($g in (ConvertTo-DemoArray $Catalog.gadgets)){$gadgetById[[string]$g.id]=$g}
   foreach($b in $Plan.builds){
+    if($b.racerId -notin $Catalog.racers.id){$errors+="$($b.key): unknown racer"}
     if($buildKeys.ContainsKey($b.key)){$errors+="$($b.key): duplicate fixture key"}else{$buildKeys[$b.key]=$b}
     $front=$partById[[string]$b.frontPartId];$rear=$partById[[string]$b.rearPartId];$tire=if($b.tirePartId){$partById[[string]$b.tirePartId]}else{$null}
     if(!$front -or $front.type -ne 'FRONT' -or !$rear -or $rear.type -ne 'REAR'){$errors+="$($b.key): missing FRONT or REAR part"}
@@ -166,6 +172,18 @@ function Get-ActualRequest($Build,[switch]$WithoutMaps) {
   $request
 }
 
+function Get-ControlledFixtureRequest($Definition,$Current) {
+  $request=Get-ActualRequest $Current
+  # Classification comes from the stable plan key, never the current row's title.
+  if($Definition.title -notmatch '^\[Demo · [^\]]+\] '){return $request}
+  $request.title=$Definition.title
+  if($Definition.key -in @('feature-quick-v1','feature-water-v1')){
+    $request.description=$Definition.description
+    $request.gadgetIds=@($Definition.gadgetIds)
+  }
+  $request
+}
+
 function Read-State {
   if(Test-Path $StatePath){
     $state=Get-Content -Raw -LiteralPath $StatePath|ConvertFrom-Json
@@ -196,6 +214,9 @@ function Show-Summary($Plan,$Actions,$WholeBuilds) {
 }
 
 Assert-LoopbackUrl $BaseUrl
+if($NormalizeControlledFixtures -and !$CurrentFeatures){throw 'NormalizeControlledFixtures requires CurrentFeatures and its engagement-preserving scope.'}
+if($CurrentFeatures -and ($ProfessorDemoOnly -or $OptimizerDemoOnly)){throw 'CurrentFeatures cannot be combined with a fixture-only mode.'}
+if($CurrentFeatures -and ($Refresh -or $PromoteFeatured -or $SetRankingTimestamps)){throw 'CurrentFeatures preserves existing fixtures and engagement; broad refresh flags are forbidden.'}
 if($OptimizerDemoOnly -and ($Refresh -or $ProfessorDemoOnly -or $PromoteFeatured -or $ExpandedCommunity -or $SetRankingTimestamps)){
   throw 'OptimizerDemoOnly creates/reuses only its frozen template and author; refresh, ranking, engagement and broad planning flags are forbidden.'
 }
@@ -225,20 +246,19 @@ $actions=@();$buildIds=@{}
 foreach($b in $plan.builds){
   $record=$stateByKey[$b.key];$actual=$null
   if($record){$actual=@($allBuilds|Where-Object id -eq $record.id)|Select-Object -First 1}
-  if($OptimizerDemoOnly -and $record -and !$actual){
-    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed optimizer template was removed; preserve that change';id=$record.id};continue
+  if($record -and !$actual){
+    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture was removed; preserve that change';id=$record.id};continue
   }
   if(!$actual){
-    $matches=@($legacyMatches[$b.key])
-    if($matches.Count -eq 1){
-      $actual=$matches[0];$buildIds[$b.key]=[string]$actual.id
-      if(Test-DemoLegacyAdoptable $matches.Count $actual.createdAt $actual.updatedAt){$actions+=[pscustomobject]@{key=$b.key;action='update';reason='legacy candidate; exact account and content rechecked before apply';id=$actual.id;legacy=$true;before=(Get-Fingerprint (Get-ActualRequest $actual))}}
-      else{$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='legacy fixture was edited after creation';id=$actual.id}}
+    $matches=@($allBuilds|Where-Object {$_.title -ceq $b.legacyTitle -or $_.title -ceq $b.title})
+    if($matches.Count){
+      $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='matching title without manifest ownership; left untouched';id=$null}
       continue
     }
   }
   if(!$actual){
     if($legacyDatasetPresent){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='legacy dataset exists but this key may have been renamed or removed';id=$null}}
+    elseif($NormalizeControlledFixtures){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='normalization never creates missing fixtures';id=$null}}
     else{$actions+=[pscustomobject]@{key=$b.key;action='add';reason='missing';id=$null}}
     continue
   }
@@ -250,7 +270,8 @@ foreach($b in $plan.builds){
     $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture timestamp changed';id=$actual.id};continue
   }
   if($actualFingerprint -ne $record.fingerprint -and $actualFingerprint -ne $record.pendingFingerprint){$actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fields were edited';id=$actual.id};continue}
-  if($ProfessorDemoOnly){
+  if($NormalizeControlledFixtures){$desired=Get-ControlledFixtureRequest $b $actual}
+  elseif($ProfessorDemoOnly){
     $desired=Get-ActualRequest $actual
     if($b.fixtureKind){$desired.title=$b.title;$desired.description=$b.description}
   } else {$desired=Get-Request $b $buildIds}
@@ -278,6 +299,8 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind)){
   Write-Host "Fixture $($action.action): $($fixture.key) [$($current.title)] -> [$($fixture.title)]"
 }
 foreach($conflict in @($actions|Where-Object action -eq 'conflict')){Write-Warning "$($conflict.key): $($conflict.reason)"}
+if($NormalizeControlledFixtures){Write-Host 'NormalizeControlledFixtures updates only managed teaching titles and the two scenario loadouts. All engagement and other fields are preserved.'}
+elseif($CurrentFeatures){Write-Host 'CurrentFeatures adds missing fixtures and preserves existing builds and engagement. Planned updates are not applied.'}
 if($PromoteFeatured){Write-Host 'Featured Sonic: add missing votes from 65 reserved fixture voters; preserve all existing votes. This is fictional demo engagement.'}
 if($SetRankingTimestamps){Write-Host 'Fixed ranking timestamps: update only trusted manifest-owned ranking fixtures with exact current timestamp checks.'}
 if(!$Apply){
@@ -304,6 +327,7 @@ $bootstrap=Invoke-RingLabApi POST '/dev-fixtures/demo-accounts' @{accounts=@($pl
 $sessions=@{};foreach($entry in (ConvertTo-DemoArray $bootstrap)){$sessions[$entry.key]=$entry.session}
 $sessionKeyByUserId=@{};foreach($key in $sessions.Keys){$sessionKeyByUserId[[string]$sessions[$key].user.id]=$key}
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
+  if($CurrentFeatures -and $buildIds[$fixture.key] -in @($before.builds.id)){continue}
   $action=@($actions|Where-Object key -eq $fixture.key)[0]
   $id=[string]$buildIds[$fixture.key]
   $foreign=@($before.votes|Where-Object build_id -eq $id|Where-Object {!$sessionKeyByUserId.ContainsKey([string]$_.user_id)})
@@ -313,6 +337,7 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
   }
 }
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
+  if($CurrentFeatures -and $buildIds[$fixture.key] -in @($before.builds.id)){continue}
   $action=@($actions|Where-Object key -eq $fixture.key)[0]
   $id=[string]$buildIds[$fixture.key];$currentCount=@($before.comments|Where-Object build_id -eq $id).Count
   if($currentCount -gt $fixture.targetComments){
@@ -324,10 +349,11 @@ foreach($b in $plan.builds){
   $action=@($actions|Where-Object key -eq $b.key)[0];if($action.action -in @('conflict','retain')){continue}
   $request=Get-Request $b $buildIds
   if($action.action -eq 'update'){
-    if(!$Refresh){continue}
+    if(!$Refresh -and !$NormalizeControlledFixtures){continue}
     $current=Invoke-RingLabApi GET "/builds/$($action.id)"
     if($current.author.id -ne $sessions[$b.owner].user.id -or (Get-Fingerprint (Get-ActualRequest $current)) -ne $action.before){throw "Concurrent edit or ownership conflict for $($b.key); stopping without overwriting it."}
-    if($ProfessorDemoOnly){$request=Get-ActualRequest $current;$request.title=$b.title;$request.description=$b.description}
+    if($NormalizeControlledFixtures){$request=Get-ControlledFixtureRequest $b $current}
+    elseif($ProfessorDemoOnly){$request=Get-ActualRequest $current;$request.title=$b.title;$request.description=$b.description}
     else{$request.remixedFromBuildId=if($current.remixedFrom){$current.remixedFrom.id}else{$null}}
     $previous=@($state.builds|Where-Object key -eq $b.key)|Select-Object -First 1
     $preserveEngagement=[bool]($action.legacy -or $previous.preserveEngagement)
@@ -337,7 +363,7 @@ foreach($b in $plan.builds){
     }
     Save-State $state
   } else {$preserveEngagement=$false}
-  if($action.action -eq 'add'){$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh){continue};$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
+  if($action.action -eq 'add'){$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh -and !$NormalizeControlledFixtures){continue};$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
   $buildIds[$b.key]=[string]$actual.id;$fingerprint=Get-Fingerprint (Get-ActualRequest $actual)
   $storedCaseTime=if($action.action -eq 'add'){$null}else{$previous.caseTime}
   $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint;preserveEngagement=$preserveEngagement;caseTime=$storedCaseTime}
@@ -360,6 +386,7 @@ if($SetRankingTimestamps){
   }
 }
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
+  if($CurrentFeatures -and $buildIds[$fixture.key] -in @($before.builds.id)){continue}
   $action=@($actions|Where-Object key -eq $fixture.key)[0]
   if($action.action -eq 'conflict'){continue}
   $id=[string]$buildIds[$fixture.key]
@@ -380,6 +407,7 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'WILSON')){
   Write-Host "Reconciled Wilson fixture $($fixture.key): $($actual.upvotes) up, $($actual.downvotes) down."
 }
 foreach($vote in $plan.votes){
+  if($CurrentFeatures -and $buildIds[$vote.build] -in @($before.builds.id)){continue}
   if(@($plan.builds|Where-Object {$_.key -eq $vote.build -and $_.fixtureKind -eq 'WILSON'}).Count){continue}
   if($vote.key -in @($state.votes)){continue};if(!$buildIds.ContainsKey($vote.build)){continue}
   if(@($actions|Where-Object {$_.key -eq $vote.build -and $_.action -eq 'conflict'}).Count){continue}
@@ -390,6 +418,7 @@ foreach($vote in $plan.votes){
   $state.votes=@($state.votes)+$vote.key;Save-State $state
 }
 foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
+  if($CurrentFeatures -and $buildIds[$fixture.key] -in @($before.builds.id)){continue}
   $action=@($actions|Where-Object key -eq $fixture.key)[0]
   if($action.action -eq 'conflict'){continue}
   $id=[string]$buildIds[$fixture.key];$desired=@($plan.comments|Where-Object build -eq $fixture.key)
@@ -409,6 +438,7 @@ foreach($fixture in @($plan.builds|Where-Object fixtureKind -eq 'COMMENT')){
   Write-Host "Reconciled Comment fixture $($fixture.key): $($actual.total) comments."
 }
 foreach($comment in $plan.comments){
+  if($CurrentFeatures -and $buildIds[$comment.build] -in @($before.builds.id)){continue}
   if(@($plan.builds|Where-Object {$_.key -eq $comment.build -and $_.fixtureKind -eq 'COMMENT'}).Count){continue}
   if($comment.key -in @($state.comments)){continue};if(!$buildIds.ContainsKey($comment.build)){continue}
   $record=@($state.builds|Where-Object key -eq $comment.build)|Select-Object -First 1
