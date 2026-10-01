@@ -1,5 +1,7 @@
 package dev.ringlab.application.gamedata;
 
+import dev.ringlab.port.in.ScenarioStatsUseCase;
+
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.build.GadgetPlate;
@@ -14,9 +16,13 @@ import lombok.RequiredArgsConstructor;
 /** Read-only catalog resolution. No build, ownership or recommendation mutation dependencies. */
 @ApplicationScoped
 @RequiredArgsConstructor
-public class ScenarioStatsService {
+public class ScenarioStatsService implements ScenarioStatsUseCase {
   private final BaseStatsService base;
   private final GameDataRepository game;
+
+  public Rules rules() {
+    return new Rules(ScenarioGadgetRules.VERSION, ScenarioGadgetRules.all());
+  }
 
   public ScenarioStatsResult preview(UUID version, UUID racer, UUID front, UUID rear, UUID tire,
       List<UUID> ids, ScenarioContext context) {

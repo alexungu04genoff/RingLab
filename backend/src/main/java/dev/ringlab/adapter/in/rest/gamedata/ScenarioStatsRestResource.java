@@ -2,9 +2,8 @@ package dev.ringlab.adapter.in.rest.gamedata;
 
 import dev.ringlab.adapter.in.rest.gamedata.request.ScenarioStatsRequest;
 import dev.ringlab.adapter.in.rest.gamedata.response.ScenarioStatsResponse;
-import dev.ringlab.application.gamedata.ScenarioStatsService;
+import dev.ringlab.port.in.ScenarioStatsUseCase;
 import dev.ringlab.domain.gamedata.ScenarioEffectRule;
-import dev.ringlab.domain.gamedata.ScenarioGadgetRules;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
@@ -17,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class ScenarioStatsRestResource {
-  private final ScenarioStatsService service;
+  private final ScenarioStatsUseCase service;
 
   @POST @Path("scenario-build") @Consumes(MediaType.APPLICATION_JSON)
   public ScenarioStatsResponse preview(@NotNull @Valid ScenarioStatsRequest request) {
@@ -31,7 +30,8 @@ public class ScenarioStatsRestResource {
   /** Describes relevant inputs without duplicating numerical rules in the browser. */
   @GET @Path("scenario-rules")
   public Controls controls() {
-    return new Controls(ScenarioGadgetRules.VERSION, ScenarioGadgetRules.all().stream()
+    var rules = service.rules();
+    return new Controls(rules.supportedVersion(), rules.effects().stream()
         .map(r -> new Control(r.gadgetId(), r.condition().field(), r.statEffect())).toList());
   }
 }

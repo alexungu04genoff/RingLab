@@ -1,5 +1,7 @@
 package dev.ringlab.application;
 
+import dev.ringlab.port.in.BuildUseCase;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
@@ -62,19 +64,19 @@ class BuildServiceTest {
     votes.summaries.put(tiny.id(), new VoteSummary(3, 0));
     votes.summaries.put(strong.id(), new VoteSummary(40, 1));
 
-    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    var filter = new BuildUseCase.Filter(null, null, null, null, null);
     assertEquals(List.of(strong, tiny),
-        service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 0, 2)).items());
+        service.list(new BuildUseCase.Query(filter, BuildSort.BEST_RATED, 0, 2)).items());
     assertEquals(List.of(newest.id(), tiny.id(), strong.id()), votes.requestedIds);
     assertEquals(List.of(strong, tiny, newest),
-        service.list(new BuildService.Query(filter, BuildSort.SCORE, 0, 3)).items());
+        service.list(new BuildUseCase.Query(filter, BuildSort.SCORE, 0, 3)).items());
     assertEquals(List.of(newest.id(), tiny.id(), strong.id()), votes.requestedIds);
-    var newestPage = service.list(new BuildService.Query(filter, BuildSort.NEWEST, 1, 2));
+    var newestPage = service.list(new BuildUseCase.Query(filter, BuildSort.NEWEST, 1, 2));
     assertEquals(List.of(tiny), newestPage.items());
     assertEquals(List.of(tiny.id()), votes.requestedIds);
     assertEquals(new VoteSummary(3, 0), newestPage.summary(tiny.id()));
     assertEquals(3, newestPage.total());
-    assertTrue(service.list(new BuildService.Query(filter, BuildSort.NEWEST,
+    assertTrue(service.list(new BuildUseCase.Query(filter, BuildSort.NEWEST,
         Integer.MAX_VALUE, 50)).items().isEmpty());
     assertEquals(List.of(tiny.id()), votes.requestedIds);
   }
@@ -90,8 +92,8 @@ class BuildServiceTest {
     votes.summaries.put(fiveDownNewest.id(), new VoteSummary(0, 5));
     votes.summaries.put(oneDown.id(), new VoteSummary(0, 1));
 
-    var page = service.list(new BuildService.Query(
-        new BuildRepository.Filter(null, null, null, null, null),
+    var page = service.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, null, null),
         BuildSort.BEST_RATED, 0, 4));
 
     assertEquals(List.of(unratedNew, unratedOld, oneDown, fiveDownNewest), page.items());
@@ -113,16 +115,16 @@ class BuildServiceTest {
     builds.searchResults = List.of(oldUnrated, newOneDown, oldNegativeWithUpvotes, newUnrated);
     votes.summaries.put(newOneDown.id(), new VoteSummary(0, 1));
     votes.summaries.put(oldNegativeWithUpvotes.id(), new VoteSummary(20, 40));
-    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    var filter = new BuildUseCase.Filter(null, null, null, null, null);
 
-    var first = service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 0, 2));
-    var second = service.list(new BuildService.Query(filter, BuildSort.BEST_RATED, 1, 2));
+    var first = service.list(new BuildUseCase.Query(filter, BuildSort.BEST_RATED, 0, 2));
+    var second = service.list(new BuildUseCase.Query(filter, BuildSort.BEST_RATED, 1, 2));
 
     assertEquals(4, first.total());
     assertEquals(List.of(oldNegativeWithUpvotes, newUnrated), first.items());
     assertEquals(List.of(newOneDown, oldUnrated), second.items());
-    assertEquals(List.of(oldNegativeWithUpvotes, oldUnrated), service.list(new BuildService.Query(
-        new BuildRepository.Filter(null, null, null, null, olderPatch),
+    assertEquals(List.of(oldNegativeWithUpvotes, oldUnrated), service.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, null, olderPatch),
         BuildSort.BEST_RATED, 0, 2)).items());
   }
 
@@ -135,8 +137,8 @@ class BuildServiceTest {
     builds.searchResults = List.of(middle, oldest, newest);
     builds.hydrationResults = List.of(oldest, newest);
 
-    var page = service.list(new BuildService.Query(
-        new BuildRepository.Filter(null, null, null, null, null), BuildSort.NEWEST, 0, 3));
+    var page = service.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, null, null), BuildSort.NEWEST, 0, 3));
 
     assertEquals(List.of(newest, oldest), page.items());
     assertEquals(List.of(newest.id(), middle.id(), oldest.id()), builds.hydratedIds);
@@ -150,11 +152,11 @@ class BuildServiceTest {
     builds.searchResults = List.of(first, second);
     votes.summaries.put(first.id(), new VoteSummary(7, 2));
     votes.summaries.put(second.id(), new VoteSummary(1, 4));
-    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    var filter = new BuildUseCase.Filter(null, null, null, null, null);
 
     for (BuildSort sort : List.of(BuildSort.SCORE, BuildSort.BEST_RATED)) {
       votes.summaryCalls = 0;
-      var page = service.list(new BuildService.Query(filter, sort, 0, 1));
+      var page = service.list(new BuildUseCase.Query(filter, sort, 0, 1));
 
       assertEquals(List.of(first.id(), second.id()), votes.requestedIds);
       assertEquals(new VoteSummary(7, 2), page.summary(first.id()));
@@ -204,9 +206,9 @@ class BuildServiceTest {
   @Test
   void rejectsProfanityInBuildTitleAndDescriptionBeforePersistence() {
     profanity.blocked.addAll(List.of("Blocked title", "Blocked description"));
-    var badTitle = new BuildService.Draft("Blocked title", "Clean description", racerId, frontPartId,
+    var badTitle = new BuildUseCase.Draft("Blocked title", "Clean description", racerId, frontPartId,
         rearPartId, tirePartId, null, null, List.of(gadgetId));
-    var badDescription = new BuildService.Draft("Clean title", "Blocked description", racerId,
+    var badDescription = new BuildUseCase.Draft("Clean title", "Blocked description", racerId,
         frontPartId, rearPartId, tirePartId, null, null, List.of(gadgetId));
 
     for (var draft : List.of(badTitle, badDescription)) {
@@ -224,7 +226,7 @@ class BuildServiceTest {
     Build source = existingBuild();
     builds.saved.put(source.id(), source);
 
-    var remixDraft = new BuildService.Draft("Remix", "Independent copy", racerId, frontPartId,
+    var remixDraft = new BuildUseCase.Draft("Remix", "Independent copy", racerId, frontPartId,
         rearPartId, tirePartId, gameVersionId, source.id(), List.of(gadgetId));
     Build remix = service.create(UUID.randomUUID(), remixDraft);
 
@@ -238,7 +240,7 @@ class BuildServiceTest {
 
   @Test
   void rejectsUnknownRemixSource() {
-    var draft = new BuildService.Draft("Remix", "", racerId, frontPartId, rearPartId,
+    var draft = new BuildUseCase.Draft("Remix", "", racerId, frontPartId, rearPartId,
         tirePartId, gameVersionId, UUID.randomUUID(), List.of(gadgetId));
 
     ValidationException error =
@@ -252,10 +254,10 @@ class BuildServiceTest {
   void editingRemixCannotReplaceItsSource() {
     Build source = existingBuild();
     builds.saved.put(source.id(), source);
-    Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
+    Build remix = service.create(authorId, new BuildUseCase.Draft("Remix", "", racerId,
         frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of(gadgetId)));
 
-    Build edited = service.edit(remix.id(), authorId, new BuildService.Draft("Edited", "", racerId,
+    Build edited = service.edit(remix.id(), authorId, new BuildUseCase.Draft("Edited", "", racerId,
         frontPartId, rearPartId, tirePartId, gameVersionId, UUID.randomUUID(), List.of(gadgetId)));
 
     assertEquals(source.id(), edited.remixedFromBuildId());
@@ -379,12 +381,12 @@ class BuildServiceTest {
     assertEquals("Missing author ID",
         assertThrows(ValidationException.class, () -> service.create(null, null)).getMessage());
 
-    var invalidTitle = new BuildService.Draft(" ", null, null, null, null, null, null, null, null);
+    var invalidTitle = new BuildUseCase.Draft(" ", null, null, null, null, null, null, null, null);
     var titleError = assertThrows(ValidationException.class, () -> service.create(authorId, invalidTitle));
     assertEquals("Title must be nonblank and at most 120 characters", titleError.getMessage());
     assertEquals("title", titleError.field());
 
-    var invalidVersionAndGadgets = new BuildService.Draft("Valid", "", racerId, frontPartId,
+    var invalidVersionAndGadgets = new BuildUseCase.Draft("Valid", "", racerId, frontPartId,
         rearPartId, tirePartId, null, UUID.randomUUID(), List.of(UUID.randomUUID()));
     var versionError = assertThrows(ValidationException.class,
         () -> service.create(authorId, invalidVersionAndGadgets));
@@ -423,7 +425,7 @@ class BuildServiceTest {
     gameData.machines.put(mixedMachine,
         new Machine(mixedMachine, "Other", RacingType.SPEED, null));
     gameData.parts.put(mixedRear, new MachinePart(mixedRear, mixedMachine, MachinePartType.REAR));
-    var mixed = new BuildService.Draft("Mixed", "", racerId, frontPartId, mixedRear,
+    var mixed = new BuildUseCase.Draft("Mixed", "", racerId, frontPartId, mixedRear,
         tirePartId, gameVersionId, null, List.of(gadgetId));
     var created = service.create(authorId, mixed);
     assertEquals(mixedRear, service.get(created.id()).rearPartId());
@@ -447,7 +449,7 @@ class BuildServiceTest {
     gameData.parts.put(boardFront, new MachinePart(boardFront, boardMachine, MachinePartType.FRONT));
     gameData.parts.put(boardRear, new MachinePart(boardRear, secondBoardMachine, MachinePartType.REAR));
 
-    var draft = new BuildService.Draft("Board", "", racerId, boardFront, boardRear,
+    var draft = new BuildUseCase.Draft("Board", "", racerId, boardFront, boardRear,
         null, gameVersionId, null, List.of());
     var created = service.create(authorId, draft);
 
@@ -459,7 +461,7 @@ class BuildServiceTest {
   @Test
   void rejectsMissingStandardTireBoardTireAndMixedFamilies() {
     assertThrows(ValidationException.class, () -> service.create(authorId,
-        new BuildService.Draft("Standard", "", racerId, frontPartId, rearPartId,
+        new BuildUseCase.Draft("Standard", "", racerId, frontPartId, rearPartId,
             null, gameVersionId, null, List.of())));
 
     UUID boardMachine = UUID.randomUUID();
@@ -471,19 +473,19 @@ class BuildServiceTest {
     gameData.parts.put(boardRear, new MachinePart(boardRear, boardMachine, MachinePartType.REAR));
 
     assertThrows(ValidationException.class, () -> service.create(authorId,
-        new BuildService.Draft("Board with tires", "", racerId, boardFront, boardRear,
+        new BuildUseCase.Draft("Board with tires", "", racerId, boardFront, boardRear,
             tirePartId, gameVersionId, null, List.of())));
     assertThrows(ValidationException.class, () -> service.create(authorId,
-        new BuildService.Draft("Mixed", "", racerId, frontPartId, boardRear,
+        new BuildUseCase.Draft("Mixed", "", racerId, frontPartId, boardRear,
             tirePartId, gameVersionId, null, List.of())));
   }
 
   @Test
   void rejectsWrongTypesInEverySlot() {
     for (var wrong : List.of(
-        new BuildService.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, null, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, null, List.of()),
-        new BuildService.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, null, List.of()))) {
+        new BuildUseCase.Draft("Bad", "", racerId, rearPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildUseCase.Draft("Bad", "", racerId, frontPartId, frontPartId, tirePartId, null, null, List.of()),
+        new BuildUseCase.Draft("Bad", "", racerId, frontPartId, rearPartId, frontPartId, null, null, List.of()))) {
       var error = assertThrows(ValidationException.class, () -> service.create(authorId, wrong));
       assertTrue(error.getMessage().startsWith("Expected "));
     }
@@ -495,15 +497,15 @@ class BuildServiceTest {
     for (var type : RacingType.values()) {
       gameData.machines.put(machineId, new Machine(machineId, "Source", type, null));
       var tire = type == RacingType.BOOST ? null : tirePartId;
-      var valid = new BuildService.Draft("Valid", "", racerId, frontPartId, rearPartId,
+      var valid = new BuildUseCase.Draft("Valid", "", racerId, frontPartId, rearPartId,
           tire, gameVersionId, null, List.of());
       var created = service.create(authorId, valid);
       assertEquals(tire, created.tirePartId());
       assertEquals(tire, service.edit(created.id(), authorId, valid).tirePartId());
-      var remix = new BuildService.Draft("Remix", "", racerId, frontPartId, rearPartId,
+      var remix = new BuildUseCase.Draft("Remix", "", racerId, frontPartId, rearPartId,
           tire, gameVersionId, created.id(), List.of());
       assertEquals(created.id(), service.create(authorId, remix).remixedFromBuildId());
-      var invalid = new BuildService.Draft("Invalid", "", racerId, frontPartId, rearPartId,
+      var invalid = new BuildUseCase.Draft("Invalid", "", racerId, frontPartId, rearPartId,
           tire == null ? tirePartId : null, gameVersionId, null, List.of());
       assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     }
@@ -518,7 +520,7 @@ class BuildServiceTest {
     for (var slot : List.of(MachinePartType.REAR, MachinePartType.TIRE)) {
       UUID partId = UUID.randomUUID();
       gameData.parts.put(partId, new MachinePart(partId, other, slot));
-      var bad = new BuildService.Draft("Invalid", "", racerId, frontPartId,
+      var bad = new BuildUseCase.Draft("Invalid", "", racerId, frontPartId,
           slot == MachinePartType.REAR ? partId : rearPartId,
           slot == MachinePartType.TIRE ? partId : tirePartId, gameVersionId, original.id(), List.of());
       var error = assertThrows(ValidationException.class, () -> service.create(authorId, bad));
@@ -533,11 +535,11 @@ class BuildServiceTest {
 
   @Test
   void rejectsMissingPartAndPreservesOrderedGadgets() {
-    var invalid = new BuildService.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, null, List.of());
+    var invalid = new BuildUseCase.Draft("Bad", "", racerId, null, rearPartId, tirePartId, null, null, List.of());
     assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     UUID second = UUID.randomUUID();
     gameData.gadgets.put(second, new Gadget(second, "Second", null, 2, null));
-    var ordered = new BuildService.Draft("Ordered", "", racerId, frontPartId, rearPartId,
+    var ordered = new BuildUseCase.Draft("Ordered", "", racerId, frontPartId, rearPartId,
         tirePartId, gameVersionId, null, List.of(second, gadgetId));
     var created = service.create(authorId, ordered);
     assertEquals(List.of(second, gadgetId), service.get(created.id()).gadgetIds());
@@ -551,9 +553,9 @@ class BuildServiceTest {
       assertThrows(ValidationException.class, () -> service.create(authorId, draft(title)));
     }
     for (var invalid : List.of(
-        new BuildService.Draft("Valid", null, racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
-        new BuildService.Draft("Valid", "x".repeat(10001), racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
-        new BuildService.Draft("Valid", "", null, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildUseCase.Draft("Valid", null, racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildUseCase.Draft("Valid", "x".repeat(10001), racerId, frontPartId, rearPartId, tirePartId, null, null, List.of()),
+        new BuildUseCase.Draft("Valid", "", null, frontPartId, rearPartId, tirePartId, null, null, List.of()),
         draftWithGadgets(null), draftWithGadgets(Arrays.asList((UUID) null)))) {
       assertThrows(ValidationException.class, () -> service.create(authorId, invalid));
     }
@@ -562,7 +564,7 @@ class BuildServiceTest {
 
   @Test
   void acceptsTextBoundariesAndRejectsInvalidEditWithoutChangingBuild() {
-    var valid = new BuildService.Draft("x".repeat(120), "d".repeat(10000), racerId,
+    var valid = new BuildUseCase.Draft("x".repeat(120), "d".repeat(10000), racerId,
         frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of());
     Build created = service.create(authorId, valid);
     assertEquals(valid.title(), created.title());
@@ -573,15 +575,15 @@ class BuildServiceTest {
 
   @Test
   void guardsInvalidQueriesBeforeCallingRepositories() {
-    var filter = new BuildRepository.Filter(null, null, null, null, null);
+    var filter = new BuildUseCase.Filter(null, null, null, null, null);
     assertThrows(ValidationException.class, () -> service.list(null));
     for (var query : List.of(
-        new BuildService.Query(null, BuildSort.NEWEST, 0, 12),
-        new BuildService.Query(filter, null, 0, 12),
-        new BuildService.Query(filter, BuildSort.NEWEST, -1, 12),
-        new BuildService.Query(filter, BuildSort.NEWEST, 0, 0),
-        new BuildService.Query(filter, BuildSort.NEWEST, 0, 51),
-        new BuildService.Query(new BuildRepository.Filter("x".repeat(121), null, null, null, null),
+        new BuildUseCase.Query(null, BuildSort.NEWEST, 0, 12),
+        new BuildUseCase.Query(filter, null, 0, 12),
+        new BuildUseCase.Query(filter, BuildSort.NEWEST, -1, 12),
+        new BuildUseCase.Query(filter, BuildSort.NEWEST, 0, 0),
+        new BuildUseCase.Query(filter, BuildSort.NEWEST, 0, 51),
+        new BuildUseCase.Query(new BuildUseCase.Filter("x".repeat(121), null, null, null, null),
             BuildSort.NEWEST, 0, 12))) {
       assertThrows(ValidationException.class, () -> service.list(query));
     }
@@ -590,7 +592,7 @@ class BuildServiceTest {
   @Test
   void missingOptionalSourceDoesNotMakeExistingRemixMissing() {
     Build source = service.create(authorId, draft("Source"));
-    Build remix = service.create(authorId, new BuildService.Draft("Remix", "", racerId,
+    Build remix = service.create(authorId, new BuildUseCase.Draft("Remix", "", racerId,
         frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of()));
     assertEquals(Optional.of(source), service.remixSource(remix));
     builds.saved.remove(source.id());
@@ -600,8 +602,8 @@ class BuildServiceTest {
     assertTrue(service.remixSource(existingBuild()).isEmpty());
   }
 
-  private BuildService.Draft draft(String title) {
-    return new BuildService.Draft(
+  private BuildUseCase.Draft draft(String title) {
+    return new BuildUseCase.Draft(
         title, "Description stays as supplied", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of(gadgetId));
   }
 
@@ -635,11 +637,11 @@ class BuildServiceTest {
       assertEquals("recommendedMapIds", error.field());
       assertEquals(existing, service.get(existing.id()));
     }
-    assertThrows(ValidationException.class, () -> service.list(new BuildService.Query(
-        new BuildRepository.Filter(null, null, null, null, null, Set.of(), UUID.randomUUID(), true),
+    assertThrows(ValidationException.class, () -> service.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, null, null, Set.of(), UUID.randomUUID(), true),
         BuildSort.NEWEST, 0, 12)));
-    assertDoesNotThrow(() -> service.list(new BuildService.Query(
-        new BuildRepository.Filter(null, null, null, null, null, Set.of(), first, false),
+    assertDoesNotThrow(() -> service.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, null, null, Set.of(), first, false),
         BuildSort.NEWEST, 0, 12)));
   }
 
@@ -648,7 +650,7 @@ class BuildServiceTest {
     var ids = java.util.stream.IntStream.rangeClosed(1, 5)
         .mapToObj(i -> addMap("Map " + i, i)).toList();
     var source = service.create(authorId, mapDraft(ids));
-    var remix = service.create(UUID.randomUUID(), new BuildService.Draft("Remix", "", racerId,
+    var remix = service.create(UUID.randomUUID(), new BuildUseCase.Draft("Remix", "", racerId,
         frontPartId, rearPartId, tirePartId, gameVersionId, source.id(), List.of(), ids));
     assertEquals(Set.copyOf(ids), remix.recommendedMapIds());
     service.edit(source.id(), authorId, mapDraft(List.of()));
@@ -662,13 +664,13 @@ class BuildServiceTest {
     return id;
   }
 
-  private BuildService.Draft mapDraft(List<UUID> ids) {
-    return new BuildService.Draft("Map setup", "", racerId, frontPartId, rearPartId, tirePartId,
+  private BuildUseCase.Draft mapDraft(List<UUID> ids) {
+    return new BuildUseCase.Draft("Map setup", "", racerId, frontPartId, rearPartId, tirePartId,
         gameVersionId, null, List.of(), ids);
   }
 
-  private BuildService.Draft draftWithGadgets(List<UUID> gadgetIds) {
-    return new BuildService.Draft(
+  private BuildUseCase.Draft draftWithGadgets(List<UUID> gadgetIds) {
+    return new BuildUseCase.Draft(
         "Build", "", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, gadgetIds);
   }
 
@@ -678,8 +680,8 @@ class BuildServiceTest {
     return id;
   }
 
-  private BuildService.Draft versionDraft(UUID version) {
-    return new BuildService.Draft("Versioned", "", racerId, frontPartId, rearPartId,
+  private BuildUseCase.Draft versionDraft(UUID version) {
+    return new BuildUseCase.Draft("Versioned", "", racerId, frontPartId, rearPartId,
         tirePartId, version, null, List.of(gadgetId));
   }
 

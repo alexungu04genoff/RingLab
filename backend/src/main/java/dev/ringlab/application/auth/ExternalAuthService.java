@@ -1,5 +1,7 @@
 package dev.ringlab.application.auth;
 
+import dev.ringlab.port.in.ExternalAuthUseCase;
+
 import dev.ringlab.application.AlreadyExistsException;
 import dev.ringlab.application.AuthenticationException;
 import dev.ringlab.application.ForbiddenException;
@@ -18,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class ExternalAuthService {
+public class ExternalAuthService implements ExternalAuthUseCase {
   private final ExternalIdentityVerifier verifier;
   private final ExternalIdentityRepository identities;
   private final UserRepository users;

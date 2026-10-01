@@ -2,9 +2,9 @@
 
 **A source-based study guide · inspected 1 October 2026 · Flyway V1–V33**
 
-This atlas describes the **current working tree**, whose HEAD at inspection was
-`f1576a359e909e485f41366e37ea817c84f5dc11`. Existing uncommitted frontend and documentation
-work was present. Java source, actual calls, repository implementations and the cumulative
+This atlas describes the **current working tree**, updated for the input-port refactor
+from baseline `f408299`. The original inspection preceded this change; only affected
+sections and diagrams have been patched. Java source, actual calls, implementations and the cumulative
 migration schema take precedence over older prose. This is a static architecture inspection,
 not a claim that a particular running database or deployed revision matches the checkout.
 
@@ -13,14 +13,15 @@ Its features communicate through Java method calls inside the same process.
 
 | Atlas inventory | Count |
 | --- | ---: |
-| Mermaid diagrams, each with a matching standalone source | 30 |
+| Mermaid diagrams, each with a matching standalone source | 31 |
 | Explicit HTTP operations | 45: 44 production + 1 DEV ONLY |
 | REST resource classes | 16: 15 production + 1 DEV ONLY |
-| Application classes named `*Service` | 16: 15 production + 1 DEV ONLY |
+| Application classes named `*Service` | 18: 17 production + 1 DEV ONLY |
+| Input ports / application implementations | 17 / 17 (one DEV ONLY) |
 | Outbound ports / concrete implementations | 15 / 15 |
 | Application database tables | 21 |
 | JPA entity classes / MapStruct mapper interfaces | 14 / 4 |
-| Top-level production Java files indexed | 193 |
+| Top-level production Java files indexed | 212 |
 
 ## Reading route
 
@@ -52,7 +53,8 @@ The [request walkthroughs](#19-trace-this-request) turn the maps into concrete e
 
 A **domain** type expresses a RingLab concept or calculation without framework dependencies.
 An **application service** coordinates a use case, such as publishing a build.
-A **port** is an interface describing something the application needs from infrastructure.
+An **input port** describes a capability RingLab provides to outside callers.
+An **output port** describes a capability RingLab requires from infrastructure.
 An **adapter** implements a boundary: REST translates HTTP into Java calls; a database adapter
 translates repository operations into persistence operations. A **DTO** is a transport object
 shaped for JSON. An **entity** is a JPA representation of stored data. A **mapper** converts
@@ -63,7 +65,7 @@ between entity and domain representations; it does not decide business policy.
 | Blue | REST resource, transport conversion or HTTP helper |
 | Amber | Application service, validation or orchestration |
 | Green | Domain data, rule or calculation |
-| Purple | Outbound interface/port |
+| Purple | Input/output port or boundary-owned result |
 | Rose | Concrete outbound adapter, mapper or entity |
 | Gray cylinder/box | Database table, external system or outside caller |
 | Solid arrow | A call, explicit data flow, or persistence operation; read the label |
@@ -117,41 +119,19 @@ that implementation choice.
 <!-- diagram: hexagonal-overview -->
 ```mermaid
 flowchart TB
-  subgraph inbound["adapter/in/rest"]
-    br["BuildRestResource"]:::rest
-    nr["NewsRestResource"]:::rest
-    gd["GameDataRestResource"]:::rest
-  end
-  subgraph application["application"]
-    bs["BuildService"]:::app
-    ns["GameNewsService"]:::app
-  end
-  subgraph domain["domain — JDK only"]
-    b["Build / BuildRanking"]:::domain
-    n["GameNewsItem"]:::domain
-  end
-  subgraph ports["port/out — flat interfaces"]
-    bp["BuildRepository"]:::port
-    np["GameNewsRepository"]:::port
-    gp["GameDataRepository"]:::port
-  end
-  subgraph outbound["adapter/out"]
-    ba["BuildDbAdapter"]:::adapter
-    na["SteamNewsAdapter"]:::adapter
-    ga["GameDataDbAdapter"]:::adapter
-  end
-  br --> bs
-  nr --> ns
-  gd -->|"simple read, no application service"| gp
-  bs --> b
-  bs --> bp
-  ns --> n
-  ns --> np
-  bp -->|"contract uses domain types"| b
-  np --> n
-  ba -.->|"implements; Java dependency points inward"| bp
-  na -.->|"implements"| np
-  ga -.->|"implements"| gp
+  inbound["adapter/in/rest<br/>BuildRestResource<br/>NewsRestResource<br/>GameDataRestResource"]:::rest
+  application["application<br/>BuildService<br/>GameNewsService<br/>GameDataQueryService"]:::app
+  outbound["adapter/out<br/>BuildDbAdapter<br/>SteamNewsAdapter<br/>GameDataDbAdapter"]:::adapter
+  inputs["port/in: provided capabilities<br/>BuildUseCase<br/>GameNewsUseCase<br/>GameDataQueryUseCase"]:::port
+  outputs["port/out: required capabilities<br/>BuildRepository<br/>GameNewsRepository<br/>GameDataRepository"]:::port
+  domain["domain: JDK only<br/>Build / BuildRanking<br/>GameNewsItem<br/>Racer / Machine / catalog values"]:::domain
+  inbound -->|"calls contracts"| inputs
+  application -.->|"implements input contracts"| inputs
+  application -->|"calls required contracts"| outputs
+  outbound -.->|"implements output contracts"| outputs
+  inputs -->|"contract types"| domain
+  application -->|"data and behavior"| domain
+  outputs -->|"contract types"| domain
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
@@ -167,8 +147,9 @@ The news path uses exactly the same boundary for HTTP infrastructure.
 
 The implemented architecture is pragmatic. Application code uses CDI and transaction
 annotations; `AuthService` and `PasswordResetService` use Quarkus `BcryptUtil` directly.
-REST sometimes calls ports directly, notably catalog reads, `CurrentUser`, verification
-delivery, and saved-list vote summaries. No `port/in` service interfaces exist. DB adapters
+REST calls feature-oriented input ports for capabilities, including catalog/rule queries,
+account validity, verification delivery and saved-list vote summaries. Application services
+implement those contracts; internal helpers retain direct collaboration. DB adapters
 translate selected constraint failures into application exceptions. `RaceMapDbEntity`
 converts itself with `toDomain()` instead of using MapStruct. These are actual boundaries,
 not omissions from an idealized design.
@@ -177,10 +158,51 @@ Source trail: [architecture guard](../backend/src/test/java/dev/ringlab/Architec
 [BuildService](../backend/src/main/java/dev/ringlab/application/build/BuildService.java),
 [BuildDbAdapter](../backend/src/main/java/dev/ringlab/adapter/out/db/build/BuildDbAdapter.java).
 
+### Input boundary and internal collaboration
+
+The runtime path is deliberately symmetrical. The two dashed bindings below do not imply
+that an interface imports its implementation. Both ports are framework-free; implementation
+dependencies point inward. Input ports describe outside-facing capabilities, not every internal
+method. Solvers, validators and calculators retain ordinary direct calls.
+
+<!-- diagram: inbound-ports -->
+```mermaid
+flowchart TB
+  outside["HTTP caller"]:::outside --> resource["adapter/in<br/>BuildRestResource + BuildResponseAssembler"]:::rest
+  resource --> input["port/in<br/>BuildUseCase + command/query/result records"]:::port
+  input -.->|"runtime binding: implemented by"| service["application<br/>BuildService"]:::app
+  service --> internal["Internal collaborators<br/>BuildDraftValidator → ProfanityPolicy<br/>direct concrete calls; no new interfaces"]:::app
+  service --> domain["domain<br/>Build + BuildRanking + GadgetPlate"]:::domain
+  service --> output["port/out<br/>BuildRepository"]:::port
+  output -.->|"runtime binding: implemented by"| adapter["adapter/out<br/>BuildDbAdapter"]:::adapter
+  adapter --> db[("PostgreSQL")]:::outside
+  note["Runtime flow runs down the diagram.<br/>Java implementation dependencies point inward:<br/>BuildService implements BuildUseCase;<br/>BuildDbAdapter implements BuildRepository."]:::outside
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938
+```
+
+[Diagram source](architecture/inbound-ports.mmd). The complete
+[port-to-implementation-to-consumer table](architecture.md#input-port-bindings-and-consumers)
+and [before-refactor audit](architecture.md#inbound-audit-and-preserved-sequencing) include all
+resources and response/authentication helpers. `BuildUseCase.Draft/Filter/Query/Page`, social
+page/results, base catalog/rule results and `CommunitySnapshot` are boundary-owned contracts.
+REST request/response DTOs stay outside; `BuildService` explicitly converts the input filter
+to the unchanged output repository filter.
+
+The only intentional inbound dependencies on `application` are seven exact semantic errors
+for transport validation/mapping. `ArchitectureTest` rejects all other application types and
+all `port/out` dependencies from inbound adapters, including helpers. Rate limiting remains
+adapter-local. Application-to-application collaboration, such as recommendation-to-collection,
+does not use input ports. Outbound adapters cannot reach `port/in`.
+
 ## 3. Complete backend entry-point map
 
 Where does a request go next? This overview includes all **16 REST resource classes** and
-their direct application/helper entry points. Continue into the linked feature diagrams
+their input ports, implementations and transport helpers. Continue into the linked feature diagrams
 for validation, domain calculations, ports and tables. `CurrentUser` is shared by protected
 routes and expanded in the authentication diagram, rather than repeated on every edge.
 
@@ -189,48 +211,46 @@ routes and expanded in the authentication diagram, rather than repeated on every
 flowchart TB
   subgraph accounts["Accounts · 10"]
     direction LR
-    ar["AuthRestResource"]:::rest --> as["AuthService"]:::app
-    ar --> ev["EmailVerificationService"]:::app
-    ar --> ea["ExternalAuthService"]:::app
-    pr["PasswordResetRestResource"]:::rest --> ps["PasswordResetService"]:::app
-    dev["DevDemoAccountRestResource<br/>DEV ONLY: non-prod build + loopback"]:::rest --> ds["DemoAccountBootstrapService<br/>DEV ONLY"]:::app
+    ar["AuthRestResource"]:::rest --> auth["AuthUseCase"]:::port -.-> as["AuthService"]:::app
+    ar --> registration["AccountRegistrationUseCase"]:::port -.-> coordinator["AccountRegistrationService"]:::app
+    coordinator --> ev["AuthService / EmailVerificationService<br/>then EmailVerificationSender outside their transaction"]:::app
+    ar --> external["ExternalAuthUseCase"]:::port -.-> ea["ExternalAuthService"]:::app
+    pr["PasswordResetRestResource"]:::rest --> reset["PasswordResetUseCase"]:::port -.-> ps["PasswordResetService"]:::app
+    dev["DevDemoAccountRestResource<br/>DEV ONLY: non-prod build + loopback"]:::rest --> demo["DemoAccountUseCase"]:::port -.-> ds["DemoAccountBootstrapService<br/>DEV ONLY"]:::app
   end
   subgraph builds["Builds · 5–6"]
     direction LR
-    br["BuildRestResource"]:::rest --> bs["BuildService"]:::app
+    br["BuildRestResource"]:::rest --> build["BuildUseCase"]:::port -.-> bs["BuildService"]:::app
     br --> bra["BuildResponseAssembler"]:::rest
-    br --> cache["CommunitySnapshotCache<br/>only for excludeTop fallback"]:::app
-    br --> passive["PassiveStatsService<br/>optional page stats"]:::app
-    rec["BuildRecommendationRestResource"]:::rest --> recs["BuildRecommendationService"]:::app
+    br --> community["CommunityUseCase"]:::port -.-> cache["CommunitySnapshotCache<br/>only for excludeTop fallback"]:::app
+    br --> passiveInput["PassiveStatsUseCase"]:::port -.-> passive["PassiveStatsService<br/>optional page stats"]:::app
+    rec["BuildRecommendationRestResource"]:::rest --> recommendation["BuildRecommendationUseCase"]:::port -.-> recs["BuildRecommendationService"]:::app
   end
   subgraph personal["Personal · 11–12"]
     direction LR
-    cr["CollectionRestResource"]:::rest --> cs["CollectionService"]:::app
-    sr["SavedBuildRestResource"]:::rest --> ss["SavedBuildService"]:::app
+    cr["CollectionRestResource"]:::rest --> collection["CollectionUseCase"]:::port -.-> cs["CollectionService"]:::app
+    sr["SavedBuildRestResource"]:::rest --> saved["SavedBuildUseCase"]:::port -.-> ss["SavedBuildService"]:::app
     sr --> sra["BuildResponseAssembler"]:::rest
-    sr --> sps["PassiveStatsService"]:::app
-    sr --> vp["VoteRepository<br/>direct summaries read"]:::port
+    sr --> savedStats["PassiveStatsUseCase"]:::port -.-> sps["PassiveStatsService"]:::app
+    sr --> savedVotes["VoteUseCase"]:::port -.-> vp["VoteService.summaries"]:::app
   end
   subgraph social["Social · 9, 12"]
     direction LR
-    cor["CommentRestResource"]:::rest --> cos["CommentService"]:::app
-    cor --> uas["AuthService<br/>author display names"]:::app
-    cdr["CommentDeletionRestResource"]:::rest --> cos
-    vr["VoteRestResource"]:::rest --> vs["VoteService"]:::app
-    comr["CommunityRestResource"]:::rest --> comc["CommunitySnapshotCache"]:::app
+    cor["CommentRestResource"]:::rest --> comments["CommentUseCase"]:::port -.-> cos["CommentService"]:::app
+    cor --> authors["AuthUseCase"]:::port -.-> uas["AuthService<br/>author display names"]:::app
+    cdr["CommentDeletionRestResource"]:::rest --> comments
+    vr["VoteRestResource"]:::rest --> votes["VoteUseCase"]:::port -.-> vs["VoteService"]:::app
+    comr["CommunityRestResource"]:::rest --> snapshot["CommunityUseCase"]:::port -.-> comc["CommunitySnapshotCache"]:::app
     comr --> urls["CommunityPublicUrls / TopBuildsResponse<br/>DiscordTopBuildsFormatter for export"]:::rest
   end
   subgraph catalog["Catalog / stats / news"]
     direction LR
-    gr["GameDataRestResource"]:::rest --> gp["GameDataRepository<br/>direct catalog reads"]:::port
-    bsr["BaseStatsRestResource"]:::rest --> bss["BaseStatsService"]:::app
-    pssr["PassiveStatsRestResource"]:::rest --> pss["PassiveStatsService"]:::app
-    pssr --> pbs["BuildService<br/>persisted preview"]:::app
-    pssr --> pg["GameDataRepository<br/>rule catalog's gadget list"]:::port
-    pssr --> pgr["PassiveGadgetRules<br/>rule catalog metadata"]:::domain
-    scr["ScenarioStatsRestResource"]:::rest --> scs["ScenarioStatsService"]:::app
-    scr --> scrules["ScenarioGadgetRules<br/>controls path"]:::domain
-    nr["NewsRestResource"]:::rest --> ns["GameNewsService"]:::app
+    gr["GameDataRestResource"]:::rest --> game["GameDataQueryUseCase"]:::port -.-> gp["GameDataQueryService → GameDataRepository"]:::app
+    bsr["BaseStatsRestResource"]:::rest --> base["BaseStatsUseCase"]:::port -.-> bss["BaseStatsService"]:::app
+    pssr["PassiveStatsRestResource"]:::rest --> psInput["PassiveStatsUseCase"]:::port -.-> pss["PassiveStatsService<br/>previews + gadget rule metadata"]:::app
+    pssr --> persisted["BuildUseCase"]:::port -.-> pbs["BuildService<br/>persisted preview"]:::app
+    scr["ScenarioStatsRestResource"]:::rest --> scenario["ScenarioStatsUseCase"]:::port -.-> scs["ScenarioStatsService<br/>preview + rule controls"]:::app
+    nr["NewsRestResource"]:::rest --> news["GameNewsUseCase"]:::port -.-> ns["GameNewsService"]:::app
   end
   %% Invisible links stack independent feature panels; they are not calls.
   accounts ~~~ builds ~~~ personal ~~~ social ~~~ catalog
@@ -243,12 +263,12 @@ flowchart TB
 **How to read this:** scroll through the feature panels, follow each resource's direct
 left-to-right edge, then use its section. The vertical panel order is only a reading order.
 Repeated labels represent the same class, not separate instances or microservices.
-Rule-catalog endpoints sometimes read domain rule metadata directly; they do not calculate
-recommendations. The single development resource is excluded from `prod` builds.
+Rule-catalog endpoints use `PassiveStatsUseCase.rules` and `ScenarioStatsUseCase.rules`;
+the application retrieves domain rule metadata. They do not calculate recommendations. The single development resource is excluded from `prod` builds.
 [Diagram source](architecture/backend-complete-map.mmd).
 
 The overview intentionally ends before every shared dependency. The next diagram supplies
-all port bindings, and feature diagrams show exactly which of them each service calls.
+all output-port bindings, and feature diagrams show exactly which of them each service calls.
 There are **45 explicitly annotated method/path endpoints: 44 production and 1 development**.
 Automatic HEAD/OPTIONS handling, framework management endpoints and test-only resources
 are outside that count. In particular, `VerificationMailResource` lives under `src/test`
@@ -333,7 +353,8 @@ flowchart TB
   response["BuildResponseAssembler → BuildResponse<br/>see read flow"]:::rest
   http --> rest
   rest --> actor
-  rest -->|"actor UUID + BuildService.Draft"| svc
+  rest -->|"actor UUID + BuildUseCase.Draft"| input["BuildUseCase"]:::port
+  input -.->|"implemented by"| svc
   svc --> existing
   existing --> repo
   svc --> draft
@@ -397,16 +418,16 @@ Single-item assembly reads votes itself; list assembly reuses already fetched su
 ```mermaid
 flowchart TB
   h["GET /api/builds/{id}"]:::outside --> r["BuildRestResource.get"]:::rest
-  r --> s["BuildService.get"]:::app
+  r --> input["BuildUseCase"]:::port -.-> s["BuildService.get"]:::app
   s --> p["BuildRepository.find"]:::port
   p -.-> a["BuildDbAdapter<br/>EntityManager.find + BuildDbMapper.toDomain"]:::adapter
   a --> t[("builds + gadget/map associations")]:::outside
   s -.->|"Build"| r
   r --> x["BuildResponseAssembler.assemble"]:::rest
-  x --> u["AuthService.current → UserRepository"]:::app
-  x --> g["GameDataRepository<br/>racer / part sources / gadgets / version / maps"]:::port
-  x --> v["VoteService.summary → VoteRepository"]:::app
-  x --> remix["BuildService.remixSource → BuildRepository"]:::app
+  x --> auth["AuthUseCase"]:::port -.-> u["AuthService.current → UserRepository"]:::app
+  x --> catalog["GameDataQueryUseCase"]:::port -.-> query["GameDataQueryService"]:::app --> g["GameDataRepository<br/>racer / part sources / gadgets / version / maps"]:::port
+  x --> votes["VoteUseCase"]:::port -.-> v["VoteService.summary → VoteRepository"]:::app
+  x --> remixes["BuildUseCase"]:::port -.-> remix["BuildService.remixSource → BuildRepository"]:::app
   x --> dto["BuildResponse<br/>AuthorResponse, RacerResponse, MachinePartResponse<br/>GadgetResponse, GameVersionResponse<br/>RemixSourceResponse, MapRecommendationsResponse"]:::rest
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -450,8 +471,8 @@ flowchart TB
   optional["PassiveStatsService.buildPage<br/>only includeStats=true"]:::app
   out["BuildPageResponse<br/>items, total, page, size; optional stats/error"]:::rest
   h --> r
-  r --> cache
-  r --> s
+  r --> community["CommunityUseCase"]:::port -.-> cache
+  r --> input["BuildUseCase"]:::port -.-> s
   s --> p
   p -.-> a --> db
   p -.->|"unranked matching facts"| facts
@@ -461,7 +482,7 @@ flowchart TB
   facts -.->|"comparator inputs"| rank
   s --> page --> full
   r --> assembly
-  r --> optional
+  r --> passive["PassiveStatsUseCase"]:::port -.-> optional
   assembly --> out
   optional -.->|"optional enrichment"| out
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
@@ -497,7 +518,7 @@ removes the entity and relational constraints handle dependent rows. Remixes sur
 ```mermaid
 flowchart TB
   h["DELETE /api/builds/{id}"]:::outside --> r["BuildRestResource + CurrentUser.id"]:::rest
-  r --> s["BuildService.delete<br/>get → ForbiddenException.requireOwner"]:::app
+  r --> input["BuildUseCase"]:::port -.-> s["BuildService.delete<br/>get → ForbiddenException.requireOwner"]:::app
   s --> p["BuildRepository.delete"]:::port
   p -.-> a["BuildDbAdapter<br/>EntityManager.remove(BuildDbEntity)"]:::adapter
   a --> b[("builds: remove target row")]:::outside
@@ -529,7 +550,7 @@ facts. **NO BUILD IS PERSISTED.** There is no `BuildRepository` dependency in th
 flowchart TB
   h["POST /api/build-recommendations<br/>BuildRecommendationRequest"]:::outside
   r["BuildRecommendationRestResource<br/>user role, @Blocking, toDomain()"]:::rest
-  actor["CurrentUser.id<br/>UserRepository → UserDbAdapter → users"]:::rest
+  actor["CurrentUser.id<br/>AuthUseCase → AuthService → UserRepository"]:::rest
   s["BuildRecommendationService.recommend<br/>NOT_SUPPORTED transaction<br/>two nonwaiting semaphore permits"]:::app
   loader["RecommendationCatalogLoader.load<br/>REQUIRES_NEW short transaction"]:::app
   col["CollectionService.load(actor)"]:::app
@@ -547,7 +568,8 @@ flowchart TB
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
   h --> r
   r --> actor
-  r -->|"actor UUID + RecommendationRequest"| s
+  r -->|"actor UUID + RecommendationRequest"| input["BuildRecommendationUseCase"]:::port
+  input -.-> s
   s --> loader
   loader --> gp
   loader --> sp
@@ -676,7 +698,7 @@ flowchart TB
   ctx["ScenarioContext<br/>ephemeral player-selected conditions"]:::domain
   sc["ScenarioStatsCalculator"]:::domain
   so["ScenarioStatsResult<br/>passive + scenario delta<br/>knownSubtotal + nullable exact total"]:::domain
-  endpoints --> base
+  endpoints --> input["BaseStatsUseCase"]:::port -.-> base
   consumers --> base
   base --> gp
   base --> sp
@@ -728,13 +750,14 @@ flowchart TB
   dto["BuildStatsResponse.withPassive<br/>or BuildStatsResponse.from / CatalogResponse"]:::rest
   game["GameDataRepository<br/>resolve catalog metadata"]:::port
   stats["BaseStatsRepository<br/>read per-version maps"]:::port
-  br --> base
+  br --> baseInput["BaseStatsUseCase"]:::port -.-> base
   base --> build
   base --> cat
   base --> game
   base --> stats
-  pr -->|"persisted"| bs
-  pr -->|"draft or persisted page"| passive
+  pr -->|"persisted"| builds["BuildUseCase"]:::port -.-> bs
+  pr -->|"draft, persisted page or rule catalog"| input["PassiveStatsUseCase"]:::port -.-> passive
+  passive -->|"rules"| metadata["PassiveGadgetRules + gadget catalog"]:::domain
   passive -->|"draft"| draft
   passive -->|"saved build list"| page
   passive --> game
@@ -763,7 +786,7 @@ not call repositories. `buildPage` in `PassiveStatsService` loads the catalog on
 | `GET /api/stats/passive-build` | `passive.draft`: validates distinct gadgets and plate, then `base.draftBreakdown`. Omitted selected components use zero subtotal; incomplete selection is still marked PARTIAL when appropriate. |
 | `GET /api/stats/persisted/{id}` | `BuildService.get` → `PassiveStatsService.buildPage(List.of(build))`; uses the stored patch and selections. |
 | Build/saved list enrichment | Same passive page pipeline, batching base reads by patch. Optional failure remains separate from the build data response. |
-| `GET /api/stats/gadget-rules` | REST directly combines `game.listGadgets()` and `PassiveGadgetRules.forGadget`; this is rule metadata, not a calculation service call. |
+| `GET /api/stats/gadget-rules` | `PassiveStatsUseCase.rules → PassiveStatsService` combines `game.listGadgets()` and `PassiveGadgetRules.forGadget`; REST only converts the result. |
 
 `BaseStats` uses exact decimal addition and propagates null per stat field. Missing source
 rows mean unknown, not zero. There is no implicit latest-patch fallback. V22/V24 explicitly
@@ -805,7 +828,9 @@ flowchart TB
   rules["PassiveGadgetRules: identify conditional effects<br/>ScenarioGadgetRules: lookup + pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
   result["ScenarioStatsResult<br/>effect statuses + adjustments + knownSubtotal<br/>exact total only when coverage supports it"]:::domain
   dto["ScenarioStatsResponse.from<br/>no persistence"]:::rest
-  h --> r --> s
+  h --> r --> input["ScenarioStatsUseCase"]:::port -.-> s
+  r -->|"GET scenario-rules"| input
+  input -.-> metadata["ScenarioStatsService.rules → ScenarioGadgetRules"]:::app
   r --> ctx
   s --> game
   s --> plate
@@ -831,7 +856,8 @@ arithmetic in the scenario calculator. The context never becomes a `Build` field
 All five context fields can be unknown. Unknown differs from a specified condition that
 does not activate an effect. REST validates integral numeric inputs before conversion;
 domain bounds validate the resulting context. These input bounds are not game-effect caps.
-`GET /api/stats/scenario-rules` calls `ScenarioGadgetRules.all()` directly and returns control
+`GET /api/stats/scenario-rules` calls `ScenarioStatsUseCase.rules → ScenarioStatsService`,
+which retrieves `ScenarioGadgetRules.all()`; REST returns control
 metadata, with no repository or service call.
 
 The current ruleset is `crossworlds-1.4.1-scenario-2026-10-01.1`. It allows the explicitly
@@ -855,7 +881,7 @@ assembles detached entries, and caches a snapshot. No vote mutation directly cal
 <!-- diagram: community-flow -->
 ```mermaid
 flowchart TB
-  browse["BuildRestResource → BuildService.list<br/>normal Explore query"]:::rest
+  browse["BuildRestResource → BuildUseCase → BuildService.list<br/>normal Explore query"]:::rest
   rest["CommunityRestResource<br/>GET top-builds or top-builds/discord"]:::rest
   cache["CommunitySnapshotCache.get<br/>one synchronized in-process entry"]:::app
   service["CommunitySelectionService.select<br/>REQUIRES_NEW transaction"]:::app
@@ -869,11 +895,11 @@ flowchart TB
   rules["application MachineCompatibility<br/>domain MachineComposition + GadgetPlate"]:::app
   up["UserRepository.byId"]:::port
   sp["BaseStatsRepository<br/>per selected patch"]:::port
-  snapshot["CommunitySnapshot / Entry<br/>up to three eligible builds"]:::app
-  dto["TopBuildsResponse.from + CommunityPublicUrls<br/>Entry.passiveStats → PassiveStatsService.resolved"]:::rest
+  snapshot["CommunitySnapshot / Entry<br/>up to three eligible builds; port/in payload"]:::port
+  dto["TopBuildsResponse.from + CommunityPublicUrls<br/>CommunityUseCase.passiveStats on a non-304 response"]:::rest
   formatter["DiscordTopBuildsFormatter.format<br/>message JSON only; no Discord call"]:::rest
   browse --> ranking
-  rest --> cache -->|"miss / expired"| service
+  rest --> input["CommunityUseCase"]:::port -.-> cache -->|"miss / expired"| service
   service --> bp
   service --> vp
   service --> gp
@@ -887,6 +913,8 @@ flowchart TB
   service -->|"rank, skip ineligible, stop at three"| snapshot
   snapshot -.->|"published after successful transaction"| cache
   rest --> dto
+  dto --> input
+  input -.-> projection["CommunitySnapshotCache.passiveStats<br/>PassiveStatsService.resolved; detached facts only"]:::app
   rest -->|"Discord representation"| formatter
   dto -.->|"formatter input"| formatter
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
@@ -916,7 +944,7 @@ Normal browsing does not invoke this policy.
 Eligibility requires coherent required slots and valid gadgets/plate, an existing racer,
 and an existing patch if specified. Unknown numerical stats alone do not disqualify a build.
 No one-per-author rule exists. `CommunitySnapshotAssembler` calculates base breakdowns
-directly from contribution maps; `CommunitySnapshot.Entry.passiveStats()` reuses static
+directly from contribution maps; `CommunityUseCase.passiveStats`, implemented by the cache, reuses static
 application resolution when the response is assembled.
 
 The cache lifetime defaults to 60 seconds, configurable from 1–300 seconds. It starts at
@@ -936,8 +964,9 @@ Source trail: [selection](../backend/src/main/java/dev/ringlab/application/commu
 ### 10.1 Registration and email verification
 
 Where are account activation and mail delivery separated? Registration stores an unverified
-user and a token digest atomically. The REST resource sends the verification email **after**
-the application transaction returns. Clicking its link invokes a separate verification use case.
+user and a token digest atomically. `AccountRegistrationService` sends verification email
+**after** the existing application transaction returns; its register/resend methods use
+`NOT_SUPPORTED`. Clicking the link invokes the existing transactional verification service.
 
 <!-- diagram: auth-flow -->
 ```mermaid
@@ -962,19 +991,21 @@ flowchart TB
   register --> rest
   verify --> rest
   resend --> rest
-  rest -->|"register"| auth
+  rest --> input["AccountRegistrationUseCase"]:::port
+  input -.-> coordinator["AccountRegistrationService<br/>register / resend: NOT_SUPPORTED"]:::app
+  coordinator -->|"register"| auth
   auth --> policy
   auth --> up
   auth -->|"issue inside registration transaction"| ev
-  rest -->|"verify or resend"| ev
+  coordinator -->|"verify or resend"| ev
   ev --> up
   ev --> tp
   up -.-> ua --> users
   tp -.-> ta --> tokens
   auth -.->|"returns after commit"| mail
   ev -.->|"resend may return"| mail
-  rest -->|"sendVerification after service return"| sender
-  mail -.->|"link input to REST delivery"| sender
+  coordinator -->|"send after transaction commits"| sender
+  mail -.->|"link input to application delivery"| sender
   sender -.-> adapter --> smtp
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -1018,14 +1049,15 @@ flowchart TB
   jwt["AuthRestResource.session<br/>Jwt.subject + groups user + authVersion + sign<br/>SessionResponse / UserResponse"]:::rest
   next["Later protected HTTP request<br/>Authorization: Bearer JWT"]:::outside
   framework["Quarkus / SmallRye JWT verification<br/>@RolesAllowed user"]:::rest
-  actor["CurrentUser.id<br/>UUID subject + user exists + authVersion matches"]:::rest
+  actor["CurrentUser.id<br/>parse UUID subject and authVersion claim"]:::rest
   usecase["REST invokes application use case<br/>with authenticated actor UUID"]:::rest
-  login --> rest --> svc --> port
+  login --> rest --> input["AuthUseCase"]:::port -.-> svc --> port
   port -.-> db --> table
   svc -.->|"User, no hash exposed in response"| jwt
   next --> framework
   framework -.->|"verified security context"| actor
-  actor --> port
+  actor --> input
+  input -.-> validate["AuthService.validateSession<br/>account exists + authVersion matches"]:::app --> port
   actor -.->|"actor UUID"| usecase
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -1071,7 +1103,7 @@ flowchart TB
   create["ExternalAccountRegistration<br/>generate available clean username"]:::app
   profanity["ProfanityPolicy"]:::app
   output["login: AuthRestResource.session → SessionResponse<br/>link: MessageResponse"]:::rest
-  h --> r --> s
+  h --> r --> input["ExternalAuthUseCase"]:::port -.-> s
   s --> verifier
   verifier -.-> google --> provider
   verifier -.->|"returns"| identity
@@ -1129,9 +1161,10 @@ flowchart TB
   mail["QuarkusPasswordResetSender → Mailer"]:::adapter
   smtp["SMTP / configured mail delivery"]:::outside
   response["Generic forgot-password MessageResponse<br/>including delivery failure"]:::rest
-  forgot --> rest --> issue
+  forgot --> rest --> input["PasswordResetUseCase"]:::port
+  input -.->|"request"| issue
   reset --> rest
-  rest --> consume
+  input -.->|"reset"| consume
   issue --> users
   users -.-> up --> tables
   issue --> repo
@@ -1195,7 +1228,7 @@ flowchart TB
   ex["CollectionExclusions<br/>immutable sets of NOT-owned IDs"]:::domain
   recommendation["BuildRecommendationService<br/>calls CollectionService.load(actor)"]:::app
   solver["BuildRecommendationSolver<br/>filter candidate pools; reject unavailable locks"]:::domain
-  h --> r --> s
+  h --> r --> input["CollectionUseCase"]:::port -.-> s
   s --> game
   s --> p
   p -.-> a
@@ -1255,12 +1288,12 @@ flowchart TB
   dto["CommentResponse / CommentPageResponse"]:::rest
   h --> r
   r --> actor
-  r --> s
+  r --> input["CommentUseCase"]:::port -.-> s
   s --> build
   s --> policy
   s --> p
   p -.-> a --> m --> db
-  r --> user
+  r --> auth["AuthUseCase"]:::port -.-> user
   r --> dto
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -1293,8 +1326,8 @@ flowchart TB
   e["VoteDbEntity"]:::adapter
   t[("votes<br/>UNIQUE user_id + build_id<br/>CHECK value IN -1,1")]:::outside
   summary["VoteSummary<br/>score = upvotes - downvotes"]:::domain
-  out["VoteService.Result → VoteResponse<br/>score, upvotes, downvotes, myVote"]:::rest
-  h --> r --> s
+  out["VoteUseCase.Result → VoteResponse<br/>score, upvotes, downvotes, myVote"]:::rest
+  h --> r --> input["VoteUseCase"]:::port -.-> s
   s --> b
   s -->|"PUT constructs"| v
   s --> p
@@ -1336,20 +1369,20 @@ flowchart TB
   shared["BuildDbAdapter.filters<br/>shared literal catalog/map filtering"]:::adapter
   e["SavedBuildDbEntity + BuildDbEntity"]:::adapter
   t[("saved_builds + builds and filter relations")]:::outside
-  v["VoteRepository.summaries<br/>direct from REST for live page"]:::port
+  v["VoteRepository.summaries<br/>live page counts"]:::port
   assembly["BuildResponseAssembler.assembleAll"]:::rest
   stats["PassiveStatsService.buildPage"]:::app
   dto["SavedPage / SavedStatus / SavedResult<br/>private, no-store"]:::rest
-  h --> r --> s
+  h --> r --> input["SavedBuildUseCase"]:::port -.-> s
   s --> bp
   s --> validator
   s --> p
   p -.-> a
   a --> shared
   a --> e --> t
-  r --> v
+  r --> votes["VoteUseCase"]:::port -.-> voteService["VoteService.summaries"]:::app --> v
   r --> assembly
-  r --> stats
+  r --> passive["PassiveStatsUseCase"]:::port -.-> stats
   r --> dto
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -1385,7 +1418,7 @@ No external call is hidden inside a domain calculator.
 flowchart TB
   subgraph news["Steam news"]
     direction TB
-    nr["NewsRestResource"]:::rest --> ns["GameNewsService.latest — request five"]:::app
+    nr["NewsRestResource"]:::rest --> newsInput["GameNewsUseCase"]:::port -.-> ns["GameNewsService.latest — request five"]:::app
     ns --> np["GameNewsRepository"]:::port
     np -.-> na["SteamNewsAdapter<br/>validate response; map GameNewsItem"]:::adapter
     na --> nc["SteamNewsClient<br/>GET /ISteamNews/GetNewsForApp/v2/"]:::adapter
@@ -1402,7 +1435,8 @@ flowchart TB
   end
   subgraph mail["Email"]
     direction TB
-    ar["AuthRestResource<br/>after registration/resend transaction"]:::rest --> ep["EmailVerificationSender"]:::port
+    ar["AuthRestResource"]:::rest --> accountInput["AccountRegistrationUseCase"]:::port
+    accountInput -.-> registration["AccountRegistrationService<br/>after registration/resend transaction"]:::app --> ep["EmailVerificationSender"]:::port
     ep -.-> ea["QuarkusEmailVerificationSender"]:::adapter
     ps["PasswordResetService<br/>inside request transaction"]:::app --> rp["PasswordResetSender"]:::port
     rp -.-> ra["QuarkusPasswordResetSender"]:::adapter
@@ -1858,7 +1892,7 @@ flowchart LR
 **How to read this:** source `BaseStats` values come from persistent contribution rows,
 but sums/adjusted vectors are constructed in memory using the same value type. A
 `RecommendationResult` contains `BuildSelection`, never a saved `Build`. The domain imports
-only JDK/domain code; `CommunitySnapshot` is intentionally absent because it is an application
+only JDK/domain code; `CommunitySnapshot` is intentionally absent because it is an input-port
 record. [Diagram source](architecture/domain-calculations.mmd).
 
 | Lifetime | Types and meaning |
@@ -1880,10 +1914,12 @@ These are the **45 explicitly annotated HTTP operations in 16 resources**: 44 pr
 operations and one development-only operation. Framework-generated `HEAD`/`OPTIONS`, health
 and OpenAPI endpoints, static assets, and test-only resources are not counted.
 
-To keep the nine-column table readable, port/adapter cells use the exact pairs below.
-`+ actor` means `CurrentUser → UserRepository → UserDbAdapter` on **every User route**;
+To keep the endpoint tables readable, port/adapter cells use the exact pairs below.
+`+ actor` means `CurrentUser → AuthUseCase → AuthService → UserRepository → UserDbAdapter` on **every User route**;
 this common read is included by this convention rather than repeated in every cell.
-`+ response` is the build-response enrichment described immediately below the key.
+`+ response` is build enrichment through AuthUseCase/BuildUseCase/GameDataQueryUseCase/VoteUseCase
+as described below the key. The input column lists resource calls; protected routes also use
+AuthUseCase through the shared actor helper.
 “External” means a server-side network integration, not a browser action or local JWT signing.
 “Conditional” means the operation can finish without inserting/updating a row.
 
@@ -1905,9 +1941,10 @@ this common read is included by this convention rather than repeated in every ce
 | V | `VoteRepository` | `VoteDbAdapter` |
 | N | `GameNewsRepository` | `SteamNewsAdapter` |
 
-**Build response path:** `BuildResponseAssembler` calls `AuthService.current` (U),
-`BuildService.remixSource` (conditional B), and G for catalog details. A single response also
-calls `VoteService.summary` (V); page callers supply vote summaries themselves. Thus
+**Build response path:** `BuildResponseAssembler` calls `AuthUseCase → AuthService.current` (U),
+`BuildUseCase → BuildService.remixSource` (conditional B), and `GameDataQueryUseCase → GameDataQueryService`
+(G) for catalog details. A single response also calls `VoteUseCase → VoteService.summary` (V);
+page callers supply vote summaries themselves. Thus
 `+ response` expands to U/B/G/V reads and their matching adapters. This is a REST helper,
 not a persistence mapper. **Stats path:** `PassiveStatsService → BaseStatsService` adds G/BS.
 **Top exclusion path:** a cache miss may invoke `CommunitySelectionService` and B/V/G/U/BS.
@@ -1919,68 +1956,68 @@ the relevant service even on a public route.
 
 ### Accounts
 
-| HTTP method/path | REST resource | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| POST `/api/auth/register` | `AuthRestResource` | `AuthService`, `EmailVerificationService` | `PasswordPolicy`, `ProfanityPolicy`, `User`, `VerificationEmail` | U, EV, EM | U, EV, EM | Yes | Verification email after service returns | Public |
-| POST `/api/auth/verify-email` | `AuthRestResource` | `EmailVerificationService` | `EmailVerificationToken`, digest/expiry checks | EV, U | EV, U | Yes | No | Public; one-time token |
-| POST `/api/auth/resend-verification` | `AuthRestResource` | `EmailVerificationService` | `VerificationEmail` | U, EV, EM | U, EV, EM | Conditional | Eligible account: email | Public |
-| POST `/api/auth/login` | `AuthRestResource` | `AuthService` | `User`, bcrypt verification; resource signs JWT | U | U | No | No | Public; username/password |
-| POST `/api/auth/google` | `AuthRestResource` | `ExternalAuthService` | `VerifiedExternalIdentity`, `ExternalAccountRegistration`, `ProfanityPolicy` | GID, I, U | GID, I, U | Conditional | Google key retrieval may occur | Public; Google credential |
-| POST `/api/auth/google/link` | `AuthRestResource` | `ExternalAuthService` | `VerifiedExternalIdentity`, `ExternalIdentity` | GID, I, U + actor | GID, I, U | Conditional | Google key retrieval may occur | User |
-| GET `/api/auth/me` | `AuthRestResource` | `AuthService` | `CurrentUser`, `UserResponse` | U + actor | U | No | No | User |
-| POST `/api/auth/logout` | `AuthRestResource` | None | `CurrentUser`; client disposes token | actor | U | No | No | User |
-| POST `/api/auth/forgot-password` | `PasswordResetRestResource` | `PasswordResetService` | `PasswordResetToken`, issuance cooldown | U, PR, PM | U, PR, PM | Conditional | Eligible account: email inside transaction | Public |
-| POST `/api/auth/reset-password` | `PasswordResetRestResource` | `PasswordResetService` | `PasswordPolicy`, token digest/expiry, bcrypt | PR | PR | Yes | No | Public; one-time token |
-| POST `/api/dev-fixtures/demo-accounts` | `DevDemoAccountRestResource` | `DemoAccountBootstrapService` | Reserved demo identities, resource signs JWT | U | U | Conditional | No | **DEV ONLY**; non-production build and immediate peer loopback |
+| HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| POST `/api/auth/register` | `AuthRestResource` | `AccountRegistrationUseCase` | `AccountRegistrationService` → `AuthService`, `EmailVerificationService` | `PasswordPolicy`, `ProfanityPolicy`, `User`, `VerificationEmail` | U, EV, EM | U, EV, EM | Yes | Verification email after service returns | Public |
+| POST `/api/auth/verify-email` | `AuthRestResource` | `AccountRegistrationUseCase` | `AccountRegistrationService` → `EmailVerificationService` | `EmailVerificationToken`, digest/expiry checks | EV, U | EV, U | Yes | No | Public; one-time token |
+| POST `/api/auth/resend-verification` | `AuthRestResource` | `AccountRegistrationUseCase` | `AccountRegistrationService` → `EmailVerificationService` | `VerificationEmail` | U, EV, EM | U, EV, EM | Conditional | Eligible account: email | Public |
+| POST `/api/auth/login` | `AuthRestResource` | `AuthUseCase` | `AuthService` | `User`, bcrypt verification; resource signs JWT | U | U | No | No | Public; username/password |
+| POST `/api/auth/google` | `AuthRestResource` | `ExternalAuthUseCase` | `ExternalAuthService` | `VerifiedExternalIdentity`, `ExternalAccountRegistration`, `ProfanityPolicy` | GID, I, U | GID, I, U | Conditional | Google key retrieval may occur | Public; Google credential |
+| POST `/api/auth/google/link` | `AuthRestResource` | `ExternalAuthUseCase` | `ExternalAuthService` | `VerifiedExternalIdentity`, `ExternalIdentity` | GID, I, U + actor | GID, I, U | Conditional | Google key retrieval may occur | User |
+| GET `/api/auth/me` | `AuthRestResource` | `AuthUseCase` | `AuthService` | `CurrentUser`, `UserResponse` | U + actor | U | No | No | User |
+| POST `/api/auth/logout` | `AuthRestResource` | `AuthUseCase` | `AuthService.validateSession` | `CurrentUser`; client disposes token | actor | U | No | No | User |
+| POST `/api/auth/forgot-password` | `PasswordResetRestResource` | `PasswordResetUseCase` | `PasswordResetService` | `PasswordResetToken`, issuance cooldown | U, PR, PM | U, PR, PM | Conditional | Eligible account: email inside transaction | Public |
+| POST `/api/auth/reset-password` | `PasswordResetRestResource` | `PasswordResetUseCase` | `PasswordResetService` | `PasswordPolicy`, token digest/expiry, bcrypt | PR | PR | Yes | No | Public; one-time token |
+| POST `/api/dev-fixtures/demo-accounts` | `DevDemoAccountRestResource` | `DemoAccountUseCase` | `DemoAccountBootstrapService` | Reserved demo identities, resource signs JWT | U | U | Conditional | No | **DEV ONLY**; non-production build and immediate peer loopback |
 
 ### Builds, recommendations and personal state
 
-| HTTP method/path | REST resource | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET `/api/builds` | `BuildRestResource` | `BuildService`; optional `PassiveStatsService`; cache miss `CommunitySelectionService`; response services | `BuildRanking`, `WilsonScore`, `BuildResponseAssembler`, `CommunitySnapshotCache` | B, V, G + response; optional BS/U | B, V, G, U; optional BS | No | No | Public |
-| GET `/api/builds/{id}` | `BuildRestResource` | `BuildService`, response services | `BuildResponseAssembler` | B + response | B, U, G, V | No | No | Public |
-| POST `/api/builds` | `BuildRestResource` | `BuildService`, response services | `BuildDraftValidator`, `ProfanityPolicy`, `GadgetPlate`, `MachineCompatibility`, `MachineComposition` | B, G + actor + response | B, G, U, V | Yes, including remix | No | User |
-| PUT `/api/builds/{id}` | `BuildRestResource` | `BuildService`, response services | Same validation; `ForbiddenException.requireOwner` | B, G + actor + response | B, G, U, V | Yes | No | User; build owner |
-| DELETE `/api/builds/{id}` | `BuildRestResource` | `BuildService` | `ForbiddenException.requireOwner` | B + actor | B, U | Yes; cascades and remix SET NULL | No | User; build owner |
-| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedObjective`, plate/compatibility rules | G, BS, C + actor | G, BS, C, U | **No** | No | User |
-| GET `/api/saved-builds` | `SavedBuildRestResource` | `SavedBuildService`, `PassiveStatsService`, response services | `BuildDraftValidator` map check, `BuildResponseAssembler`; resource reads V directly | S, B, G, V, BS + actor + response | S, B, G, V, BS, U | No | No | User |
-| GET `/api/saved-builds/status` | `SavedBuildRestResource` | `SavedBuildService` | Up to 50 distinct requested IDs | S + actor | S, U | No | No | User |
-| PUT `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildService` | Build existence; idempotent bookmark | B, S + actor | B, S, U | Conditional | No | User |
-| DELETE `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildService` | Idempotent removal; no build existence check | S + actor | S, U | Conditional | No | User |
-| GET `/api/collection` | `CollectionRestResource` | `CollectionService` | `CollectionExclusions` | C + actor | C, U | No | No | User |
-| PUT `/api/collection/{category}/{id}` | `CollectionRestResource` | `CollectionService` | `CollectionCategory`, typed catalog-ID validation | C, G + actor | C, G, U | Conditional | No | User |
+| HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GET `/api/builds` | `BuildRestResource` | `BuildUseCase`; optional `CommunityUseCase` / `PassiveStatsUseCase` | `BuildService`; optional `PassiveStatsService`; cache miss `CommunitySelectionService`; response services | `BuildRanking`, `WilsonScore`, `BuildResponseAssembler`, `CommunitySnapshotCache` | B, V, G + response; optional BS/U | B, V, G, U; optional BS | No | No | Public |
+| GET `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildResponseAssembler` | B + response | B, U, G, V | No | No | Public |
+| POST `/api/builds` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildDraftValidator`, `ProfanityPolicy`, `GadgetPlate`, `MachineCompatibility`, `MachineComposition` | B, G + actor + response | B, G, U, V | Yes, including remix | No | User |
+| PUT `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | Same validation; `ForbiddenException.requireOwner` | B, G + actor + response | B, G, U, V | Yes | No | User; build owner |
+| DELETE `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService` | `ForbiddenException.requireOwner` | B + actor | B, U | Yes; cascades and remix SET NULL | No | User; build owner |
+| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationUseCase` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedObjective`, plate/compatibility rules | G, BS, C + actor | G, BS, C, U | **No** | No | User |
+| GET `/api/saved-builds` | `SavedBuildRestResource` | `SavedBuildUseCase` + `VoteUseCase` + `PassiveStatsUseCase` | `SavedBuildService`, `PassiveStatsService`, response services | `BuildDraftValidator` map check, `BuildResponseAssembler`; `VoteUseCase.summaries` supplies live vote facts | S, B, G, V, BS + actor + response | S, B, G, V, BS, U | No | No | User |
+| GET `/api/saved-builds/status` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Up to 50 distinct requested IDs | S + actor | S, U | No | No | User |
+| PUT `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Build existence; idempotent bookmark | B, S + actor | B, S, U | Conditional | No | User |
+| DELETE `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Idempotent removal; no build existence check | S + actor | S, U | Conditional | No | User |
+| GET `/api/collection` | `CollectionRestResource` | `CollectionUseCase` | `CollectionService` | `CollectionExclusions` | C + actor | C, U | No | No | User |
+| PUT `/api/collection/{category}/{id}` | `CollectionRestResource` | `CollectionUseCase` | `CollectionService` | `CollectionCategory`, typed catalog-ID validation | C, G + actor | C, G, U | Conditional | No | User |
 
 ### Community, comments, votes and news
 
-| HTTP method/path | REST resource | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET `/api/community/top-builds` | `CommunityRestResource` | Cache miss: `CommunitySelectionService` | `CommunitySnapshotCache`, `CommunityEligibility`, `CommunitySnapshotAssembler`, `BuildRanking`, `TopBuildsResponse` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | No | Public |
-| GET `/api/community/top-builds/discord` | `CommunityRestResource` | Cache miss: `CommunitySelectionService` | Same snapshot; `DiscordTopBuildsFormatter`, `CommunityPublicUrls` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | **No Discord API call** | Public |
-| GET `/api/builds/{id}/comments` | `CommentRestResource` | `CommentService`, `BuildService`, `AuthService` | `Comment`, author response conversion | CM, B, U | CM, B, U | No | No | Public |
-| POST `/api/builds/{id}/comments` | `CommentRestResource` | `CommentService`, `BuildService`, `AuthService` | `ProfanityPolicy`, `Comment` | CM, B, U + actor | CM, B, U | Yes | No | User |
-| DELETE `/api/comments/{id}` | `CommentDeletionRestResource` | `CommentService` | `ForbiddenException.requireOwner` | CM + actor | CM, U | Yes | No | User; comment owner |
-| GET `/api/builds/{id}/vote` | `VoteRestResource` | `VoteService`, `BuildService` | `VoteSummary` | V, B + actor | V, B, U | No | No | User |
-| PUT `/api/builds/{id}/vote` | `VoteRestResource` | `VoteService`, `BuildService` | `Vote`, `VoteSummary` | V, B + actor | V, B, U | Yes: add/change | No | User |
-| DELETE `/api/builds/{id}/vote` | `VoteRestResource` | `VoteService`, `BuildService` | `VoteSummary` | V, B + actor | V, B, U | Conditional | No | User |
-| GET `/api/news` | `NewsRestResource` | `GameNewsService` | `GameNewsItem`, `SteamNewsClient`, `SteamNewsResponse` | N | N | No | Steam Web API | Public |
+| HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GET `/api/community/top-builds` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | `CommunitySnapshotCache`, `CommunityEligibility`, `CommunitySnapshotAssembler`, `BuildRanking`, `TopBuildsResponse` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | No | Public |
+| GET `/api/community/top-builds/discord` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | Same snapshot; `DiscordTopBuildsFormatter`, `CommunityPublicUrls` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | **No Discord API call** | Public |
+| GET `/api/builds/{id}/comments` | `CommentRestResource` | `CommentUseCase` + `AuthUseCase` | `CommentService`, `BuildService`, `AuthService` | `Comment`, author response conversion | CM, B, U | CM, B, U | No | No | Public |
+| POST `/api/builds/{id}/comments` | `CommentRestResource` | `CommentUseCase` + `AuthUseCase` | `CommentService`, `BuildService`, `AuthService` | `ProfanityPolicy`, `Comment` | CM, B, U + actor | CM, B, U | Yes | No | User |
+| DELETE `/api/comments/{id}` | `CommentDeletionRestResource` | `CommentUseCase` | `CommentService` | `ForbiddenException.requireOwner` | CM + actor | CM, U | Yes | No | User; comment owner |
+| GET `/api/builds/{id}/vote` | `VoteRestResource` | `VoteUseCase` | `VoteService`, `BuildService` | `VoteSummary` | V, B + actor | V, B, U | No | No | User |
+| PUT `/api/builds/{id}/vote` | `VoteRestResource` | `VoteUseCase` | `VoteService`, `BuildService` | `Vote`, `VoteSummary` | V, B + actor | V, B, U | Yes: add/change | No | User |
+| DELETE `/api/builds/{id}/vote` | `VoteRestResource` | `VoteUseCase` | `VoteService`, `BuildService` | `VoteSummary` | V, B + actor | V, B, U | Conditional | No | User |
+| GET `/api/news` | `NewsRestResource` | `GameNewsUseCase` | `GameNewsService` | `GameNewsItem`, `SteamNewsClient`, `SteamNewsResponse` | N | N | No | Steam Web API | Public |
 
 ### Catalog and calculations
 
-| HTTP method/path | REST resource | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET `/api/maps` | `GameDataRestResource` | None; direct repository read | `RaceMap`, `RaceMapResponse` | G | G | No | No | Public |
-| GET `/api/game-versions` | `GameDataRestResource` | None; direct repository read | `GameVersion`, `GameVersionResponse` | G | G | No | No | Public |
-| GET `/api/racers` | `GameDataRestResource` | None; direct repository read | `Racer`, `RacerResponse` | G | G | No | No | Public |
-| GET `/api/machines` | `GameDataRestResource` | None; direct repository read | `Machine`, `MachineResponse` | G | G | No | No | Public |
-| GET `/api/gadgets` | `GameDataRestResource` | None; direct repository read | `Gadget`, `GadgetResponse` | G | G | No | No | Public |
-| GET `/api/machine-parts` | `GameDataRestResource` | None; direct repository read | `MachinePartResponse` enriches source-machine details | G | G | No | No | Public |
-| GET `/api/stats/catalog` | `BaseStatsRestResource` | `BaseStatsService` | `BaseStats`; catalog contributions/stock composition | G, BS | G, BS | No | No | Public |
-| GET `/api/stats/build` | `BaseStatsRestResource` | `BaseStatsService` | `BaseStatsBreakdown`, `BaseStats` | G, BS | G, BS | No | No | Public |
-| GET `/api/stats/persisted/{id}` | `PassiveStatsRestResource` | `BuildService`, `PassiveStatsService`, `BaseStatsService` | `PassiveStatsCalculator`, `PassiveGadgetRules`, `BuildStatsResponse` | B, G, BS | B, G, BS | No | No | Public |
-| GET `/api/stats/passive-build` | `PassiveStatsRestResource` | `PassiveStatsService`, `BaseStatsService` | `GadgetPlate`, `PassiveStatsCalculator`, `PassiveGadgetRules` | G, BS | G, BS | No | No | Public |
-| GET `/api/stats/gadget-rules` | `PassiveStatsRestResource` | None; direct repository/rule calls | `PassiveGadgetRules`, `GadgetEffectRule` | G | G | No | No | Public |
-| POST `/api/stats/scenario-build` | `ScenarioStatsRestResource` | `ScenarioStatsService`, `BaseStatsService`; static `PassiveStatsService.resolved` | `ScenarioContext`, `PassiveStatsCalculator`, `ScenarioStatsCalculator`, `ScenarioGadgetRules` | G, BS | G, BS | **No** | No | Public |
-| GET `/api/stats/scenario-rules` | `ScenarioStatsRestResource` | None; static rules | `ScenarioGadgetRules`, `ScenarioEffectRule` | None | None | No | No | Public |
+| HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| GET `/api/maps` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `RaceMap`, `RaceMapResponse` | G | G | No | No | Public |
+| GET `/api/game-versions` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `GameVersion`, `GameVersionResponse` | G | G | No | No | Public |
+| GET `/api/racers` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `Racer`, `RacerResponse` | G | G | No | No | Public |
+| GET `/api/machines` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `Machine`, `MachineResponse` | G | G | No | No | Public |
+| GET `/api/gadgets` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `Gadget`, `GadgetResponse` | G | G | No | No | Public |
+| GET `/api/machine-parts` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `MachinePartResponse` enriches source-machine details | G | G | No | No | Public |
+| GET `/api/stats/catalog` | `BaseStatsRestResource` | `BaseStatsUseCase` | `BaseStatsService` | `BaseStats`; catalog contributions/stock composition | G, BS | G, BS | No | No | Public |
+| GET `/api/stats/build` | `BaseStatsRestResource` | `BaseStatsUseCase` | `BaseStatsService` | `BaseStatsBreakdown`, `BaseStats` | G, BS | G, BS | No | No | Public |
+| GET `/api/stats/persisted/{id}` | `PassiveStatsRestResource` | `PassiveStatsUseCase` + `BuildUseCase` | `BuildService`, `PassiveStatsService`, `BaseStatsService` | `PassiveStatsCalculator`, `PassiveGadgetRules`, `BuildStatsResponse` | B, G, BS | B, G, BS | No | No | Public |
+| GET `/api/stats/passive-build` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService`, `BaseStatsService` | `GadgetPlate`, `PassiveStatsCalculator`, `PassiveGadgetRules` | G, BS | G, BS | No | No | Public |
+| GET `/api/stats/gadget-rules` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService.rules` | `PassiveGadgetRules`, `GadgetEffectRule` | G | G | No | No | Public |
+| POST `/api/stats/scenario-build` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService`, `BaseStatsService`; static `PassiveStatsService.resolved` | `ScenarioContext`, `PassiveStatsCalculator`, `ScenarioStatsCalculator`, `ScenarioGadgetRules` | G, BS | G, BS | **No** | No | Public |
+| GET `/api/stats/scenario-rules` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService.rules` | `ScenarioGadgetRules`, `ScenarioEffectRule` | None | None | No | No | Public |
 
 Browse defaults are `sort=rated`, `page=0`, `size=12`, and a maximum size of 50.
 Saved builds have their own bookmark-time ordering and always attempt optional page stats;
@@ -1990,7 +2027,7 @@ also capped at 50. Community endpoints reject query parameters and expose ETag-b
 
 ## 17. Class responsibility index
 
-This index covers **all 193 top-level production Java source files**, including transport
+This index covers **all 212 top-level production Java source files**, including transport
 records so IntelliJ names are searchable. Nested records/enums belong to their enclosing
 entry. The subsection names specify the layer; the feature column locates the responsibility.
 Links open the actual source file. The two `MachineCompatibility` classes are deliberately
@@ -2000,6 +2037,8 @@ listed separately: one is a pure domain rule, the other an application error tra
 
 | Class | Feature | Responsibility |
 | --- | --- | --- |
+| [AccountRegistrationService] | Auth | Implements account activation; coordinates transactional register/resend/verify and post-commit verification delivery. |
+| [GameDataQueryService] | Game data | Implements catalog input queries through `GameDataRepository` without new policy. |
 | [AuthService] | Auth | Registers password accounts, verifies local login credentials and loads users through the user port. |
 | [EmailVerificationService] | Auth | Issues digested verification tokens, verifies locked token records and marks accounts verified. |
 | [ExternalAuthService] | Auth | Coordinates verified Google identities, safe account creation/linking and existing identity login. |
@@ -2017,8 +2056,7 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [CommunitySelectionService] | Community | Ranks candidate builds and assembles up to three eligible entries within a read transaction. |
 | [CommunityEligibility] | Community | Excludes controlled fixtures and rejects structurally ineligible community candidates. |
 | [CommunitySnapshotAssembler] | Community | Resolves reusable catalog/author/stat data and turns ranked eligible builds into snapshot entries. |
-| [CommunitySnapshot] | Community | Holds immutable selected entries and derives their passive-stat view from detached facts. |
-| [CommunitySnapshotCache] | Community | Supplies a synchronized short-lived process-local Top 3 snapshot shared by its callers. |
+| [CommunitySnapshotCache] | Community | Implements `CommunityUseCase`: synchronized short-lived Top 3 retrieval and separate passive projection from detached facts. |
 | [BaseStatsService] | Stats | Loads versioned contributions and builds canonical or partial draft base-stat breakdowns. |
 | [PassiveStatsService] | Stats | Resolves catalog context and delegates passive calculation for drafts, persisted pages and detached entries. |
 | [ScenarioStatsService] | Stats | Resolves one ephemeral preview request, obtains base/passive results and invokes the scenario calculator. |
@@ -2085,6 +2123,29 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [Vote] | Votes | Immutable user's build vote whose value must be +1 or -1. |
 | [VoteSummary] | Votes | Holds up/down counts and derives their net score. |
 
+### Inbound port layer: provided capabilities and boundary results
+
+| Class | Feature | Responsibility |
+| --- | --- | --- |
+| [AccountRegistrationUseCase] | Auth | Registration, email verification and resend, including post-commit delivery. |
+| [AuthUseCase] | Auth | Local login, safe account lookup for adapters, and account/auth-version validation. |
+| [ExternalAuthUseCase] | Auth | Google sign-in and explicit linking. |
+| [PasswordResetUseCase] | Auth | Enumeration-resistant recovery request and reset. |
+| [DemoAccountUseCase] | Auth, DEV ONLY | Reserved local fixture account bootstrap; owns its account input record. |
+| [BuildUseCase] | Build | Browse, read, create, edit, remix-source lookup and delete; owns Draft/Filter/Query/Page. |
+| [BuildRecommendationUseCase] | Recommendation | Compute a transient proposal from actor and domain request. |
+| [SavedBuildUseCase] | Saved builds | Private save/remove/status/list; owns item/page results. |
+| [CollectionUseCase] | Collection | Read and update private catalog ownership exclusions. |
+| [CommentUseCase] | Comments | Read/create/delete flat comments; owns the list result. |
+| [VoteUseCase] | Votes | Read/change/remove a vote and obtain individual/batched summaries; owns mutation result. |
+| [CommunityUseCase] | Community | Retrieve shared detached Top 3 facts and separately calculate passive projection when needed. |
+| [CommunitySnapshot] | Community | Immutable boundary result with revision, time and detached entries; no service calls. |
+| [GameDataQueryUseCase] | Game data | Typed catalog lists/lookups for public catalog routes and response enrichment. |
+| [BaseStatsUseCase] | Stats | Catalog contributions/stock totals and canonical build breakdown. |
+| [PassiveStatsUseCase] | Stats | Draft/page passive stats and supported gadget-rule metadata. |
+| [ScenarioStatsUseCase] | Stats | Transient scenario preview and supported condition/control metadata. |
+| [GameNewsUseCase] | News | Latest-five public news view. |
+
 ### Outbound port layer: contracts
 
 | Class | Feature | Responsibility |
@@ -2109,10 +2170,10 @@ listed separately: one is a pure domain rule, the other an application error tra
 
 | Class | Feature | Responsibility |
 | --- | --- | --- |
-| [AuthRestResource] | Auth | Exposes account/session routes, signs JWT sessions and sends post-service verification mail. |
+| [AuthRestResource] | Auth | Exposes account/session routes through input ports and signs JWT sessions; mail orchestration belongs to application. |
 | [PasswordResetRestResource] | Auth | Validates reset transport records and gives enumeration-resistant forgot-password responses. |
 | [DevDemoAccountRestResource] | Auth, DEV ONLY | Enforces the non-production/loopback boundary and returns sessions for reserved demo accounts. |
-| [CurrentUser] | Auth | Resolves the verified JWT subject to an existing account and rejects stale auth versions. |
+| [CurrentUser] | Auth | Parses the verified JWT subject/version and calls `AuthUseCase.validateSession` for account/version validity. |
 | [BuildRestResource] | Build | Converts browse/mutation HTTP input to build calls and assembles public responses with optional stats. |
 | [BuildResponseAssembler] | Build | Enriches domain builds with safe author, catalog, remix, map and vote response data. |
 | [BuildRecommendationRestResource] | Recommendation | Resolves the authenticated actor, converts request constraints and returns the transient calculation DTO. |
@@ -2127,7 +2188,7 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [BaseStatsRestResource] | Stats | Exposes contribution catalog and canonical base-build stats with explicit response records. |
 | [PassiveStatsRestResource] | Stats | Exposes draft/persisted passive stats and typed gadget-rule metadata. |
 | [ScenarioStatsRestResource] | Stats | Converts transient scenario requests and exposes the supported UI control metadata. |
-| [GameDataRestResource] | Game data | Reads the catalog port directly and returns separate typed catalog response shapes. |
+| [GameDataRestResource] | Game data | Calls `GameDataQueryUseCase` and returns separate typed catalog response shapes. |
 | [NewsRestResource] | News | Converts the latest-news service result to article response records. |
 | [VoteRestResource] | Votes | Resolves the actor for vote read/add/change/remove routes and returns aggregate/user state. |
 | [RateLimitFilter] | Cross-cutting | Selects a request policy/identity, consumes a bucket and returns safe 429 responses when exhausted. |
@@ -2153,7 +2214,7 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [MessageResponse] | Auth | Safe human-readable account-operation result. |
 | [SessionResponse] | Auth | JWT and safe user details returned after successful authentication. |
 | [UserResponse] | Auth | Public session user projection excluding password hashes and persistence state. |
-| [BuildRequest] | Build | Validated authored build input converted to `BuildService.Draft`. |
+| [BuildRequest] | Build | Validated authored build input converted to `BuildUseCase.Draft`. |
 | [BuildResponse] | Build | Fully enriched public build representation. |
 | [BuildPageResponse] | Build | Paginated build items, total and optional stats/error metadata. |
 | [AuthorResponse] | Build | Minimal public build-author identity. |
@@ -2251,11 +2312,11 @@ flowchart TB
   settings["RateLimitSettings / RateLimitRule"]:::rest -.->|"configured limits"| limiter
   limiter --> reject["429 ErrorResponse + Retry-After<br/>when rejected"]:::rest
   framework --> resource["Matched RestResource<br/>protected routes require role user"]:::rest
-  resource --> actor["CurrentUser.id<br/>UUID subject + account exists + authVersion matches"]:::rest
-  actor --> users["UserRepository"]:::port
+  resource --> actor["CurrentUser.id<br/>UUID subject + authVersion claim"]:::rest
+  actor --> auth["AuthUseCase"]:::port -.-> account["AuthService.validateSession"]:::app --> users["UserRepository"]:::port
   users -.->|"implemented by"| db["UserDbAdapter → UserDbEntity / UserDbMapper"]:::adapter
   db --> table[("users")]:::outside
-  resource --> service["Application use case"]:::app
+  resource --> input["Feature input port"]:::port -.-> service["Application use case"]:::app
   service --> profanity["ProfanityPolicy<br/>registration/generated username,<br/>build title/description, comments"]:::app
   service --> failure["AppException subclasses"]:::app
   failure -.-> applicationMapper["ErrorRestExceptionMapper<br/>safe 400 / 401 / 403 / 404 / 409 / 503"]:::rest
@@ -2306,43 +2367,49 @@ interfaces; table counts use the cumulative migration state, not entity counts.
 
 Particularly easy-to-misdraw relationships were checked explicitly:
 
-- `GameDataRestResource` calls `GameDataRepository` directly; no invented game-data service.
-- `SavedBuildRestResource` reads `VoteRepository` directly and delegates response enrichment;
+- `GameDataRestResource` calls `GameDataQueryUseCase`; the thin `GameDataQueryService`
+  establishes the application boundary without adding policy.
+- `SavedBuildRestResource` gets summaries through `VoteUseCase` and delegates response enrichment;
   `SavedBuildService.save` checks `BuildRepository`, not `BuildService`.
 - `ScenarioStatsService` calls static `PassiveStatsService.resolved`; it does not inject a
   passive service or invoke the recommendation solver.
-- `CommunitySnapshotAssembler` is constructed by selection, and a snapshot entry calls the
-  static passive calculation path from detached facts.
+- `CommunitySnapshotAssembler` is constructed by selection; `CommunityUseCase.passiveStats`
+  uses the static passive calculation path from detached facts only when rendering is needed.
 - `BuildDbAdapter` supplies candidates and literal filters; `BuildService` and domain
   comparators perform public browse ranking. Bookmark paging is independently ordered in DB.
 - `BaseStatsDbAdapter` and `CollectionDbAdapter` use native SQL without invented stat or
   collection JPA entity classes.
-- Registration/resend sends mail after the verification service returns; reset issuance
+- `AccountRegistrationService` sends registration/resend mail after the transaction returns; reset issuance
   sends mail inside its application transaction. These are different failure boundaries.
 
-The test sources provide useful executable reading companions. They were inspected as
-evidence; **this documentation task did not execute these tests or claim a new passing run**.
+The test sources provide executable reading companions. For the input-port refactor,
+all 364 Surefire tests were executed; one obsolete page-type assertion was corrected and
+its eight-test class passed on rerun. All 18 packaged API tests and existing coverage gates
+then passed. See the exact commands and run sequence in
+[verification](validation.md#explicit-input-ports--2026-10-01).
 
 | Topic | Existing test entry points to study |
 | --- | --- |
-| Layer boundaries | `ArchitectureTest`: JDK-only domain, inward dependencies, ranking outside DB adapters and scenario/recommendation separation. |
+| Layer boundaries | `ArchitectureTest`: JDK-only domain/ports; inbound input-port boundary with exact error exceptions; outbound input-port prohibition; positive/negative fixtures; ranking and calculator separation. |
 | Build validation and browsing | `BuildServiceTest`, `BuildResponseAssemblerTest`, `BuildRankingTest`, `WilsonScoreTest`; real SQL behavior in `RepositoryContractIntegrationTest` and `BuildRankingIntegrationTest`. |
 | Recommendation orchestration | `BuildRecommendationServiceTest`: one catalog load, bounded concurrency/release and no build/community persistence dependency. |
 | Solver correctness | `BuildRecommendationSolverTest`, `BalancedSolverTest`, `BalancedObjectiveTest`: locks, exclusions, plate/BOOST constraints, reference floors, tiny exhaustive comparisons and bounded outcomes. |
 | Base/passive/scenario | `BaseStatsTest`, `BaseStatsBreakdownTest`, `PassiveStatsCalculatorTest`, `ScenarioStatsCalculatorTest`, plus corresponding application-service tests. |
-| Account/security behavior | `AuthServiceTest`, `ExternalAuthServiceTest`, `PasswordResetServiceTest`, `CurrentUserTest`; framework boundaries in `GoogleAuthIntegrationTest` and `PasswordResetIntegrationTest`. |
+| Account/security behavior | `AuthServiceTest`, `ExternalAuthServiceTest`, `PasswordResetServiceTest`, `CurrentUserTest`; real transaction boundaries in `AccountRegistrationIntegrationTest`, `GoogleAuthIntegrationTest` and `PasswordResetIntegrationTest`. |
 | Personal/social state | `CollectionServiceTest`, `SavedBuildServiceTest`, `CommentServiceTest`, `VoteServiceTest`; real persistence boundaries in their integration counterparts. |
-| Community | `CommunityEligibilityTest`, `CommunitySelectionTest`, `CommunitySnapshotCacheTest`, `CommunityExportTest` and `CommunityApiIntegrationTest`. |
+| Community | `CommunityEligibilityTest`, `CommunitySelectionTest`, `CommunitySnapshotCacheTest`, `CommunityExportTest`, conditional projection in `CommunityRestResourceTest`, and `CommunityApiIntegrationTest`. |
 | HTTP failures and rate limits | `RateLimitTest`, the three exception-mapper tests and `HttpRobustnessIntegrationTest`. |
 | Relational evolution | Migration-specific tests, `ParentDeletionIntegrationTest`, `RecommendedMapsIntegrationTest` and `RepositoryContractIntegrationTest`. |
 
 Documentation verification for this snapshot checked all 45 route pairs against the resource
-annotations, all 193 index entries against source files, local links/heading anchors, fenced
+annotations, all 212 index entries against source files, local links/heading anchors, fenced
 blocks, table structure and equality between embedded Mermaid and standalone sources.
-All 30 diagrams were rendered with Mermaid 11.12.0 in headless Edge and their SVG/PNG output
-used for layout review. Rendering tools and preview output stayed outside tracked project
-files; no project dependency was added. No Maven, Quarkus, integration, frontend or coverage
-run was needed or performed for these documentation-only additions.
+All 31 diagrams were rendered with Mermaid 11.12.0 in headless Edge; the changed boundary,
+authentication and complete-map images were reviewed. Rendering tools and preview output
+stayed outside tracked project files; no project dependency was added. Static comparison also
+confirmed unchanged route signatures/annotations and all 66 transport record declarations.
+Full backend verification used disposable infrastructure; frontend source/contracts were
+unaffected and no frontend run was needed.
 
 No architecture relationship is knowingly left unresolved. Some behavior is deliberately
 conditional: cache misses, Google key refresh, eligible email delivery and optional stats
@@ -2377,9 +2444,11 @@ outside a static source inspection.
 
 1. The browser sends `POST /api/builds` with `BuildRequest` and its bearer token. The framework
    performs transport/security checks; rate limiting applies at the request boundary.
-2. `BuildRestResource.create` calls `CurrentUser.id()`. `UserRepository → UserDbAdapter`
-   loads the account and verifies its JWT auth version before the author ID is accepted.
-3. `BuildRequest.draft()` crosses into `BuildService.create(actorId, draft)`.
+2. `BuildRestResource.create` calls `CurrentUser.id()`, which parses the JWT subject/version.
+   `AuthUseCase → AuthService.validateSession → UserRepository → UserDbAdapter` checks
+   account existence and version before the author ID is accepted.
+3. `BuildRequest.draft()` constructs `BuildUseCase.Draft`; `BuildUseCase.create` resolves
+   to `BuildService.create(actorId, draft)`.
    `BuildDraftValidator` checks text through `ProfanityPolicy`, resolves typed catalog IDs
    through `GameDataRepository`, and applies compatibility, composition and `GadgetPlate` rules.
 4. An optional remix source is looked up through `BuildRepository`. The service constructs a
@@ -2393,7 +2462,8 @@ outside a static source inspection.
 
 1. `POST /api/build-recommendations` reaches `BuildRecommendationRestResource`; the actor is
    resolved and `BuildRecommendationRequest` converts selection/lock/mode input into domain types.
-2. `BuildRecommendationService` acquires one of two calculation permits. Its detached-data
+2. `BuildRecommendationUseCase.recommend` resolves to `BuildRecommendationService`,
+   which acquires one of two calculation permits. Its detached-data
    preparation uses `RecommendationCatalogLoader` for the selected patch/catalog/stat maps and
    `CollectionService.load` for the actor's private exclusions.
 3. `BuildRecommendationSolver` validates available locked choices and legal part/gadget shapes.
@@ -2410,7 +2480,7 @@ outside a static source inspection.
 1. The browser sends the selected IDs plus lap/form in `POST /api/stats/scenario-build`.
    `ScenarioStatsRestResource` validates `ScenarioStatsRequest` and converts its context into
    `ScenarioContext`. This calculation endpoint is public.
-2. `ScenarioStatsService.preview` resolves gadgets/catalog references through `GameDataRepository`,
+2. `ScenarioStatsUseCase.preview → ScenarioStatsService` resolves gadgets/catalog references through `GameDataRepository`,
    validates the current plate and calls `BaseStatsService.draftBreakdown`. That service obtains
    contributions from `BaseStatsRepository → BaseStatsDbAdapter` for the requested patch.
 3. Static `PassiveStatsService.resolved` calculates the passive result using the resolved facts.
@@ -2425,7 +2495,7 @@ outside a static source inspection.
 ### D. “I upvote a build”
 
 1. `PUT /api/builds/{id}/vote` sends `VoteRequest(value=1)`; `VoteRestResource` obtains the
-   actor from `CurrentUser` and calls `VoteService.put`.
+   actor from `CurrentUser` and calls `VoteUseCase.put → VoteService.put`.
 2. `BuildService.get` verifies that the build exists. The service constructs a domain `Vote`
    and passes it to `VoteRepository.put → VoteDbAdapter`.
 3. A PostgreSQL upsert on `(user_id, build_id)` creates or changes the row. The unique constraint
@@ -2440,20 +2510,22 @@ outside a static source inspection.
 
 1. `POST /api/auth/login` reaches `AuthRestResource` with `LoginRequest`; the login IP bucket
    applies. This route does not require an existing RingLab bearer token.
-2. `AuthService.login` normalizes the username, loads it through `UserRepository → UserDbAdapter`,
+2. `AuthUseCase.login → AuthService` normalizes the username, loads it through `UserRepository → UserDbAdapter`,
    verifies bcrypt credentials without trimming the password, and requires verified email.
    Its dummy-hash path avoids simply skipping password work for a missing local account.
 3. The resource signs a JWT with user ID subject, username, role `user` and `authVersion`, and
    returns `SessionResponse` containing `UserResponse`.
-4. On a later protected request, Quarkus validates the token and `CurrentUser` checks the user
-   still exists and the account version still matches. A password reset increments that version;
+4. On a later protected request, Quarkus validates the token and `CurrentUser` calls
+   `AuthUseCase.validateSession` to check account existence and version. A password reset increments that version;
    ordinary logout only validates the actor and relies on client-side token disposal.
 
 ### F. “I save a build, then mark a machine unowned”
 
-1. `PUT /api/saved-builds/{id}` resolves the actor. `SavedBuildService` checks the build directly
+1. `PUT /api/saved-builds/{id}` resolves the actor and calls `SavedBuildUseCase`.
+   Its `SavedBuildService` implementation checks the build directly
    through `BuildRepository` and writes an idempotent `saved_builds` bookmark through its own port.
-2. `PUT /api/collection/MACHINE/{id}` reaches `CollectionService.setOwned(..., false)`.
+2. `PUT /api/collection/MACHINE/{id}` calls `CollectionUseCase.setOwned`, implemented
+   by `CollectionService.setOwned(..., false)`.
    After a typed catalog lookup, `CollectionDbAdapter` locks the user and inserts a machine
    exclusion with a fixed parameterized query.
 3. The next recommendation load sees that exclusion and removes that source machine's parts
@@ -2519,7 +2591,7 @@ outside a static source inspection.
 [CommunityPublicUrls]: ../backend/src/main/java/dev/ringlab/adapter/in/rest/community/CommunityPublicUrls.java
 [CommunityRestResource]: ../backend/src/main/java/dev/ringlab/adapter/in/rest/community/CommunityRestResource.java
 [CommunitySelectionService]: ../backend/src/main/java/dev/ringlab/application/community/CommunitySelectionService.java
-[CommunitySnapshot]: ../backend/src/main/java/dev/ringlab/application/community/CommunitySnapshot.java
+[CommunitySnapshot]: ../backend/src/main/java/dev/ringlab/port/in/CommunitySnapshot.java
 [CommunitySnapshotAssembler]: ../backend/src/main/java/dev/ringlab/application/community/CommunitySnapshotAssembler.java
 [CommunitySnapshotCache]: ../backend/src/main/java/dev/ringlab/application/community/CommunitySnapshotCache.java
 [CurrentUser]: ../backend/src/main/java/dev/ringlab/adapter/in/rest/auth/CurrentUser.java
@@ -2654,3 +2726,41 @@ outside a static source inspection.
 [VoteService]: ../backend/src/main/java/dev/ringlab/application/vote/VoteService.java
 [VoteSummary]: ../backend/src/main/java/dev/ringlab/domain/vote/VoteSummary.java
 [WilsonScore]: ../backend/src/main/java/dev/ringlab/domain/build/ranking/WilsonScore.java
+
+[AccountRegistrationUseCase]: ../backend/src/main/java/dev/ringlab/port/in/AccountRegistrationUseCase.java
+
+[AuthUseCase]: ../backend/src/main/java/dev/ringlab/port/in/AuthUseCase.java
+
+[BaseStatsUseCase]: ../backend/src/main/java/dev/ringlab/port/in/BaseStatsUseCase.java
+
+[BuildRecommendationUseCase]: ../backend/src/main/java/dev/ringlab/port/in/BuildRecommendationUseCase.java
+
+[BuildUseCase]: ../backend/src/main/java/dev/ringlab/port/in/BuildUseCase.java
+
+[CollectionUseCase]: ../backend/src/main/java/dev/ringlab/port/in/CollectionUseCase.java
+
+[CommentUseCase]: ../backend/src/main/java/dev/ringlab/port/in/CommentUseCase.java
+
+[CommunityUseCase]: ../backend/src/main/java/dev/ringlab/port/in/CommunityUseCase.java
+
+[DemoAccountUseCase]: ../backend/src/main/java/dev/ringlab/port/in/DemoAccountUseCase.java
+
+[ExternalAuthUseCase]: ../backend/src/main/java/dev/ringlab/port/in/ExternalAuthUseCase.java
+
+[GameDataQueryUseCase]: ../backend/src/main/java/dev/ringlab/port/in/GameDataQueryUseCase.java
+
+[GameNewsUseCase]: ../backend/src/main/java/dev/ringlab/port/in/GameNewsUseCase.java
+
+[PassiveStatsUseCase]: ../backend/src/main/java/dev/ringlab/port/in/PassiveStatsUseCase.java
+
+[PasswordResetUseCase]: ../backend/src/main/java/dev/ringlab/port/in/PasswordResetUseCase.java
+
+[SavedBuildUseCase]: ../backend/src/main/java/dev/ringlab/port/in/SavedBuildUseCase.java
+
+[ScenarioStatsUseCase]: ../backend/src/main/java/dev/ringlab/port/in/ScenarioStatsUseCase.java
+
+[VoteUseCase]: ../backend/src/main/java/dev/ringlab/port/in/VoteUseCase.java
+
+[AccountRegistrationService]: ../backend/src/main/java/dev/ringlab/application/auth/AccountRegistrationService.java
+
+[GameDataQueryService]: ../backend/src/main/java/dev/ringlab/application/gamedata/GameDataQueryService.java

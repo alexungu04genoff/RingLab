@@ -1,5 +1,7 @@
 package dev.ringlab.application.auth;
 
+import dev.ringlab.port.in.PasswordResetUseCase;
+
 import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.auth.PasswordResetToken;
@@ -22,8 +24,7 @@ import java.util.Locale;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 @ApplicationScoped
-public class PasswordResetService {
-  public static final String CONFIRMATION = "If an eligible account exists for that email, a password reset link has been sent.";
+public class PasswordResetService implements PasswordResetUseCase {
   public static final String INVALID_LINK = "This password reset link is invalid or has expired.";
   private static final SecureRandom RANDOM = new SecureRandom();
   private final UserRepository users;

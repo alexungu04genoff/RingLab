@@ -14,13 +14,14 @@ flowchart TB
   dto["BuildStatsResponse.withPassive<br/>or BuildStatsResponse.from / CatalogResponse"]:::rest
   game["GameDataRepository<br/>resolve catalog metadata"]:::port
   stats["BaseStatsRepository<br/>read per-version maps"]:::port
-  br --> base
+  br --> baseInput["BaseStatsUseCase"]:::port -.-> base
   base --> build
   base --> cat
   base --> game
   base --> stats
-  pr -->|"persisted"| bs
-  pr -->|"draft or persisted page"| passive
+  pr -->|"persisted"| builds["BuildUseCase"]:::port -.-> bs
+  pr -->|"draft, persisted page or rule catalog"| input["PassiveStatsUseCase"]:::port -.-> passive
+  passive -->|"rules"| metadata["PassiveGadgetRules + gadget catalog"]:::domain
   passive -->|"draft"| draft
   passive -->|"saved build list"| page
   passive --> game

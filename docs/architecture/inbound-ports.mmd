@@ -1,0 +1,16 @@
+flowchart TB
+  outside["HTTP caller"]:::outside --> resource["adapter/in<br/>BuildRestResource + BuildResponseAssembler"]:::rest
+  resource --> input["port/in<br/>BuildUseCase + command/query/result records"]:::port
+  input -.->|"runtime binding: implemented by"| service["application<br/>BuildService"]:::app
+  service --> internal["Internal collaborators<br/>BuildDraftValidator → ProfanityPolicy<br/>direct concrete calls; no new interfaces"]:::app
+  service --> domain["domain<br/>Build + BuildRanking + GadgetPlate"]:::domain
+  service --> output["port/out<br/>BuildRepository"]:::port
+  output -.->|"runtime binding: implemented by"| adapter["adapter/out<br/>BuildDbAdapter"]:::adapter
+  adapter --> db[("PostgreSQL")]:::outside
+  note["Runtime flow runs down the diagram.<br/>Java implementation dependencies point inward:<br/>BuildService implements BuildUseCase;<br/>BuildDbAdapter implements BuildRepository."]:::outside
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

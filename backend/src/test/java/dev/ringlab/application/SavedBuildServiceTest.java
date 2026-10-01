@@ -1,5 +1,7 @@
 package dev.ringlab.application;
 
+import dev.ringlab.port.in.SavedBuildUseCase;
+
 import dev.ringlab.application.build.SavedBuildService;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.build.ranking.BuildRanking;
@@ -54,7 +56,7 @@ class SavedBuildServiceTest {
     bookmarks.put(UUID.randomUUID(),Instant.EPOCH.plusSeconds(1));
     bookmarks.put(first.id(),Instant.EPOCH);
     var page = service.list(actor,"query",null,2,12);
-    assertEquals(List.of(second,first),page.items().stream().map(SavedBuildService.Item::build).toList());
+    assertEquals(List.of(second,first),page.items().stream().map(SavedBuildUseCase.Item::build).toList());
     assertEquals(Instant.EPOCH.plusSeconds(2),page.items().getFirst().savedAt());
     assertEquals(30,page.total()); assertEquals(1,hydrationCalls);
   }

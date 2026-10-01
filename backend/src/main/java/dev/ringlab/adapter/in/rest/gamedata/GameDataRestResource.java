@@ -7,7 +7,7 @@ import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachineResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
-import dev.ringlab.port.out.GameDataRepository;
+import dev.ringlab.port.in.GameDataQueryUseCase;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 import java.util.*;
@@ -16,7 +16,7 @@ import java.util.*;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class GameDataRestResource {
-  private final GameDataRepository repository;
+  private final GameDataQueryUseCase repository;
 
   @GET
   @Path("maps")

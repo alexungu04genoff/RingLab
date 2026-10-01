@@ -3,7 +3,7 @@ package dev.ringlab.adapter.in.rest.auth;
 import dev.ringlab.adapter.in.rest.auth.response.SessionResponse;
 import dev.ringlab.adapter.in.rest.auth.response.UserResponse;
 import dev.ringlab.application.ForbiddenException;
-import dev.ringlab.application.auth.DemoAccountBootstrapService;
+import dev.ringlab.port.in.DemoAccountUseCase;
 import io.quarkus.arc.profile.UnlessBuildProfile;
 import io.smallrye.jwt.build.Jwt;
 import io.vertx.core.http.HttpServerRequest;
@@ -32,10 +32,10 @@ public class DevDemoAccountRestResource {
       @NotBlank @Size(min = 8, max = 72) String password) {}
   public record AccountSession(String key, SessionResponse session) {}
 
-  private final DemoAccountBootstrapService service;
+  private final DemoAccountUseCase service;
   private final HttpServerRequest request;
 
-  public DevDemoAccountRestResource(DemoAccountBootstrapService service, HttpServerRequest request) {
+  public DevDemoAccountRestResource(DemoAccountUseCase service, HttpServerRequest request) {
     this.service = service;
     this.request = request;
   }
@@ -44,7 +44,7 @@ public class DevDemoAccountRestResource {
   public List<AccountSession> bootstrap(@Valid @NotNull BootstrapRequest body) {
     requireLoopback();
     var definitions = body.accounts().stream()
-        .map(account -> new DemoAccountBootstrapService.Account(
+        .map(account -> new DemoAccountUseCase.Account(
             account.key(), account.username(), account.email()))
         .toList();
     var users = service.bootstrap(definitions, body.password());

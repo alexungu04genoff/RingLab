@@ -16,8 +16,8 @@ flowchart TB
   optional["PassiveStatsService.buildPage<br/>only includeStats=true"]:::app
   out["BuildPageResponse<br/>items, total, page, size; optional stats/error"]:::rest
   h --> r
-  r --> cache
-  r --> s
+  r --> community["CommunityUseCase"]:::port -.-> cache
+  r --> input["BuildUseCase"]:::port -.-> s
   s --> p
   p -.-> a --> db
   p -.->|"unranked matching facts"| facts
@@ -27,7 +27,7 @@ flowchart TB
   facts -.->|"comparator inputs"| rank
   s --> page --> full
   r --> assembly
-  r --> optional
+  r --> passive["PassiveStatsUseCase"]:::port -.-> optional
   assembly --> out
   optional -.->|"optional enrichment"| out
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49

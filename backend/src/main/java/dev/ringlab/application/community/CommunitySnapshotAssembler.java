@@ -1,5 +1,7 @@
 package dev.ringlab.application.community;
 
+import dev.ringlab.port.in.CommunitySnapshot;
+
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.vote.VoteSummary;

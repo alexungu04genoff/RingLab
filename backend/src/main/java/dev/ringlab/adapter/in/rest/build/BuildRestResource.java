@@ -3,15 +3,14 @@ package dev.ringlab.adapter.in.rest.build;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.jbosslog.JBossLog;
 
-import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.gamedata.PassiveStatsService;
+import dev.ringlab.port.in.BuildUseCase;
+import dev.ringlab.port.in.PassiveStatsUseCase;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
-import dev.ringlab.application.community.CommunitySnapshotCache;
+import dev.ringlab.port.in.CommunityUseCase;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
-import dev.ringlab.port.out.BuildRepository;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -27,11 +26,11 @@ import java.util.*;
 @JBossLog
 public class BuildRestResource {
 
-  private final BuildService builds;
+  private final BuildUseCase builds;
   private final BuildResponseAssembler responses;
   private final CurrentUser actor;
-  private final CommunitySnapshotCache communitySnapshots;
-  private final PassiveStatsService stats;
+  private final CommunityUseCase communitySnapshots;
+  private final PassiveStatsUseCase stats;
 
   @GET
   public BuildPageResponse list(
@@ -62,8 +61,8 @@ public class BuildRestResource {
             .map(item -> item.build().id())
             .collect(java.util.stream.Collectors.toSet());
     }
-    var result = builds.list(new BuildService.Query(
-        new BuildRepository.Filter(search, racer, machine, author, gameVersion, excludedIds,
+    var result = builds.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(search, racer, machine, author, gameVersion, excludedIds,
             mapId, Boolean.parseBoolean(includeAllMaps)),
         buildSort, page, size));
     var items = result.items().isEmpty() ? List.<BuildResponse>of() : responses.assembleAll(result.items(), result.summaries());

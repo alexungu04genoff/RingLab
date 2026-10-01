@@ -1,5 +1,7 @@
 package dev.ringlab.application;
 
+import dev.ringlab.port.in.VoteUseCase;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.application.build.BuildService;
@@ -34,19 +36,19 @@ class VoteServiceTest {
     votes.summary = new VoteSummary(9, 2);
 
     assertEquals(new VoteSummary(9, 2), service.summary(buildId));
-    assertEquals(new VoteService.Result(7, 9, 2, 0), service.get(userId, buildId));
+    assertEquals(new VoteUseCase.Result(7, 9, 2, 0), service.get(userId, buildId));
   }
 
   @Test
   void acceptsUpvoteAndDownvote() {
-    VoteService.Result upvote = service.put(userId, buildId, 1);
+    VoteUseCase.Result upvote = service.put(userId, buildId, 1);
     assertEquals(new Vote(userId, buildId, 1), votes.lastVote);
-    assertEquals(new VoteService.Result(1, 1, 0, 1), upvote);
+    assertEquals(new VoteUseCase.Result(1, 1, 0, 1), upvote);
 
-    VoteService.Result downvote = service.put(userId, buildId, -1);
+    VoteUseCase.Result downvote = service.put(userId, buildId, -1);
     assertEquals(new Vote(userId, buildId, -1), votes.lastVote);
-    assertEquals(new VoteService.Result(-1, 0, 1, -1), downvote);
-    assertEquals(new VoteService.Result(1, 1, 0, 1), service.put(userId, buildId, 1));
+    assertEquals(new VoteUseCase.Result(-1, 0, 1, -1), downvote);
+    assertEquals(new VoteUseCase.Result(1, 1, 0, 1), service.put(userId, buildId, 1));
   }
 
   @Test
@@ -74,11 +76,11 @@ class VoteServiceTest {
   void removesVoteAndReturnsUpdatedState() {
     service.put(userId, buildId, 1);
 
-    VoteService.Result result = service.remove(userId, buildId);
+    VoteUseCase.Result result = service.remove(userId, buildId);
 
     assertEquals(userId, votes.removedUserId);
     assertEquals(buildId, votes.removedBuildId);
-    assertEquals(new VoteService.Result(0, 0, 0, 0), result);
+    assertEquals(new VoteUseCase.Result(0, 0, 0, 0), result);
   }
 
   private static Build build(UUID id) {

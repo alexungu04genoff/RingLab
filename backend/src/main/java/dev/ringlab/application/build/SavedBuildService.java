@@ -1,5 +1,7 @@
 package dev.ringlab.application.build;
 
+import dev.ringlab.port.in.SavedBuildUseCase;
+
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.port.out.BuildRepository;
@@ -14,14 +16,10 @@ import java.util.stream.Collectors;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class SavedBuildService {
+public class SavedBuildService implements SavedBuildUseCase {
   private final SavedBuildRepository saved;
   private final BuildRepository builds;
   private final BuildDraftValidator drafts;
-  public record Item(Build build, Instant savedAt) {}
-  public record Page(List<Item> items, long total) {
-    public Page { items = List.copyOf(items); }
-  }
 
   @Transactional
   public Instant save(UUID actor, UUID buildId) {

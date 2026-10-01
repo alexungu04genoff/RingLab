@@ -1,5 +1,7 @@
 package dev.ringlab.application.news;
 
+import dev.ringlab.port.in.GameNewsUseCase;
+
 import dev.ringlab.domain.news.GameNewsItem;
 import dev.ringlab.port.out.GameNewsRepository;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -8,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class GameNewsService {
+public class GameNewsService implements GameNewsUseCase {
   private final GameNewsRepository news;
 
   public List<GameNewsItem> latest() {

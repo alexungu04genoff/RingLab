@@ -1,6 +1,6 @@
 package dev.ringlab.adapter.in.rest.build.request;
 
-import dev.ringlab.application.build.BuildService;
+import dev.ringlab.port.in.BuildUseCase;
 import com.fasterxml.jackson.annotation.JsonSetter;
 import com.fasterxml.jackson.databind.JsonNode;
 import dev.ringlab.application.ValidationException;
@@ -38,8 +38,8 @@ public class BuildRequest {
     recommendedMapIds = List.copyOf(ids);
   }
 
-  public BuildService.Draft draft() {
-    return new BuildService.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId,
+  public BuildUseCase.Draft draft() {
+    return new BuildUseCase.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId,
         gameVersionId, remixedFromBuildId, gadgetIds, recommendedMapIds);
   }
 }

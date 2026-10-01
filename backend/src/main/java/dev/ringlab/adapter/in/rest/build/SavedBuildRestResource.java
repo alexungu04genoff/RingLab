@@ -3,8 +3,8 @@ package dev.ringlab.adapter.in.rest.build;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
-import dev.ringlab.application.build.SavedBuildService;
-import dev.ringlab.application.gamedata.PassiveStatsService;
+import dev.ringlab.port.in.SavedBuildUseCase;
+import dev.ringlab.port.in.PassiveStatsUseCase;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.constraints.*;
 import jakarta.ws.rs.*;
@@ -20,11 +20,11 @@ import java.util.*;
 @RequiredArgsConstructor
 @JBossLog
 public class SavedBuildRestResource {
-  private final SavedBuildService saved;
+  private final SavedBuildUseCase saved;
   private final CurrentUser actor;
   private final BuildResponseAssembler responses;
-  private final PassiveStatsService stats;
-  private final dev.ringlab.port.out.VoteRepository votes;
+  private final PassiveStatsUseCase stats;
+  private final dev.ringlab.port.in.VoteUseCase votes;
   public record SavedItem(BuildResponse build, Instant savedAt) {}
   public record SavedPage(List<SavedItem> items, long total, int page, int size,
       Map<UUID, BuildStatsResponse> statsByBuildId, String statsError) {}
@@ -43,16 +43,16 @@ public class SavedBuildRestResource {
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size) {
     var result = saved.list(actor.id(), search, version, mapId, Boolean.parseBoolean(includeAllMaps), page, size);
-    var builds = result.items().stream().map(SavedBuildService.Item::build).toList();
+    var builds = result.items().stream().map(SavedBuildUseCase.Item::build).toList();
     var summaries = builds.isEmpty() ? Map.<UUID, dev.ringlab.domain.vote.VoteSummary>of()
         : votes.summaries(builds.stream().map(dev.ringlab.domain.build.Build::id).toList());
     var assembled = builds.isEmpty() ? List.<BuildResponse>of() : responses.assembleAll(builds, summaries);
-    var savedAt = result.items().stream().collect(java.util.stream.Collectors.toMap(item -> item.build().id(), SavedBuildService.Item::savedAt));
+    var savedAt = result.items().stream().collect(java.util.stream.Collectors.toMap(item -> item.build().id(), SavedBuildUseCase.Item::savedAt));
     var items = assembled.stream().map(build -> new SavedItem(build, savedAt.get(build.id()))).toList();
     Map<UUID, BuildStatsResponse> pageStats = new HashMap<>();
     String error = null;
     try {
-      stats.buildPage(result.items().stream().map(SavedBuildService.Item::build).toList())
+      stats.buildPage(result.items().stream().map(SavedBuildUseCase.Item::build).toList())
           .forEach((id, value) -> pageStats.put(id, BuildStatsResponse.withPassive(value)));
     } catch (RuntimeException failure) {
       log.warn("Could not load optional saved-build page stats", failure);

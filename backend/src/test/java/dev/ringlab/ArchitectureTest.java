@@ -30,6 +30,8 @@ class ArchitectureTest {
         ports_remain_independent_of_application_and_adapters.check(classes);
         persistence_does_not_own_ranking.check(classes);
         ports_depend_only_on_jdk_or_domain.check(classes);
+        inbound_adapters_use_input_ports.check(classes);
+        outbound_adapters_do_not_depend_on_input_ports.check(classes);
         adapters_do_not_execute_recommendations.check(classes);
         noClasses().that().resideInAnyPackage("..adapter..", "..domain.build.recommendation..", "..application.build.recommendation..")
                 .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
@@ -55,6 +57,81 @@ class ArchitectureTest {
     private static final ArchRule ports_depend_only_on_jdk_or_domain = classes()
             .that().resideInAnyPackage("..port..")
             .should().onlyDependOnClassesThat().resideInAnyPackage("java..", "dev.ringlab.domain..", "dev.ringlab.port..");
+
+    private static final Set<String> transportApplicationErrors = Set.of(
+            "dev.ringlab.application.AppException",
+            "dev.ringlab.application.AlreadyExistsException",
+            "dev.ringlab.application.AuthenticationException",
+            "dev.ringlab.application.ExternalServiceUnavailableException",
+            "dev.ringlab.application.ForbiddenException",
+            "dev.ringlab.application.NotFoundException",
+            "dev.ringlab.application.ValidationException");
+
+    private static final ArchRule inbound_adapters_use_input_ports = classes()
+            .that().resideInAnyPackage("dev.ringlab.adapter.in..")
+            .should(useApplicationBoundary());
+
+    private static ArchCondition<JavaClass> useApplicationBoundary() {
+        return new ArchCondition<>("invoke application capabilities through input ports") {
+            @Override public void check(JavaClass type, ConditionEvents events) {
+                for (var dependency : type.getDirectDependenciesFromSelf()) {
+                    var target = dependency.getTargetClass();
+                    boolean applicationImplementation = target.getPackageName().startsWith("dev.ringlab.application")
+                            && !transportApplicationErrors.contains(target.getName());
+                    if (applicationImplementation || target.getPackageName().startsWith("dev.ringlab.port.out"))
+                        events.add(SimpleConditionEvent.violated(type, dependency.getDescription()));
+                }
+            }
+        };
+    }
+
+    private static final ArchRule outbound_adapters_do_not_depend_on_input_ports = noClasses()
+            .that().resideInAnyPackage("dev.ringlab.adapter.out..")
+            .should().dependOnClassesThat().resideInAnyPackage("dev.ringlab.port.in..");
+
+    @Test
+    void inbound_guard_rejects_implementation_and_repository_shortcuts() {
+        assertTrue(inboundFixtureViolates(DirectBuildService.class));
+        assertTrue(inboundFixtureViolates(DirectBuildRepository.class));
+        assertFalse(inboundFixtureViolates(BuildInputPort.class));
+        assertFalse(inboundFixtureViolates(TransportValidation.class));
+    }
+
+    @Test
+    void application_and_outbound_collaboration_still_use_their_own_boundaries() {
+        var application = new ClassFileImporter().importClasses(dev.ringlab.application.build.BuildService.class,
+                dev.ringlab.application.build.BuildDraftValidator.class);
+        application_does_not_depend_on_adapters_or_rest_or_persistence.check(application);
+        assertTrue(application.get(dev.ringlab.application.build.BuildService.class)
+                .getDirectDependenciesFromSelf().stream().anyMatch(d -> d.getTargetClass().isEquivalentTo(
+                        dev.ringlab.port.out.BuildRepository.class)));
+        assertTrue(application.get(dev.ringlab.application.build.BuildDraftValidator.class)
+                .getDirectDependenciesFromSelf().stream().anyMatch(d -> d.getTargetClass().isEquivalentTo(
+                        dev.ringlab.application.validation.ProfanityPolicy.class)));
+        var outbound = new ClassFileImporter().importClasses(dev.ringlab.adapter.out.db.build.BuildDbAdapter.class);
+        outbound_adapters_do_not_depend_on_input_ports.check(outbound);
+        assertTrue(outbound.get(dev.ringlab.adapter.out.db.build.BuildDbAdapter.class)
+                .getDirectDependenciesFromSelf().stream().anyMatch(d -> d.getTargetClass().isEquivalentTo(
+                        dev.ringlab.port.out.BuildRepository.class)));
+    }
+
+    private static boolean inboundFixtureViolates(Class<?> fixture) {
+        return classes().should(useApplicationBoundary())
+                .evaluate(new ClassFileImporter().importClasses(fixture)).hasViolation();
+    }
+
+    static class DirectBuildService {
+        Object get(dev.ringlab.application.build.BuildService service, UUID id) { return service.get(id); }
+    }
+    static class DirectBuildRepository {
+        Object get(dev.ringlab.port.out.BuildRepository repository, UUID id) { return repository.find(id); }
+    }
+    static class BuildInputPort {
+        Object get(dev.ringlab.port.in.BuildUseCase builds, UUID id) { return builds.get(id); }
+    }
+    static class TransportValidation {
+        void reject() { throw new dev.ringlab.application.ValidationException("Invalid transport input"); }
+    }
 
     private static final ArchRule adapters_do_not_execute_recommendations = classes()
             .that().resideInAnyPackage("..adapter..")

@@ -1,5 +1,7 @@
 package dev.ringlab;
 
+import dev.ringlab.port.in.BuildUseCase;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.adapter.out.db.build.BuildDbEntity;
@@ -128,10 +130,10 @@ class BuildRankingIntegrationTest {
         .items().stream().map(Build::id).toList();
   }
 
-  private BuildService.Page list(String search, UUID racer, UUID machine, UUID author,
+  private BuildUseCase.Page list(String search, UUID racer, UUID machine, UUID author,
       UUID gameVersion, BuildSort sort, int page, int size) {
-    return buildService.list(new BuildService.Query(
-        new BuildRepository.Filter(search, racer, machine, author, gameVersion), sort, page, size));
+    return buildService.list(new BuildUseCase.Query(
+        new BuildUseCase.Filter(search, racer, machine, author, gameVersion), sort, page, size));
   }
 
   @Test

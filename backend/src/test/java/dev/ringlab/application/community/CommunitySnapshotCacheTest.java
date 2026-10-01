@@ -1,5 +1,7 @@
 package dev.ringlab.application.community;
 
+import dev.ringlab.port.in.CommunitySnapshot;
+
 import java.time.*;
 import java.util.*;
 import java.util.concurrent.*;

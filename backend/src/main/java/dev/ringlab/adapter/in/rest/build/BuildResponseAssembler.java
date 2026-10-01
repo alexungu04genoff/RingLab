@@ -1,8 +1,8 @@
 package dev.ringlab.adapter.in.rest.build;
 
-import dev.ringlab.application.auth.AuthService;
-import dev.ringlab.application.build.BuildService;
-import dev.ringlab.application.vote.VoteService;
+import dev.ringlab.port.in.AuthUseCase;
+import dev.ringlab.port.in.BuildUseCase;
+import dev.ringlab.port.in.VoteUseCase;
 import dev.ringlab.domain.build.Build;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.adapter.in.rest.build.response.AuthorResponse;
@@ -12,7 +12,7 @@ import dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.GameVersionResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.MachinePartResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.RacerResponse;
-import dev.ringlab.port.out.GameDataRepository;
+import dev.ringlab.port.in.GameDataQueryUseCase;
 import jakarta.enterprise.context.ApplicationScoped;
 import java.util.UUID;
 import java.util.List;
@@ -25,10 +25,10 @@ import lombok.RequiredArgsConstructor;
 @ApplicationScoped
 @RequiredArgsConstructor
 class BuildResponseAssembler {
-  private final BuildService builds;
-  private final AuthService users;
-  private final GameDataRepository game;
-  private final VoteService votes;
+  private final BuildUseCase builds;
+  private final AuthUseCase users;
+  private final GameDataQueryUseCase game;
+  private final VoteUseCase votes;
 
   private RacerResponse racerItem(UUID id) {
     return RacerResponse.from(game.findRacer(id).orElseThrow());

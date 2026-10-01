@@ -9,20 +9,20 @@ flowchart TB
   shared["BuildDbAdapter.filters<br/>shared literal catalog/map filtering"]:::adapter
   e["SavedBuildDbEntity + BuildDbEntity"]:::adapter
   t[("saved_builds + builds and filter relations")]:::outside
-  v["VoteRepository.summaries<br/>direct from REST for live page"]:::port
+  v["VoteRepository.summaries<br/>live page counts"]:::port
   assembly["BuildResponseAssembler.assembleAll"]:::rest
   stats["PassiveStatsService.buildPage"]:::app
   dto["SavedPage / SavedStatus / SavedResult<br/>private, no-store"]:::rest
-  h --> r --> s
+  h --> r --> input["SavedBuildUseCase"]:::port -.-> s
   s --> bp
   s --> validator
   s --> p
   p -.-> a
   a --> shared
   a --> e --> t
-  r --> v
+  r --> votes["VoteUseCase"]:::port -.-> voteService["VoteService.summaries"]:::app --> v
   r --> assembly
-  r --> stats
+  r --> passive["PassiveStatsUseCase"]:::port -.-> stats
   r --> dto
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

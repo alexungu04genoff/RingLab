@@ -2,9 +2,9 @@ package dev.ringlab.adapter.in.rest.gamedata;
 
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.StatsResponse;
-import dev.ringlab.application.gamedata.PassiveStatsService;
+import dev.ringlab.port.in.PassiveStatsUseCase;
+import dev.ringlab.port.in.BuildUseCase;
 import dev.ringlab.domain.gamedata.*;
-import dev.ringlab.port.out.GameDataRepository;
 import jakarta.validation.constraints.Size;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -16,9 +16,8 @@ import lombok.RequiredArgsConstructor;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class PassiveStatsRestResource {
-  private final PassiveStatsService stats;
-  private final GameDataRepository game;
-  private final dev.ringlab.application.build.BuildService builds;
+  private final PassiveStatsUseCase stats;
+  private final BuildUseCase builds;
 
   @GET @Path("persisted/{id}")
   public BuildStatsResponse persisted(@PathParam("id") UUID id) {
@@ -41,8 +40,9 @@ public class PassiveStatsRestResource {
 
   @GET @Path("gadget-rules")
   public Catalog rules() {
-    return new Catalog(PassiveGadgetRules.RULESET,PassiveGadgetRules.VERSION,PassiveStatsCalculator.ARITHMETIC_NOTE,
-        game.listGadgets().stream().map(g -> new GadgetRules(g.id(),PassiveGadgetRules.forGadget(g.id()).stream()
+    var rules = stats.rules();
+    return new Catalog(rules.ruleset(), rules.supportedVersion(), rules.note(),
+        rules.gadgets().stream().map(g -> new GadgetRules(g.gadgetId(),g.effects().stream()
             .map(r -> new Rule(r.effectId(),r.label(),r.kind(),r.subject(),r.requiredType(),
                 StatsResponse.from(r.matching()),StatsResponse.from(r.nonMatching()),r.explanation(),r.sources(),r.stackingGroup())).toList())).toList());
   }

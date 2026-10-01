@@ -100,7 +100,8 @@ class BuildRestResourceTest {
       }
     };
     var votes = new CountingVoteService();
-    var responses = new BuildResponseAssembler(builds, users, new Catalog(id), votes);
+    var responses = new BuildResponseAssembler(builds, users,
+        new dev.ringlab.application.gamedata.GameDataQueryService(new Catalog(id)), votes);
     var resource = new BuildRestResource(builds, responses, null, null, null);
     var page = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 0, 12, false);
     assertEquals(1, page.total());

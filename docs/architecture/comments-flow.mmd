@@ -13,12 +13,12 @@ flowchart TB
   dto["CommentResponse / CommentPageResponse"]:::rest
   h --> r
   r --> actor
-  r --> s
+  r --> input["CommentUseCase"]:::port -.-> s
   s --> build
   s --> policy
   s --> p
   p -.-> a --> m --> db
-  r --> user
+  r --> auth["AuthUseCase"]:::port -.-> user
   r --> dto
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

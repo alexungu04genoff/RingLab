@@ -1,6 +1,6 @@
 package dev.ringlab.adapter.in.rest.gamedata;
 
-import dev.ringlab.application.gamedata.BaseStatsService;
+import dev.ringlab.port.in.BaseStatsUseCase;
 import dev.ringlab.adapter.in.rest.gamedata.response.StatsResponse;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
 import dev.ringlab.domain.gamedata.BaseStats;
@@ -15,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class BaseStatsRestResource {
-  private final BaseStatsService stats;
+  private final BaseStatsUseCase stats;
 
   public record CatalogResponse(UUID gameVersionId, Map<UUID, StatsResponse> racers,
                                 Map<UUID, StatsResponse> machineParts, Map<UUID, StatsResponse> machines) {}

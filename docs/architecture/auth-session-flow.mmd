@@ -8,14 +8,15 @@ flowchart TB
   jwt["AuthRestResource.session<br/>Jwt.subject + groups user + authVersion + sign<br/>SessionResponse / UserResponse"]:::rest
   next["Later protected HTTP request<br/>Authorization: Bearer JWT"]:::outside
   framework["Quarkus / SmallRye JWT verification<br/>@RolesAllowed user"]:::rest
-  actor["CurrentUser.id<br/>UUID subject + user exists + authVersion matches"]:::rest
+  actor["CurrentUser.id<br/>parse UUID subject and authVersion claim"]:::rest
   usecase["REST invokes application use case<br/>with authenticated actor UUID"]:::rest
-  login --> rest --> svc --> port
+  login --> rest --> input["AuthUseCase"]:::port -.-> svc --> port
   port -.-> db --> table
   svc -.->|"User, no hash exposed in response"| jwt
   next --> framework
   framework -.->|"verified security context"| actor
-  actor --> port
+  actor --> input
+  input -.-> validate["AuthService.validateSession<br/>account exists + authVersion matches"]:::app --> port
   actor -.->|"actor UUID"| usecase
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

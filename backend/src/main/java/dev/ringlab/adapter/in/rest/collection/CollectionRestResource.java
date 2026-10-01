@@ -1,7 +1,7 @@
 package dev.ringlab.adapter.in.rest.collection;
 
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
-import dev.ringlab.application.collection.CollectionService;
+import dev.ringlab.port.in.CollectionUseCase;
 import dev.ringlab.domain.collection.CollectionCategory;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -19,7 +19,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CollectionRestResource {
   private final CurrentUser actor;
-  private final CollectionService collection;
+  private final CollectionUseCase collection;
   public record OwnershipRequest(@NotNull Boolean owned) {}
   public record CollectionResponse(Set<UUID> racers, Set<UUID> machines, Set<UUID> gadgets) {}
 

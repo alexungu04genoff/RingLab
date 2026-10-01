@@ -1,5 +1,7 @@
 package dev.ringlab.application.build;
 
+import dev.ringlab.port.in.BuildUseCase;
+
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
@@ -25,36 +27,7 @@ import java.util.UUID;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class BuildService {
-  public record Query(BuildRepository.Filter filter, BuildSort sort, int page, int size) {}
-
-  public record Page(List<Build> items, long total, Map<UUID, VoteSummary> summaries) {
-    public Page {
-      items = List.copyOf(items);
-      summaries = Map.copyOf(summaries);
-    }
-
-    public Page(List<Build> items, long total) {
-      this(items, total, Map.of());
-    }
-
-    public VoteSummary summary(UUID buildId) {
-      return summaries.getOrDefault(buildId, new VoteSummary(0, 0));
-    }
-  }
-
-  public record Draft(
-      String title, String description, UUID racerId, UUID frontPartId,
-      UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
-      List<UUID> gadgetIds, List<UUID> recommendedMapIds) {
-    /** Null maps means omitted; the REST adapter rejects explicit JSON null. */
-    public Draft(String title, String description, UUID racerId, UUID frontPartId,
-        UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
-        List<UUID> gadgetIds) {
-      this(title, description, racerId, frontPartId, rearPartId, tirePartId, gameVersionId,
-          remixedFromBuildId, gadgetIds, null);
-    }
-  }
+public class BuildService implements BuildUseCase {
 
   private final BuildRepository builds;
   private final GameDataRepository game;
@@ -73,7 +46,10 @@ public class BuildService {
 
   public Page list(Query query) {
     validateQuery(query);
-    List<BuildRanking.Candidate> candidates = builds.searchCandidates(query.filter());
+    var filter = query.filter();
+    List<BuildRanking.Candidate> candidates = builds.searchCandidates(new BuildRepository.Filter(
+        filter.search(), filter.racerId(), filter.machineId(), filter.authorId(), filter.gameVersionId(),
+        filter.excludedIds(), filter.mapId(), filter.includeAllMaps()));
     var summaries = query.sort() == BuildSort.NEWEST
         ? Map.<UUID, VoteSummary>of()
         : votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());

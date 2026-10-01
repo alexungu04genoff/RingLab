@@ -2,7 +2,7 @@ package dev.ringlab.adapter.in.rest.comment;
 
 import lombok.RequiredArgsConstructor;
 
-import dev.ringlab.application.comment.CommentService;
+import dev.ringlab.port.in.CommentUseCase;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.ws.rs.DELETE;
@@ -14,7 +14,7 @@ import java.util.UUID;
 @RolesAllowed("user")
 @RequiredArgsConstructor
 public class CommentDeletionRestResource {
-  private final CommentService service;
+  private final CommentUseCase service;
   private final CurrentUser actor;
 
   @DELETE

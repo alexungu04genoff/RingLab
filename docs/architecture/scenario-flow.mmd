@@ -13,7 +13,9 @@ flowchart TB
   rules["PassiveGadgetRules: identify conditional effects<br/>ScenarioGadgetRules: lookup + pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
   result["ScenarioStatsResult<br/>effect statuses + adjustments + knownSubtotal<br/>exact total only when coverage supports it"]:::domain
   dto["ScenarioStatsResponse.from<br/>no persistence"]:::rest
-  h --> r --> s
+  h --> r --> input["ScenarioStatsUseCase"]:::port -.-> s
+  r -->|"GET scenario-rules"| input
+  input -.-> metadata["ScenarioStatsService.rules → ScenarioGadgetRules"]:::app
   r --> ctx
   s --> game
   s --> plate

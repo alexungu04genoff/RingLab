@@ -4,7 +4,7 @@ import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.build.request.BuildRecommendationRequest;
 import dev.ringlab.adapter.in.rest.build.response.BuildRecommendationResponse;
 import dev.ringlab.application.ValidationException;
-import dev.ringlab.application.build.BuildRecommendationService;
+import dev.ringlab.port.in.BuildRecommendationUseCase;
 import io.smallrye.common.annotation.Blocking;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
@@ -20,7 +20,7 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class BuildRecommendationRestResource {
   private final CurrentUser actor;
-  private final BuildRecommendationService recommendations;
+  private final BuildRecommendationUseCase recommendations;
 
   @POST
   @Blocking

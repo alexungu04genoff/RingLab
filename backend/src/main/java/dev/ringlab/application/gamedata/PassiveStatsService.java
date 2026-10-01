@@ -1,5 +1,7 @@
 package dev.ringlab.application.gamedata;
 
+import dev.ringlab.port.in.PassiveStatsUseCase;
+
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.build.Build;
@@ -14,9 +16,14 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class PassiveStatsService {
+public class PassiveStatsService implements PassiveStatsUseCase {
   private final BaseStatsService base;
   private final GameDataRepository game;
+
+  public Rules rules() {
+    return new Rules(PassiveGadgetRules.RULESET, PassiveGadgetRules.VERSION, PassiveStatsCalculator.ARITHMETIC_NOTE,
+        game.listGadgets().stream().map(g -> new GadgetRules(g.id(), PassiveGadgetRules.forGadget(g.id()))).toList());
+  }
 
   public PassiveStatsResult draft(UUID version, UUID racer, UUID front, UUID rear, UUID tire, List<UUID> ids) {
     if (ids == null || ids.size() > 6 || ids.stream().anyMatch(Objects::isNull)

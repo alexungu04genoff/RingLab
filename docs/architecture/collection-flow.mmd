@@ -10,7 +10,7 @@ flowchart TB
   ex["CollectionExclusions<br/>immutable sets of NOT-owned IDs"]:::domain
   recommendation["BuildRecommendationService<br/>calls CollectionService.load(actor)"]:::app
   solver["BuildRecommendationSolver<br/>filter candidate pools; reject unavailable locks"]:::domain
-  h --> r --> s
+  h --> r --> input["CollectionUseCase"]:::port -.-> s
   s --> game
   s --> p
   p -.-> a

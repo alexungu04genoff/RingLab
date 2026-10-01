@@ -1,5 +1,7 @@
 package dev.ringlab.performance;
 
+import dev.ringlab.port.in.BuildUseCase;
+
 import static io.restassured.RestAssured.given;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -156,7 +158,7 @@ class BuildBrowsePerformanceBenchmark {
 
     List<Long> nanos = new ArrayList<>();
     List<Long> sqlCounts = new ArrayList<>();
-    BuildService.Page last = null;
+    BuildUseCase.Page last = null;
     for (int i = 0; i < ITERATIONS; i++) {
       statistics.clear();
       long started = System.nanoTime();
@@ -171,7 +173,7 @@ class BuildBrowsePerformanceBenchmark {
         last.items().stream().map(Build::id).toList());
   }
 
-  private BuildService.Page invokeService(Scenario scenario) {
+  private BuildUseCase.Page invokeService(Scenario scenario) {
     return QuarkusTransaction.requiringNew().call(() -> {
       entityManager.clear();
       return buildService.list(query(scenario));
@@ -216,7 +218,7 @@ class BuildBrowsePerformanceBenchmark {
     for (int i = 0; i < WARM_UPS; i++) invokeNewestWithoutVotes();
     List<Long> nanos = new ArrayList<>();
     List<Long> sqlCounts = new ArrayList<>();
-    BuildService.Page last = null;
+    BuildUseCase.Page last = null;
     for (int i = 0; i < ITERATIONS; i++) {
       statistics.clear();
       long started = System.nanoTime();
@@ -228,7 +230,7 @@ class BuildBrowsePerformanceBenchmark {
         last.items().stream().map(Build::id).toList());
   }
 
-  private BuildService.Page invokeNewestWithoutVotes() {
+  private BuildUseCase.Page invokeNewestWithoutVotes() {
     return QuarkusTransaction.requiringNew().call(() -> {
       entityManager.clear();
       List<BuildRanking.Candidate> candidates = buildRepository.searchCandidates(
@@ -240,7 +242,7 @@ class BuildBrowsePerformanceBenchmark {
           .map(BuildRanking.Candidate::id).toList();
       Map<UUID, Build> hydrated = buildRepository.findAll(pageIds).stream()
           .collect(java.util.stream.Collectors.toMap(Build::id, build -> build));
-      return new BuildService.Page(pageIds.stream().map(hydrated::get)
+      return new BuildUseCase.Page(pageIds.stream().map(hydrated::get)
           .filter(java.util.Objects::nonNull).toList(), ranked.size());
     });
   }
@@ -258,10 +260,10 @@ class BuildBrowsePerformanceBenchmark {
     return given().queryParams(parameters).when().get("/api/builds").then().statusCode(200).extract().response();
   }
 
-  private BuildService.Query query(Scenario scenario) {
+  private BuildUseCase.Query query(Scenario scenario) {
     Map<String, String> p = scenario.parameters();
-    return new BuildService.Query(
-        new BuildRepository.Filter(
+    return new BuildUseCase.Query(
+        new BuildUseCase.Filter(
             p.get("search"), uuid(p.get("racerId")), uuid(p.get("machineId")), null,
             uuid(p.get("gameVersionId"))),
         scenario.sort(), scenario.page(), PAGE_SIZE);

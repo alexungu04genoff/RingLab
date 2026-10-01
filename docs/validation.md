@@ -23,7 +23,11 @@ Quarkus HTTP acceptance tests, Flyway migration tests, and a packaged-applicatio
 API test. `ArchitectureTest` uses ArchUnit to enforce that domain code is free of
 framework and outer-layer dependencies, application code does not depend on
 adapters/REST/JPA infrastructure, ports do not depend on application/adapters,
-and persistence does not own build-ranking/Wilson policy.
+and persistence does not own build-ranking/Wilson policy. Input and output ports use only
+JDK/domain/port types. Inbound adapters invoke input ports, with only seven exact semantic
+application error types allowed; they cannot reach application implementations or output
+ports. Outbound adapters cannot reach input ports. Negative and positive boundary fixtures
+exercise the rules.
 
 Frontend verification uses Vitest and the V8 coverage provider:
 
@@ -57,6 +61,45 @@ Generated build and coverage output remains untracked: `backend/target/`,
 `frontend/coverage/`, and `frontend/dist/` are ignored.
 
 ## Historical run records
+
+### Explicit input ports — 2026-10-01
+
+Verification used a separate disposable PostgreSQL 17 container and ephemeral test keys.
+The normal development database and stack were not used for tests or refreshed for deployment.
+
+- Focused command: `mvn -f backend/pom.xml -Dtest=ArchitectureTest,AuthRestResourceTest,CurrentUserTest,BuildServiceTest,BuildRestResourceTest,BuildResponseAssemblerTest,SavedBuildServiceTest,VoteServiceTest,CommunityExportTest,CommunityRestResourceTest,CommunitySnapshotCacheTest test` — 66 passed.
+- Full command: `mvn -f backend/pom.xml verify` — all 364 Surefire tests executed; 363 passed,
+  and one comment-list assertion still compared the old output-port page type with the new
+  input-port page. The test was corrected to assert the same returned comments, count and
+  repository query parameters. No production behavior or test expectation was relaxed.
+- Completion command: `mvn -f backend/pom.xml -Dtest=CommentServiceTest verify` — all eight
+  affected unit tests and all 18 `PackagedApiIT` tests passed; packaging and coverage checks passed.
+  The other 356 passing Surefire tests were not repeated because only this test assertion changed.
+
+The full run includes the new registration/resend mail failure tests: account/token data is
+committed and visible in a fresh transaction before delivery, even when mail fails. The existing
+password-reset regression now invokes the input port and asserts delivery inside an active
+transaction plus rollback of failed token replacement. JWT, Google, recommendations, stats,
+community, collection, social features, queries, migration and rate-limit tests also passed.
+
+Coverage was measured after archiving the old execution file, using the full run plus the
+targeted correction. The existing 90% instruction / 80% branch / 90% line gates passed without
+changes. The report is `backend/target/site/jacoco/index.html`; packaged API tests are separate
+from the instrumented Surefire coverage. No frontend test/build was needed: frontend source,
+dependencies and API contracts did not change.
+
+Measured coverage: **97.21% instructions, 88.98% branches, 97.68% lines**.
+
+Existing compiler notices remain for deprecated/unchecked test APIs. The packaged test runner
+emits an ignored logging-category configuration warning on Windows. These did not fail checks.
+Constraint-race tests intentionally exercise and log rejected database operations.
+
+For a manual rerun, use the full command above with `QUARKUS_DATASOURCE_JDBC_URL`,
+`QUARKUS_DATASOURCE_USERNAME` and `QUARKUS_DATASOURCE_PASSWORD` pointing to a **disposable**
+PostgreSQL database, plus ephemeral `JWT_PUBLIC_KEY` / `JWT_PRIVATE_KEY` and `PUBLIC_BASE_URL`.
+In IntelliJ, the architecture, comment, CurrentUser and community resource tests can run without
+infrastructure; mail integration tests require the disposable datasource. No broader backend
+verification remains pending from this refactor.
 
 ### Robustness fixes — 2026-09-13
 

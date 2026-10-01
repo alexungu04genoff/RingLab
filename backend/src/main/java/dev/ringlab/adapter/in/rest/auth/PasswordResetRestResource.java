@@ -2,7 +2,7 @@ package dev.ringlab.adapter.in.rest.auth;
 
 import dev.ringlab.adapter.in.rest.auth.response.MessageResponse;
 import dev.ringlab.application.ExternalServiceUnavailableException;
-import dev.ringlab.application.auth.PasswordResetService;
+import dev.ringlab.port.in.PasswordResetUseCase;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
@@ -16,7 +16,7 @@ import lombok.extern.jbosslog.JBossLog;
 @RequiredArgsConstructor
 @JBossLog
 public class PasswordResetRestResource {
-  private final PasswordResetService service;
+  private final PasswordResetUseCase service;
   public record ForgotPasswordRequest(String email) {}
   public record ResetPasswordRequest(String token, String password, String confirmPassword) {}
 
@@ -26,7 +26,7 @@ public class PasswordResetRestResource {
     catch (ExternalServiceUnavailableException failure) {
       log.warn("Password reset email delivery failed; token change rolled back");
     }
-    return new MessageResponse(PasswordResetService.CONFIRMATION);
+    return new MessageResponse(PasswordResetUseCase.CONFIRMATION);
   }
 
   @POST @Path("reset-password")

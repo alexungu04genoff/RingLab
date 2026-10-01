@@ -15,7 +15,7 @@ flowchart TB
   create["ExternalAccountRegistration<br/>generate available clean username"]:::app
   profanity["ProfanityPolicy"]:::app
   output["login: AuthRestResource.session → SessionResponse<br/>link: MessageResponse"]:::rest
-  h --> r --> s
+  h --> r --> input["ExternalAuthUseCase"]:::port -.-> s
   s --> verifier
   verifier -.-> google --> provider
   verifier -.->|"returns"| identity

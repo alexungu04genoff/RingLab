@@ -1,5 +1,7 @@
 package dev.ringlab.application.comment;
 
+import dev.ringlab.port.in.CommentUseCase;
+
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.application.build.BuildService;
@@ -16,16 +18,17 @@ import java.util.*;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class CommentService {
+public class CommentService implements CommentUseCase {
   private final CommentRepository comments;
   private final BuildService builds;
   private final ProfanityPolicy profanity;
 
-  public CommentRepository.Page list(UUID build, int page, int size) {
+  public Page list(UUID build, int page, int size) {
     if (page < 0 || size < 1 || size > 50)
       throw new ValidationException("Page must be nonnegative and size must be between 1 and 50");
     builds.get(build);
-    return comments.list(build, page, size);
+    var result = comments.list(build, page, size);
+    return new Page(result.items(), result.total());
   }
 
   @Transactional

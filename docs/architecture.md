@@ -4,24 +4,28 @@
 
 RingLab has one Quarkus process and one PostgreSQL database. Features are packages within the same deployment, not network services. The React client calls REST. This keeps local startup, transactions, and thesis explanation small while keeping feature responsibilities visible.
 
-Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `port`, and `adapter`. Feature-specific domain code is grouped by `auth`, `gamedata`, `build`, `vote`, `comment`, and `news`; application code currently has `auth`, `build`, `vote`, `comment`, and `news` services. Outbound contracts are centralized for immediate visibility. Semantic application exceptions derive from `application.AppException`; `adapter.in.rest.ErrorRestExceptionMapper` alone maps them to HTTP statuses. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
+Packages are architecture-first under `dev.ringlab`: `domain`, `application`, `port`, and `adapter`. Feature packages group domain concepts and application implementations. Both input and output contracts are centralized for immediate visibility. Semantic application exceptions derive from `application.AppException`; `adapter.in.rest.ErrorRestExceptionMapper` alone maps them to HTTP statuses. The JWT current-user helper lives in `adapter.in.rest.auth`. There are no generic base repositories or services, event bus, or framework for future games.
 
 ```text
 dev.ringlab/
   domain/{auth,build,collection,comment,gamedata,news,vote}/
-  application/{auth,build,collection,comment,gamedata,news,validation,vote}/
+  application/{auth,build,collection,comment,community,gamedata,news,validation,vote}/
+  port/in/                         # capabilities RingLab provides
+    *UseCase.java                   # 17 feature contracts, including one dev-only capability
+    CommunitySnapshot.java          # detached boundary result
   port/out/
     {User,Build,SavedBuild,Collection,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
-  adapter/in/rest/{auth,build,collection,comment,gamedata,news,ratelimit,vote}/
+  adapter/in/rest/{auth,build,collection,comment,community,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
   adapter/out/steam/
+  adapter/out/{google,mail}/
 ```
 
 ## Boundaries
 
 Private bookmarks follow the same boundaries: `SavedBuildRestResource` obtains the
-actor through `CurrentUser`, calls `SavedBuildService`, and assembles normal live
+actor through `CurrentUser`, calls `SavedBuildUseCase` implemented by `SavedBuildService`, and assembles normal live
 build responses with a separate `savedAt`. `SavedBuildRepository` is a flat outbound
 port; `SavedBuildDbAdapter` owns PostgreSQL upsert, database pagination, literal
 catalog search, and uniqueness/cascade handling. It does not change public ranking
@@ -34,12 +38,102 @@ stored in public snapshots or browser persistence. Comparison remains separate
 ephemeral state and survives navigation within a session.
 
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Machine` owns its racing type; `MachineComposition` defines required slots; `Build` snapshots its ordered gadget list. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
-- **application:** use-case services that depend on domain types and outbound repository contracts. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions for validation, authentication, existing resources, forbidden operations, missing resources, and unavailable external services; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic application-layer dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
-- **port/out:** the flat set of outbound infrastructure contracts: `UserRepository`, `BuildRepository`, `CommentRepository`, `GameDataRepository`, `GameNewsRepository`, and `VoteRepository`. Centralizing this small set makes every application-to-infrastructure boundary visible in one package. These interfaces depend only on domain types and JDK types.
+- **application:** implements input ports and coordinates domain behavior and output ports. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
+- **port/in:** capabilities provided by RingLab to inbound adapters. Contracts use domain/JDK types and boundary-owned commands, queries and results, including `BuildUseCase.Draft`, `Filter`, `Query`, `Page` and `CommunitySnapshot`. They never import application implementations, transport DTOs, JAX-RS, Quarkus or persistence. `BuildUseCase.Filter` is translated explicitly into `BuildRepository.Filter`; output contracts remain independent of input contracts.
+- **port/out:** the 15 flat contracts for capabilities required from infrastructure: repositories, identity verification and mail senders. They retain their existing names and meaning. Both port packages depend only on JDK/domain/port types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser parses the verified JWT subject as a UUID, verifies that the RingLab user still exists, and treats a missing account as unavailable authentication. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
-The outbound repositories are real boundaries between application behavior and infrastructure. No input ports are currently used because REST resources call application services directly. Read-only game-data routes use `GameDataRepository` directly because they have no additional use-case rules. The architecture guard permits persistence to construct `BuildRanking.Candidate` as a facts projection, but rejects Wilson/ranking-mode dependencies, calls into `BuildRanking`, and local sorting operations.
+`adapter/in` owns protocol-specific entry mechanisms, currently REST/JWT/HTTP. It calls
+input ports for application work, including simple catalog reads and response enrichment.
+`adapter/out` implements infrastructure contracts for PostgreSQL, Steam, Google and mail.
+The runtime path is `adapter/in → port/in → application/domain → port/out → adapter/out`.
+Java implementation dependencies point inward: services implement input ports and outbound
+adapters implement output ports. See the [focused input-port diagram](architecture/inbound-ports.mmd)
+and the [atlas](architecture-atlas.md#2-layers-and-dependency-direction).
+
+Ports exist at these boundaries. `BuildDraftValidator`, `ProfanityPolicy`, compatibility
+rules, solvers, calculators and loaders deliberately remain concrete. For example,
+`BuildRecommendationService` still calls `CollectionService` and `RecommendationCatalogLoader`
+directly; `port/in` is not an internal service bus. DTO construction stays in REST.
+
+The architecture guard rejects every inbound dependency on application implementation
+packages or `port/out`. Its only application exceptions are the seven exact semantic error
+types (`AppException`, `AlreadyExistsException`, `AuthenticationException`,
+`ExternalServiceUnavailableException`, `ForbiddenException`, `NotFoundException`,
+`ValidationException`), used to translate or signal existing transport failures. Rate limiting
+and adapter-local formatters need no service exemption. Outbound adapters may not depend on
+`port/in`. Existing domain/port purity, application separation, ranking and calculator guards
+remain. Negative fixtures reject inbound calls to `BuildService` and `BuildRepository`;
+positive cases accept `BuildUseCase`, service/DB-to-repository calls and internal helper calls.
+
+### Input port bindings and consumers
+
+| Input port | Application implementation | Direct inbound consumers |
+| --- | --- | --- |
+| `AuthUseCase` | `AuthService` | `AuthRestResource`, `CurrentUser`, `CommentRestResource`, `BuildResponseAssembler` |
+| `AccountRegistrationUseCase` | `AccountRegistrationService` | `AuthRestResource` |
+| `ExternalAuthUseCase` | `ExternalAuthService` | `AuthRestResource` |
+| `PasswordResetUseCase` | `PasswordResetService` | `PasswordResetRestResource` |
+| `DemoAccountUseCase` | `DemoAccountBootstrapService` (non-prod) | `DevDemoAccountRestResource` (non-prod) |
+| `BuildUseCase` | `BuildService` | `BuildRestResource`, `BuildResponseAssembler`, `PassiveStatsRestResource`, `BuildRequest` (command conversion) |
+| `BuildRecommendationUseCase` | `BuildRecommendationService` | `BuildRecommendationRestResource` |
+| `SavedBuildUseCase` | `SavedBuildService` | `SavedBuildRestResource` |
+| `CollectionUseCase` | `CollectionService` | `CollectionRestResource` |
+| `CommentUseCase` | `CommentService` | `CommentRestResource`, `CommentDeletionRestResource` |
+| `VoteUseCase` | `VoteService` | `VoteRestResource`, `SavedBuildRestResource`, `BuildResponseAssembler`, `VoteResponse` (result conversion) |
+| `CommunityUseCase` | `CommunitySnapshotCache` | `CommunityRestResource`, `BuildRestResource`, `TopBuildsResponse` |
+| `GameDataQueryUseCase` | `GameDataQueryService` | `GameDataRestResource`, `BuildResponseAssembler` |
+| `BaseStatsUseCase` | `BaseStatsService` | `BaseStatsRestResource` |
+| `PassiveStatsUseCase` | `PassiveStatsService` | `PassiveStatsRestResource`, `BuildRestResource`, `SavedBuildRestResource` |
+| `ScenarioStatsUseCase` | `ScenarioStatsService` | `ScenarioStatsRestResource` |
+| `GameNewsUseCase` | `GameNewsService` | `NewsRestResource` |
+
+### Inbound audit and preserved sequencing
+
+The pre-edit audit at `f408299` counted **45 annotated operations in 16 resources**:
+44 production operations in 15 resources, plus one development operation. Every resource
+and helper below was inspected before changing dependencies. The table records the former
+calls; the bindings above describe the replacement. Domain enums/records still cross the
+boundary for translation. Actual rule retrieval now belongs to the relevant input queries.
+
+| Resource/helper | Former application calls / output shortcuts | Domain or transport work retained |
+| --- | --- | --- |
+| `AuthRestResource` | `AuthService`, `ExternalAuthService`, `EmailVerificationService`; direct `EmailVerificationSender` | Request validation, JWT signing, `UserResponse`/messages; delivery coordination moved to application |
+| `PasswordResetRestResource` | `PasswordResetService` | Generic confirmation and safe delivery-failure warning |
+| `DevDemoAccountRestResource` | `DemoAccountBootstrapService` | Non-prod/loopback gate, account command conversion, JWT signing |
+| `BuildRestResource` | `BuildService`, `PassiveStatsService`, `CommunitySnapshotCache`; constructed outbound filter | Sort/query conversion, `CurrentUser`, `BuildResponseAssembler`, optional-enrichment error handling |
+| `BuildRecommendationRestResource` | `BuildRecommendationService` | Request/domain conversion and response conversion |
+| `SavedBuildRestResource` | `SavedBuildService`, `PassiveStatsService`; direct `VoteRepository.summaries` | Actor, normal build assembler, private cache headers |
+| `CollectionRestResource` | `CollectionService` | `CollectionCategory` conversion, actor, response |
+| `CommentRestResource` | `CommentService`, `AuthService` | Author response mapping and actor on create |
+| `CommentDeletionRestResource` | `CommentService` | Actor and deletion route |
+| `VoteRestResource` | `VoteService` | Actor, request and result conversion |
+| `CommunityRestResource` | `CommunitySnapshotCache` | Query rejection, ETag, `CommunityPublicUrls`, JSON/Discord formatting |
+| `GameDataRestResource` | Direct `GameDataRepository` | Separate catalog DTOs, source-machine enrichment and presentation sorting |
+| `BaseStatsRestResource` | `BaseStatsService` | Domain stats to catalog/build transport responses |
+| `PassiveStatsRestResource` | `PassiveStatsService`, `BuildService`; direct `GameDataRepository` and `PassiveGadgetRules` metadata | Preview DTOs; rule metadata now obtained through `PassiveStatsUseCase.rules` |
+| `ScenarioStatsRestResource` | `ScenarioStatsService`; direct `ScenarioGadgetRules` metadata | Domain context/enum and control DTO conversion; metadata now through `ScenarioStatsUseCase.rules` |
+| `NewsRestResource` | `GameNewsService` | News response conversion |
+| `CurrentUser` | Direct `UserRepository` | JWT subject UUID parsing and missing-claim version 0; account/version validity moved to `AuthUseCase.validateSession` |
+| `BuildResponseAssembler` | `BuildService`, `AuthService`, `VoteService`; direct `GameDataRepository` | Public author/loadout/remix/vote DTO assembly |
+| `TopBuildsResponse` | Application `CommunitySnapshot`, whose entry calculated passive stats | Port-owned detached snapshot plus `CommunityUseCase.passiveStats`; URL and JSON construction stay in adapter |
+| `BuildRequest` / `VoteResponse` | Nested `BuildService.Draft` / `VoteService.Result` | Conversion now uses input-port records |
+| Exception mappers / rate limiter / other DTOs | Seven semantic errors only; no use-case or repository calls | Existing safe HTTP mapping, policy/IP/identity/buckets, enum/value translation and formatting |
+
+`AccountRegistrationService` supplies the missing application orchestration: its registration
+and resend methods suspend any caller transaction, invoke the existing transactional services,
+then deliver mail after commit. Delivery failure still returns a safe 503 with the account/token
+or replacement token committed. Verification keeps its existing transaction. Password-reset
+issuance still sends inside its transaction; delivery failure rolls back replacement and the
+REST response stays generic. Google login/link transactions and JWT creation stay unchanged.
+Real CDI/PostgreSQL regression tests assert both transaction statuses and persisted outcomes.
+
+Community snapshot retrieval and passive projection are separate methods of `CommunityUseCase`.
+The cache TTL, synchronized refresh and selection transaction are unchanged. A 304 response
+or browse exclusion needs only `get()`; rendering calculates passive facts from the existing
+detached entry without new repository reads. `CommunitySnapshot` is a boundary result with no
+service or calculator dependency.
 
 Usernames, build titles and descriptions, and comment text pass through the local application-layer
 `ProfanityPolicy`, backed by ModernMT's `com.modernmt.text:profanity-filter:1.0.1` English dictionary.
@@ -187,8 +281,9 @@ verification mail.
 `EmailVerificationService` owns token generation, hashing, expiry, replacement and
 consumption. Registration calls its package-private issuance method inside the
 registration transaction; verification and resend each retain their own REQUIRED
-transaction boundary. `AuthRestResource` sends mail after the application call returns,
-so SMTP delivery is still outside the database transaction. Both application beans keep
+transaction boundary. `AuthRestResource` calls `AccountRegistrationUseCase`, whose
+`AccountRegistrationService` implementation sends mail after the transactional call returns,
+so SMTP delivery is still outside the database transaction. The application beans keep
 request data in local variables rather than shared fields.
 
 `PasswordResetService` owns separate recovery tokens through `PasswordResetRepository`

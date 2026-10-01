@@ -1,7 +1,7 @@
 flowchart TB
   subgraph news["Steam news"]
     direction TB
-    nr["NewsRestResource"]:::rest --> ns["GameNewsService.latest — request five"]:::app
+    nr["NewsRestResource"]:::rest --> newsInput["GameNewsUseCase"]:::port -.-> ns["GameNewsService.latest — request five"]:::app
     ns --> np["GameNewsRepository"]:::port
     np -.-> na["SteamNewsAdapter<br/>validate response; map GameNewsItem"]:::adapter
     na --> nc["SteamNewsClient<br/>GET /ISteamNews/GetNewsForApp/v2/"]:::adapter
@@ -18,7 +18,8 @@ flowchart TB
   end
   subgraph mail["Email"]
     direction TB
-    ar["AuthRestResource<br/>after registration/resend transaction"]:::rest --> ep["EmailVerificationSender"]:::port
+    ar["AuthRestResource"]:::rest --> accountInput["AccountRegistrationUseCase"]:::port
+    accountInput -.-> registration["AccountRegistrationService<br/>after registration/resend transaction"]:::app --> ep["EmailVerificationSender"]:::port
     ep -.-> ea["QuarkusEmailVerificationSender"]:::adapter
     ps["PasswordResetService<br/>inside request transaction"]:::app --> rp["PasswordResetSender"]:::port
     rp -.-> ra["QuarkusPasswordResetSender"]:::adapter

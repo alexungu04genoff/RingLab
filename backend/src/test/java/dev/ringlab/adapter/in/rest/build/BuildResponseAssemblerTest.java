@@ -61,7 +61,8 @@ class BuildResponseAssemblerTest {
       }
     };
 
-    var response = new BuildResponseAssembler(builds, users, catalog, votes)
+    var response = new BuildResponseAssembler(builds, users,
+        new dev.ringlab.application.gamedata.GameDataQueryService(catalog), votes)
         .assemble(build, new VoteSummary(8, 3));
 
     assertEquals(id, response.id());

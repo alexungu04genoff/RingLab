@@ -17,7 +17,7 @@ flowchart TB
   ctx["ScenarioContext<br/>ephemeral player-selected conditions"]:::domain
   sc["ScenarioStatsCalculator"]:::domain
   so["ScenarioStatsResult<br/>passive + scenario delta<br/>knownSubtotal + nullable exact total"]:::domain
-  endpoints --> base
+  endpoints --> input["BaseStatsUseCase"]:::port -.-> base
   consumers --> base
   base --> gp
   base --> sp

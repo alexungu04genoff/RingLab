@@ -1,5 +1,10 @@
 package dev.ringlab.application.community;
 
+import dev.ringlab.port.in.CommunitySnapshot;
+import dev.ringlab.port.in.CommunityUseCase;
+import dev.ringlab.domain.gamedata.*;
+import java.util.UUID;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.time.Clock;
@@ -10,7 +15,7 @@ import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 /** One entry per application instance. Failures never replace a successful snapshot. */
 @ApplicationScoped
-public class CommunitySnapshotCache {
+public class CommunitySnapshotCache implements CommunityUseCase {
   private final Supplier<CommunitySnapshot> loader;
   private final Duration lifetime;
   private final Clock clock;
@@ -39,5 +44,16 @@ public class CommunitySnapshotCache {
       expiresAt = startedAt.plus(lifetime);
     }
     return snapshot;
+  }
+
+  public PassiveStatsResult passiveStats(CommunitySnapshot.Entry entry) {
+    var machines = new java.util.HashMap<UUID, Machine>();
+    for (var part : java.util.Arrays.asList(entry.front(), entry.rear(), entry.tire())) {
+      if (part != null && part.source() != null) machines.put(part.source().id(), part.source());
+    }
+    return dev.ringlab.application.gamedata.PassiveStatsService.resolved(entry.stats(), entry.patch(), entry.racer(),
+        entry.front() == null ? null : entry.front().part(), entry.rear() == null ? null : entry.rear().part(),
+        entry.tire() == null ? null : entry.tire().part(), machines, entry.gadgets(),
+        dev.ringlab.domain.build.GadgetPlate.canFit(entry.gadgets().stream().map(Gadget::slotCost).toList()));
   }
 }

@@ -1,5 +1,7 @@
 package dev.ringlab.application.auth;
 
+import dev.ringlab.port.in.DemoAccountUseCase;
+
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
@@ -17,8 +19,7 @@ import java.util.UUID;
 /** Explicit development fixture support. This bean is absent from production builds. */
 @ApplicationScoped
 @UnlessBuildProfile("prod")
-public class DemoAccountBootstrapService {
-  public record Account(String key, String username, String email) {}
+public class DemoAccountBootstrapService implements DemoAccountUseCase {
 
   private static final String USERNAME_PREFIX = "ringlab_demo_";
   private static final String EMAIL_SUFFIX = "@example.test";

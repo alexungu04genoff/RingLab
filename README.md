@@ -15,7 +15,8 @@ backend/src/main/java/dev/ringlab/
                framework-independent domain records
   application/{auth,build,comment,news,vote}/
                application services
-  port/out/
+  port/in/                         # capabilities provided by RingLab
+  port/out/                        # capabilities required from infrastructure
                UserRepository, BuildRepository, CommentRepository,
                GameDataRepository, GameNewsRepository and VoteRepository contracts
   adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/

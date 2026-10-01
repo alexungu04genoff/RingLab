@@ -11,11 +11,11 @@ flowchart TB
   settings["RateLimitSettings / RateLimitRule"]:::rest -.->|"configured limits"| limiter
   limiter --> reject["429 ErrorResponse + Retry-After<br/>when rejected"]:::rest
   framework --> resource["Matched RestResource<br/>protected routes require role user"]:::rest
-  resource --> actor["CurrentUser.id<br/>UUID subject + account exists + authVersion matches"]:::rest
-  actor --> users["UserRepository"]:::port
+  resource --> actor["CurrentUser.id<br/>UUID subject + authVersion claim"]:::rest
+  actor --> auth["AuthUseCase"]:::port -.-> account["AuthService.validateSession"]:::app --> users["UserRepository"]:::port
   users -.->|"implemented by"| db["UserDbAdapter → UserDbEntity / UserDbMapper"]:::adapter
   db --> table[("users")]:::outside
-  resource --> service["Application use case"]:::app
+  resource --> input["Feature input port"]:::port -.-> service["Application use case"]:::app
   service --> profanity["ProfanityPolicy<br/>registration/generated username,<br/>build title/description, comments"]:::app
   service --> failure["AppException subclasses"]:::app
   failure -.-> applicationMapper["ErrorRestExceptionMapper<br/>safe 400 / 401 / 403 / 404 / 409 / 503"]:::rest

@@ -2,8 +2,8 @@ package dev.ringlab.adapter.in.rest.comment;
 
 import lombok.RequiredArgsConstructor;
 
-import dev.ringlab.application.auth.AuthService;
-import dev.ringlab.application.comment.CommentService;
+import dev.ringlab.port.in.AuthUseCase;
+import dev.ringlab.port.in.CommentUseCase;
 import dev.ringlab.domain.comment.Comment;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.comment.request.CommentRequest;
@@ -23,8 +23,8 @@ import java.util.*;
 @RequiredArgsConstructor
 public class CommentRestResource {
 
-  private final CommentService service;
-  private final AuthService users;
+  private final CommentUseCase service;
+  private final AuthUseCase users;
   private final CurrentUser actor;
 
   private CommentResponse response(Comment c) {

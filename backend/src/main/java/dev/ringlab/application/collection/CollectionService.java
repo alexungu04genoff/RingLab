@@ -1,5 +1,7 @@
 package dev.ringlab.application.collection;
 
+import dev.ringlab.port.in.CollectionUseCase;
+
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.collection.*;
 import dev.ringlab.port.out.*;
@@ -11,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class CollectionService {
+public class CollectionService implements CollectionUseCase {
   private final CollectionRepository collection;
   private final GameDataRepository catalog;
 

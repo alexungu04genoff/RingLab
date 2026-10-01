@@ -1,5 +1,5 @@
 flowchart TB
-  browse["BuildRestResource → BuildService.list<br/>normal Explore query"]:::rest
+  browse["BuildRestResource → BuildUseCase → BuildService.list<br/>normal Explore query"]:::rest
   rest["CommunityRestResource<br/>GET top-builds or top-builds/discord"]:::rest
   cache["CommunitySnapshotCache.get<br/>one synchronized in-process entry"]:::app
   service["CommunitySelectionService.select<br/>REQUIRES_NEW transaction"]:::app
@@ -13,11 +13,11 @@ flowchart TB
   rules["application MachineCompatibility<br/>domain MachineComposition + GadgetPlate"]:::app
   up["UserRepository.byId"]:::port
   sp["BaseStatsRepository<br/>per selected patch"]:::port
-  snapshot["CommunitySnapshot / Entry<br/>up to three eligible builds"]:::app
-  dto["TopBuildsResponse.from + CommunityPublicUrls<br/>Entry.passiveStats → PassiveStatsService.resolved"]:::rest
+  snapshot["CommunitySnapshot / Entry<br/>up to three eligible builds; port/in payload"]:::port
+  dto["TopBuildsResponse.from + CommunityPublicUrls<br/>CommunityUseCase.passiveStats on a non-304 response"]:::rest
   formatter["DiscordTopBuildsFormatter.format<br/>message JSON only; no Discord call"]:::rest
   browse --> ranking
-  rest --> cache -->|"miss / expired"| service
+  rest --> input["CommunityUseCase"]:::port -.-> cache -->|"miss / expired"| service
   service --> bp
   service --> vp
   service --> gp
@@ -31,6 +31,8 @@ flowchart TB
   service -->|"rank, skip ineligible, stop at three"| snapshot
   snapshot -.->|"published after successful transaction"| cache
   rest --> dto
+  dto --> input
+  input -.-> projection["CommunitySnapshotCache.passiveStats<br/>PassiveStatsService.resolved; detached facts only"]:::app
   rest -->|"Discord representation"| formatter
   dto -.->|"formatter input"| formatter
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49

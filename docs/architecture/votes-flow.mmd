@@ -9,8 +9,8 @@ flowchart TB
   e["VoteDbEntity"]:::adapter
   t[("votes<br/>UNIQUE user_id + build_id<br/>CHECK value IN -1,1")]:::outside
   summary["VoteSummary<br/>score = upvotes - downvotes"]:::domain
-  out["VoteService.Result → VoteResponse<br/>score, upvotes, downvotes, myVote"]:::rest
-  h --> r --> s
+  out["VoteUseCase.Result → VoteResponse<br/>score, upvotes, downvotes, myVote"]:::rest
+  h --> r --> input["VoteUseCase"]:::port -.-> s
   s --> b
   s -->|"PUT constructs"| v
   s --> p

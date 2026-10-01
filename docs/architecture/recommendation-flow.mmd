@@ -1,7 +1,7 @@
 flowchart TB
   h["POST /api/build-recommendations<br/>BuildRecommendationRequest"]:::outside
   r["BuildRecommendationRestResource<br/>user role, @Blocking, toDomain()"]:::rest
-  actor["CurrentUser.id<br/>UserRepository → UserDbAdapter → users"]:::rest
+  actor["CurrentUser.id<br/>AuthUseCase → AuthService → UserRepository"]:::rest
   s["BuildRecommendationService.recommend<br/>NOT_SUPPORTED transaction<br/>two nonwaiting semaphore permits"]:::app
   loader["RecommendationCatalogLoader.load<br/>REQUIRES_NEW short transaction"]:::app
   col["CollectionService.load(actor)"]:::app
@@ -19,7 +19,8 @@ flowchart TB
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
   h --> r
   r --> actor
-  r -->|"actor UUID + RecommendationRequest"| s
+  r -->|"actor UUID + RecommendationRequest"| input["BuildRecommendationUseCase"]:::port
+  input -.-> s
   s --> loader
   loader --> gp
   loader --> sp

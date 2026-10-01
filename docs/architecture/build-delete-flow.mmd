@@ -1,6 +1,6 @@
 flowchart TB
   h["DELETE /api/builds/{id}"]:::outside --> r["BuildRestResource + CurrentUser.id"]:::rest
-  r --> s["BuildService.delete<br/>get → ForbiddenException.requireOwner"]:::app
+  r --> input["BuildUseCase"]:::port -.-> s["BuildService.delete<br/>get → ForbiddenException.requireOwner"]:::app
   s --> p["BuildRepository.delete"]:::port
   p -.-> a["BuildDbAdapter<br/>EntityManager.remove(BuildDbEntity)"]:::adapter
   a --> b[("builds: remove target row")]:::outside

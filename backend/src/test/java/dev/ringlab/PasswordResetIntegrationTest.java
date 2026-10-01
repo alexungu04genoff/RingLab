@@ -3,6 +3,7 @@ package dev.ringlab;
 import dev.ringlab.adapter.out.mail.QuarkusPasswordResetSender;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.application.auth.PasswordResetService;
+import dev.ringlab.port.in.PasswordResetUseCase;
 import dev.ringlab.domain.auth.*;
 import dev.ringlab.port.out.*;
 import io.quarkus.elytron.security.common.BcryptUtil;
@@ -37,9 +38,13 @@ class PasswordResetIntegrationTest {
   @Alternative @ApplicationScoped
   public static class TestSender implements PasswordResetSender {
     @Inject QuarkusPasswordResetSender delegate;
+    @Inject jakarta.transaction.TransactionSynchronizationRegistry transactions;
     volatile boolean fail;
+    volatile int transactionStatus;
+    public int transactionStatus() { return transactionStatus; }
     public void setFail(boolean fail) { this.fail = fail; }
     public void sendReset(String email, String url, Instant expiresAt) {
+      transactionStatus = transactions.getTransactionStatus();
       if (fail) throw new IllegalStateException("Simulated unavailable SMTP");
       delegate.sendReset(email, url, expiresAt);
     }
@@ -47,7 +52,7 @@ class PasswordResetIntegrationTest {
 
   @Inject UserRepository users;
   @Inject PasswordResetRepository tokens;
-  @Inject PasswordResetService service;
+  @Inject PasswordResetUseCase service;
   @Inject ExternalIdentityRepository identities;
   @Inject MockMailbox mailbox;
   @Inject TestSender sender;
@@ -157,6 +162,8 @@ class PasswordResetIntegrationTest {
     assertTrue(mailbox.getMailsSentTo(google.email()).isEmpty()); assertTrue(mailbox.getMailsSentTo(unverified.email()).isEmpty());
     sender.setFail(true);
     assertEquals(response, forgot(local.email()));
+    assertEquals(jakarta.transaction.Status.STATUS_ACTIVE, sender.transactionStatus(),
+        "Reset delivery participates in the transaction so a failed replacement rolls back");
     reset(first).statusCode(200);
     assertEquals(response, forgot(local.email()));
     QuarkusTransaction.requiringNew().run(() -> {

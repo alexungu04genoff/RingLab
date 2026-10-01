@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import dev.ringlab.application.AuthenticationException;
+import dev.ringlab.application.auth.AuthService;
 import dev.ringlab.domain.auth.User;
 import dev.ringlab.port.out.UserRepository;
 import java.lang.reflect.Proxy;
@@ -24,8 +25,8 @@ class CurrentUserTest {
         JsonWebToken token = (JsonWebToken) Proxy.newProxyInstance(JsonWebToken.class.getClassLoader(),
             new Class<?>[]{JsonWebToken.class}, (proxy, method, args) -> method.getName().equals("getSubject") ? id.toString() : claim);
         if (Integer.valueOf(currentVersion).equals(claim) || (claim == null && currentVersion == 0))
-          assertEquals(id, new CurrentUser(token, users).id());
-        else assertThrows(AuthenticationException.class, () -> new CurrentUser(token, users).id());
+          assertEquals(id, new CurrentUser(token, new AuthService(users, null, null, null)).id());
+        else assertThrows(AuthenticationException.class, () -> new CurrentUser(token, new AuthService(users, null, null, null)).id());
       }
     }
   }
@@ -34,10 +35,11 @@ class CurrentUserTest {
     UUID existing = UUID.randomUUID();
     UserRepository users = repositoryContaining(existing);
 
-    assertEquals(existing, new CurrentUser(jwt(existing.toString()), users).id());
-    for (String subject : new String[] {"not-a-uuid", UUID.randomUUID().toString()}) {
+    var accounts = new AuthService(users, null, null, null);
+    assertEquals(existing, new CurrentUser(jwt(existing.toString()), accounts).id());
+    for (String subject : new String[] {null, "not-a-uuid", UUID.randomUUID().toString()}) {
       var error = assertThrows(AuthenticationException.class,
-          () -> new CurrentUser(jwt(subject), users).id());
+          () -> new CurrentUser(jwt(subject), accounts).id());
       assertEquals("Account unavailable", error.getMessage());
     }
   }

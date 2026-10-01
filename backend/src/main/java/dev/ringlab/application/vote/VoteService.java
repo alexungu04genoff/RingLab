@@ -1,5 +1,7 @@
 package dev.ringlab.application.vote;
 
+import dev.ringlab.port.in.VoteUseCase;
+
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.application.build.BuildService;
@@ -13,14 +15,17 @@ import java.util.UUID;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class VoteService {
-  public record Result(long score, long upvotes, long downvotes, int myVote) {}
+public class VoteService implements VoteUseCase {
 
   private final VoteRepository votes;
   private final BuildService builds;
 
   public VoteSummary summary(UUID build) {
     return votes.summary(build);
+  }
+
+  public java.util.Map<UUID, VoteSummary> summaries(java.util.Collection<UUID> builds) {
+    return votes.summaries(builds);
   }
 
   public Result get(UUID user, UUID build) {

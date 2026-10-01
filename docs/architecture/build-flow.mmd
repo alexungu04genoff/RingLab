@@ -19,7 +19,8 @@ flowchart TB
   response["BuildResponseAssembler → BuildResponse<br/>see read flow"]:::rest
   http --> rest
   rest --> actor
-  rest -->|"actor UUID + BuildService.Draft"| svc
+  rest -->|"actor UUID + BuildUseCase.Draft"| input["BuildUseCase"]:::port
+  input -.->|"implemented by"| svc
   svc --> existing
   existing --> repo
   svc --> draft

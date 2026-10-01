@@ -19,19 +19,21 @@ flowchart TB
   register --> rest
   verify --> rest
   resend --> rest
-  rest -->|"register"| auth
+  rest --> input["AccountRegistrationUseCase"]:::port
+  input -.-> coordinator["AccountRegistrationService<br/>register / resend: NOT_SUPPORTED"]:::app
+  coordinator -->|"register"| auth
   auth --> policy
   auth --> up
   auth -->|"issue inside registration transaction"| ev
-  rest -->|"verify or resend"| ev
+  coordinator -->|"verify or resend"| ev
   ev --> up
   ev --> tp
   up -.-> ua --> users
   tp -.-> ta --> tokens
   auth -.->|"returns after commit"| mail
   ev -.->|"resend may return"| mail
-  rest -->|"sendVerification after service return"| sender
-  mail -.->|"link input to REST delivery"| sender
+  coordinator -->|"send after transaction commits"| sender
+  mail -.->|"link input to application delivery"| sender
   sender -.-> adapter --> smtp
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

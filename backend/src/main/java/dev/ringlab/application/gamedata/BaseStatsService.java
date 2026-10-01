@@ -1,5 +1,7 @@
 package dev.ringlab.application.gamedata;
 
+import dev.ringlab.port.in.BaseStatsUseCase;
+
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.domain.gamedata.BaseStats;
@@ -21,12 +23,10 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class BaseStatsService {
+public class BaseStatsService implements BaseStatsUseCase {
   private final BaseStatsRepository stats;
   private final GameDataRepository game;
 
-  public record Catalog(UUID gameVersionId, Map<UUID, BaseStats> racers,
-                        Map<UUID, BaseStats> machineParts, Map<UUID, BaseStats> machines) {}
 
   public Catalog catalog(UUID version) {
     requireVersion(version);

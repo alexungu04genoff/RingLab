@@ -2,7 +2,8 @@ package dev.ringlab.adapter.in.rest.community;
 
 import dev.ringlab.adapter.in.rest.build.response.*;
 import dev.ringlab.adapter.in.rest.gamedata.response.*;
-import dev.ringlab.application.community.CommunitySnapshot;
+import dev.ringlab.port.in.CommunitySnapshot;
+import dev.ringlab.port.in.CommunityUseCase;
 import dev.ringlab.domain.gamedata.RacingType;
 import java.time.Instant;
 import java.util.List;
@@ -13,7 +14,7 @@ public record TopBuildsResponse(int schemaVersion, String ranking, String scope,
   public record Item(int rank, BuildResponse build, RacingType machineType,
                      BuildStatsResponse stats, String buildUrl, String artworkUrl) {}
 
-  public static TopBuildsResponse from(CommunitySnapshot snapshot, CommunityPublicUrls urls) {
+  public static TopBuildsResponse from(CommunitySnapshot snapshot, CommunityPublicUrls urls, CommunityUseCase community) {
     return new TopBuildsResponse(1, "best-rated", "overall", "all", snapshot.snapshotAt(),
         IntStream.range(0, snapshot.items().size()).mapToObj(index -> {
           var entry = snapshot.items().get(index);
@@ -28,7 +29,7 @@ public record TopBuildsResponse(int schemaVersion, String ranking, String scope,
               MapRecommendationsResponse.from(b.recommendedMapIds(), entry.recommendedMaps()), b.createdAt(), b.updatedAt(),
               votes.score(), votes.upvotes(), votes.downvotes());
           return new Item(index + 1, build, entry.front().source().racingType(),
-              BuildStatsResponse.withPassive(entry.passiveStats()), urls.build(b.id()), urls.artwork(entry.racer().imagePath()));
+              BuildStatsResponse.withPassive(community.passiveStats(entry)), urls.build(b.id()), urls.artwork(entry.racer().imagePath()));
         }).toList());
   }
 

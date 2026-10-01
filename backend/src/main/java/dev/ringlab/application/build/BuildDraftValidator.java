@@ -1,5 +1,7 @@
 package dev.ringlab.application.build;
 
+import dev.ringlab.port.in.BuildUseCase;
+
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.application.gamedata.MachineCompatibility;
 import dev.ringlab.application.validation.ProfanityPolicy;
@@ -22,7 +24,7 @@ public class BuildDraftValidator {
   private final GameDataRepository game;
   private final ProfanityPolicy profanity;
 
-  void validate(BuildService.Draft draft) {
+  void validate(BuildUseCase.Draft draft) {
     if (draft == null) throw new ValidationException("Missing build draft");
     validateText(draft);
     requireRacer(draft.racerId());
@@ -51,7 +53,7 @@ public class BuildDraftValidator {
       throw new ValidationException("Unknown map ID", "mapId");
   }
 
-  private void validateText(BuildService.Draft draft) {
+  private void validateText(BuildUseCase.Draft draft) {
     if (draft.title() == null || draft.title().isBlank() || draft.title().length() > 120)
       throw new ValidationException("Title must be nonblank and at most 120 characters", "title");
     if (draft.description() == null || draft.description().length() > 10000)
@@ -60,7 +62,7 @@ public class BuildDraftValidator {
     profanity.requireClean(draft.description(), "description");
   }
 
-  private void validateMachineParts(BuildService.Draft draft) {
+  private void validateMachineParts(BuildUseCase.Draft draft) {
     var front = requirePart(draft.frontPartId(), MachinePartType.FRONT);
     var rear = requirePart(draft.rearPartId(), MachinePartType.REAR);
     var machineType = MachineCompatibility.requireCompatible(game, front, rear);

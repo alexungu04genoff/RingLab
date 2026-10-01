@@ -5,7 +5,7 @@ import lombok.RequiredArgsConstructor;
 import dev.ringlab.adapter.in.rest.auth.CurrentUser;
 import dev.ringlab.adapter.in.rest.vote.request.VoteRequest;
 import dev.ringlab.adapter.in.rest.vote.response.VoteResponse;
-import dev.ringlab.application.vote.VoteService;
+import dev.ringlab.port.in.VoteUseCase;
 import jakarta.annotation.security.RolesAllowed;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
@@ -20,7 +20,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class VoteRestResource {
 
-  private final VoteService service;
+  private final VoteUseCase service;
   private final CurrentUser actor;
 
   @GET

@@ -1,5 +1,7 @@
 package dev.ringlab.application.build;
 
+import dev.ringlab.port.in.BuildRecommendationUseCase;
+
 import dev.ringlab.application.ExternalServiceUnavailableException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.application.collection.CollectionService;
@@ -13,7 +15,7 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class BuildRecommendationService {
+public class BuildRecommendationService implements BuildRecommendationUseCase {
   public static final BuildRecommendationSolver.Budget BUDGET = new BuildRecommendationSolver.Budget(100_000, Duration.ofSeconds(2));
   private final RecommendationCatalogLoader catalog;
   private final CollectionService collection;

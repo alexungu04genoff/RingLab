@@ -1,7 +1,7 @@
 package dev.ringlab.adapter.in.rest.community;
 
 import dev.ringlab.application.ValidationException;
-import dev.ringlab.application.community.CommunitySnapshotCache;
+import dev.ringlab.port.in.CommunityUseCase;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,7 @@ import org.eclipse.microprofile.openapi.annotations.Operation;
 @Produces(MediaType.APPLICATION_JSON)
 @RequiredArgsConstructor
 public class CommunityRestResource {
-  private final CommunitySnapshotCache snapshots;
+  private final CommunityUseCase snapshots;
   private final CommunityPublicUrls urls;
 
   @GET
@@ -33,7 +33,7 @@ public class CommunityRestResource {
     var tag = new EntityTag(snapshot.revision() + (discord ? "-discord-v1" : "-json-v1"));
     var builder = request.evaluatePreconditions(tag);
     if (builder == null) {
-      var body = TopBuildsResponse.from(snapshot, urls);
+      var body = TopBuildsResponse.from(snapshot, urls, snapshots);
       builder = Response.ok(discord ? DiscordTopBuildsFormatter.format(body) : body);
     }
     // Revalidate on each request so browser/CDN TTL never adds to the server snapshot lifetime.

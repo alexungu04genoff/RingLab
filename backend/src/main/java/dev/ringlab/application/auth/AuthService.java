@@ -7,6 +7,7 @@ import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.application.validation.ProfanityPolicy;
 import dev.ringlab.port.out.UserRepository;
+import dev.ringlab.port.in.AuthUseCase;
 import dev.ringlab.application.auth.EmailVerificationService.VerificationEmail;
 import dev.ringlab.application.ForbiddenException;
 import io.quarkus.elytron.security.common.BcryptUtil;
@@ -26,7 +27,7 @@ import lombok.RequiredArgsConstructor;
 
 @ApplicationScoped
 @RequiredArgsConstructor
-public class AuthService {
+public class AuthService implements AuthUseCase {
   private final UserRepository users;
   private final EmailVerificationService verification;
   private final Validator validator;
@@ -78,5 +79,11 @@ public class AuthService {
 
   public User current(UUID id) {
     return users.byId(id).orElseThrow(() -> NotFoundException.missing("User"));
+  }
+
+  public void validateSession(UUID userId, String authVersion) {
+    var user = users.byId(userId).orElseThrow(() -> new AuthenticationException("Account unavailable"));
+    if (!Integer.toString(user.authVersion()).equals(authVersion))
+      throw new AuthenticationException("Session expired. Please log in again.");
   }
 }

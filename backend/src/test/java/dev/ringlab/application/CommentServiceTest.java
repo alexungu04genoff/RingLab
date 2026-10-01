@@ -35,11 +35,13 @@ class CommentServiceTest {
   }
 
   @Test
-  void listValidatesBuildAndReturnsRepositoryPage() {
+  void listValidatesBuildAndReturnsBoundaryPage() {
     Comment comment = comment(UUID.randomUUID(), authorId, "Text");
     comments.comments.put(comment.id(), comment);
 
-    assertEquals(new CommentRepository.Page(List.of(comment), 1), service.list(buildId, 2, 5));
+    var result = service.list(buildId, 2, 5);
+    assertEquals(List.of(comment), result.items());
+    assertEquals(1, result.total());
     assertEquals(buildId, comments.listedBuildId);
     assertEquals(2, comments.listedPage);
     assertEquals(5, comments.listedSize);
