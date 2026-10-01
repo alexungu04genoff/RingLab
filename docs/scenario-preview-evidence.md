@@ -23,14 +23,16 @@ stat-point previewing, not a race simulation or a claim about effective performa
   [catalog audit](gadget-passive-audit-1.4.1.md).
 
 No game execution was available. The optional linked Yoshister document was not
-accessible through the web reader. Nothing here is based on invented game tests.
+accessible through the web reader during the initial audit; its text export was
+retrieved in the follow-up below. Nothing here is based on invented game tests.
 
 ## Complete CONDITIONAL-effect audit
 
 IDs shown as numbers use `70000000-0000-4000-8000-` plus the twelve-digit number.
 Other IDs are complete. Multiple rows explicitly cover separate effects of a kit.
-“Unsupported utility” means its activation is not modeled, **not** zero benefit.
-No unlisted additive stat pair is authorized by this audit.
+"Unsupported utility" means its activation is not modeled, **not** zero benefit.
+No unlisted additive stat pair is authorized by this audit. The explicitly
+user-approved Quick Starter + Sea Dog assumption below is separate from evidence.
 
 | Gadget / identity | Condition | Numeric effect | Units | Cap/stack | Evidence | Status |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -90,7 +92,8 @@ honestly be provided in v1; unsupported-effect regressions protect that boundary
 No held-versus-collected ambiguity: the sole ring input is explicitly rings held.
 
 No additive overlapping conditional/conditional or conditional/passive pair was
-verified. Concurrent nonzero stat modifiers therefore leave the scenario partial;
+verified. Except for the user-approved Quick Starter + Sea Dog assumption below,
+concurrent nonzero stat modifiers therefore leave the scenario partial;
 the passive result stays intact and the uncertain scenario contribution is excluded.
 Mutually exclusive lap/form conditions and descriptive non-stat effects can coexist.
 Unknown numeric effects also prevent an exact total. Unsupported utilities are
@@ -99,3 +102,103 @@ reported separately without pretending they change the five numbers.
 All numerical adjustments are raw `BigDecimal` points. No 100-point total clamp,
 effective cap, rounding model, lap-time prediction or time-based ring drain is
 inferred. Resetting preview discards context; no context crosses races or is saved.
+
+## Quick Starter + Sea Dog follow-up (2026-10-01)
+
+Reproduced against the existing local DEV build with Amy Rose, stock Speedster
+Lightning parts, Quick Starter (45), Sea Dog Kit (15), and Ver. 1.4.1. The two
+gadgets cost four slots and fit the plate. No saved build was changed.
+
+The rejection is in `ScenarioStatsCalculator`: more than one active numerical
+effect excludes all active scenario adjustments. Its separate passive gate also
+excludes them when any nonzero passive adjustment is applied, or any passive
+effect is unsupported. These are conservative coverage gates, not evidence of
+in-game incompatibility. All currently modeled scenario vectors affect all five
+stats, so each overlaps every nonzero passive vector. Separating the layers alone
+does not establish additive behavior for those overlaps.
+
+Evidence checked again:
+
+- SEGA's 1.4.1 notes establish the individual Starter and Water bonuses, without
+  specifying their simultaneous interaction.
+- The live reference builder still serves `3fo_6rojgq9h9.js`; its contents matched
+  the audited local copy. Its stat calculator selects `none/not/equal` rows and
+  does not evaluate the lap/form rows. Selecting both gadgets there cannot prove
+  a Lap 1 + WATER calculation.
+- The original sheet's linked [research document text export](https://docs.google.com/document/d/1fz6H6dh0r_L2_qhct6WWXpnxae-QoTvANnfJ9N200Uc/export?format=txt)
+  was accessible this time. It discusses other physical-speed/utility stacks,
+  but supplies no Quick Starter + Sea Dog stat calculation or numerical
+  passive/scenario compatibility evidence. Those unrelated stacks cannot
+  authorize this pair.
+
+At the end of this evidence-only investigation, no pair permission was added.
+In particular, +40 to each stat remained a
+**conditional arithmetic expectation, not a verified combination**. No numerical
+passive/scenario pair was newly authorized either. Effective caps and rounding
+remain unknown. A reference calculation that actually evaluates both conditions,
+or direct documented game evidence, is still needed before enabling the pair.
+
+Read-only local API results, in Speed / Acceleration / Handling / Power / Boost order:
+
+| Context | Result | Effect statuses |
+| --- | --- | --- |
+| Lap 2, NORMAL | 65 / 30 / 59 / 52 / 34 | Both inactive |
+| Lap 1, NORMAL | 85 / 50 / 79 / 72 / 54 | Quick Starter applied; Sea Dog inactive |
+| Lap 2, WATER | 85 / 50 / 79 / 72 / 54 | Sea Dog applied; Quick Starter inactive |
+| Lap 1, WATER | PARTIAL; subtotal 65 / 30 / 59 / 52 / 34; no exact total | Both unsupported, adjustments null |
+| Return to Lap 2, NORMAL | 65 / 30 / 59 / 52 / 34 | Both inactive |
+
+The browser also reproduced all four states. Clicking **Reset to Passive only**
+hid the scenario result and returned to the original passive values above. A
+read-only API request with reversed gadget order returned the same PARTIAL result,
+both adjustments null. No scenario settings or build changes were saved.
+
+The existing regression covers both gadget orders, individual effects, unresolved
+scenario pairs, and an unresolved passive/scenario overlap. Compatible numerical-pair
+success assertions would invent the evidence this investigation could not obtain.
+The targeted command `mvn -f backend/pom.xml -o -Dtest=ScenarioStatsCalculatorTest test`
+stopped before running tests: the local cache lacked
+`org.apache.maven.shared:maven-filtering:3.3.1`. No dependency download retries,
+broader suites, or service restarts were attempted. Run
+`mvn -f backend/pom.xml -Dtest=ScenarioStatsCalculatorTest test` manually when the
+required Maven artifacts are available. Documentation whitespace checks passed.
+
+## User-approved additive assumption (2026-10-01)
+
+After the investigation, the project owner explicitly requested assuming that
+Quick Starter and Sea Dog work together, giving +40 to each stat when both are
+active. Ruleset `crossworlds-1.4.1-scenario-2026-10-01.1` implements that modeling
+decision. **This is not newly verified game behavior.** The sources above still
+support the individual values only; effective caps, rounding and performance
+remain unverified.
+
+Permission is symmetric and limited to Quick Starter (45), effect `other-0`, and
+Sea Dog Kit (15), effect `other-0`, on the already supported 1.4.1 rules. The
+calculator checks every active numerical pair rather than rejecting solely by
+active effect count. The permission does not extend to Super Starters, other
+form kits, a third overlapping numerical effect, or passive/scenario overlaps.
+Existing passive adjustments and unresolved-effect safeguards remain unchanged.
+When both bonuses apply, their existing effects-details explanations identify
+the additive assumption. Their individual +20 vectors are summed without a
+100-point clamp, and both are individually marked `ACTIVE_AND_APPLIED`.
+
+For the DEV loadout above, neither active remains 65 / 30 / 59 / 52 / 34; either
+alone remains 85 / 50 / 79 / 72 / 54; both active now calculate
+**105 / 70 / 99 / 92 / 74**. Reset still discards the scenario context.
+No fixtures, saved builds, ownership, recommendation logic or schema were changed.
+
+Regression coverage now asserts all four contexts, return to inactive conditions,
+both saved orders, exact combined vectors, assumption explanations, stable effect
+identity, unrelated unresolved pairs, and no transitive permission to a third
+scenario effect or passive modifier. The previously reported Maven cache blocker
+still prevents claiming a successful unit-test run.
+
+Post-change verification: the running DEV API returned the new ruleset and exact
+five-stat vectors for neither active, each alone, both together in either order,
+and returning to inactive facts. Unrelated Quick Starter + Ace Pilot and the
+Quick Starter + Sea Dog + Acceleration Tuner 2 passive overlap remained PARTIAL.
+The browser showed both effects applied with +40 on every stat, the assumption
+inside effects details, and Reset returning to Passive only. Whitespace checks
+passed. No full-suite or frontend build was run for this domain-only change.
+The existing saved demo description still refers to the old partial result;
+it was deliberately left untouched under the no-fixture-changes constraint.

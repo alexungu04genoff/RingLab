@@ -48,19 +48,27 @@ public final class ScenarioStatsCalculator {
       }
     }
 
-    // No overlapping conditional pair has verified additive behavior in the reviewed sources.
     // Snapshot the candidates before rejecting any, so saved order cannot change the outcome.
     var active = effects.stream().filter(e -> e.status() == ACTIVE_AND_APPLIED).toList();
     boolean unresolvedNumeric = effects.stream().anyMatch(e -> e.statEffect() && e.status() == UNSUPPORTED);
     boolean passiveModifier = passive.effects().stream().anyMatch(e -> e.status() == PassiveStatsResult.Status.APPLIED
         && !BaseStats.ZERO.equals(e.adjustment()));
     boolean unresolvedPassive = passive.effects().stream().anyMatch(e -> e.status() == PassiveStatsResult.Status.UNSUPPORTED);
-    if (active.size() > 1 || unresolvedNumeric || passiveModifier || unresolvedPassive) {
-      for (int i = 0; i < effects.size(); i++) {
-        var e = effects.get(i);
-        if (e.status() == ACTIVE_AND_APPLIED) effects.set(i, new ScenarioStatsResult.Effect(e.gadgetId(), e.gadgetName(),
+    for (int i = 0; i < effects.size(); i++) {
+      var e = effects.get(i);
+      if (e.status() != ACTIVE_AND_APPLIED) continue;
+      boolean unresolvedPair = active.stream().anyMatch(other -> other != e
+          && !ScenarioGadgetRules.assumedAdditivePair(e.gadgetId(), e.effectId(), other.gadgetId(), other.effectId()));
+      if (unresolvedPair || unresolvedNumeric || passiveModifier || unresolvedPassive) {
+        effects.set(i, new ScenarioStatsResult.Effect(e.gadgetId(), e.gadgetName(),
             e.effectId(), e.label(), UNSUPPORTED, true, null,
             "The individual bonus is known, but its combination with another selected stat effect is not verified. The passive result remains visible.", e.sources()));
+      } else if (active.stream().anyMatch(other -> other != e
+          && ScenarioGadgetRules.assumedAdditivePair(e.gadgetId(), e.effectId(), other.gadgetId(), other.effectId()))) {
+        effects.set(i, new ScenarioStatsResult.Effect(e.gadgetId(), e.gadgetName(),
+            e.effectId(), e.label(), ACTIVE_AND_APPLIED, true, e.adjustment(),
+            e.explanation() + " Quick Starter + Sea Dog are assumed additive in this preview; their combined in-game behavior is not verified.",
+            e.sources()));
       }
     }
     var adjustments = new ArrayList<BaseStats>();

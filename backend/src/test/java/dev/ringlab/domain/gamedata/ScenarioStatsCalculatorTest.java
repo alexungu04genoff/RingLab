@@ -104,6 +104,54 @@ class ScenarioStatsCalculatorTest {
     assertNull(ScenarioStatsCalculator.calculate(missing,lap(2)).total());
   }
 
+  @Test void assumedStarterAndSeaDogPairAddsBothBonusesInEitherOrderAndResets() {
+    var starter = ScenarioGadgetRules.find(id(45), "other-0").adjustment();
+    var water = ScenarioGadgetRules.find(id(15), "other-0").adjustment();
+    for (var ids : List.of(new UUID[]{id(45),id(15)}, new UUID[]{id(15),id(45)})) {
+      var baseline = passive(ids);
+      var inactive = new ScenarioContext(2, ScenarioContext.VehicleForm.NORMAL, null, null, null);
+      assertEquals(BASE, ScenarioStatsCalculator.calculate(baseline, inactive).total());
+      var lapOnly = ScenarioStatsCalculator.calculate(baseline,
+          new ScenarioContext(1, ScenarioContext.VehicleForm.NORMAL, null, null, null));
+      assertEquals(BaseStats.sum(List.of(BASE, starter)), lapOnly.total());
+      assertEquals(1, lapOnly.effects().stream().filter(e -> e.status() == ACTIVE_AND_APPLIED).count());
+      var waterOnly = ScenarioStatsCalculator.calculate(baseline,
+          new ScenarioContext(2, ScenarioContext.VehicleForm.WATER, null, null, null));
+      assertEquals(BaseStats.sum(List.of(BASE, water)), waterOnly.total());
+      assertEquals(1, waterOnly.effects().stream().filter(e -> e.status() == ACTIVE_AND_APPLIED).count());
+      var both = ScenarioStatsCalculator.calculate(baseline,
+          new ScenarioContext(1, ScenarioContext.VehicleForm.WATER, null, null, null));
+      assertEquals(ScenarioStatsResult.Coverage.CALCULATED, both.coverage());
+      assertEquals(points(40,40,40,40,40), both.adjustments());
+      assertEquals(points(98,105,69,94,74), both.total());
+      assertEquals(both.total(), both.knownSubtotal());
+      assertTrue(both.effects().stream().allMatch(e -> e.status() == ACTIVE_AND_APPLIED
+          && e.adjustment().equals(points(20,20,20,20,20))
+          && e.explanation().contains("assumed additive")));
+      assertEquals(BASE, ScenarioStatsCalculator.calculate(baseline, inactive).total());
+    }
+  }
+
+  @Test void assumedPairDoesNotAuthorizeOtherEffectsOrTransitiveStacks() {
+    assertFalse(ScenarioGadgetRules.assumedAdditivePair(id(45), "other-1", id(15), "other-0"));
+    assertFalse(ScenarioGadgetRules.assumedAdditivePair(id(45), "other-0", id(15), "terrain"));
+    assertFalse(ScenarioGadgetRules.assumedAdditivePair(id(45), "other-0", id(45), "other-0"));
+    var context = new ScenarioContext(1, ScenarioContext.VehicleForm.WATER, null, null, null);
+    for (var ids : List.of(new UUID[]{id(45),id(15),id(47)}, new UUID[]{id(47),id(15),id(45)},
+        new UUID[]{id(45),id(15),id(55)}, new UUID[]{id(55),id(15),id(45)})) {
+      var baseline = passive(ids);
+      var result = ScenarioStatsCalculator.calculate(baseline, context);
+      assertEquals(ScenarioStatsResult.Coverage.PARTIAL, result.coverage());
+      assertNull(result.total());
+      assertEquals(baseline.adjusted(), result.knownSubtotal());
+      assertTrue(result.effects().stream().allMatch(e -> e.status() == UNSUPPORTED && e.adjustment() == null));
+    }
+    var otherPair = ScenarioStatsCalculator.calculate(passive(id(45),id(17)),
+        new ScenarioContext(1, ScenarioContext.VehicleForm.FLIGHT, null, null, null));
+    assertEquals(ScenarioStatsResult.Coverage.PARTIAL, otherPair.coverage());
+    assertNull(otherPair.total());
+  }
+
   @Test void unavailablePassiveCannotBecomeAvailableThroughScenario() {
     for (var coverage : List.of(PassiveStatsResult.Coverage.UNSUPPORTED_VERSION,PassiveStatsResult.Coverage.INVALID_LOADOUT)) {
       var p=passive(id(45));

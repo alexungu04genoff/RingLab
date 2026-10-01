@@ -10,7 +10,7 @@ import java.util.UUID;
 /** Exact scope, identity mapping and combination limits: docs/scenario-preview-evidence.md. */
 public final class ScenarioGadgetRules {
   public static final String VERSION = "1.4.1";
-  public static final String RULESET = "crossworlds-1.4.1-scenario-2026-09-30.1";
+  public static final String RULESET = "crossworlds-1.4.1-scenario-2026-10-01.1";
   public static final UUID RING_ENGINE = UUID.fromString("5a000a58-7d7a-581c-80e3-6ae8661215b7");
   public static final UUID HYPER_RING_ENGINE = UUID.fromString("182bdfa8-44d3-5de8-941b-d525381dd0a3");
   private static final List<String> SOURCES = List.of(PassiveGadgetRules.ORIGINAL, PassiveGadgetRules.SEGA,
@@ -45,10 +45,16 @@ public final class ScenarioGadgetRules {
   public static boolean unsupportedMayAffectStats(UUID gadget, String effect) {
     return !UTILITY.contains(gadget) && !(gadget.equals(id(17)) && effect.equals("other-1"));
   }
+  /** User-approved modeling assumption, not verified game behavior. Applies only to this effect pair. */
+  public static boolean assumedAdditivePair(UUID first, String firstEffect, UUID second, String secondEffect) {
+    if (!"other-0".equals(firstEffect) || !"other-0".equals(secondEffect)) return false;
+    return (first.equals(id(45)) && second.equals(id(15)))
+        || (first.equals(id(15)) && second.equals(id(45)));
+  }
   private static ScenarioEffectRule points(UUID id, ScenarioEffectRule.Condition condition, int value, String label) {
     return new ScenarioEffectRule(id, "other-0", label, condition,
         PassiveGadgetRules.points(value,value,value,value,value),
         "Fixed +" + value + " to each stat while the condition holds; does not accumulate. "
-            + "Concurrent nonzero stat modifiers require separately verified stacking.", SOURCES);
+            + "Concurrent nonzero stat modifiers require an explicit stacking permission.", SOURCES);
   }
 }
