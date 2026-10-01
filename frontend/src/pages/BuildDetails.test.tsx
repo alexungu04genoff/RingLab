@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -94,4 +94,64 @@ it("isolates drafts, confirmation, pagination and a delayed vote across a remix-
   await act(async () => { finishMutation({ score: 11, upvotes: 11, downvotes: 0, myVote: 1 }); });
   expect(view.container.querySelector(".big-score")?.textContent).toBe("20");
   expect(screen.getByRole("button", { name: "↑ Upvote" }).getAttribute("aria-pressed")).toBe("false");
+});
+
+it("posts through the shared busy boundary and shows the last comment page", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  let posted = false;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/builds/A/comments" && options?.method === "POST") {
+      return new Promise(resolve => { finishMutation = () => { posted = true; resolve(undefined); }; });
+    }
+    if (path.startsWith("/builds/A/comments?")) {
+      const page = Number(new URLSearchParams(path.split("?")[1]).get("page"));
+      return { items: posted && page === 1 ? [{ id: "new", author: actor.username, authorId: actor.id,
+        text: "New comment", createdAt: "2026-01-01T00:00:00Z" }] : [], total: posted ? 22 : 21, page, size: 20 };
+    }
+    return fallback(path, options);
+  });
+  render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>);
+  const user = userEvent.setup();
+  await screen.findByRole("heading", { name: "Build A" });
+  await user.type(screen.getByRole("textbox"), "New comment");
+  await user.click(screen.getByRole("button", { name: "Post comment" }));
+  expect((screen.getByRole("button", { name: "Post comment" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "↑ Upvote" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(api).toHaveBeenCalledWith("/builds/A/comments", expect.objectContaining({ method: "POST", body: JSON.stringify({ text: "New comment" }) }));
+  await act(async () => { finishMutation(undefined); });
+  await screen.findByText("New comment");
+  expect(screen.getByText("Page 2")).toBeTruthy();
+  expect((screen.getByRole("textbox") as HTMLTextAreaElement).value).toBe("");
+  expect((screen.getByRole("button", { name: "↑ Upvote" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+it("deletes an owned final comment and returns to the preceding page", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  let deleted = false;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/comments/last" && options?.method === "DELETE") { deleted = true; return undefined; }
+    if (path.startsWith("/builds/A/comments?")) {
+      const page = Number(new URLSearchParams(path.split("?")[1]).get("page"));
+      return { items: [{ id: page === 1 ? "last" : "other", author: page === 1 ? actor.username : "Other",
+        authorId: page === 1 ? actor.id : "other", text: page === 1 ? "Final comment" : "Earlier comment",
+        createdAt: "2026-01-01T00:00:00Z" }], total: deleted ? 20 : 21, page, size: 20 };
+    }
+    return fallback(path, options);
+  });
+  render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>);
+  const user = userEvent.setup();
+  const earlier = await screen.findByText("Earlier comment");
+  expect(within(earlier.closest("article")!).queryByRole("button", { name: "Delete" })).toBeNull();
+  await user.click(screen.getByRole("button", { name: "Next" }));
+  const final = await screen.findByText("Final comment");
+  await user.click(within(final.closest("article")!).getByRole("button", { name: "Delete" }));
+  await screen.findByText("Earlier comment");
+  expect(api).toHaveBeenCalledWith("/comments/last", expect.objectContaining({ method: "DELETE" }));
+  expect(screen.queryByText("Final comment")).toBeNull();
+  expect(screen.queryByText("Page 2")).toBeNull();
+  expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
 });

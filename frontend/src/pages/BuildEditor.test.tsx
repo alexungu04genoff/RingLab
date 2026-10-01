@@ -2,7 +2,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api, ApiError, setToken } from "../shared/api/api";
-import type { Build, BuildStatsResult, MachinePart } from "../shared/types";
+import type { Build, BuildStatsResult, Gadget, MachinePart } from "../shared/types";
 import { BuildEditor } from "./BuildEditor";
 
 vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
@@ -222,6 +222,66 @@ async function openA() {
   await waitFor(() => expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("Build A draft"));
   return { navigate };
 }
+
+it("keeps gadget search local to selection and clears it for another draft", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/gadgets") return [
+      { id: "first", name: "First gadget", description: null, slotCost: 1, imagePath: null },
+      { id: "second", name: "Second gadget", description: null, slotCost: 1, imagePath: null },
+    ];
+    return fallback(path, options);
+  });
+  loadB = () => Promise.resolve(buildB);
+  const router = await openA();
+  await screen.findByRole("checkbox", { name: /First gadget/ });
+  const search = screen.getByRole("searchbox", { name: "Search gadgets" });
+  fireEvent.change(search, { target: { value: "Second" } });
+  expect(screen.queryByRole("checkbox", { name: /First gadget/ })).toBeNull();
+  fireEvent.click(screen.getByRole("checkbox", { name: /Second gadget/ }));
+  // A selection change must not reset the section's search.
+  expect((search as HTMLInputElement).value).toBe("Second");
+  await act(async () => { await router.navigate("/builds/B/edit"); });
+  await waitFor(() => expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe(buildB.title));
+  expect((screen.getByRole("searchbox", { name: "Search gadgets" }) as HTMLInputElement).value).toBe("");
+  expect(screen.getByRole("checkbox", { name: /First gadget/ })).toBeTruthy();
+});
+
+it("keeps preview keyboard and drag reordering connected to the saved gadget order", async () => {
+  const gadgets: Gadget[] = ["First", "Second"].map(name => ({
+    id: name.toLowerCase(), name: `${name} gadget`, description: null, slotCost: 1, imagePath: null,
+  }));
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/gadgets") return gadgets;
+    if (path === "/builds/A" && !options?.method) return { ...buildA, gadgets };
+    return fallback(path, options);
+  });
+  await openA();
+  selectLatestPatch();
+  const preview = screen.getByRole("region", { name: "Build summary details" });
+  await within(preview).findByText("First gadget");
+  fireEvent.click(within(preview).getByRole("button", { name: "Move gadget 1 down" }));
+  const names = () => [...preview.querySelectorAll(".gadget-name strong")].map(item => item.textContent);
+  expect(names()).toEqual(["Second gadget", "First gadget"]);
+
+  const dataTransfer = { setData: vi.fn(), getData: () => "0", effectAllowed: "", dropEffect: "" };
+  const handle = preview.querySelector(".gadget-drag-handle")!;
+  const target = preview.querySelectorAll(".preview-gadgets li")[1];
+  fireEvent.dragStart(handle, { dataTransfer });
+  expect(dataTransfer.setData).toHaveBeenCalledWith("text/plain", "0");
+  fireEvent.dragEnter(target);
+  fireEvent.dragOver(target, { dataTransfer });
+  fireEvent.drop(target, { dataTransfer });
+  expect(names()).toEqual(["First gadget", "Second gadget"]);
+  expect(preview.querySelector(".dragging, .drag-target")).toBeNull();
+
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await waitFor(() => expect(api).toHaveBeenCalledWith("/builds/A", expect.objectContaining({ method: "PUT" })));
+  const save = vi.mocked(api).mock.calls.find(([path, options]) => path === "/builds/A" && options?.method === "PUT")!;
+  expect(JSON.parse(save[1]!.body as string).gadgetIds).toEqual(["first", "second"]);
+});
+
 it.each(["success", "failure"])("ignores A's save %s after navigating to B", async (outcome) => {
   loadB = () => Promise.resolve(buildB);
   const router = await openA();

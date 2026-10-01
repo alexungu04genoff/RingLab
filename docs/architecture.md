@@ -600,6 +600,10 @@ runs on a worker thread and has a dedicated per-user REST rate policy.
 
 Frontend lock/priority/draft-merge helpers live in `recommendation.ts`; the
 `useBuildRecommendation` hook owns abortable requests and stale-context checks.
+`useEditorRecommendationLocks` owns desktop lock and popup lifetimes.
+`useRecommendationConfiguration` owns the frozen starting setup, mode, priorities,
+loss settings and calculation eligibility. The dialog keeps modal focus and execution
+actions, composing configuration controls, reference selections and result comparisons.
 The desktop editor hosts ephemeral locks and one native modal with configuration,
 activity and result states. Explicit Apply changes only permitted unsaved draft
 fields. At the existing 1001px desktop boundary, resizing smaller cancels and
@@ -617,6 +621,19 @@ calculation supplies both reference and candidate values. Configuration changes
 invalidate pending requests and Apply proposals. No preferences or locks are
 persisted. See [Balanced mode](balanced-auto-builder.md) for the bound proof,
 reference requirements and exact comparison order.
+
+## Frontend page responsibilities
+
+`BuildEditor` keeps route/authentication context, draft updates, save validation and
+error handling. Its feature-scoped catalog hook wraps the existing independent
+`useLoad` calls. Essentials, machine setup, gadget selection and preview components
+live in `features/builds/editor`; gadget search and reorder drag state stay with their
+sections. The existing map picker and stats/scenario components are reused.
+`ExploreFiltersSection` presents controlled filters while Explore owns URL state,
+preferences and requests. `BuildCommentsSection` owns comment composition and
+presentation; BuildDetails retains concurrent reads, pagination state and the shared
+mutation busy/error boundary used by voting, comments and build deletion.
+
 ## Personal collection availability
 
 `CollectionExclusions` models explicit exclusions only: absent and newly added catalog items are owned by default. `CollectionService` validates typed catalog references through `GameDataRepository`; `CollectionRepository` persists private racer, source-machine, and gadget exclusions. V33 adds three foreign-key-backed tables with `(user_id, item_id)` primary keys. Idempotent PUT updates serialize on the authenticated user's row. No migration backfills owned rows.

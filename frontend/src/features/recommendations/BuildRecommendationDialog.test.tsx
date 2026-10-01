@@ -1,7 +1,8 @@
 import { useRef, useState } from "react";
 import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { BuildRecommendationDialog, SelectionLock } from "./BuildRecommendationDialog";
+import { BuildRecommendationDialog } from "./BuildRecommendationDialog";
+import { SelectionLock } from "./SelectionLock";
 import { api, setToken } from "../../shared/api/api";
 import { useBuildRecommendation } from "./useBuildRecommendation";
 import { defaultPriorities, draftSelection, emptyLocks, recommendationIdentity, signedStatChange, validBalanced } from "./recommendation";

@@ -10,14 +10,13 @@ import { pageCardStats } from "../features/stats/CardStats";
 import { LatestNews } from "../features/news/LatestNews";
 import { TopCommunityBuilds } from "../features/builds/TopCommunityBuilds";
 import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../shared/types";
-import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../shared/ui/icons";
-import { SearchableFilter } from "../shared/ui/SearchableFilter";
-import { MapFilter } from "../features/maps/MapRecommendations";
+import { LibraryIcon } from "../shared/ui/icons";
+import { ExploreFiltersSection } from "../features/builds/ExploreFiltersSection";
 import type { RaceMap } from "../shared/types";
 import {
   activeExploreFilterChips, clearExploreFilters, PUBLIC_PATCH_PREFERENCE,
   PUBLIC_SORT_PREFERENCE, readPreference, resolveGameVersion, resolvePage, resolveSort,
-  updateExploreParams, type BuildSort,
+  updateExploreParams,
 } from "../features/builds/exploreFilters";
 
 const SONIC_HERO_NAME = "Sonic the Hedgehog";
@@ -191,77 +190,14 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         )}
       </div>
       {!mine && <TopCommunityBuilds versions={versions.data || []} onSnapshot={setSpotlight} />}
-      <section className="filters" aria-label="Filter builds">
-        <form
-          className="search"
-          onSubmit={(e) => {
-            e.preventDefault();
-            updateUrl({ search });
-          }}
-        >
-          <label>
-            <span className="field-label"><SearchIcon /> Search builds</span>
-            <input
-              placeholder="Search titles, racers, machines, or gadgets…"
-              maxLength={120}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </label>
-          <button type="submit">Search</button>
-        </form>
-        <SearchableFilter
-          label="Racer"
-          icon={<RacerIcon />}
-          options={(racers.data || []).map(({ id, name }) => ({ value: id, label: name }))}
-          value={racer}
-          allLabel="All racers"
-          onChange={(v) => {
-            updateUrl({ racerId: v });
-          }}
-        />
-        <SearchableFilter
-          label="Uses parts from"
-          icon={<ComponentsIcon />}
-          options={(machines.data || []).map(({ id, name }) => ({ value: id, label: name }))}
-          value={machine}
-          allLabel="All source machines"
-          onChange={(v) => {
-            updateUrl({ machineId: v });
-          }}
-        />
-        <SearchableFilter
-          label="Patch"
-          icon={<TagIcon />}
-          options={(versions.data || []).map(({ id, version }) => ({
-            value: id,
-            label: `Ver. ${version}`,
-          }))}
-          value={gameVersion}
-          allLabel="All versions"
-          onChange={(value) => {
-            savePublicPreference(PUBLIC_PATCH_PREFERENCE, value);
-            updateUrl({ gameVersionId: value });
-          }}
-        />
-        <MapFilter maps={maps.data ?? []} mapId={mapId} includeAllMaps={includeAllMaps}
-          onChange={(id, include) => updateUrl({ mapId: id, includeAllMaps: id ? String(include) : "" })} />
-        <div className="filter-with-help"><label>
-          <span className="sort-label"><SortIcon /> Sort by <span className="sort-help" tabIndex={0} aria-label="How Best rated works"><span aria-hidden="true">i</span><span role="tooltip">Best rated uses Wilson vote confidence. Exact ties favor newer patches, then fewer downvotes at zero confidence, then newer submissions.</span></span></span>
-          <select
-            value={sort}
-            onChange={(e) => {
-              const value = e.target.value as BuildSort;
-              savePublicPreference(PUBLIC_SORT_PREFERENCE, value);
-              updateUrl({ sort: value });
-            }}
-          >
-            <option value="newest">Newest first</option>
-            <option value="score">Highest score</option>
-            <option value="rated">Best rated</option>
-          </select>
-        </label><Link className="contextual-help" to="/guide#finding-builds">Sorting help →</Link></div>
-      </section>
+      <ExploreFiltersSection search={search} onSearchChange={setSearch}
+        selection={{ racer, machine, gameVersion, mapId, includeAllMaps, sort }}
+        racers={racers.data || []} machines={machines.data || []} versions={versions.data || []} maps={maps.data ?? []}
+        onChange={changes => {
+          if ("gameVersionId" in changes) savePublicPreference(PUBLIC_PATCH_PREFERENCE, changes.gameVersionId);
+          if ("sort" in changes) savePublicPreference(PUBLIC_SORT_PREFERENCE, changes.sort);
+          updateUrl(changes);
+        }} />
       {activeChips.length > 0 && (
         <div className="active-filters" aria-label="Active filters">
           {activeChips.map((chip) => (

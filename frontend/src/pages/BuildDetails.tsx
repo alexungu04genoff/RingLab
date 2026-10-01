@@ -3,7 +3,8 @@ import { SaveBuildButton } from "../features/saved-builds/SavedBuilds";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { api, json } from "../shared/api/api";
 import { useAuth } from "../features/auth/auth";
-import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../features/comments/commentPagination";
+import { COMMENT_PAGE_SIZE } from "../features/comments/commentPagination";
+import { BuildCommentsSection } from "../features/comments/BuildCommentsSection";
 import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
 import { buildDetailsOrigin } from "../features/builds/buildNavigation";
 import { BuildGadgetIcon, patchAge } from "../features/builds/BuildCard";
@@ -49,9 +50,7 @@ function BuildDetailsContent() {
     revision,
   );
   const [vote, setVote] = useState<Vote>();
-  const [text, setText] = useState("");
   const [error, setError] = useState("");
-  const [commentError, setCommentError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
@@ -66,7 +65,7 @@ function BuildDetailsContent() {
       });
     return () => controller.abort();
   }, [id, user]);
-  async function act(task: () => Promise<void>, reportError = setError) {
+  async function act(task: () => Promise<void>, reportError: (message: string) => void = setError) {
     setBusy(true);
     reportError("");
     try {
@@ -353,109 +352,8 @@ function BuildDetailsContent() {
               <h2>Recommended maps</h2>
               <RecommendedMapList recommendations={b.mapRecommendations} />
             </section>
-            <section className="panel comments">
-            <h2>Comments</h2>
-            <ErrorNotice message={comments.error} />
-            {user ? (
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  act(async () => {
-                    await api(`/builds/${id}/comments`, json("POST", { text }));
-                    setText("");
-                    const updatedComments = await api<CommentPage>(
-                      `/builds/${id}/comments?page=0&size=${COMMENT_PAGE_SIZE}`,
-                    );
-                    const lastPage = lastCommentPage(
-                      updatedComments.total,
-                      updatedComments.size,
-                    );
-                    if (lastPage === page) setRevision((r) => r + 1);
-                    else setPage(lastPage);
-                  }, setCommentError);
-                }}
-              >
-                <label>
-                  Join the conversation
-                  <textarea
-                    required
-                    maxLength={2000}
-                    rows={3}
-                    value={text}
-                    aria-describedby={commentError ? "comment-error" : undefined}
-                    onChange={(e) => {
-                      setText(e.target.value);
-                      setCommentError("");
-                    }}
-                    placeholder="Share your thoughts on this setup…"
-                  />
-                </label>
-                <div id="comment-error">
-                  <ErrorNotice message={commentError} />
-                </div>
-                <button className="primary" disabled={busy || !text.trim()}>
-                  Post comment
-                </button>
-              </form>
-            ) : (
-              <p>
-                <Link to="/login" state={{ from: `/builds/${b.id}` }}>
-                  Log in
-                </Link>{" "}
-                to join the conversation.
-              </p>
-            )}
-            {comments.loading && <p role="status">Loading comments…</p>}
-            {comments.data?.items.length === 0 && (
-              <p className="muted">No comments on this page yet.</p>
-            )}
-            {comments.data?.items.map((c) => (
-              <article className="comment" key={c.id}>
-                <div className="comment-meta">
-                  <strong>@{c.author}</strong>
-                  <time>{date(c.createdAt)}</time>
-                  {user?.id === c.authorId && (
-                    <button
-                      className="text-button"
-                      disabled={busy}
-                      onClick={() =>
-                        act(async () => {
-                          await api(`/comments/${c.id}`, json("DELETE"));
-                          const lastPage = lastCommentPage(
-                            Math.max(0, (comments.data?.total ?? 1) - 1),
-                            comments.data?.size ?? COMMENT_PAGE_SIZE,
-                          );
-                          if (lastPage < page) setPage(lastPage);
-                          else setRevision((r) => r + 1);
-                        })
-                      }
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-                <p className="prose">{c.text}</p>
-              </article>
-            ))}
-            {comments.data &&
-              (comments.data.page > 0 || hasNextCommentPage(comments.data)) && (
-              <div className="pagination">
-                <button
-                  disabled={comments.data.page === 0}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </button>
-                <span>Page {comments.data.page + 1}</span>
-                <button
-                  disabled={!hasNextCommentPage(comments.data)}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
-              )}
-          </section>
+            <BuildCommentsSection buildId={b.id} comments={comments} page={page} onPageChange={setPage}
+              onRefresh={() => setRevision(r => r + 1)} busy={busy} act={act} />
         </div>
         </div>
       </div>

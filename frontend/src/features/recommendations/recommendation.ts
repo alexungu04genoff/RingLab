@@ -5,6 +5,10 @@ export const desktopRecommendationQuery = "(min-width: 1001px)";
 export const defaultPriorities: RacingType[] = ["ACCELERATION", "SPEED", "HANDLING", "BOOST", "POWER"];
 export const componentKeys = ["racerId", "frontPartId", "rearPartId", "tirePartId"] as const;
 export type ComponentKey = typeof componentKeys[number];
+export const recommendationSlots: { key: ComponentKey; label: string }[] = [
+  { key: "racerId", label: "Racer" }, { key: "frontPartId", label: "Front" },
+  { key: "rearPartId", label: "Rear" }, { key: "tirePartId", label: "Tire" },
+];
 export interface RecommendationSelection {
   racerId: string | null; frontPartId: string | null; rearPartId: string | null; tirePartId: string | null;
   gadgetIds: string[];
@@ -120,4 +124,8 @@ export function stockSourceForDraft(draft: BuildDraft, parts: MachinePart[]): st
   const ids = [draft.frontPartId, draft.rearPartId, ...(draft.machineType === "BOOST" ? [] : [draft.tirePartId])];
   const sources = ids.map(id => parts.find(part => part.id === id)!.sourceMachineId);
   return sources.every(source => source === sources[0]) ? sources[0] : "";
+}
+
+export function recommendationStatValue(stats: BaseStats | null | undefined, priority: RacingType): number | null {
+  return stats?.[priority.toLowerCase() as keyof BaseStats] ?? null;
 }
