@@ -1,7 +1,8 @@
 import { useId, useState } from "react";
 import type { BaseStats, GadgetRulesCatalog, PassiveStatsResult, RacingType } from "./types";
 import { statNames, type StatName } from "./stats";
-import { GearIcon, RacerIcon, SteeringWheelIcon } from "./icons";
+import { StatBar, StatLegend } from "./StatBar";
+import { InfoPopover } from "./InfoPopover";
 
 
 export function signedPoints(value: number | null) { return value == null ? "Unknown" : `${value >= 0 ? "+" : "−"}${Math.abs(value)}`; }
@@ -116,7 +117,7 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
     : partial ? (value.effects.some(effect => effect.status === "APPLIED" && (effect.adjustment[name] ?? 0) !== 0)
       ? `Known ${signedPoints(value.adjustments[name])}` : "Not calculated") : signedPoints(value.adjustments[name]);
   const calculations = <dl className="passive-stat-grid" aria-label="Base plus gadget adjustment equals result">
-    {statNames.map(name => <div key={name} className={`stat-${name}`}>
+    {statNames.map(name => <div key={name} className={`stat-row stat-${name}`}>
       <dt>{name[0].toUpperCase() + name.slice(1)}</dt>
       <dd><span aria-label={`Base ${name}`}>{value.base[name] ?? "—"}</span>
         <span className="passive-delta" aria-label={`Gadget ${name} adjustment`}>{adjustmentLabel(name)}</span>
@@ -125,11 +126,7 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
   </dl>;
   return <section className={`passive-stats${compact ? " passive-stats-compact" : ""}`} aria-label="Passive gadget stats">
     {!compact && <><h3>Stats</h3>
-      <div className="stat-legend" aria-label="Stat bar breakdown">
-        <span><RacerIcon /><i className="character-swatch" />Racer</span>
-        <span><SteeringWheelIcon /><i className="machine-swatch" />Machine</span>
-        <span><GearIcon /><i className="gadget-swatch" />Gadget</span>
-      </div>
+      <StatLegend />
       <dl className="passive-stat-bars">{statNames.map(name => {
         const label = name[0].toUpperCase() + name.slice(1);
         const base = value.base[name];
@@ -137,19 +134,12 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
         const delta = unavailable ? null : value.adjustments[name];
         const hasAppliedEffect = !unavailable && value.effects.some(effect => effect.status === "APPLIED"
           && effect.adjustment[name] != null && effect.adjustment[name] !== 0);
-        const scale = 100 / Math.max(100, base ?? 0, total ?? 0);
-        const racer = Math.min(100, Math.max(0, value.base.character?.[name] ?? 0) * scale);
-        const machine = Math.min(100 - racer, Math.max(0, value.base.machine?.[name] ?? 0) * scale);
         const explanation = `${label}: base ${base ?? "unknown"}; gadget ${adjustmentLabel(name)}; ${unavailable ? "base shown" : partial ? "known subtotal" : "result"} ${total ?? "unknown"}`;
         return <div className={`stat-row stat-${name}`} key={name}>
           <div className="stat-label"><dt>{label}</dt><dd>{total ?? "—"}</dd></div>
           <div className="card-stat-meter">
-          <div className={`card-stat-track${total == null ? " unknown" : ""}`} role="img" aria-label={explanation}>
-            <span className="card-stat-character-fill" style={{width:`${racer}%`}} />
-            <span className="card-stat-machine-fill" style={{width:`${machine}%`}} />
-            {hasAppliedEffect && base != null && total != null && delta != null && delta !== 0 && <span className={`card-stat-gadget-segment ${delta > 0 ? "bonus" : "penalty"}`}
-              style={{left:`${Math.max(0, Math.min(base,total))*scale}%`,width:`${Math.abs(Math.max(0,total)-Math.max(0,base))*scale}%`}} />}
-          </div>
+          <StatBar base={base} racer={value.base.character?.[name] ?? null} machine={value.base.machine?.[name] ?? null}
+            passive={total} gadgetDelta={hasAppliedEffect ? delta : null} description={explanation} />
           {hasAppliedEffect && <GadgetStatImpact name={name} value={value} />}
           </div>
         </div>;
@@ -178,7 +168,8 @@ export function PassiveStatsPanel({ value, compact = false }: { value?: PassiveS
 export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: GadgetRulesCatalog }) {
   const rules = catalog?.gadgets.find(gadget => gadget.gadgetId === id)?.effects;
   return <details className="gadget-rule-details"><summary>Verified effects & conditions</summary>
-    {!catalog ? <p>Rule metadata unavailable.</p> : <><p>Ver. {catalog.supportedVersion} · Passive stat points</p>
+    {!catalog ? <p>Rule metadata unavailable.</p> : <><div className="gadget-rule-metadata"><p>Ver. {catalog.supportedVersion} · Passive stat points</p>
+      <CalculationNotes /></div>
       {!rules?.length ? <p>Effects have not been verified for calculation; this does not mean no effect.</p>
         : <ul>{rules.map(rule => <li key={rule.effectId}><strong>{rule.label}</strong>
           {rule.kind === "PASSIVE" ? <><p>{rule.subject === "ANY" ? "Always" : `${rule.subject === "RACER" ? "Racer" : "Machine"} type ${rule.requiredType}`}: {adjustmentSummary(rule.matching)}</p>
@@ -186,8 +177,15 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
             : <p>{rule.kind === "CONDITIONAL" ? "Race condition — excluded" : rule.kind === "NON_STAT" ? "Separate from stat points" : "Unverified"}</p>}
           <p>{rule.explanation}</p>
         </li>)}</ul>}
-      <p>{catalog.note}</p><p>Machine tuner bonuses and penalties add together, including different tuner types. Acceleration Tuner 2 also adds to Acceleration Machine Kit. Modifiers affecting separate stats also combine. Other overlapping effects are reported as unresolved.</p></>}
+      </>}
   </details>;
+}
+
+function CalculationNotes() {
+  return <InfoPopover label="Calculation notes" hint="About stat calculations">
+    <p>RingLab shows reviewed passive stat effects when they can be calculated reliably. Race-dependent effects are handled separately by Scenario Preview. Verified compatible modifiers are combined; combinations that have not been confirmed are shown as incomplete instead of being guessed.</p>
+    <p className="calculation-notes-technical">Machine tuners combine. Acceleration Tuner 2 + Acceleration Machine Kit is verified. Independent stat modifiers combine. Other overlapping effects may remain unresolved.</p>
+  </InfoPopover>;
 }
 
 export function GadgetStatImpact({ name, value }: { name: StatName; value: PassiveStatsResult }) {

@@ -1,13 +1,55 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { useLoad } from "../useLoad";
 import { GameData, newestGameVersion, patchNotesUrl } from "./GameData";
-import type { BaseStats, Gadget, Machine, MachinePart, Racer } from "../types";
+import type { BaseStats, Gadget, Machine, MachinePart, Racer, ScenarioRulesCatalog } from "../types";
 
 vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
 afterEach(cleanup);
+
+it("badges only catalog-supported scenarios, including descriptive events and combined conditions", () => {
+  const names = ["Quick Starter", "Sea Dog", "Ace Pilot", "All-Rounder", "Ring Engine", "Perfect Landing", "Invincible Finish", "Evolution", "Hyper Ring Engine", "Combined"];
+  const ids = ["lap", "70000000-0000-4000-8000-000000000015", "70000000-0000-4000-8000-000000000017", "70000000-0000-4000-8000-000000000018", "rings", "landing", "finish", "evolution", "hyper", "combined"];
+  const gadgets = names.map((name, i) => ({ id: ids[i], name, description: null, imagePath: null, slotCost: 1 }));
+  const fields: ScenarioRulesCatalog["controls"][number]["field"][] = ["LAP", "VEHICLE_FORM", "VEHICLE_FORM", "VEHICLE_FORM", "RINGS_HELD", "LANDING_BOOST_ACTIVE", "DISTANCE_TO_FINISH"];
+  const scenarios: ScenarioRulesCatalog = { supportedVersion: "1.4.1", controls: [
+    ...fields.map((field, i) => ({ gadgetId: ids[i], field, statEffect: i < 5 })),
+    { gadgetId: "combined", field: "LAP", statEffect: true },
+    { gadgetId: "combined", field: "RINGS_HELD", statEffect: true },
+    { gadgetId: "combined", field: "LAP", statEffect: true },
+  ] };
+  const zero = { speed: 0, acceleration: 0, handling: 0, power: 0, boost: 0 };
+  const rules = { supportedVersion: "1.4.1", ruleset: "test", note: "Global note", gadgets: ids.map(gadgetId => ({ gadgetId, effects: [{
+    effectId: "other-0", label: "Conditional effect", kind: "CONDITIONAL", subject: "ANY", requiredType: null,
+    matching: zero, nonMatching: zero, explanation: "Gadget-specific condition", sources: [], stackingGroup: null,
+  }] })) };
+  vi.mocked(useLoad).mockImplementation(path => ({ loading: false, error: "", data:
+    path === "/stats/scenario-rules" ? scenarios : path === "/stats/gadget-rules" ? rules
+      : path === "/gadgets" ? gadgets : [],
+  }));
+  render(<MemoryRouter><GameData /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: "Gadgets" }));
+  ["Lap", "Water", "Flight", "Form", "Rings", "Event", "Event", null, null, "Lap / Rings"].forEach((label, i) => {
+    const card = screen.getByRole("heading", { name: names[i] }).closest("article")!;
+    if (label) expect(within(card).getByText(`Scenario · ${label}`)).toBeTruthy();
+    else expect(within(card).queryByText(/Scenario ·/)).toBeNull();
+    expect(card.querySelectorAll(".scenario-badge").length).toBe(label ? 1 : 0);
+  });
+  expect(useLoad).toHaveBeenCalledWith("/stats/scenario-rules");
+});
+
+it("does not claim scenario support when the scenario catalog is unavailable", () => {
+  vi.mocked(useLoad).mockImplementation(path => ({ loading: false, error: "", data:
+    path === "/gadgets" ? [{ id: "lap", name: "Quick Starter", slotCost: 1, imagePath: null, description: null }]
+      : path === "/stats/scenario-rules" || path === "/stats/gadget-rules" ? undefined : [],
+  }));
+  render(<MemoryRouter><GameData /></MemoryRouter>);
+  fireEvent.click(screen.getByRole("button", { name: "Gadgets" }));
+  expect(screen.getByRole("heading", { name: "Quick Starter" })).toBeTruthy();
+  expect(screen.queryByText(/Scenario ·/)).toBeNull();
+});
 
 it("searches every collection tab and links maps to explicit recommendations", () => {
   const racer = { id: "r", name: "Sonic", racingType: "SPEED", imagePath: null };

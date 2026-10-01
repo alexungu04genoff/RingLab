@@ -1,12 +1,12 @@
 import { useEffect, useId, useState } from "react";
 import { api, json } from "./api";
 import { statNames } from "./stats";
-import type { BaseStats, Build, BuildDraft, PassiveStatsResult } from "./types";
+import { StatBar, StatLegend } from "./StatBar";
+import type { BaseStats, Build, BuildDraft, PassiveStatsResult, ScenarioRulesCatalog } from "./types";
 
 export type ScenarioSelection = Pick<BuildDraft,
   "gameVersionId" | "racerId" | "frontPartId" | "rearPartId" | "tirePartId" | "gadgetIds">;
 type Selection = { label: string; selection: ScenarioSelection };
-type Field = "LAP" | "VEHICLE_FORM" | "RINGS_HELD" | "LANDING_BOOST_ACTIVE" | "DISTANCE_TO_FINISH";
 export interface ScenarioContext {
   lap: number | null;
   vehicleForm: "NORMAL" | "WATER" | "FLIGHT" | null;
@@ -27,7 +27,6 @@ export interface ScenarioResult {
     statEffect: boolean; adjustment: BaseStats | null; explanation: string; sources: string[];
   }[];
 }
-interface Controls { supportedVersion: string; controls: { gadgetId: string; field: Field; statEffect: boolean }[] }
 const unspecified: ScenarioContext = {
   lap: null, vehicleForm: null, ringsHeld: null, landingBoostActive: null, distanceToFinish: null,
 };
@@ -56,13 +55,13 @@ function CustomScenario({ selections }: { selections: Selection[] }) {
   // enclosing build editor form: invalid preview input must never block saving.
   const detachedFormId = useId();
   const [context, setContext] = useState<ScenarioContext>(unspecified);
-  const [catalog, setCatalog] = useState<Controls>();
+  const [catalog, setCatalog] = useState<ScenarioRulesCatalog>();
   const [catalogError, setCatalogError] = useState("");
   const [retry, setRetry] = useState(0);
   useEffect(() => {
     const controller = new AbortController();
     setCatalogError("");
-    api<Controls>("/stats/scenario-rules", { anonymous: true, signal: controller.signal })
+    api<ScenarioRulesCatalog>("/stats/scenario-rules", { anonymous: true, signal: controller.signal })
       .then(data => { if (!controller.signal.aborted) setCatalog(data); })
       .catch(error => { if (!controller.signal.aborted) setCatalogError(error.message); });
     return () => controller.abort();
@@ -128,14 +127,26 @@ function ScenarioRequests({ selections, context }: { selections: Selection[]; co
   if (!valid) return <p role="alert">Use whole numbers: rings held 0–999 and metres to finish 0–50,000.</p>;
   // Hide obsolete results in the render before effect cleanup, even if fetch ignores abort.
   if (state?.key !== requests || state.retry !== retry) return <p role="status">Calculating scenario preview…</p>;
-  return <div className={selections.length > 1 ? "scenario-results compare-grid" : "scenario-results"}>
+  const conditions = [context.lap != null && `Lap ${context.lap}`,
+    context.vehicleForm && context.vehicleForm[0] + context.vehicleForm.slice(1).toLowerCase(),
+    context.ringsHeld != null && `${context.ringsHeld} rings held`,
+    context.landingBoostActive != null && (context.landingBoostActive ? "Landing boost active" : "Landing boost inactive"),
+    context.distanceToFinish != null && `${context.distanceToFinish} m to finish`].filter(Boolean);
+  // Keep both comparison columns on the same visual scale, including raw values above 100.
+  const maximum = Math.max(100, ...state.results.flatMap(result => result.status === "fulfilled"
+    ? statNames.flatMap(stat => [result.value.passive.base[stat] ?? 0, result.value.passive.adjusted[stat] ?? 0,
+      result.value.knownSubtotal[stat] ?? 0, result.value.total?.[stat] ?? 0]) : []));
+  return <>
+    <p className="scenario-condition-summary">{conditions.join(" · ") || "Conditions not specified"}</p>
+    <StatLegend scenario />
+    <div className={selections.length > 1 ? "scenario-results compare-grid" : "scenario-results"}>
     {state.results.map((result, i) => <div key={i} aria-label={`Scenario result: ${selections[i].label}`}>
       {selections.length > 1 && <h3>{selections[i].label}</h3>}
       {result.status === "rejected" ? <p role="alert">Scenario unavailable: {result.reason.message}
         {" "}<button type="button" onClick={() => setRetry(n => n + 1)}>Retry preview</button></p>
-        : <ScenarioValues result={result.value} />}
+        : <ScenarioValues result={result.value} maximum={maximum} />}
     </div>)}
-  </div>;
+  </div></>;
 }
 
 const groups: [ScenarioResult["effects"][number]["status"], string][] = [
@@ -144,27 +155,46 @@ const groups: [ScenarioResult["effects"][number]["status"], string][] = [
   ["UNSUPPORTED", "Unsupported effects"],
 ];
 const number = (value: number | null) => value == null ? "Unknown" : String(value);
-const signed = (value: number | null) => value == null ? "Unknown" : value > 0 ? `+${value}` : String(value);
+const signed = (value: number | null) => value == null ? "Unknown" : value >= 0 ? `+${value}` : `−${Math.abs(value)}`;
 
-function ScenarioValues({ result }: { result: ScenarioResult }) {
+function ScenarioValues({ result, maximum }: { result: ScenarioResult; maximum: number }) {
   const complete = result.coverage === "CALCULATED";
-  const active = result.effects.some(e => e.status === "ACTIVE_AND_APPLIED");
+  const applied = [...new Set(result.effects.filter(e => e.status === "ACTIVE_AND_APPLIED").map(e => e.gadgetName))];
+  const utility = [...new Set(result.effects.filter(e => e.status === "ACTIVE_NON_STAT").map(e => e.gadgetName))];
   return <>
     <p className="scenario-coverage" role="status">{complete ? "Scenario total — supported stat effects calculated."
       : result.coverage === "UNAVAILABLE" ? "Scenario unavailable — passive information shown below."
-        : "Known subtotal — this scenario is not fully calculated."}</p>
+        : "Scenario not fully calculated — final total unavailable."}</p>
+    {applied.length > 0 && <div className="scenario-active-effects" aria-label="Applied scenario effects">
+      <span>Applied:</span><ul>{applied.map(name => <li key={name}><span aria-hidden="true">✓ </span>{name}</li>)}</ul>
+    </div>}
+    {utility.length > 0 && <p>Active without stat points: {utility.join(" · ")}</p>}
     {result.passive.coverage !== "CALCULATED" && <p className="muted">Passive calculation is also incomplete
       ({result.passive.coverage.toLowerCase().replaceAll("_", " ")}). {result.passive.note}</p>}
-    <div className="scenario-stat-list">
-      {statNames.map(stat => <div className="scenario-stat" key={stat}>
-        <div><strong>{stat[0].toUpperCase() + stat.slice(1)}</strong>
-          <strong>{number((result.total ?? result.knownSubtotal)[stat])}</strong></div>
-        <dl><div><dt>Base</dt><dd>{number(result.passive.base[stat])}</dd></div>
-          <div><dt>Passive</dt><dd>{number(result.passive.adjusted[stat])}</dd></div>
-          <div><dt>{complete ? "Scenario" : "Known change"}</dt>
-            <dd>{!complete && !active ? "Not calculated" : signed(result.adjustments[stat])}</dd></div></dl>
-      </div>)}
-    </div>
+    <dl className="passive-stat-bars scenario-stat-bars">
+      {statNames.map(stat => {
+        const label = stat[0].toUpperCase() + stat.slice(1);
+        const passive = result.passive.adjusted[stat];
+        const delta = result.adjustments[stat];
+        const exact = complete && result.total?.[stat] != null;
+        const known = !exact && result.coverage === "PARTIAL" && result.knownSubtotal[stat] != null && delta != null;
+        const endpoint = exact ? result.total![stat] : known ? result.knownSubtotal[stat] : null;
+        const adjustment = delta == null ? "unknown" : delta < 0 ? `minus ${Math.abs(delta)}` : `plus ${delta}`;
+        const description = `${label}: passive ${number(passive)}; ${exact || known ? `scenario adjustment ${adjustment}; ${exact ? "scenario total" : "known subtotal"} ${endpoint}${known ? "; final total unavailable" : ""}` : "not fully calculated; final total unavailable"}.`;
+        return <div className={`stat-row stat-${stat}${known ? " scenario-subtotal" : ""}`} key={stat}>
+          <div className="stat-label"><dt>{label}</dt><dd aria-label={known ? `${label} known subtotal` : undefined}>{endpoint ?? "—"}</dd></div>
+          <div className="scenario-stat-comparison">
+            <span>Passive {number(passive)}{exact ? ` → Scenario ${endpoint}` : known ? ` → Known subtotal ${endpoint}` : ""}</span>
+            <span className="stat-adjustment">{exact || known ? signed(delta) : "Not fully calculated"}</span>
+          </div>
+          {known && <p className="scenario-known-subtotal">Known effects only · final total unavailable</p>}
+          <StatBar base={result.passive.base[stat]} racer={result.passive.base.character?.[stat] ?? null}
+            machine={result.passive.base.machine?.[stat] ?? null} passive={passive}
+            gadgetDelta={result.passive.adjustments[stat]} scenario={endpoint} scenarioDelta={delta}
+            maximum={maximum} description={description} />
+        </div>;
+      })}
+    </dl>
     <details className="scenario-effects"><summary>Scenario effects &amp; details</summary>
       <p className="muted">{result.note}</p>
       {groups.map(([status, label]) => {

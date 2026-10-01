@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { api } from "./api";
 import { ScenarioPreview, type ScenarioResult, type ScenarioSelection } from "./ScenarioPreview";
@@ -84,7 +84,7 @@ it("invalidates on condition edits and ignores a late result after reset", async
   await act(async () => old(result));expect(screen.queryByText(/Scenario total/)).toBeNull();
 });
 
-it("shows unsupported and unknown effects without fake zero totals", async () => {
+it("shows the returned +0 known adjustment when all conditions are unspecified without claiming a final total", async () => {
   vi.mocked(api).mockImplementation(async path => path === "/stats/scenario-rules" ? controls : {
     ...result, total: null, coverage: "PARTIAL", passive: { ...result.passive, coverage: "PARTIAL" },
     effects: [{ gadgetId: "quick", gadgetName: "Quick Starter", effectId: "lap", label: "Lap", status: "CONDITION_UNKNOWN",
@@ -93,11 +93,104 @@ it("shows unsupported and unknown effects without fake zero totals", async () =>
       statEffect: true, adjustment: null, explanation: "Cap unverified.", sources: [] }],
   });
   render(<ScenarioPreview selections={[{ label: "Draft", selection }]} />);open();
-  expect(await screen.findByText(/Known subtotal —/)).toBeTruthy();
-  expect(screen.getAllByText("Not calculated")).toHaveLength(5);
+  expect(await screen.findByText(/Scenario not fully calculated/)).toBeTruthy();
+  expect(screen.getAllByText("+0")).toHaveLength(5);
+  expect(screen.getByLabelText("Speed known subtotal").textContent).toBe("65");
+  expect(screen.getByText("Passive 65 → Known subtotal 65")).toBeTruthy();
+  expect(screen.getAllByText("Known effects only · final total unavailable")).toHaveLength(5);
+  expect(screen.queryByText("Passive 65 → Scenario 65")).toBeNull();
   expect(screen.getByText(/Passive calculation is also incomplete/)).toBeTruthy();
   fireEvent.click(screen.getByText("Scenario effects & details"));
   expect(screen.getByText("Condition not specified")).toBeTruthy();expect(screen.getByText("Unsupported effects")).toBeTruthy();
+});
+
+function applied(gadgetName: string, speed: number): ScenarioResult["effects"][number] {
+  return { gadgetId: gadgetName, gadgetName, effectId: "effect", label: "Stat effect", status: "ACTIVE_AND_APPLIED",
+    statEffect: true, adjustment: { ...zero, speed }, explanation: "Reviewed effect", sources: [] };
+}
+
+it.each([[40, 105], [-20, 45]])("shows an exact signed adjustment %s with the returned total %s", async (delta, total) => {
+  vi.mocked(api).mockImplementation(async path => path === "/stats/scenario-rules" ? controls : {
+    ...result, adjustments: { ...zero, speed: delta }, total: { ...stats, speed: total },
+    passive: { ...result.passive, base: { ...result.passive.base, speed: 55,
+      character: { ...stats, speed: 25 }, machine: { ...zero, speed: 30 } }, adjustments: { ...zero, speed: 10 } },
+    effects: [applied("Quick Starter", delta)],
+  });
+  render(<ScenarioPreview selections={[{ label: "Draft", selection }]} />); open();
+  const bar = await screen.findByRole("img", { name: `Speed: passive 65; scenario adjustment ${delta > 0 ? "plus 40" : "minus 20"}; scenario total ${total}.` });
+  expect(bar.closest(".stat-row")?.querySelector("dd")?.textContent).toBe(String(total));
+  expect(screen.getByText(`Passive 65 → Scenario ${total}`)).toBeTruthy();
+  const segment = bar.querySelector<HTMLElement>(".card-stat-scenario-segment")!;
+  expect(segment.classList.contains(delta > 0 ? "bonus" : "penalty")).toBe(true);
+  expect(parseFloat(segment.style.left)).toBeCloseTo(Math.min(65, total) * 100 / Math.max(100, total));
+  expect(parseFloat(segment.style.width)).toBeCloseTo(Math.abs(delta) * 100 / Math.max(100, total));
+  const passiveSegment = bar.querySelector<HTMLElement>(".card-stat-gadget-segment")!;
+  expect(parseFloat(passiveSegment.style.left)).toBeCloseTo(55 * 100 / Math.max(100, total));
+  expect(parseFloat(passiveSegment.style.width)).toBeCloseTo(10 * 100 / Math.max(100, total));
+  expect(screen.getByText("Scenario", { selector: ".stat-legend span" })).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Reset to Passive only" }));
+  expect(screen.queryByRole("img")).toBeNull();
+  expect(screen.queryByText("Scenario", { selector: ".stat-legend span" })).toBeNull();
+});
+
+it("labels a returned known subtotal without promoting it to an exact total", async () => {
+  vi.mocked(api).mockImplementation(async path => path === "/stats/scenario-rules" ? controls : {
+    ...result, coverage: "PARTIAL", total: null, adjustments: { ...zero, speed: 20 },
+    knownSubtotal: { ...stats, speed: 85 }, effects: [applied("Quick Starter", 20)],
+  });
+  render(<ScenarioPreview selections={[{ label: "Draft", selection }]} />); open();
+  const bar = await screen.findByRole("img", { name: "Speed: passive 65; scenario adjustment plus 20; known subtotal 85; final total unavailable." });
+  expect(bar.closest(".stat-row")?.querySelector("dd")?.textContent).toBe("85");
+  expect(screen.getByText("Passive 65 → Known subtotal 85")).toBeTruthy();
+  expect(screen.getByText("+20")).toBeTruthy();
+  expect(screen.queryByText("Passive 65 → Scenario 85")).toBeNull();
+  expect(screen.getByRole("img", { name: /Acceleration: passive 30; scenario adjustment plus 0; known subtotal 30/ })).toBeTruthy();
+});
+
+it("keeps genuinely unknown adjustments unavailable instead of displaying +0", async () => {
+  vi.mocked(api).mockImplementation(async path => path === "/stats/scenario-rules" ? controls : {
+    ...result, coverage: "PARTIAL", total: null, adjustments: { ...zero, speed: null },
+    knownSubtotal: { ...stats, speed: null },
+  });
+  render(<ScenarioPreview selections={[{ label: "Draft", selection }]} />); open();
+  const bar = await screen.findByRole("img", { name: /Speed: passive 65; not fully calculated/ });
+  expect(bar.closest(".stat-row")?.querySelector("dd")?.textContent).toBe("—");
+  expect(within(bar.closest(".stat-row") as HTMLElement).queryByText("+0")).toBeNull();
+});
+
+it("shows only passive bars when unavailable, even if a subtotal was returned", async () => {
+  vi.mocked(api).mockImplementation(async path => path === "/stats/scenario-rules" ? controls : {
+    ...result, coverage: "UNAVAILABLE", total: null,
+  });
+  render(<ScenarioPreview selections={[{ label: "Draft", selection }]} />); open();
+  const bar = await screen.findByRole("img", { name: /Speed: passive 65; not fully calculated/ });
+  expect(bar.closest(".stat-row")?.querySelector("dd")?.textContent).toBe("—");
+  expect(bar.querySelector(".card-stat-scenario-segment")).toBeNull();
+});
+
+it("summarizes simultaneous effects and compares returned values on one scale with shared conditions", async () => {
+  vi.mocked(api).mockImplementation(async (path, options) => {
+    if (path === "/stats/scenario-rules") return controls;
+    const body = JSON.parse(options!.body as string);
+    return { ...result, adjustments: { ...zero, speed: body.racerId === "other" ? 20 : 40 },
+      total: { ...stats, speed: body.racerId === "other" ? 85 : 105 },
+      effects: [applied("Quick Starter", 20), applied("Sea Dog Kit", 20)] };
+  });
+  render(<ScenarioPreview selections={[{ label: "Left", selection },
+    { label: "Right", selection: { ...selection, racerId: "other", gadgetIds: ["plane"] } }]} />); open();
+  fireEvent.change(await screen.findByLabelText("Lap"), { target: { value: "1" } });
+  fireEvent.change(screen.getByLabelText("Vehicle form"), { target: { value: "WATER" } });
+  expect(await screen.findByText("Lap 1 · Water")).toBeTruthy();
+  for (const summary of screen.getAllByLabelText("Applied scenario effects")) {
+    expect(within(summary).getByText("Quick Starter")).toBeTruthy();
+    expect(within(summary).getByText("Sea Dog Kit")).toBeTruthy();
+  }
+  const left = within(screen.getByLabelText("Scenario result: Left")).getByRole("img", { name: /Speed:/ });
+  const right = within(screen.getByLabelText("Scenario result: Right")).getByRole("img", { name: /Speed:/ });
+  expect(left.querySelector<HTMLElement>(".card-stat-character-fill")!.style.width)
+    .toBe(right.querySelector<HTMLElement>(".card-stat-character-fill")!.style.width);
+  expect(calls().slice(-2).map(([, options]) => JSON.parse(options!.body as string).scenario))
+    .toEqual([expect.objectContaining({ lap: 1, vehicleForm: "WATER" }), expect.objectContaining({ lap: 1, vehicleForm: "WATER" })]);
 });
 
 it("handles an empty supported catalog and retries failures without writing builds", async () => {

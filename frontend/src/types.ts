@@ -39,6 +39,14 @@ export interface GadgetRulesCatalog {
     stackingGroup: string | null;
   }[] }[];
 }
+export interface ScenarioRulesCatalog {
+  supportedVersion: string;
+  controls: {
+    gadgetId: string;
+    field: "LAP" | "VEHICLE_FORM" | "RINGS_HELD" | "LANDING_BOOST_ACTIVE" | "DISTANCE_TO_FINISH";
+    statEffect: boolean;
+  }[];
+}
 export interface StatsCatalog {
   gameVersionId: string;
   racers: Record<string, BaseStats>;

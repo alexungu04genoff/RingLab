@@ -16,6 +16,8 @@ import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
 import { StockMachineCard } from "../StockMachineCard";
 import { GadgetRuleDetails } from "../PassiveStats";
 import type { GadgetRulesCatalog } from "../types";
+import type { ScenarioRulesCatalog } from "../types";
+import { ScenarioBadge } from "../ScenarioBadge";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -55,18 +57,19 @@ function RacerCard({ racer, ownership }: { racer: Racer; ownership?: ReactNode }
   );
 }
 
-function GadgetCard({ gadget, rules, ownership }: { gadget: Gadget; rules?: GadgetRulesCatalog; ownership?: ReactNode }) {
+function GadgetCard({ gadget, rules, scenarios, ownership }: { gadget: Gadget; rules?: GadgetRulesCatalog; scenarios?: ScenarioRulesCatalog; ownership?: ReactNode }) {
   return (
     <article className="panel collection-item gadget-collection-item">
       <Artwork item={gadget} compact />
       <div className="collection-copy">
-        <div className="gadget-collection-heading">
-          <h2>{gadget.name}</h2>
+        <h2>{gadget.name}</h2>
+        <div className="gadget-collection-badges">
           {gadget.slotCost !== null && (
             <span className="gadget-slot-cost">
               {gadget.slotCost} {gadget.slotCost === 1 ? "slot" : "slots"}
             </span>
           )}
+          <ScenarioBadge gadgetId={gadget.id} catalog={scenarios} />
         </div>
       </div>
       {gadget.description && <p className="gadget-collection-description">{gadget.description}</p>}
@@ -92,10 +95,10 @@ function VersionCard({ gameVersion }: { gameVersion: GameVersion }) {
   );
 }
 
-function CollectionCard({ item, tab, machineParts, stats, version, loading, error, rules, ownership }: {
+function CollectionCard({ item, tab, machineParts, stats, version, loading, error, rules, scenarios, ownership }: {
   item: CollectionItem; tab: CollectionKey; machineParts: MachinePart[];
   stats: StatsCatalog | undefined; version: string | null; loading: boolean; error: string;
-  rules?: GadgetRulesCatalog; ownership?: ReactNode;
+  rules?: GadgetRulesCatalog; scenarios?: ScenarioRulesCatalog; ownership?: ReactNode;
 }) {
   if ("version" in item) return <VersionCard gameVersion={item} />;
   if ("category" in item) return <article className="panel collection-item map-collection-item">
@@ -103,7 +106,7 @@ function CollectionCard({ item, tab, machineParts, stats, version, loading, erro
     <p>{mapCategoryLabel(item.category)}{item.contentPack && ` · ${item.contentPack}`}</p>
     <Link to={`/?mapId=${encodeURIComponent(item.id)}&includeAllMaps=false`}>Find recommended builds →</Link></div>
   </article>;
-  if ("slotCost" in item) return <GadgetCard gadget={item} rules={rules} ownership={ownership} />;
+  if ("slotCost" in item) return <GadgetCard gadget={item} rules={rules} scenarios={scenarios} ownership={ownership} />;
   if (tab === "machines") return <StockMachineCard machine={item}
     parts={machineParts.filter((part) => part.sourceMachineId === item.id)}
     catalog={stats} version={version} loading={loading} error={error} ownership={ownership} />;
@@ -116,6 +119,7 @@ export function GameData() {
   const [search, setSearch] = useState("");
   const items = useLoad<CollectionItem[]>(`/${tab}`);
   const rules = useLoad<GadgetRulesCatalog>(tab === "gadgets" ? "/stats/gadget-rules" : "");
+  const scenarios = useLoad<ScenarioRulesCatalog>(tab === "gadgets" ? "/stats/scenario-rules" : "");
   const versions = useLoad<GameVersion[]>("/game-versions");
   const machineParts = useLoad<MachinePart[]>("/machine-parts");
   const latestVersion = newestGameVersion(versions.data);
@@ -167,7 +171,7 @@ export function GameData() {
       <div className={`collection collection-${tab}`}>
         {visibleItems?.map((item) => <div key={item.id}>
           <CollectionCard item={item} tab={tab} machineParts={machineParts.data ?? []}
-            stats={stats.data} version={latestVersion?.version ?? null} rules={rules.data}
+            stats={stats.data} version={latestVersion?.version ?? null} rules={rules.data} scenarios={scenarios.data}
             loading={versions.loading || machineParts.loading || stats.loading}
             error={versions.error || machineParts.error || stats.error}
             ownership={(tab === "racers" || tab === "machines" || tab === "gadgets") && "name" in item
