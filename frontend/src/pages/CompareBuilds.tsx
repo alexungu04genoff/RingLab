@@ -1,16 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { gadgetPlateStatus } from "../buildForm";
-import { Artwork, buildDetailsOrigin, countLabel, date, ErrorNotice, isStockSetup, MachineSetup } from "../components";
-import { MissingItems } from "../Collection";
-import { RacingTypeBadge } from "../RacingTypeBadge";
-import { useLoad } from "../useLoad";
-import { BuildStats } from "../BaseStats";
-import { ScenarioPreview, scenarioSelection } from "../ScenarioPreview";
-import { RecommendedMapList } from "../MapRecommendations";
-import { compareMapRecommendations } from "../mapSelection";
-import type { Build, BuildPage, Gadget } from "../types";
+import { gadgetPlateStatus } from "../features/builds/buildForm";
+import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
+import { buildDetailsOrigin } from "../features/builds/buildNavigation";
+import { countLabel, date } from "../shared/lib/format";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { isStockSetup, MachineSetup } from "../features/builds/MachineSetup";
+import { MissingItems } from "../features/collection/Collection";
+import { RacingTypeBadge } from "../shared/ui/RacingTypeBadge";
+import { useLoad } from "../shared/hooks/useLoad";
+import { BuildStats } from "../features/stats/BaseStats";
+import { ScenarioPreview, scenarioSelection } from "../features/stats/ScenarioPreview";
+import { RecommendedMapList } from "../features/maps/MapRecommendations";
+import { compareMapRecommendations } from "../features/maps/mapSelection";
+import type { Build, BuildPage, Gadget } from "../shared/types";
 
 const SELECTOR_PAGE_SIZE = 8;
 

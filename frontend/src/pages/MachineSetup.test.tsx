@@ -2,15 +2,16 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
-import { BuildCard, countLabel, patchAge } from "../components";
-import { useLoad } from "../useLoad";
-import type { Build, MachinePart } from "../types";
+import { BuildCard, patchAge } from "../features/builds/BuildCard";
+import { countLabel } from "../shared/lib/format";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, MachinePart } from "../shared/types";
 import { BuildEditor } from "./BuildEditor";
 import { BuildDetails } from "./BuildDetails";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn(), currentSessionGeneration: () => 0 }));
-vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../shared/api/api", () => ({ api: vi.fn(), json: vi.fn(), currentSessionGeneration: () => 0 }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source = "Dark Reaper"): MachinePart => ({
   id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,

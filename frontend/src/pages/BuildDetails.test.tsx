@@ -2,13 +2,13 @@ import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "../api";
-import type { Build, MachinePart } from "../types";
+import { api } from "../shared/api/api";
+import type { Build, MachinePart } from "../shared/types";
 import { BuildDetails } from "./BuildDetails";
 
 const actor = { id: "owner", username: "driver" };
-vi.mock("../auth", () => ({ useAuth: () => ({ user: actor }) }));
-vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: actor }) }));
+vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
   sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
   racingType: "SPEED" });

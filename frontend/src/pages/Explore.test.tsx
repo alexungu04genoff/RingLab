@@ -1,9 +1,9 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
-import { useLoad } from "../useLoad";
-import { browseOrigin, buildDetailsOrigin } from "../components";
-import { filterSearchableOptions } from "../SearchableFilter";
+import { useLoad } from "../shared/hooks/useLoad";
+import { browseOrigin, buildDetailsOrigin } from "../features/builds/buildNavigation";
+import { filterSearchableOptions } from "../shared/ui/SearchableFilter";
 import { Explore, exploreLayoutClass, selectRandomHeroRacers } from "./Explore";
 import {
   activeExploreFilterChips,
@@ -12,10 +12,10 @@ import {
   resolvePage,
   resolveSort,
   updateExploreParams,
-} from "./exploreFilters";
+} from "../features/builds/exploreFilters";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const newsItem = {
   id: "1", title: "CrossWorlds update <b>today</b>",

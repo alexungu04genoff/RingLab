@@ -2,16 +2,16 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "../api";
+import { api } from "../shared/api/api";
 import { AccountPage } from "./AccountPage";
 
-vi.mock("../auth", () => ({
+vi.mock("../features/auth/auth", () => ({
   useAuth: () => ({
     user: { id: "user", username: "alex", email: "alex@example.test", createdAt: "2026-01-01" },
   }),
 }));
-vi.mock("../api", async (original) => ({
-  ...await original<typeof import("../api")>(),
+vi.mock("../shared/api/api", async (original) => ({
+  ...await original<typeof import("../shared/api/api")>(),
   api: vi.fn(),
 }));
 

@@ -1,0 +1,38 @@
+/* Optional, ephemeral race context; existing passive bars remain the default. */
+.scenario-preview { margin-block: 1rem; padding-block: 1rem; border-block: 1px solid var(--border, #303746); min-width: 0; }
+.scenario-heading { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem 1rem; justify-content: space-between; }
+.scenario-heading h3 { margin: 0; font-size: .875rem; }
+.scenario-heading > button { font-size: .875rem; line-height: 1.5; padding: 6px 12px; }
+.scenario-heading + p { margin-top: .5rem; }
+.scenario-preview p { font-size: .875rem; overflow-wrap: anywhere; }
+.scenario-controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: .8rem; margin-block: 1rem; }
+.scenario-controls label { display: flex; flex-direction: column; gap: .35rem; min-width: 0; font-size: .875rem; }
+.scenario-controls input, .scenario-controls select { width: 100%; min-width: 0; }
+.scenario-controls small { font-weight: normal; color: var(--muted, #a9b5c7); }
+.scenario-results > div { min-width: 0; }
+.scenario-coverage { color: var(--muted, #a9b5c7); }
+.scenario-stat-bars { gap: 24px; }
+.scenario-stat-bars .stat-row { min-width: 0; }
+.scenario-stat-comparison { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .25rem .75rem;
+  margin-bottom: 10px; color: #dce6f6; font-variant-numeric: tabular-nums; }
+.scenario-condition-summary { font-weight: 700; }
+.scenario-active-effects { display: flex; flex-wrap: wrap; gap: .35rem .6rem; font-size: .8rem; }
+.scenario-active-effects ul { display: flex; flex-wrap: wrap; gap: .35rem .8rem; list-style: none; padding: 0; margin: 0; }
+.scenario-active-effects li { overflow-wrap: anywhere; }
+.scenario-known-subtotal { margin: 0 0 10px; color: var(--muted); }
+.card-stat-track > .card-stat-scenario-segment { position: absolute; top: -2px; height: 12px; border-radius: 2px;
+  box-sizing: border-box; border: 1px solid #e5f3ff;
+  background: repeating-linear-gradient(90deg, var(--stat-color), var(--stat-color) 2px, #172130 2px, #172130 5px); }
+.card-stat-track > .card-stat-scenario-segment.penalty { border-style: dashed;
+  background: repeating-linear-gradient(135deg, #0d131d, #0d131d 4px, #748196 4px, #748196 5px); }
+.card-stat-track > .card-stat-scenario-end { position: absolute; top: -4px; height: 16px; width: 2px;
+  transform: translateX(-1px); border-radius: 0; background: #fff; }
+.scenario-subtotal .card-stat-scenario-segment { border-style: dotted; opacity: .65; }
+.stat-legend .scenario-swatch { height: 8px; border: 1px solid #e5f3ff; border-radius: 2px;
+  background: repeating-linear-gradient(90deg, #bfe7ff, #bfe7ff 2px, #172130 2px, #172130 5px); }
+.scenario-effects { margin-top: 1rem; font-size: .875rem; }
+.scenario-effects summary { cursor: pointer; padding-block: .5rem; }
+.scenario-effects h4 { margin-block: 1rem .5rem; }
+.scenario-effects ul { padding-left: 1.2rem; }
+.scenario-effects li { margin-bottom: .75rem; overflow-wrap: anywhere; }
+.scenario-effects li p { margin-block: .25rem; }

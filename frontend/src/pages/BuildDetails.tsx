@@ -1,20 +1,25 @@
 import { useEffect, useRef, useState } from "react";
-import { SaveBuildButton } from "../SavedBuilds";
+import { SaveBuildButton } from "../features/saved-builds/SavedBuilds";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { api, json } from "../api";
-import { useAuth } from "../auth";
-import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../commentPagination";
-import { Artwork, buildDetailsOrigin, BuildGadgetIcon, countLabel, date, ErrorNotice, MachineSetup, patchAge } from "../components";
-import { MissingItems } from "../Collection";
-import { RacingTypeBadge } from "../RacingTypeBadge";
-import { BuildStats } from "../BaseStats";
-import { ScenarioPreview, scenarioSelection } from "../ScenarioPreview";
-import { gadgetPlateStatus, savedBuildSetupIssues } from "../buildForm";
-import { formatBuildForSharing } from "../buildSharing";
-import { persistedStatsPath } from "../stats";
-import { RecommendedMapList } from "../MapRecommendations";
-import { useLoad } from "../useLoad";
-import type { Build, BuildStatsResult, CommentPage, GameVersion, Vote } from "../types";
+import { api, json } from "../shared/api/api";
+import { useAuth } from "../features/auth/auth";
+import { COMMENT_PAGE_SIZE, hasNextCommentPage, lastCommentPage } from "../features/comments/commentPagination";
+import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
+import { buildDetailsOrigin } from "../features/builds/buildNavigation";
+import { BuildGadgetIcon, patchAge } from "../features/builds/BuildCard";
+import { countLabel, date } from "../shared/lib/format";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { MachineSetup } from "../features/builds/MachineSetup";
+import { MissingItems } from "../features/collection/Collection";
+import { RacingTypeBadge } from "../shared/ui/RacingTypeBadge";
+import { BuildStats } from "../features/stats/BaseStats";
+import { ScenarioPreview, scenarioSelection } from "../features/stats/ScenarioPreview";
+import { gadgetPlateStatus, savedBuildSetupIssues } from "../features/builds/buildForm";
+import { formatBuildForSharing } from "../features/builds/buildSharing";
+import { persistedStatsPath } from "../features/stats/stats";
+import { RecommendedMapList } from "../features/maps/MapRecommendations";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, BuildStatsResult, CommentPage, GameVersion, Vote } from "../shared/types";
 
 
 export function BuildDetails() {

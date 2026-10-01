@@ -1,8 +1,8 @@
 import { useRef, useState } from "react";
-import { api, json } from "../api";
-import { useAuth } from "../auth";
-import { ErrorNotice } from "../components";
-import { GoogleSignIn } from "../GoogleSignIn";
+import { api, json } from "../shared/api/api";
+import { useAuth } from "../features/auth/auth";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { GoogleSignIn } from "../features/auth/GoogleSignIn";
 
 interface MessageResponse {
   message: string;

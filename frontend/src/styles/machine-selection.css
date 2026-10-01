@@ -1,0 +1,57 @@
+
+.machine-family-choice legend {
+  margin-bottom: 7px;
+  color: #c9cfdb;
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.machine-family-choice label {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  margin: 0;
+}
+
+.machine-family-options {
+  display: flex;
+  align-items: center;
+  min-height: 48px;
+  gap: 28px;
+  padding: 0 14px;
+  border: 1px solid #39404e;
+  border-radius: 6px;
+  background: #11151c;
+}
+
+.machine-family-options label + label {
+  margin-top: 0;
+}
+
+.machine-family-choice label:has(input:checked) {
+  color: var(--accent-selected-text);
+}
+
+.machine-family-choice input {
+  width: auto;
+  margin: 0;
+}
+
+@media (max-width: 700px) {
+  .machine-setup-controls,
+  .machine-selection-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .board-machine-selection .racer-select,
+  .board-machine-selection .part-select {
+    grid-column: auto;
+    grid-row: auto;
+  }
+}

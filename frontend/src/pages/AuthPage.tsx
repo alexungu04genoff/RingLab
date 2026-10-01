@@ -1,7 +1,7 @@
-import { GoogleSignIn } from "../GoogleSignIn";
+import { GoogleSignIn } from "../features/auth/GoogleSignIn";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { ErrorNotice } from "../components";
-import { useAuthForm } from "./useAuthForm";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { useAuthForm } from "../features/auth/useAuthForm";
 
 export function AuthPage({ register = false }: { register?: boolean }) {
   const { error, registeredEmail, busy, submitForm, googleLogin } = useAuthForm(register);

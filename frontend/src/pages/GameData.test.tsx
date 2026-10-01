@@ -2,11 +2,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
-import { useLoad } from "../useLoad";
+import { useLoad } from "../shared/hooks/useLoad";
 import { GameData, newestGameVersion, patchNotesUrl } from "./GameData";
-import type { BaseStats, Gadget, Machine, MachinePart, Racer, ScenarioRulesCatalog } from "../types";
+import type { BaseStats, Gadget, Machine, MachinePart, Racer, ScenarioRulesCatalog } from "../shared/types";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
 afterEach(cleanup);
 
 it("badges only catalog-supported scenarios, including descriptive events and combined conditions", () => {

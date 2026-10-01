@@ -2,12 +2,12 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useLoad } from "../useLoad";
+import { useLoad } from "../shared/hooks/useLoad";
 import { Explore } from "./Explore";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
-vi.mock("../TopCommunityBuilds", () => ({ TopCommunityBuilds: () => null }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("../features/builds/TopCommunityBuilds", () => ({ TopCommunityBuilds: () => null }));
 
 beforeEach(() => {
   localStorage.clear();

@@ -2,12 +2,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-libra
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, setToken } from "../api";
+import { api, setToken } from "../shared/api/api";
 import { AuthPage } from "./AuthPage";
 
 const { accept } = vi.hoisted(() => ({ accept: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ accept }) }));
-vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ accept }) }));
+vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 const session = { token: "ringlab-jwt", user: { id: "user", username: "alex", email: "alex@example.test", createdAt: "2026-01-01" } };
 
 beforeEach(() => {

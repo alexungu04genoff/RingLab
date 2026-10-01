@@ -1,0 +1,22 @@
+:root {
+  font-family:
+    Inter,
+    Segoe UI,
+    Arial,
+    sans-serif;
+  color: #eceef3;
+  background: #101319;
+  font-synthesis: none;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: dark;
+  --muted: #9ba3b4;
+  --accent: #38a9ff;
+  --accent-hover: #78c9ff;
+  --accent-ink: #061b2e;
+  --accent-muted: #24557b;
+  --accent-selected: #163d5c;
+  --accent-selected-text: #c8ecff;
+  --border: #2b303c;
+  --panel: #191d26;
+}

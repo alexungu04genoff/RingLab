@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { BuildCard } from "../components";
-import { ComparisonTray } from "../BuildComparison";
-import { useSavedBuilds } from "../SavedBuilds";
-import { useLoad } from "../useLoad";
-import type { Build, BuildStatsResult, GameVersion } from "../types";
-import type { RaceMap } from "../types";
-import { MapFilter } from "../MapRecommendations";
+import { BuildCard } from "../features/builds/BuildCard";
+import { ComparisonTray } from "../features/builds/BuildComparison";
+import { useSavedBuilds } from "../features/saved-builds/SavedBuilds";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, BuildStatsResult, GameVersion } from "../shared/types";
+import type { RaceMap } from "../shared/types";
+import { MapFilter } from "../features/maps/MapRecommendations";
 
 export interface SavedBuildPage {
   items: { build: Build; savedAt: string }[];

@@ -200,8 +200,8 @@ real browser click/keyboard behavior and accessible markup were checked.
 ## Review commands and remaining manual checks
 
 From `frontend`: `npm run test:coverage -- --maxWorkers=4` and `npm run build`.
-Focused files can also be run with `npm test -- src/BuildComparison.test.tsx
-src/CardClarity.test.tsx src/StockMachineCard.test.tsx src/PageCardStats.test.tsx`.
+Focused files can also be run with `npm test -- src/features/builds/BuildComparison.test.tsx
+src/features/builds/CardClarity.test.tsx src/features/collection/StockMachineCard.test.tsx src/features/stats/PageCardStats.test.tsx`.
 The focused pure backend classes can be run directly from IntelliJ's gutter:
 `BaseStatsServiceTest`, `BuildRestResourceTest`, and `BaseStatsBreakdownTest`.
 

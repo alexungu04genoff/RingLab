@@ -4,7 +4,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 import { GuidePage } from "./Guide";
 
 const auth = vi.hoisted(() => ({ user: null as { id: string } | null }));
-vi.mock("../auth", () => ({ useAuth: () => auth }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => auth }));
 
 beforeEach(() => { auth.user = null; });
 

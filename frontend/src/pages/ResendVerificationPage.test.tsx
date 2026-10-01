@@ -2,14 +2,14 @@ import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, ApiError } from "../api";
+import { api, ApiError } from "../shared/api/api";
 import { AuthPage } from "./AuthPage";
 import { ResendVerificationPage } from "./ResendVerificationPage";
 
 const { accept } = vi.hoisted(() => ({ accept: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ accept }) }));
-vi.mock("../GoogleSignIn", () => ({ GoogleSignIn: () => null }));
-vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ accept }) }));
+vi.mock("../features/auth/GoogleSignIn", () => ({ GoogleSignIn: () => null }));
+vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
 function page(path: string) {

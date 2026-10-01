@@ -1,15 +1,15 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
-import { useLoad } from "../useLoad";
-import type { Build, MachinePart } from "../types";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, MachinePart } from "../shared/types";
 import { BuildDetails } from "./BuildDetails";
-import { draftFromRemix } from "./useBuildDraft";
+import { draftFromRemix } from "../features/builds/useBuildDraft";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn() }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../shared/api/api", () => ({ api: vi.fn(), json: vi.fn() }));
 let currentUser: { id: string } | null = { id: "remixer" };
-vi.mock("../auth", () => ({ useAuth: () => ({ user: currentUser }) }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type.toLowerCase(), type, sourceMachineId: "machine", sourceMachineName: "Speedster",

@@ -2,11 +2,11 @@ import { StrictMode } from "react";
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "../api";
+import { api } from "../shared/api/api";
 import { VerifyEmailPage } from "./VerifyEmailPage";
 import { ResendVerificationPage } from "./ResendVerificationPage";
 
-vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 beforeEach(() => vi.resetAllMocks());
 afterEach(cleanup);
 

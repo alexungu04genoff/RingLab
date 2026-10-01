@@ -317,7 +317,7 @@ Optional manual checks, run from the indicated project directory:
 mvn "-Dtest=BuildRecommendationSolverTest,BuildRecommendationServiceTest" test
 
 # From frontend/: focused modal/lock/merge behavior
-npm test -- src/BuildRecommendationDialog.test.tsx src/recommendation.test.ts src/pages/BuildEditor.test.tsx
+npm test -- src/features/recommendations/BuildRecommendationDialog.test.tsx src/features/recommendations/recommendation.test.ts src/pages/BuildEditor.test.tsx
 
 # From frontend/: complete coverage gates and production build
 npm run test:coverage -- --maxWorkers=2

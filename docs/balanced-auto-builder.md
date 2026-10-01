@@ -317,7 +317,7 @@ Verification on 2026-09-28:
   by policy”. Automated modal keyboard, async, Apply and desktop/mobile tests passed.
 
 After those checks, the Balanced priority cards were changed to compact, aligned
-rows in `BuildRecommendationDialog.tsx` and `balancedRecommendation.css`. All 48
+rows in `BuildRecommendationDialog.tsx` and `styles/recommendation.css`. All 48
 focused dialog, recommendation and editor tests passed, and the frontend build
 passed again. The full coverage results and source manifest above describe the
 earlier implementation snapshot. The existing browser preview remained below the

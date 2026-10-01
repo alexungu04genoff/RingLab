@@ -1,0 +1,55 @@
+.auth-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  max-width: 950px;
+  margin: 35px auto;
+  gap: 90px;
+  align-items: center;
+}
+.auth-intro h1 {
+  font-size: 58px;
+}
+.auth-intro em {
+  font-style: normal;
+  color: var(--accent);
+}
+.auth-intro p {
+  font-size: 14px;
+}
+.decorative-rings {
+  font-size: 100px;
+  line-height: 1;
+  color: var(--accent);
+  transform: skew(-15deg);
+  opacity: 0.7;
+}
+.auth-form {
+  padding: 35px;
+  margin: 0;
+}
+.auth-form label {
+  margin: 20px 0;
+}
+.auth-form > button {
+  width: 100%;
+  margin: 8px 0 20px;
+}
+.auth-form > p {
+  font-size: 13px;
+}
+.google-sign-in {
+  width: 100%;
+  margin-top: 20px;
+}
+.google-sign-in > div:first-child {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  height: 40px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+.google-sign-in > .muted {
+  margin: 10px 0 0;
+  text-align: center;
+}

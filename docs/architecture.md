@@ -366,6 +366,27 @@ See [the code walkthrough](code-walkthrough.md) for IDE entry points and behavio
 
 ## Frontend
 
+The frontend source is organized by responsibility. `src/app` owns the app shell
+and footer; `src/main.tsx` mounts the existing router and providers. `src/pages`
+contains route composition. Domain-aware UI and state live in `src/features`
+(auth, builds, collection, comments, maps, news, recommendations, saved-builds,
+and stats), including editor draft state and browsing filters. Tests stay beside
+the responsibility they exercise; route-level interaction tests remain in pages.
+
+`src/shared` contains API contracts (`types.ts`), the API client, loading hooks,
+generic formatting, and reusable UI. Shared code does not import features or
+pages. Features may reuse other feature responsibilities without runtime cycles;
+pages compose them and the app mounts them. `ScenarioBadge` remains in stats.
+`CollectionArtwork` supplies catalog fallbacks and ownership to the generic
+`shared/ui/Artwork`; the latter does not read collection state or call the API.
+
+Plain CSS lives in `src/styles`. `index.css` explicitly imports the original
+stylesheet's sections in their existing cascade order, including late readability,
+responsive, stats, and collection overrides. Some adjacent override sections span
+related responsibilities to preserve that order without changing selectors.
+Recommendation CSS retains its earlier import through the recommendation dialog.
+The full file map and source tree are in [Frontend organization](frontend-organization.md).
+
 `GameVersion` is persistent game-data catalog metadata (`id`, plain version string, release date).
 V5 seeds the four supplied official versions and adds a nullable `Build.gameVersionId` foreign key.
 Legacy stored builds may remain versionless, but creating or editing requires a selected

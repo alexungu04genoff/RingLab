@@ -3,14 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { useLoad } from "../useLoad";
-import type { Build, MachinePart, RaceMap } from "../types";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, MachinePart, RaceMap } from "../shared/types";
 import { BuildDetails } from "./BuildDetails";
 import { buildDiff, CompareBuilds, compareUrl } from "./CompareBuilds";
 
-vi.mock("../useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../api", () => ({ api: vi.fn(), json: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ user: null }) }));
+vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
+vi.mock("../shared/api/api", () => ({ api: vi.fn(), json: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source: string): MachinePart => ({
   id: `${source}-${type}`, type, sourceMachineId: source, sourceMachineName: source,

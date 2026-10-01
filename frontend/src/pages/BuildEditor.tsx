@@ -1,24 +1,27 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { DraftStats } from "../BaseStats";
-import { ScenarioPreview } from "../ScenarioPreview";
-import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels } from "../PassiveStats";
-import { passiveStatsPath } from "../stats";
+import { DraftStats } from "../features/stats/BaseStats";
+import { ScenarioPreview } from "../features/stats/ScenarioPreview";
+import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels } from "../features/stats/PassiveStats";
+import { passiveStatsPath } from "../features/stats/stats";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, ApiError, currentSessionGeneration, json } from "../api";
-import { useAuth } from "../auth";
-import { MissingItems, useCollection } from "../Collection";
-import { Artwork, ErrorNotice, ItemSelect, racingTypeClass, racingTypeLabel } from "../components";
-import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, moveGadgetTo, stockMachineSources, switchMachineType, toggleGadget } from "../buildForm";
-import { useLoad } from "../useLoad";
-import type { Build, BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, GameVersion, MachinePart, Racer, RacingType } from "../types";
-import { machineSetupError } from "../buildForm";
-import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../machineComposition";
-import { useBuildDraft } from "./useBuildDraft";
-import { MapRecommendationPicker, RecommendedMapList } from "../MapRecommendations";
-import type { RaceMap } from "../types";
-import { BuildRecommendationDialog, SelectionLock } from "../BuildRecommendationDialog";
-import { desktopRecommendationQuery, emptyLocks, groupLockState, lockTypeConflict, stockSourceForDraft, toggleMachineLocks } from "../recommendation";
-import type { ComponentKey, RecommendationSelection } from "../recommendation";
+import { api, ApiError, currentSessionGeneration, json } from "../shared/api/api";
+import { useAuth } from "../features/auth/auth";
+import { MissingItems, useCollection } from "../features/collection/Collection";
+import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { ItemSelect } from "../features/collection/ItemSelect";
+import { racingTypeClass, racingTypeLabel } from "../shared/ui/RacingTypeBadge";
+import { applyStockMachine, filterGadgets, gadgetPlateStatus, machinePartsForType, moveGadget, moveGadgetTo, stockMachineSources, switchMachineType, toggleGadget } from "../features/builds/buildForm";
+import { useLoad } from "../shared/hooks/useLoad";
+import type { Build, BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, GameVersion, MachinePart, Racer, RacingType } from "../shared/types";
+import { machineSetupError } from "../features/builds/buildForm";
+import { machineTypes, machineTypeLabel, requiredMachineSlots } from "../features/builds/machineComposition";
+import { useBuildDraft } from "../features/builds/useBuildDraft";
+import { MapRecommendationPicker, RecommendedMapList } from "../features/maps/MapRecommendations";
+import type { RaceMap } from "../shared/types";
+import { BuildRecommendationDialog, SelectionLock } from "../features/recommendations/BuildRecommendationDialog";
+import { desktopRecommendationQuery, emptyLocks, groupLockState, lockTypeConflict, stockSourceForDraft, toggleMachineLocks } from "../features/recommendations/recommendation";
+import type { ComponentKey, RecommendationSelection } from "../features/recommendations/recommendation";
 
 const partSlots = [
   { key: "frontPartId", type: "FRONT", label: "Front" },

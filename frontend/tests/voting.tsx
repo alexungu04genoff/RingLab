@@ -1,8 +1,8 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { AuthProvider } from "../src/auth";
-import { setToken } from "../src/api";
+import { AuthProvider } from "../src/features/auth/auth";
+import { setToken } from "../src/shared/api/api";
 import { BuildDetails } from "../src/pages/BuildDetails";
 
 const part = (type: string) => ({ id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine" });

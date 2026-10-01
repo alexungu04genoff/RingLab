@@ -1,15 +1,15 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, setToken } from "../api";
-import { BuildComparisonProvider } from "../BuildComparison";
-import { SavedBuildsProvider } from "../SavedBuilds";
+import { api, setToken } from "../shared/api/api";
+import { BuildComparisonProvider } from "../features/builds/BuildComparison";
+import { SavedBuildsProvider } from "../features/saved-builds/SavedBuilds";
 import { SavedBuildsPage } from "./SavedBuildsPage";
 import { CompareBuilds } from "./CompareBuilds";
-import type { Build } from "../types";
+import type { Build } from "../shared/types";
 
-vi.mock("../api", async original => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
-vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
+vi.mock("../shared/api/api", async original => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
 const part = (type: "FRONT" | "REAR" | "TIRE") => ({ id: type, type, sourceMachineId: "m", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" as const });
 const build: Build = { id: "one", title: "Saved setup", description: "", author: { id: "author", username: "Original author" },
   racer: { id: "r", name: "Racer", imagePath: null, racingType: "SPEED" }, frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"),

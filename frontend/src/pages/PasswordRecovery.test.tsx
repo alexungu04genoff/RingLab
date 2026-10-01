@@ -3,11 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { useEffect, useState } from "react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, ApiError, hasToken, setToken } from "../api";
+import { api, ApiError, hasToken, setToken } from "../shared/api/api";
 import { ForgotPasswordPage } from "./ForgotPasswordPage";
 import { ResetPasswordPage } from "./ResetPasswordPage";
 
-vi.mock("../api", async original => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../shared/api/api", async original => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 beforeEach(() => { vi.clearAllMocks(); setToken(null); });
 afterEach(cleanup);
 const resetToken = "a".repeat(43);

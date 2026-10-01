@@ -555,7 +555,7 @@ From `backend`, run the new unit test with `mvn -Dtest=GameDataResponseTest test
 For manual database verification use IntelliJ's gutter on `ReleasedCatalogMigrationIntegrationTest`
 or `mvn -Dtest=ReleasedCatalogMigrationIntegrationTest test` with the documented test database
 configuration. The integration test uses an isolated schema. Frontend null-type/fallback checks
-can be run from `frontend` with `npm test -- --run src/components.test.tsx`.
+can be run from `frontend` with `npm test -- src/shared/ui/Artwork.test.tsx src/features/collection/CollectionArtwork.test.tsx`.
 The existing catalog boundary tests were also updated for the larger inventory; run
 `mvn "-Dtest=GameDataRepositoryIntegrationTest,AcceptanceTest" test` manually against the disposable
 test database. From `frontend`, `npm run build` remains the manual TypeScript/production build check.

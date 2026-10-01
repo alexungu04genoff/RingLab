@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, json } from "../api";
-import { ErrorNotice } from "../components";
+import { api, json } from "../shared/api/api";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
 
 export function ResendVerificationPage() {
   const [busy, setBusy] = useState(false);

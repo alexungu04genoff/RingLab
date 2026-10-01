@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { api, ApiError, json, setToken } from "../api";
-import { ErrorNotice } from "../components";
+import { api, ApiError, json, setToken } from "../shared/api/api";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
 
 const invalidLink = "This password reset link is invalid or has expired.";
 

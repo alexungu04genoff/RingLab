@@ -1,23 +1,25 @@
 import { useState } from "react";
-import { CollectionStatus, OwnershipCheckbox, useCollection } from "../Collection";
+import { CollectionStatus, OwnershipCheckbox, useCollection } from "../features/collection/Collection";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
-import { MapThumbnail } from "../MapRecommendations";
-import { mapCategoryLabel } from "../mapSelection";
-import type { RaceMap } from "../types";
-import { CompassIcon } from "../icons";
-import { Artwork, ErrorNotice, date } from "../components";
-import { RacingTypeBadge } from "../RacingTypeBadge";
-import { useLoad } from "../useLoad";
-import { StatsBlock } from "../BaseStats";
-import type { StatsCatalog } from "../types";
-import type { Gadget, GameVersion, Machine, MachinePart, Racer } from "../types";
-import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../icons";
-import { StockMachineCard } from "../StockMachineCard";
-import { GadgetRuleDetails } from "../PassiveStats";
-import type { GadgetRulesCatalog } from "../types";
-import type { ScenarioRulesCatalog } from "../types";
-import { ScenarioBadge } from "../ScenarioBadge";
+import { MapThumbnail } from "../features/maps/MapRecommendations";
+import { mapCategoryLabel } from "../features/maps/mapSelection";
+import type { RaceMap } from "../shared/types";
+import { CompassIcon } from "../shared/ui/icons";
+import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { date } from "../shared/lib/format";
+import { RacingTypeBadge } from "../shared/ui/RacingTypeBadge";
+import { useLoad } from "../shared/hooks/useLoad";
+import { StatsBlock } from "../features/stats/BaseStats";
+import type { StatsCatalog } from "../shared/types";
+import type { Gadget, GameVersion, Machine, MachinePart, Racer } from "../shared/types";
+import { GearIcon, HistoryIcon, RacerIcon, SteeringWheelIcon } from "../shared/ui/icons";
+import { StockMachineCard } from "../features/collection/StockMachineCard";
+import { GadgetRuleDetails } from "../features/stats/PassiveStats";
+import type { GadgetRulesCatalog } from "../shared/types";
+import type { ScenarioRulesCatalog } from "../shared/types";
+import { ScenarioBadge } from "../features/stats/ScenarioBadge";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },

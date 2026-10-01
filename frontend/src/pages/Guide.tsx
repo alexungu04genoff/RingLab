@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useAuth } from "../auth";
+import { useAuth } from "../features/auth/auth";
 
 const srcGadgetBuilderUrl = "https://www.srcgadgetbuilder.com/";
 const sonicFandomCrossWorldsUrl = "https://sonic.fandom.com/wiki/Sonic_Racing:_CrossWorlds";

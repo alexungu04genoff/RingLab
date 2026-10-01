@@ -1,22 +1,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { useAuth } from "../auth";
-import { Artwork, BuildCard, ErrorNotice } from "../components";
-import { useLoad } from "../useLoad";
-import { ComparisonTray } from "../BuildComparison";
-import { pageCardStats } from "../CardStats";
-import { LatestNews } from "../LatestNews";
-import { TopCommunityBuilds } from "../TopCommunityBuilds";
-import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../types";
-import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../icons";
-import { SearchableFilter } from "../SearchableFilter";
-import { MapFilter } from "../MapRecommendations";
-import type { RaceMap } from "../types";
+import { useAuth } from "../features/auth/auth";
+import { CollectionArtwork as Artwork } from "../features/collection/CollectionArtwork";
+import { BuildCard } from "../features/builds/BuildCard";
+import { ErrorNotice } from "../shared/ui/ErrorNotice";
+import { useLoad } from "../shared/hooks/useLoad";
+import { ComparisonTray } from "../features/builds/BuildComparison";
+import { pageCardStats } from "../features/stats/CardStats";
+import { LatestNews } from "../features/news/LatestNews";
+import { TopCommunityBuilds } from "../features/builds/TopCommunityBuilds";
+import type { BuildPage, GameVersion, Machine, Racer, TopCommunitySnapshot } from "../shared/types";
+import { ComponentsIcon, LibraryIcon, RacerIcon, SearchIcon, SortIcon, TagIcon } from "../shared/ui/icons";
+import { SearchableFilter } from "../shared/ui/SearchableFilter";
+import { MapFilter } from "../features/maps/MapRecommendations";
+import type { RaceMap } from "../shared/types";
 import {
   activeExploreFilterChips, clearExploreFilters, PUBLIC_PATCH_PREFERENCE,
   PUBLIC_SORT_PREFERENCE, readPreference, resolveGameVersion, resolvePage, resolveSort,
   updateExploreParams, type BuildSort,
-} from "./exploreFilters";
+} from "../features/builds/exploreFilters";
 
 const SONIC_HERO_NAME = "Sonic the Hedgehog";
 const FEATURED_HERO_NAMES = new Set([

@@ -1,15 +1,15 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api, ApiError, setToken } from "../api";
-import type { Build, BuildStatsResult, MachinePart } from "../types";
+import { api, ApiError, setToken } from "../shared/api/api";
+import type { Build, BuildStatsResult, MachinePart } from "../shared/types";
 import { BuildEditor } from "./BuildEditor";
 
-vi.mock("../auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
-vi.mock("../Collection", async original => ({ ...await original<typeof import("../Collection")>(),
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
+vi.mock("../features/collection/Collection", async original => ({ ...await original<typeof import("../features/collection/Collection")>(),
   useCollection: () => ({ status: "ready", busy: false, revision: 0, data: { racers: [], machines: [], gadgets: [] },
     refresh: async () => ({ racers: [], machines: [], gadgets: [] }) }) }));
-vi.mock("../api", async (original) => ({ ...await original<typeof import("../api")>(), api: vi.fn() }));
+vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine",
   sourceMachineImagePath: null, racingType: "SPEED",
