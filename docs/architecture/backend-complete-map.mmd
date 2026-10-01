@@ -1,0 +1,52 @@
+flowchart TB
+  subgraph accounts["Accounts · 10"]
+    direction LR
+    ar["AuthRestResource"]:::rest --> as["AuthService"]:::app
+    ar --> ev["EmailVerificationService"]:::app
+    ar --> ea["ExternalAuthService"]:::app
+    pr["PasswordResetRestResource"]:::rest --> ps["PasswordResetService"]:::app
+    dev["DevDemoAccountRestResource<br/>DEV ONLY: non-prod build + loopback"]:::rest --> ds["DemoAccountBootstrapService<br/>DEV ONLY"]:::app
+  end
+  subgraph builds["Builds · 5–6"]
+    direction LR
+    br["BuildRestResource"]:::rest --> bs["BuildService"]:::app
+    br --> bra["BuildResponseAssembler"]:::rest
+    br --> cache["CommunitySnapshotCache<br/>only for excludeTop fallback"]:::app
+    br --> passive["PassiveStatsService<br/>optional page stats"]:::app
+    rec["BuildRecommendationRestResource"]:::rest --> recs["BuildRecommendationService"]:::app
+  end
+  subgraph personal["Personal · 11–12"]
+    direction LR
+    cr["CollectionRestResource"]:::rest --> cs["CollectionService"]:::app
+    sr["SavedBuildRestResource"]:::rest --> ss["SavedBuildService"]:::app
+    sr --> sra["BuildResponseAssembler"]:::rest
+    sr --> sps["PassiveStatsService"]:::app
+    sr --> vp["VoteRepository<br/>direct summaries read"]:::port
+  end
+  subgraph social["Social · 9, 12"]
+    direction LR
+    cor["CommentRestResource"]:::rest --> cos["CommentService"]:::app
+    cor --> uas["AuthService<br/>author display names"]:::app
+    cdr["CommentDeletionRestResource"]:::rest --> cos
+    vr["VoteRestResource"]:::rest --> vs["VoteService"]:::app
+    comr["CommunityRestResource"]:::rest --> comc["CommunitySnapshotCache"]:::app
+    comr --> urls["CommunityPublicUrls / TopBuildsResponse<br/>DiscordTopBuildsFormatter for export"]:::rest
+  end
+  subgraph catalog["Catalog / stats / news"]
+    direction LR
+    gr["GameDataRestResource"]:::rest --> gp["GameDataRepository<br/>direct catalog reads"]:::port
+    bsr["BaseStatsRestResource"]:::rest --> bss["BaseStatsService"]:::app
+    pssr["PassiveStatsRestResource"]:::rest --> pss["PassiveStatsService"]:::app
+    pssr --> pbs["BuildService<br/>persisted preview"]:::app
+    pssr --> pg["GameDataRepository<br/>rule catalog's gadget list"]:::port
+    pssr --> pgr["PassiveGadgetRules<br/>rule catalog metadata"]:::domain
+    scr["ScenarioStatsRestResource"]:::rest --> scs["ScenarioStatsService"]:::app
+    scr --> scrules["ScenarioGadgetRules<br/>controls path"]:::domain
+    nr["NewsRestResource"]:::rest --> ns["GameNewsService"]:::app
+  end
+  %% Invisible links stack independent feature panels; they are not calls.
+  accounts ~~~ builds ~~~ personal ~~~ social ~~~ catalog
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f

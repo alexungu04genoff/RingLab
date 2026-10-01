@@ -1,0 +1,32 @@
+flowchart TB
+  subgraph auth["Account storage"]
+    direction LR
+    u["UserRepository"]:::port -.->|"implemented by"| ua["UserDbAdapter"]:::adapter
+    e["ExternalIdentityRepository"]:::port -.-> ea["ExternalIdentityDbAdapter"]:::adapter
+    v["EmailVerificationTokenRepository"]:::port -.-> va["EmailVerificationTokenDbAdapter"]:::adapter
+    p["PasswordResetRepository"]:::port -.-> pa["PasswordResetDbAdapter"]:::adapter
+  end
+  subgraph community["Build / personal storage"]
+    direction LR
+    b["BuildRepository"]:::port -.-> ba["BuildDbAdapter"]:::adapter
+    s["SavedBuildRepository"]:::port -.-> sa["SavedBuildDbAdapter"]:::adapter
+    c["CollectionRepository"]:::port -.-> ca["CollectionDbAdapter — native SQL"]:::adapter
+    co["CommentRepository"]:::port -.-> coa["CommentDbAdapter"]:::adapter
+    vo["VoteRepository"]:::port -.-> voa["VoteDbAdapter"]:::adapter
+  end
+  subgraph facts["Game facts"]
+    direction LR
+    g["GameDataRepository"]:::port -.-> ga["GameDataDbAdapter"]:::adapter
+    st["BaseStatsRepository"]:::port -.-> sta["BaseStatsDbAdapter — native SQL"]:::adapter
+  end
+  subgraph external["External infrastructure"]
+    direction LR
+    n["GameNewsRepository"]:::port -.-> na["SteamNewsAdapter"]:::adapter
+    i["ExternalIdentityVerifier"]:::port -.-> ia["GoogleIdentityVerificationAdapter"]:::adapter
+    m["EmailVerificationSender"]:::port -.-> ma["QuarkusEmailVerificationSender"]:::adapter
+    r["PasswordResetSender"]:::port -.-> ra["QuarkusPasswordResetSender"]:::adapter
+  end
+  %% Layout only: stack the four independent binding panels.
+  auth ~~~ community ~~~ facts ~~~ external
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333

@@ -1,0 +1,47 @@
+flowchart TB
+  subgraph stored["AUTH / BUILD / SOCIAL"]
+    direction LR
+    user["User"]:::domain
+    identity["ExternalIdentity"]:::domain -->|"userId"| user
+    tokens["EmailVerificationToken<br/>PasswordResetToken"]:::domain -->|"userId"| user
+    b["Build<br/>immutable gadget list + map set"]:::domain
+    b -->|"optional source ID"| b
+    b -->|"authorId"| user
+    refs["Racer: one ID<br/>MachinePart: front / rear / optional tire IDs<br/>Gadget: ordered IDs<br/>GameVersion: optional ID<br/>RaceMap: selected ID set"]:::domain
+    b -->|"catalog references"| refs
+    comment["Comment"]:::domain -->|"buildId"| b
+    comment -->|"authorId"| user
+    vote["Vote<br/>-1 or +1"]:::domain -->|"buildId"| b
+    vote -->|"userId"| user
+  end
+  subgraph game["GAME DATA"]
+    direction LR
+    racer["Racer"]:::domain
+    machine["Machine"]:::domain
+    part["MachinePart"]:::domain -->|"sourceMachineId"| machine
+    slot["MachinePartType<br/>FRONT / REAR / TIRE"]:::domain
+    type["RacingType<br/>SPEED / ACCELERATION / HANDLING<br/>POWER / BOOST"]:::domain
+    gadget["Gadget<br/>current nullable cost / description"]:::domain
+    plate["GadgetPlate<br/>two-row packing rule"]:::domain
+    gadget -.->|"costs supplied by caller"| plate
+    map["RaceMap"]:::domain --> category["RaceMap.Category<br/>MAIN_COURSE / CROSSWORLD"]:::domain
+    composition["MachineComposition<br/>required slots from machine type"]:::domain
+    compatibility["MachineCompatibility<br/>same source-machine type; no BOOST tire"]:::domain
+    racer -->|"racingType"| type
+    machine -->|"racingType"| type
+    part -->|"type"| slot
+    composition -->|"returns required set"| slot
+    composition -->|"accepts type"| type
+    compatibility --> composition
+  end
+  subgraph transient["COLLECTION / TRANSIENT"]
+    direction LR
+    exclusions["CollectionExclusions<br/>sets of racer / machine / gadget IDs"]:::domain
+    categories["CollectionCategory<br/>RACER / MACHINE / GADGET"]:::domain
+    verified["VerifiedExternalIdentity<br/>verified provider facts"]:::domain
+    summary["VoteSummary<br/>derived score"]:::domain
+    item["GameNewsItem<br/>transient external item"]:::domain
+  end
+  %% Layout only. Repeated catalog names are the same types in different views.
+  stored ~~~ game ~~~ transient
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24

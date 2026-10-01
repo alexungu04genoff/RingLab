@@ -1,0 +1,59 @@
+erDiagram
+  direction LR
+  users ||--o{ builds : authors
+  racers ||--o{ builds : selected
+  machine_parts ||--o{ builds : front_and_rear
+  machine_parts |o--o{ builds : optional_tire
+  game_versions |o--o{ builds : selected_patch
+  builds |o--o{ builds : remix_source_SET_NULL
+  builds ||--o{ build_gadgets : CASCADE
+  gadgets ||--o{ build_gadgets : selected
+  builds ||--o{ build_recommended_maps : CASCADE
+  race_maps ||--o{ build_recommended_maps : RESTRICT
+  builds ||--o{ votes : CASCADE
+  users ||--o{ votes : casts
+  builds ||--o{ comments : CASCADE
+  users ||--o{ comments : writes
+  builds ||--o{ saved_builds : CASCADE
+  users ||--o{ saved_builds : CASCADE
+  builds {
+    uuid id PK
+    varchar title
+    text description
+    uuid author_id FK
+    uuid racer_id FK
+    uuid front_part_id FK
+    uuid rear_part_id FK
+    uuid tire_part_id FK "nullable"
+    uuid game_version_id FK "nullable legacy data"
+    uuid remixed_from_build_id FK "nullable"
+    timestamptz created_at
+    timestamptz updated_at
+  }
+  build_gadgets {
+    uuid build_id PK,FK
+    int position PK "nonnegative ordered index"
+    uuid gadget_id FK
+  }
+  build_recommended_maps {
+    uuid build_id PK,FK
+    uuid map_id PK,FK
+  }
+  votes {
+    uuid id PK
+    uuid user_id FK "unique with build_id"
+    uuid build_id FK
+    smallint value "CHECK -1 or 1"
+  }
+  comments {
+    uuid id PK
+    uuid build_id FK
+    uuid author_id FK
+    varchar text "max 2000"
+    timestamptz created_at
+  }
+  saved_builds {
+    uuid user_id PK,FK
+    uuid build_id PK,FK
+    timestamptz saved_at "default clock_timestamp"
+  }

@@ -1,0 +1,34 @@
+flowchart TB
+  subgraph news["Steam news"]
+    direction TB
+    nr["NewsRestResource"]:::rest --> ns["GameNewsService.latest — request five"]:::app
+    ns --> np["GameNewsRepository"]:::port
+    np -.-> na["SteamNewsAdapter<br/>validate response; map GameNewsItem"]:::adapter
+    na --> nc["SteamNewsClient<br/>GET /ISteamNews/GetNewsForApp/v2/"]:::adapter
+    nc --> steam["Steam API"]:::outside
+    na -.->|"transport / HTTP / malformed data"| ne["ExternalServiceUnavailableException<br/>safe News unavailable → HTTP 503"]:::app
+  end
+  subgraph identity["Google identity"]
+    direction TB
+    es["ExternalAuthService"]:::app --> ip["ExternalIdentityVerifier"]:::port
+    ip -.-> ia["GoogleIdentityVerificationAdapter"]:::adapter
+    ia --> google["Google library + signing-key infrastructure"]:::outside
+    ia -.->|"invalid credential"| invalid["AuthenticationException → HTTP 401"]:::app
+    ia -.->|"unconfigured / key I/O unavailable"| unavailable["ExternalServiceUnavailableException → HTTP 503"]:::app
+  end
+  subgraph mail["Email"]
+    direction TB
+    ar["AuthRestResource<br/>after registration/resend transaction"]:::rest --> ep["EmailVerificationSender"]:::port
+    ep -.-> ea["QuarkusEmailVerificationSender"]:::adapter
+    ps["PasswordResetService<br/>inside request transaction"]:::app --> rp["PasswordResetSender"]:::port
+    rp -.-> ra["QuarkusPasswordResetSender"]:::adapter
+    ea --> smtp["Quarkus Mailer → SMTP<br/>or configured mock mailbox"]:::outside
+    ra --> smtp
+  end
+  %% Layout only: these external systems do not call one another.
+  news ~~~ identity ~~~ mail
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

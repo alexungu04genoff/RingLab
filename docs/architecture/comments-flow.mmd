@@ -1,0 +1,27 @@
+flowchart TB
+  h["GET / POST /api/builds/{id}/comments<br/>DELETE /api/comments/{id}"]:::outside
+  r["CommentRestResource<br/>CommentDeletionRestResource"]:::rest
+  actor["CurrentUser.id<br/>create / delete only"]:::rest
+  s["CommentService<br/>list / create / delete"]:::app
+  build["BuildService.get<br/>list and create only"]:::app
+  policy["ProfanityPolicy for create<br/>ForbiddenException.requireOwner for delete"]:::app
+  p["CommentRepository"]:::port
+  a["CommentDbAdapter<br/>Panache list/count/find/persist/delete"]:::adapter
+  m["CommentDbMapper ↔ CommentDbEntity"]:::adapter
+  db[("comments")]:::outside
+  user["AuthService.current<br/>response author names"]:::app
+  dto["CommentResponse / CommentPageResponse"]:::rest
+  h --> r
+  r --> actor
+  r --> s
+  s --> build
+  s --> policy
+  s --> p
+  p -.-> a --> m --> db
+  r --> user
+  r --> dto
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

@@ -1,0 +1,28 @@
+flowchart TB
+  h["GET /api/collection<br/>PUT /api/collection/{category}/{id}"]:::outside
+  r["CollectionRestResource + CurrentUser.id<br/>OwnershipRequest / CollectionResponse"]:::rest
+  s["CollectionService.load / setOwned<br/>transaction boundary"]:::app
+  game["GameDataRepository<br/>validate typed racer / machine / gadget ID on update"]:::port
+  p["CollectionRepository"]:::port
+  a["CollectionDbAdapter<br/>fixed category-to-table switch; native SQL"]:::adapter
+  lock[("users: FOR UPDATE before ownership mutation")]:::outside
+  tables[("collection_racer_exclusions<br/>collection_machine_exclusions<br/>collection_gadget_exclusions")]:::outside
+  ex["CollectionExclusions<br/>immutable sets of NOT-owned IDs"]:::domain
+  recommendation["BuildRecommendationService<br/>calls CollectionService.load(actor)"]:::app
+  solver["BuildRecommendationSolver<br/>filter candidate pools; reject unavailable locks"]:::domain
+  h --> r --> s
+  s --> game
+  s --> p
+  p -.-> a
+  a --> lock
+  a -->|"owned=false INSERT ON CONFLICT DO NOTHING<br/>owned=true DELETE"| tables
+  p -.->|"load result"| ex
+  recommendation --> s
+  recommendation -->|"passes returned exclusions"| solver
+  ex -.->|"availability constraints"| solver
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

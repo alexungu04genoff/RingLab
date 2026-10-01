@@ -1,0 +1,32 @@
+erDiagram
+  direction TB
+  users ||--o{ external_identities : CASCADE
+  users ||--o| email_verification_tokens : CASCADE
+  users ||--o| password_reset_tokens : CASCADE
+  users {
+    uuid id PK
+    varchar username UK
+    varchar email UK
+    varchar password_hash "nullable for external accounts"
+    timestamptz email_verified_at "nullable"
+    int auth_version "nonnegative; default 0"
+    timestamptz created_at
+  }
+  external_identities {
+    varchar provider PK
+    varchar provider_subject PK
+    uuid user_id FK
+    timestamptz created_at
+  }
+  email_verification_tokens {
+    uuid user_id PK,FK
+    varchar token_hash UK "SHA-256 digest"
+    timestamptz expires_at
+    timestamptz created_at
+  }
+  password_reset_tokens {
+    uuid user_id PK,FK
+    varchar token_hash UK "SHA-256 digest"
+    timestamptz created_at
+    timestamptz expires_at "CHECK after created_at"
+  }

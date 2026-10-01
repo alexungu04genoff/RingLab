@@ -1,0 +1,40 @@
+flowchart TB
+  register["POST /api/auth/register<br/>RegistrationRequest"]:::outside
+  verify["POST /api/auth/verify-email<br/>EmailVerificationRequest"]:::outside
+  resend["POST /api/auth/resend-verification<br/>ResendVerificationRequest"]:::outside
+  rest["AuthRestResource"]:::rest
+  auth["AuthService.register<br/>transaction: normalize, validate, bcrypt, create"]:::app
+  policy["PasswordPolicy + ProfanityPolicy<br/>Jakarta Validator for service inputs"]:::app
+  ev["EmailVerificationService<br/>issueVerification / resendVerification / verifyEmail"]:::app
+  up["UserRepository<br/>exists, create, byEmail, markEmailVerified"]:::port
+  tp["EmailVerificationTokenRepository<br/>replace, byTokenHashForUpdate, delete"]:::port
+  ua["UserDbAdapter + UserDbMapper + UserDbEntity"]:::adapter
+  ta["EmailVerificationTokenDbAdapter<br/>EmailVerificationTokenDbEntity"]:::adapter
+  users[("users")]:::outside
+  tokens[("email_verification_tokens<br/>one digest per user; unique token_hash")]:::outside
+  mail["VerificationEmail<br/>transient raw secret; never persisted"]:::app
+  sender["EmailVerificationSender"]:::port
+  adapter["QuarkusEmailVerificationSender<br/>Mailer.send"]:::adapter
+  smtp["SMTP / configured mail delivery"]:::outside
+  register --> rest
+  verify --> rest
+  resend --> rest
+  rest -->|"register"| auth
+  auth --> policy
+  auth --> up
+  auth -->|"issue inside registration transaction"| ev
+  rest -->|"verify or resend"| ev
+  ev --> up
+  ev --> tp
+  up -.-> ua --> users
+  tp -.-> ta --> tokens
+  auth -.->|"returns after commit"| mail
+  ev -.->|"resend may return"| mail
+  rest -->|"sendVerification after service return"| sender
+  mail -.->|"link input to REST delivery"| sender
+  sender -.-> adapter --> smtp
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

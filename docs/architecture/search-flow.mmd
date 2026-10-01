@@ -1,0 +1,38 @@
+flowchart TB
+  h["GET /api/builds<br/>search, racerId, machineId, authorId, gameVersionId<br/>mapId, includeAllMaps, excludeId, excludeTop<br/>sort, page, size, includeStats"]:::outside
+  r["BuildRestResource.list<br/>default rated / page 0 / size 12; max 50"]:::rest
+  cache["CommunitySnapshotCache.get<br/>only excludeTop with no explicit excludeId"]:::app
+  s["BuildService.list + query validation"]:::app
+  p["BuildRepository.searchCandidates(Filter)"]:::port
+  a["BuildDbAdapter<br/>JPA Criteria predicates + locate(lower(...), search)"]:::adapter
+  db[("builds + racers + machines + machine_parts<br/>gadgets + build_gadgets + build_recommended_maps")]:::outside
+  facts["BuildRanking.Candidate<br/>id, createdAt, gameVersionId"]:::domain
+  votes["VoteRepository.summaries<br/>all candidates for SCORE/BEST_RATED"]:::port
+  versions["GameDataRepository.listGameVersions<br/>BEST_RATED only"]:::port
+  rank["BuildRanking.comparator(BuildSort)<br/>WilsonScore for BEST_RATED"]:::domain
+  page["BuildService<br/>global sort → page IDs → hydrateInRankedOrder"]:::app
+  full["BuildRepository.findAll<br/>selected page only"]:::port
+  assembly["BuildResponseAssembler.assembleAll<br/>page summaries; NEWEST reads votes after slicing"]:::rest
+  optional["PassiveStatsService.buildPage<br/>only includeStats=true"]:::app
+  out["BuildPageResponse<br/>items, total, page, size; optional stats/error"]:::rest
+  h --> r
+  r --> cache
+  r --> s
+  s --> p
+  p -.-> a --> db
+  p -.->|"unranked matching facts"| facts
+  s --> votes
+  s --> versions
+  s --> rank
+  facts -.->|"comparator inputs"| rank
+  s --> page --> full
+  r --> assembly
+  r --> optional
+  assembly --> out
+  optional -.->|"optional enrichment"| out
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

@@ -1,0 +1,24 @@
+flowchart TB
+  login["POST /api/auth/login<br/>LoginRequest"]:::outside
+  rest["AuthRestResource.login"]:::rest
+  svc["AuthService.login<br/>normalize username; bcrypt match; verified-email gate"]:::app
+  port["UserRepository"]:::port
+  db["UserDbAdapter → UserDbMapper / UserDbEntity"]:::adapter
+  table[("users<br/>password_hash, email_verified_at, auth_version")]:::outside
+  jwt["AuthRestResource.session<br/>Jwt.subject + groups user + authVersion + sign<br/>SessionResponse / UserResponse"]:::rest
+  next["Later protected HTTP request<br/>Authorization: Bearer JWT"]:::outside
+  framework["Quarkus / SmallRye JWT verification<br/>@RolesAllowed user"]:::rest
+  actor["CurrentUser.id<br/>UUID subject + user exists + authVersion matches"]:::rest
+  usecase["REST invokes application use case<br/>with authenticated actor UUID"]:::rest
+  login --> rest --> svc --> port
+  port -.-> db --> table
+  svc -.->|"User, no hash exposed in response"| jwt
+  next --> framework
+  framework -.->|"verified security context"| actor
+  actor --> port
+  actor -.->|"actor UUID"| usecase
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

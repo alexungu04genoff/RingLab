@@ -1,0 +1,41 @@
+flowchart TB
+  subgraph inbound["adapter/in/rest"]
+    br["BuildRestResource"]:::rest
+    nr["NewsRestResource"]:::rest
+    gd["GameDataRestResource"]:::rest
+  end
+  subgraph application["application"]
+    bs["BuildService"]:::app
+    ns["GameNewsService"]:::app
+  end
+  subgraph domain["domain — JDK only"]
+    b["Build / BuildRanking"]:::domain
+    n["GameNewsItem"]:::domain
+  end
+  subgraph ports["port/out — flat interfaces"]
+    bp["BuildRepository"]:::port
+    np["GameNewsRepository"]:::port
+    gp["GameDataRepository"]:::port
+  end
+  subgraph outbound["adapter/out"]
+    ba["BuildDbAdapter"]:::adapter
+    na["SteamNewsAdapter"]:::adapter
+    ga["GameDataDbAdapter"]:::adapter
+  end
+  br --> bs
+  nr --> ns
+  gd -->|"simple read, no application service"| gp
+  bs --> b
+  bs --> bp
+  ns --> n
+  ns --> np
+  bp -->|"contract uses domain types"| b
+  np --> n
+  ba -.->|"implements; Java dependency points inward"| bp
+  na -.->|"implements"| np
+  ga -.->|"implements"| gp
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333

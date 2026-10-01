@@ -1,0 +1,31 @@
+flowchart TB
+  h["POST /api/stats/scenario-build<br/>selected IDs + scenario"]:::outside
+  r["ScenarioStatsRestResource<br/>ScenarioStatsRequest.Context.toDomain"]:::rest
+  s["ScenarioStatsService.preview"]:::app
+  game["GameDataRepository<br/>one gadget catalog read; parts, machines, version, racer"]:::port
+  plate["GadgetPlate.canFit"]:::domain
+  base["BaseStatsService.draftBreakdown"]:::app
+  source["BaseStatsRepository → BaseStatsDbAdapter<br/>racer_stats + machine_part_stats"]:::port
+  passive["PassiveStatsService.resolved<br/>static call with resolved metadata"]:::app
+  pc["PassiveStatsCalculator → PassiveStatsResult"]:::domain
+  ctx["ScenarioContext<br/>lap / vehicleForm / ringsHeld<br/>landingBoostActive / distanceToFinish"]:::domain
+  sc["ScenarioStatsCalculator.calculate(passive, context)"]:::domain
+  rules["PassiveGadgetRules: identify conditional effects<br/>ScenarioGadgetRules: lookup + pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
+  result["ScenarioStatsResult<br/>effect statuses + adjustments + knownSubtotal<br/>exact total only when coverage supports it"]:::domain
+  dto["ScenarioStatsResponse.from<br/>no persistence"]:::rest
+  h --> r --> s
+  r --> ctx
+  s --> game
+  s --> plate
+  s --> base --> source
+  s --> passive --> pc
+  s --> sc
+  pc -.->|"already calculated baseline"| sc
+  ctx -.->|"request-only input"| sc
+  sc --> rules
+  sc --> result -.-> dto
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

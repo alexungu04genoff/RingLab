@@ -1,0 +1,44 @@
+flowchart LR
+  subgraph recommendation["RECOMMENDATION"]
+    request["RecommendationRequest"]:::domain
+    selection["BuildSelection<br/>current, locked or proposed IDs"]:::domain
+    mode["RecommendationMode / StatPriority"]:::domain
+    config["BalancedConfiguration"]:::domain
+    catalog["RecommendationCatalog<br/>catalog + versioned BaseStats maps"]:::domain
+    solver["BuildRecommendationSolver / Budget"]:::domain
+    objective["BalancedObjective"]:::domain
+    result["RecommendationResult / Outcome / BalancedDetails"]:::domain
+    request --> selection
+    request --> mode
+    request --> config
+    solver --> request
+    solver --> catalog
+    solver --> objective
+    solver --> result
+    result --> selection
+  end
+  subgraph stats["GAME DATA: calculated statistics"]
+    base["BaseStats<br/>five nullable BigDecimal values"]:::domain
+    breakdown["BaseStatsBreakdown<br/>total / character / machine"]:::domain --> base
+    passive["PassiveStatsResult<br/>coverage + effect records"]:::domain --> breakdown
+    pc["PassiveStatsCalculator"]:::domain --> passive
+    pr["PassiveGadgetRules / GadgetEffectRule"]:::domain
+    pc --> pr
+    context["ScenarioContext / VehicleForm"]:::domain
+    sc["ScenarioStatsCalculator"]:::domain --> context
+    sr["ScenarioGadgetRules / ScenarioEffectRule<br/>Condition / Field"]:::domain
+    sc --> sr
+    scenario["ScenarioStatsResult<br/>subtotal / nullable total / effects"]:::domain --> passive
+    sc --> scenario
+    sc -->|"consumes existing result"| passive
+  end
+  subgraph ranking["BUILD: calculated ranking"]
+    rank["BuildRanking / Candidate"]:::domain --> sort["BuildSort"]:::domain
+    rank --> wilson["WilsonScore"]:::domain
+    rank --> votes["VoteSummary"]:::domain
+  end
+  solver --> pc
+  catalog --> base
+  result --> base
+  objective --> base
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24

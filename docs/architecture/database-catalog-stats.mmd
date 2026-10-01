@@ -1,0 +1,62 @@
+erDiagram
+  direction TB
+  machines ||--o{ machine_parts : source
+  racers ||--o{ racer_stats : contribution
+  game_versions ||--o{ racer_stats : snapshot
+  machine_parts ||--o{ machine_part_stats : contribution
+  game_versions ||--o{ machine_part_stats : snapshot
+  racers {
+    uuid id PK
+    varchar name UK
+    varchar racing_type "nullable; checked five values"
+    varchar image_path "nullable local asset path"
+  }
+  machines {
+    uuid id PK
+    varchar name UK
+    varchar racing_type "nullable schema; checked five values"
+    varchar image_path "nullable"
+  }
+  machine_parts {
+    uuid id PK
+    uuid source_machine_id FK "unique with part_type"
+    varchar part_type "FRONT REAR TIRE"
+  }
+  game_versions {
+    uuid id PK
+    varchar version UK
+    date released_at
+  }
+  racer_stats {
+    uuid racer_id PK,FK
+    uuid game_version_id PK,FK
+    numeric speed "nullable"
+    numeric acceleration "nullable"
+    numeric handling "nullable"
+    numeric power "nullable"
+    numeric boost "nullable"
+  }
+  machine_part_stats {
+    uuid machine_part_id PK,FK
+    uuid game_version_id PK,FK
+    numeric speed "nullable"
+    numeric acceleration "nullable"
+    numeric handling "nullable"
+    numeric power "nullable"
+    numeric boost "nullable"
+  }
+  gadgets {
+    uuid id PK
+    varchar name UK
+    text description "nullable"
+    int slot_cost "nullable schema; current catalog cost"
+    varchar image_path "nullable"
+  }
+  race_maps {
+    uuid id PK
+    varchar name UK
+    varchar category "MAIN_COURSE or CROSSWORLD"
+    varchar content_pack "nullable"
+    varchar image_path "nullable"
+    int catalog_order UK
+  }

@@ -1,0 +1,35 @@
+flowchart TB
+  h["POST /api/auth/google<br/>POST /api/auth/google/link — signed-in user"]:::outside
+  r["AuthRestResource<br/>CurrentUser.id for explicit link"]:::rest
+  s["ExternalAuthService.login / link<br/>transaction boundary"]:::app
+  verifier["ExternalIdentityVerifier"]:::port
+  google["GoogleIdentityVerificationAdapter<br/>GoogleIdTokenVerifier + public keys manager"]:::adapter
+  provider["Google signing-key infrastructure"]:::outside
+  identity["VerifiedExternalIdentity<br/>provider, subject, verified email, display name"]:::domain
+  mapping["ExternalIdentityRepository"]:::port
+  mapdb["ExternalIdentityDbAdapter<br/>ExternalIdentityDbEntity"]:::adapter
+  mapt[("external_identities<br/>PK provider + provider_subject")]:::outside
+  users["UserRepository"]:::port
+  udb["UserDbAdapter + UserDbMapper / UserDbEntity"]:::adapter
+  ut[("users")]:::outside
+  create["ExternalAccountRegistration<br/>generate available clean username"]:::app
+  profanity["ProfanityPolicy"]:::app
+  output["login: AuthRestResource.session → SessionResponse<br/>link: MessageResponse"]:::rest
+  h --> r --> s
+  s --> verifier
+  verifier -.-> google --> provider
+  verifier -.->|"returns"| identity
+  s --> mapping
+  mapping -.-> mapdb --> mapt
+  s --> users
+  s -->|"new account"| create
+  create --> profanity
+  create --> users
+  users -.-> udb --> ut
+  s -.->|"User or completed link"| output
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

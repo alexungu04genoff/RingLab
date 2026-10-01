@@ -1,0 +1,20 @@
+erDiagram
+  direction TB
+  users ||--o{ collection_racer_exclusions : CASCADE
+  racers ||--o{ collection_racer_exclusions : CASCADE
+  users ||--o{ collection_machine_exclusions : CASCADE
+  machines ||--o{ collection_machine_exclusions : CASCADE
+  users ||--o{ collection_gadget_exclusions : CASCADE
+  gadgets ||--o{ collection_gadget_exclusions : CASCADE
+  collection_racer_exclusions {
+    uuid user_id PK,FK
+    uuid item_id PK,FK "references racers"
+  }
+  collection_machine_exclusions {
+    uuid user_id PK,FK
+    uuid item_id PK,FK "references machines"
+  }
+  collection_gadget_exclusions {
+    uuid user_id PK,FK
+    uuid item_id PK,FK "references gadgets"
+  }

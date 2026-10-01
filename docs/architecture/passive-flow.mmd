@@ -1,0 +1,36 @@
+flowchart TB
+  br["BaseStatsRestResource"]:::rest
+  pr["PassiveStatsRestResource"]:::rest
+  bs["BuildService.get<br/>persisted/{id} only"]:::app
+  base["BaseStatsService"]:::app
+  passive["PassiveStatsService"]:::app
+  build["buildBreakdown<br/>canonical required contributions"]:::app
+  draft["draftBreakdown<br/>selected-component subtotal"]:::app
+  page["buildPage<br/>base maps once per distinct patch"]:::app
+  cat["catalog / stockMachineStats<br/>derive stock totals from required part count"]:::app
+  resolved["PassiveStatsService.resolved<br/>resolved racer / parts / source machines / gadgets"]:::app
+  plate["GadgetPlate.canFit"]:::domain
+  calc["PassiveStatsCalculator<br/>PassiveGadgetRules"]:::domain
+  dto["BuildStatsResponse.withPassive<br/>or BuildStatsResponse.from / CatalogResponse"]:::rest
+  game["GameDataRepository<br/>resolve catalog metadata"]:::port
+  stats["BaseStatsRepository<br/>read per-version maps"]:::port
+  br --> base
+  base --> build
+  base --> cat
+  base --> game
+  base --> stats
+  pr -->|"persisted"| bs
+  pr -->|"draft or persisted page"| passive
+  passive -->|"draft"| draft
+  passive -->|"saved build list"| page
+  passive --> game
+  passive --> plate
+  draft --> stats
+  page --> stats
+  passive --> resolved --> calc
+  calc -.->|"PassiveStatsResult"| dto
+  br --> dto
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f

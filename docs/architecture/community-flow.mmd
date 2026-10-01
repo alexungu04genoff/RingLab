@@ -1,0 +1,39 @@
+flowchart TB
+  browse["BuildRestResource → BuildService.list<br/>normal Explore query"]:::rest
+  rest["CommunityRestResource<br/>GET top-builds or top-builds/discord"]:::rest
+  cache["CommunitySnapshotCache.get<br/>one synchronized in-process entry"]:::app
+  service["CommunitySelectionService.select<br/>REQUIRES_NEW transaction"]:::app
+  bp["BuildRepository<br/>searchCandidates; findAll in batches up to 50"]:::port
+  vp["VoteRepository.summaries<br/>raw counts"]:::port
+  gp["GameDataRepository<br/>patch release dates + catalog"]:::port
+  ranking["BuildRanking.comparator(BEST_RATED)"]:::domain
+  wilson["WilsonScore.lowerBound<br/>VoteSummary: upvotes / downvotes"]:::domain
+  assembler["CommunitySnapshotAssembler<br/>constructed per selection"]:::app
+  eligible["CommunityEligibility<br/>controlledDemo + valid loadout"]:::app
+  rules["application MachineCompatibility<br/>domain MachineComposition + GadgetPlate"]:::app
+  up["UserRepository.byId"]:::port
+  sp["BaseStatsRepository<br/>per selected patch"]:::port
+  snapshot["CommunitySnapshot / Entry<br/>up to three eligible builds"]:::app
+  dto["TopBuildsResponse.from + CommunityPublicUrls<br/>Entry.passiveStats → PassiveStatsService.resolved"]:::rest
+  formatter["DiscordTopBuildsFormatter.format<br/>message JSON only; no Discord call"]:::rest
+  browse --> ranking
+  rest --> cache -->|"miss / expired"| service
+  service --> bp
+  service --> vp
+  service --> gp
+  service --> ranking --> wilson
+  service --> assembler
+  assembler --> eligible --> rules
+  assembler --> gp
+  assembler --> up
+  assembler --> sp
+  assembler -->|"optional remix source"| bp
+  service -->|"rank, skip ineligible, stop at three"| snapshot
+  snapshot -.->|"published after successful transaction"| cache
+  rest --> dto
+  rest -->|"Discord representation"| formatter
+  dto -.->|"formatter input"| formatter
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f

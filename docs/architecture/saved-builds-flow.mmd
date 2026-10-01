@@ -1,0 +1,31 @@
+flowchart TB
+  h["GET /api/saved-builds<br/>GET /api/saved-builds/status<br/>PUT / DELETE /api/saved-builds/{id}"]:::outside
+  r["SavedBuildRestResource + CurrentUser.id"]:::rest
+  s["SavedBuildService"]:::app
+  bp["BuildRepository<br/>find for save; findAll for list"]:::port
+  validator["BuildDraftValidator.validateMapFilter<br/>list only"]:::app
+  p["SavedBuildRepository"]:::port
+  a["SavedBuildDbAdapter<br/>upsert + Criteria + JPQL"]:::adapter
+  shared["BuildDbAdapter.filters<br/>shared literal catalog/map filtering"]:::adapter
+  e["SavedBuildDbEntity + BuildDbEntity"]:::adapter
+  t[("saved_builds + builds and filter relations")]:::outside
+  v["VoteRepository.summaries<br/>direct from REST for live page"]:::port
+  assembly["BuildResponseAssembler.assembleAll"]:::rest
+  stats["PassiveStatsService.buildPage"]:::app
+  dto["SavedPage / SavedStatus / SavedResult<br/>private, no-store"]:::rest
+  h --> r --> s
+  s --> bp
+  s --> validator
+  s --> p
+  p -.-> a
+  a --> shared
+  a --> e --> t
+  r --> v
+  r --> assembly
+  r --> stats
+  r --> dto
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

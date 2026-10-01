@@ -1,0 +1,27 @@
+flowchart TB
+  h["GET / PUT / DELETE /api/builds/{id}/vote"]:::outside
+  r["VoteRestResource + CurrentUser.id"]:::rest
+  s["VoteService.get / put / remove<br/>mutations transactional"]:::app
+  b["BuildService.get<br/>target existence"]:::app
+  v["Vote<br/>value must be -1 or +1"]:::domain
+  p["VoteRepository<br/>put / remove / summary / value"]:::port
+  a["VoteDbAdapter<br/>native upsert; JPQL counts and deletion"]:::adapter
+  e["VoteDbEntity"]:::adapter
+  t[("votes<br/>UNIQUE user_id + build_id<br/>CHECK value IN -1,1")]:::outside
+  summary["VoteSummary<br/>score = upvotes - downvotes"]:::domain
+  out["VoteService.Result → VoteResponse<br/>score, upvotes, downvotes, myVote"]:::rest
+  h --> r --> s
+  s --> b
+  s -->|"PUT constructs"| v
+  s --> p
+  p -.-> a
+  a -->|"JPQL"| e --> t
+  a -->|"INSERT ON CONFLICT DO UPDATE"| t
+  p -.->|"count result"| summary
+  s -.->|"returned result"| out
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

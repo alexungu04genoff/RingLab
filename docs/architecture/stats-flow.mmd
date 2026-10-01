@@ -1,0 +1,40 @@
+flowchart TB
+  endpoints["BaseStatsRestResource"]:::rest
+  consumers["PassiveStatsService / ScenarioStatsService<br/>each requests base calculation"]:::app
+  base["BaseStatsService<br/>resolve version and component IDs"]:::app
+  gp["GameDataRepository"]:::port
+  sp["BaseStatsRepository"]:::port
+  ga["GameDataDbAdapter<br/>catalog entities + mapping"]:::adapter
+  sa["BaseStatsDbAdapter<br/>fixed parameterized native SQL; no stats entity"]:::adapter
+  catalog[("racers / machines / machine_parts / gadgets / game_versions")]:::outside
+  numbers[("racer_stats / machine_part_stats<br/>persistent per-version contributions")]:::outside
+  breakdown["BaseStatsBreakdown + BaseStats<br/>character + selected machine parts = base total"]:::domain
+  ps["PassiveStatsService.resolved<br/>resolved catalog, type coherence and completeness"]:::app
+  pr["PassiveGadgetRules / GadgetEffectRule<br/>code-defined reviewed rules"]:::domain
+  pc["PassiveStatsCalculator"]:::domain
+  po["PassiveStatsResult<br/>base, adjustments, adjusted, coverage, effects"]:::domain
+  sr["ScenarioGadgetRules / ScenarioEffectRule<br/>code-defined reviewed rules and explicit assumption"]:::domain
+  ctx["ScenarioContext<br/>ephemeral player-selected conditions"]:::domain
+  sc["ScenarioStatsCalculator"]:::domain
+  so["ScenarioStatsResult<br/>passive + scenario delta<br/>knownSubtotal + nullable exact total"]:::domain
+  endpoints --> base
+  consumers --> base
+  base --> gp
+  base --> sp
+  gp -.-> ga --> catalog
+  sp -.-> sa --> numbers
+  base -->|"calculate / draft assembly"| breakdown
+  breakdown -.->|"input"| ps
+  ps --> pc
+  pc --> pr
+  pc --> po
+  po -.->|"input supplied by ScenarioStatsService"| sc
+  ctx -.->|"input"| sc
+  sc --> sr
+  sc --> so
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

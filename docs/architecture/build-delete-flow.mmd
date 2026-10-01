@@ -1,0 +1,13 @@
+flowchart TB
+  h["DELETE /api/builds/{id}"]:::outside --> r["BuildRestResource + CurrentUser.id"]:::rest
+  r --> s["BuildService.delete<br/>get → ForbiddenException.requireOwner"]:::app
+  s --> p["BuildRepository.delete"]:::port
+  p -.-> a["BuildDbAdapter<br/>EntityManager.remove(BuildDbEntity)"]:::adapter
+  a --> b[("builds: remove target row")]:::outside
+  b -->|"ON DELETE CASCADE; JPA also manages element collections"| deps[("votes / comments / saved_builds<br/>build_gadgets / build_recommended_maps")]:::outside
+  b -->|"ON DELETE SET NULL"| remix[("surviving builds.remixed_from_build_id")]:::outside
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

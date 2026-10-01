@@ -1,0 +1,43 @@
+flowchart TB
+  http["POST /api/builds — create or remix<br/>PUT /api/builds/{id} — edit"]:::outside
+  rest["BuildRestResource<br/>Bean Validation + BuildRequest.draft()"]:::rest
+  actor["CurrentUser.id()"]:::rest
+  svc["BuildService.create / edit<br/>transaction boundary"]:::app
+  existing["edit: get + ForbiddenException.requireOwner<br/>create remix: verify source exists"]:::app
+  draft["BuildDraftValidator.validate"]:::app
+  profanity["ProfanityPolicy<br/>title and description"]:::app
+  compat["application.gamedata.MachineCompatibility"]:::app
+  rules["domain.gamedata.MachineCompatibility<br/>MachineComposition"]:::domain
+  plate["GadgetPlate.canFit<br/>two rows of three"]:::domain
+  game["GameDataRepository<br/>racer, parts, machines, patch, gadgets, maps"]:::port
+  ga["GameDataDbAdapter<br/>GameDataDbMapper / catalog entities"]:::adapter
+  build["Build<br/>new ID on create; immutable selections"]:::domain
+  repo["BuildRepository.find / save"]:::port
+  db["BuildDbAdapter.save<br/>BuildDbMapper.toEntity → EntityManager.merge + flush"]:::adapter
+  entity["BuildDbEntity<br/>gadgetIds list + recommendedMapIds set"]:::adapter
+  tables[("builds<br/>build_gadgets<br/>build_recommended_maps")]:::outside
+  response["BuildResponseAssembler → BuildResponse<br/>see read flow"]:::rest
+  http --> rest
+  rest --> actor
+  rest -->|"actor UUID + BuildService.Draft"| svc
+  svc --> existing
+  existing --> repo
+  svc --> draft
+  draft --> profanity
+  draft --> compat
+  compat --> rules
+  draft --> plate
+  draft --> game
+  compat -->|"source-machine lookup"| game
+  game -.->|"implemented by"| ga
+  svc -->|"after successful validation"| build
+  svc -->|"save Build"| repo
+  repo -.->|"implemented by"| db
+  db --> entity --> tables
+  svc -.->|"returns Build after transaction"| response
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

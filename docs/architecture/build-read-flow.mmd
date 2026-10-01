@@ -1,0 +1,18 @@
+flowchart TB
+  h["GET /api/builds/{id}"]:::outside --> r["BuildRestResource.get"]:::rest
+  r --> s["BuildService.get"]:::app
+  s --> p["BuildRepository.find"]:::port
+  p -.-> a["BuildDbAdapter<br/>EntityManager.find + BuildDbMapper.toDomain"]:::adapter
+  a --> t[("builds + gadget/map associations")]:::outside
+  s -.->|"Build"| r
+  r --> x["BuildResponseAssembler.assemble"]:::rest
+  x --> u["AuthService.current → UserRepository"]:::app
+  x --> g["GameDataRepository<br/>racer / part sources / gadgets / version / maps"]:::port
+  x --> v["VoteService.summary → VoteRepository"]:::app
+  x --> remix["BuildService.remixSource → BuildRepository"]:::app
+  x --> dto["BuildResponse<br/>AuthorResponse, RacerResponse, MachinePartResponse<br/>GadgetResponse, GameVersionResponse<br/>RemixSourceResponse, MapRecommendationsResponse"]:::rest
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

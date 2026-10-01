@@ -1,0 +1,28 @@
+flowchart TB
+  http["HTTP request"]:::outside
+  framework["Quarkus REST / JWT security / Bean Validation<br/>routing, transport and bearer checks"]:::outside
+  http --> framework
+  filter["RateLimitFilter<br/>request filter at AUTHORIZATION priority"]:::rest
+  framework -.->|"request boundary; framework integration"| filter
+  filter --> policy["RequestRateLimitPolicy.forRequest"]:::rest
+  filter --> ip["ClientIpResolver.resolve<br/>peer + trusted forwarding policy"]:::rest
+  filter --> identity["RateLimitIdentity.resolve<br/>verified subject if available; IP fallback"]:::rest
+  filter --> limiter["InMemoryRateLimiter.tryConsume"]:::rest
+  settings["RateLimitSettings / RateLimitRule"]:::rest -.->|"configured limits"| limiter
+  limiter --> reject["429 ErrorResponse + Retry-After<br/>when rejected"]:::rest
+  framework --> resource["Matched RestResource<br/>protected routes require role user"]:::rest
+  resource --> actor["CurrentUser.id<br/>UUID subject + account exists + authVersion matches"]:::rest
+  actor --> users["UserRepository"]:::port
+  users -.->|"implemented by"| db["UserDbAdapter → UserDbEntity / UserDbMapper"]:::adapter
+  db --> table[("users")]:::outside
+  resource --> service["Application use case"]:::app
+  service --> profanity["ProfanityPolicy<br/>registration/generated username,<br/>build title/description, comments"]:::app
+  service --> failure["AppException subclasses"]:::app
+  failure -.-> applicationMapper["ErrorRestExceptionMapper<br/>safe 400 / 401 / 403 / 404 / 409 / 503"]:::rest
+  framework -.->|"WebApplicationException"| httpMapper["HttpRestExceptionMapper<br/>safe HTTP status/body + selected headers"]:::rest
+  resource -.->|"unhandled Exception escaping execution"| unexpected["UnexpectedExceptionRestExceptionMapper<br/>log once; generic 500"]:::rest
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

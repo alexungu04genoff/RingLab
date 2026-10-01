@@ -1,0 +1,14 @@
+flowchart TB
+  browser["Browser / React frontend"]:::outside
+  backend["RingLab Quarkus backend<br/>one modular monolith"]:::app
+  db[("PostgreSQL<br/>catalog, accounts, builds and social data")]:::outside
+  steam["Steam Web API<br/>latest news"]:::outside
+  google["Google identity infrastructure<br/>public signing keys for ID-token verification"]:::outside
+  email["Email infrastructure<br/>Quarkus Mailer to SMTP<br/>mock delivery in dev/test configuration"]:::outside
+  browser -->|"HTTP / JSON; bearer JWT for protected routes"| backend
+  backend -->|"JPA, Panache and parameterized native SQL"| db
+  backend -->|"SteamNewsClient"| steam
+  backend -->|"GoogleIdTokenVerifier / GooglePublicKeysManager"| google
+  backend -->|"verification and password-reset links"| email
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938

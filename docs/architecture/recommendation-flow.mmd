@@ -1,0 +1,44 @@
+flowchart TB
+  h["POST /api/build-recommendations<br/>BuildRecommendationRequest"]:::outside
+  r["BuildRecommendationRestResource<br/>user role, @Blocking, toDomain()"]:::rest
+  actor["CurrentUser.id<br/>UserRepository → UserDbAdapter → users"]:::rest
+  s["BuildRecommendationService.recommend<br/>NOT_SUPPORTED transaction<br/>two nonwaiting semaphore permits"]:::app
+  loader["RecommendationCatalogLoader.load<br/>REQUIRES_NEW short transaction"]:::app
+  col["CollectionService.load(actor)"]:::app
+  gp["GameDataRepository<br/>selected version + racers/machines/parts/gadgets"]:::port
+  sp["BaseStatsRepository<br/>racerStats + machinePartStats for selected version"]:::port
+  cp["CollectionRepository"]:::port
+  ga["GameDataDbAdapter"]:::adapter
+  sa["BaseStatsDbAdapter<br/>two native SQL queries"]:::adapter
+  ca["CollectionDbAdapter<br/>three native SQL reads"]:::adapter
+  db[("catalog + racer_stats + machine_part_stats<br/>collection_*_exclusions")]:::outside
+  cat["RecommendationCatalog<br/>detached immutable maps"]:::domain
+  exc["CollectionExclusions"]:::domain
+  solver["BuildRecommendationSolver.solve<br/>100,000 work steps / two seconds"]:::domain
+  result["RecommendationResult<br/>selection + stats + honest outcome"]:::domain
+  response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
+  h --> r
+  r --> actor
+  r -->|"actor UUID + RecommendationRequest"| s
+  s --> loader
+  loader --> gp
+  loader --> sp
+  gp -.-> ga
+  sp -.-> sa
+  ga --> db
+  sa --> db
+  loader -.->|"returns"| cat
+  s --> col --> cp
+  cp -.-> ca --> db
+  col -.->|"returns"| exc
+  s -->|"new solver with snapshot, request, budget, exclusions"| solver
+  cat -.->|"constructor input"| solver
+  exc -.->|"constructor input"| solver
+  solver --> result
+  result -.->|"REST conversion after return"| response
+  classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
+  classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
+  classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
+  classDef port fill:#eee6ff,stroke:#7954b1,color:#35214f
+  classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
+  classDef outside fill:#edf0f4,stroke:#657184,color:#202938
