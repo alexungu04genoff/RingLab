@@ -7,6 +7,25 @@ x-logging: &logging
     max-file: "3"
 
 services:
+  # Explicit one-shot command only. Never started by the normal deployment.
+  game-data:
+    profiles: [tools]
+    image: ${BACKEND_IMAGE:?Set the backend image tag or digest}
+    entrypoint: [java, -cp, "/app/app/*:/app/lib/main/*", dev.ringlab.GameDataImportMain]
+    command: [validate, /app/game-data]
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/ringlab_production
+      DB_USER: ${DB_USER:?Set a dedicated production database user}
+      DB_PASSWORD: ${DB_PASSWORD:?Set a unique production database password}
+    networks:
+      - database
+    mem_limit: 512m
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *logging
+
   caddy:
     image: ${FRONTEND_IMAGE:?Set the frontend image tag or digest}
     restart: unless-stopped

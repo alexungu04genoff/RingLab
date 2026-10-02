@@ -4,6 +4,10 @@ A small community build-sharing platform for a bachelor's thesis, using **Sonic 
 
 ## Stack and structure
 
+Catalog and versioned base-stat maintenance lives in [game-data/](game-data/README.md).
+Its explicit `validate`, `plan`, and `apply` commands maintain PostgreSQL;
+normal requests and restarts do not load or import CSV files.
+
 - Backend: Java 21, Maven, Quarkus 3.27.2, REST/Jackson, Hibernate ORM/Panache, PostgreSQL, Flyway, MapStruct, Bean Validation, SmallRye JWT, bcrypt, JUnit 5.
 - Content filtering: ModernMT `com.modernmt.text:profanity-filter:1.0.1` (Apache License 2.0), used locally through RingLab's `ProfanityPolicy`; no moderation network service or repository-owned word list is used.
 - Frontend: React 19, TypeScript, Vite, React Router, plain CSS, Vitest.
@@ -272,11 +276,17 @@ V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (
 Legacy builds can remain versionless until edited; the optional demo seeder assigns a repeatable mix to demo builds.
 For a fresh demo plan, 90% use the newest patch and 10% are distributed randomly across the older
 patches. The four known versions currently have independent rows containing the same base stats;
-future migrations may change one version without affecting the others.
+new patches receive independent CSV snapshots through the explicit game-data importer.
+The existing older snapshots contain current-data placeholders; ordinary imports reject
+changes to already published stat rows.
 
 Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the explicit Standard/Board machine family and makes the tire reference nullable for Board builds. V26 classifies the verified Extreme Gear catalog and removes the obsolete generated tire rows for those Boards. Hibernate validates the migrated schema; it never creates or drops it.
 
-Add a new numbered migration when changing schema or seed data. Do not edit migrations after they have been applied to a database you intend to keep. Users and builds persist in PostgreSQL, independently of frontend refreshes or application restarts.
+Add a new numbered migration when changing schema. Future catalog/stat content is
+maintained through [the explicit game-data importer](game-data/README.md). Historical
+seed migrations remain unchanged and still initialize fresh databases. Do not edit
+applied migrations. Users and builds persist in PostgreSQL, independently of frontend
+refreshes or application restarts.
 
 ## Authentication
 

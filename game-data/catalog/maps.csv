@@ -1,0 +1,45 @@
+id,name,category,content_pack,image_path,catalog_order
+a0000000-0000-4000-8000-000000000001,E-Stadium,MAIN_COURSE,,/assets/maps/e-stadium.png,1
+a0000000-0000-4000-8000-000000000002,Rainbow Garden,MAIN_COURSE,,/assets/maps/rainbow-garden.png,2
+a0000000-0000-4000-8000-000000000003,Water Palace,MAIN_COURSE,,/assets/maps/water-palace.png,3
+a0000000-0000-4000-8000-000000000004,Metal Harbor,MAIN_COURSE,,/assets/maps/metal-harbor.png,4
+a0000000-0000-4000-8000-000000000005,Sand Road,MAIN_COURSE,,/assets/maps/sand-road.png,5
+a0000000-0000-4000-8000-000000000006,Colorful Mall,MAIN_COURSE,,/assets/maps/colorful-mall.png,6
+a0000000-0000-4000-8000-000000000007,Mystic Jungle,MAIN_COURSE,,/assets/maps/mystic-jungle.png,7
+a0000000-0000-4000-8000-000000000008,Apotos,MAIN_COURSE,,/assets/maps/apotos.png,8
+a0000000-0000-4000-8000-000000000009,Wonder Museum,MAIN_COURSE,,/assets/maps/wonder-museum.png,9
+a0000000-0000-4000-8000-000000000010,Crystal Mine,MAIN_COURSE,,/assets/maps/crystal-mine.png,10
+a0000000-0000-4000-8000-000000000011,Ocean View,MAIN_COURSE,,/assets/maps/ocean-view.png,11
+a0000000-0000-4000-8000-000000000012,Pumpkin Mansion,MAIN_COURSE,,/assets/maps/pumpkin-mansion.png,12
+a0000000-0000-4000-8000-000000000013,Urban Canyon,MAIN_COURSE,,/assets/maps/urban-canyon.png,13
+a0000000-0000-4000-8000-000000000014,Market Street,MAIN_COURSE,,/assets/maps/market-street.png,14
+a0000000-0000-4000-8000-000000000015,Coral Town,MAIN_COURSE,,/assets/maps/coral-town.png,15
+a0000000-0000-4000-8000-000000000016,Blizzard Valley,MAIN_COURSE,,/assets/maps/blizzard-valley.png,16
+a0000000-0000-4000-8000-000000000017,Radical Highway,MAIN_COURSE,,/assets/maps/radical-highway.png,17
+a0000000-0000-4000-8000-000000000018,Chao Park,MAIN_COURSE,,/assets/maps/chao-park.png,18
+a0000000-0000-4000-8000-000000000019,Donpa Factory,MAIN_COURSE,,/assets/maps/donpa-factory.png,19
+a0000000-0000-4000-8000-000000000020,Aqua Forest,MAIN_COURSE,,/assets/maps/aqua-forest.png,20
+a0000000-0000-4000-8000-000000000021,Eggman Expo,MAIN_COURSE,,/assets/maps/eggman-expo.png,21
+a0000000-0000-4000-8000-000000000022,Kronos Island,MAIN_COURSE,,/assets/maps/kronos-island.png,22
+a0000000-0000-4000-8000-000000000023,Northstar Islands,MAIN_COURSE,,/assets/maps/northstar-islands.png,23
+a0000000-0000-4000-8000-000000000024,White Space,MAIN_COURSE,,/assets/maps/white-space.png,24
+a0000000-0000-4000-8000-000000000025,Minecraft World,MAIN_COURSE,Minecraft Pack,/assets/maps/minecraft-world.png,25
+a0000000-0000-4000-8000-000000000026,BiKiNi BOTTOM,MAIN_COURSE,SpongeBob SquarePants Pack,/assets/maps/bikini-bottom.png,26
+a0000000-0000-4000-8000-000000000027,PAC-Village & Maze,MAIN_COURSE,PAC-MAN Pack,/assets/maps/pac-village-and-maze.png,27
+a0000000-0000-4000-8000-000000000028,Wily Castle,MAIN_COURSE,Mega Man Pack,/assets/maps/wily-castle.png,28
+a0000000-0000-4000-8000-000000000029,New York City,MAIN_COURSE,Teenage Mutant Ninja Turtles Pack,/assets/maps/new-york-city.png,29
+a0000000-0000-4000-8000-000000000030,Sky Road,CROSSWORLD,,/assets/maps/sky-road.png,30
+a0000000-0000-4000-8000-000000000031,Roulette Road,CROSSWORLD,,/assets/maps/roulette-road.png,31
+a0000000-0000-4000-8000-000000000032,Kraken Bay,CROSSWORLD,,/assets/maps/kraken-bay.png,32
+a0000000-0000-4000-8000-000000000033,Golden Temple,CROSSWORLD,,/assets/maps/golden-temple.png,33
+a0000000-0000-4000-8000-000000000034,Magma Planet,CROSSWORLD,,/assets/maps/magma-planet.png,34
+a0000000-0000-4000-8000-000000000035,Hidden World,CROSSWORLD,,/assets/maps/hidden-world.png,35
+a0000000-0000-4000-8000-000000000036,Steampunk City,CROSSWORLD,,/assets/maps/steampunk-city.png,36
+a0000000-0000-4000-8000-000000000037,Dragon Road,CROSSWORLD,,/assets/maps/dragon-road.png,37
+a0000000-0000-4000-8000-000000000038,Holoska,CROSSWORLD,,/assets/maps/holoska.png,38
+a0000000-0000-4000-8000-000000000039,Galactic Parade,CROSSWORLD,,/assets/maps/galactic-parade.png,39
+a0000000-0000-4000-8000-000000000040,Dinosaur Jungle,CROSSWORLD,,/assets/maps/dinosaur-jungle.png,40
+a0000000-0000-4000-8000-000000000041,Sweet Mountain,CROSSWORLD,,/assets/maps/sweet-mountain.png,41
+a0000000-0000-4000-8000-000000000042,White Cave,CROSSWORLD,,/assets/maps/white-cave.png,42
+a0000000-0000-4000-8000-000000000043,Cyber Space,CROSSWORLD,,/assets/maps/cyber-space.png,43
+a0000000-0000-4000-8000-000000000044,Digital Circuit,CROSSWORLD,,/assets/maps/digital-circuit.png,44

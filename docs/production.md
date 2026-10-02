@@ -32,7 +32,7 @@ it requires rebuilding the frontend. Never supply an OAuth client secret.
 For an authorized local image build (not required on the VPS):
 
 ```sh
-docker build -t ringlab-backend:review backend
+docker build -f backend/Dockerfile -t ringlab-backend:review .
 docker build --build-arg VITE_GOOGLE_CLIENT_ID=YOUR_EXISTING_PUBLIC_CLIENT_ID -t ringlab-frontend:review frontend
 ```
 
@@ -324,3 +324,64 @@ login, build browsing/CRUD, voting, comments, per-client 429 responses and spoof
 header rejection, and Steam failure fallback. No live result is claimed here.
 After production is stable, configure the production environment/SSH secrets and
 use the manual workflow above. Image publication never starts that workflow.
+
+## Explicit game-data import
+
+The backend image now includes `/app/game-data` from its exact Git revision.
+Build it from the repository root using
+`docker build -f backend/Dockerfile -t ringlab-backend:review .`.
+The root `.dockerignore` restricts the build context to backend production source,
+its POM and canonical CSVs; local environments, keys, test output and frontend
+dependencies are excluded. CI uses this same context. No deployment hook imports
+CSV data.
+
+On the first rollout of this feature, install the reviewed updated
+`compose.production.yaml` in `/opt/ringlab` using the existing server-file update
+procedure. The image deployment script does not replace that Compose file.
+The new `game-data` service is an explicitly invoked tools-profile command, using
+the same immutable `BACKEND_IMAGE` from `deployment.env` and the same private
+PostgreSQL network/credentials. It has no HTTP listener, host ports, JWT keys,
+SMTP configuration or restart policy. Ordinary `up` does not start it.
+
+The maintenance sequence is: edit/review CSV locally, validate, commit/push when
+authorized, deploy the exact verified revision, then SSH into the server and run:
+
+```bash
+cd /opt/ringlab
+compose=(sudo docker compose --env-file production.env --env-file deployment.env -f compose.production.yaml)
+"${compose[@]}" run --rm --no-deps game-data validate /app/game-data
+"${compose[@]}" run --rm --no-deps game-data plan /app/game-data
+```
+
+Inspect the version list, every change, unsafe changes and write totals. Require
+`READY TO APPLY`. Copy the exact approval token into the explicit command:
+
+```bash
+"${compose[@]}" run --rm --no-deps game-data apply /app/game-data --approve TOKEN_FROM_REVIEWED_PLAN
+```
+
+The token binds the files, current catalog/stat contents and importer policy.
+Changed state requires another reviewed PLAN. APPLY validates and compares again
+under one importer lock and commits once; failures roll back. The command never
+boots the application or runs migrations. Do not run concurrent manual catalog SQL.
+Pushing, pulling an image, deploying and restarting alone make no CSV changes to
+PostgreSQL. Historical Flyway seeds still run normally when initializing a fresh
+application database; historical migrations remain unchanged.
+
+After applying, check the homepage and the affected catalog/stats/build pages:
+
+```bash
+curl --fail --silent --show-error --output /dev/null https://ringlabgarage.com/
+curl --fail --silent --show-error --output /dev/null https://ringlabgarage.com/api/racers
+curl --fail --silent --show-error --output /dev/null https://ringlabgarage.com/api/game-versions
+"${compose[@]}" run --rm --no-deps game-data plan /app/game-data
+```
+
+The final PLAN should show zero inserts/updates. No public database access is
+required. A successful content import is not reversed by deploying an older image;
+older CSVs would omit newly imported identities/versions and APPLY will reject
+them. Use a reviewed forward change, not deletion/reload. If a connection is lost
+during COMMIT, run PLAN to determine the resulting state before retrying.
+
+See [the dataset guide](../game-data/README.md) for Excel formatting, exact local
+commands, rejected historical/mechanical changes and the deferred gadget-rule work.

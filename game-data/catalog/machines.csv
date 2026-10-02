@@ -1,0 +1,63 @@
+id,name,racing_type,image_path
+04c4a02d-2dfd-5c60-b55a-752ace638175,Jumble Rage,ACCELERATION,/assets/machines/jumble-rage.png
+098afc29-eb17-5be7-a04e-75ebba27e3e3,Road Dragoon,POWER,/assets/machines/road-dragoon.png
+1fc54f9d-0fe2-86f1-b9ec-7b9cc429e360,Ancient Throne,HANDLING,/assets/machines/ancient-throne.webp
+24ed4c62-df88-34f7-bcf6-bef3799215a3,Egg Drillster Mk.II,POWER,/assets/machines/egg-drillster-mk-ii.webp
+29e54102-daa9-e897-4234-741cf558fe94,TYPE-W Windy,BOOST,/assets/machines/type-w-windy.webp
+2bceb595-2638-185b-4a54-4286f56f8d26,Quad Copter,BOOST,/assets/machines/quad-copter.webp
+2d182731-171e-b763-3377-b3ea07e25867,Beat Gator,POWER,/assets/machines/beat-gator.webp
+42bf7883-f635-ae26-8fc6-a43bf1cfdaab,Frog Cruiser,POWER,/assets/machines/frog-cruiser.webp
+46b3fbfa-e4e2-f541-2887-af85176bd48a,Triple Fan,BOOST,/assets/machines/triple-fan.webp
+494c9893-623b-c909-114a-065c80a12fd2,Long Stinger,ACCELERATION,/assets/machines/long-stinger.webp
+53a36480-cbfd-cb7a-f258-29dae8a56dab,Pawn Calibur,ACCELERATION,/assets/machines/pawn-calibur.webp
+583587e5-2086-f519-e4c9-8f54a7d4d526,Knight Tank,POWER,/assets/machines/knight-tank.webp
+5aa36b0f-9918-5112-9d91-3e847e08e7c2,Land Smasher,POWER,/assets/machines/land-smasher.png
+63d2669c-29be-0170-48ca-81d1346ee20a,Trail Runner,POWER,/assets/machines/trail-runner.webp
+6e6a50e8-cb09-5718-801a-91d6a9c7a5b0,Speedster Lightning,SPEED,/assets/machines/speedster-lightning.png
+70000000-0000-4000-8000-000000000001,Diva Macchina,BOOST,/assets/machines/diva-macchina.png
+70000000-0000-4000-8000-000000000002,Arsene Wing,SPEED,/assets/machines/arsene-wing.png
+70000000-0000-4000-8000-000000000003,Dragon Brave,POWER,/assets/machines/dragon-brave.png
+70000000-0000-4000-8000-000000000004,Dream Sleeper,BOOST,/assets/machines/dream-sleeper.png
+70000000-0000-4000-8000-000000000005,Banana Cruiser,SPEED,/assets/machines/banana-cruiser.png
+70000000-0000-4000-8000-000000000006,Super Roaster,ACCELERATION,/assets/machines/super-roaster.png
+70000000-0000-4000-8000-000000000007,Goromaru,POWER,/assets/machines/goromaru.png
+70000000-0000-4000-8000-000000000008,Twinkle Bayoen,ACCELERATION,/assets/machines/twinkle-bayoen.png
+70000000-0000-4000-8000-000000000009,Mach Cyclone,SPEED,/assets/machines/mach-cyclone.png
+70000000-0000-4000-8000-000000000010,Devolada Yellow Jack,SPEED,/assets/machines/devolada-yellow-jack.png
+70000000-0000-4000-8000-000000000012,Minecart,HANDLING,/assets/machines/minecart.png
+70000000-0000-4000-8000-000000000013,Patty Wagon,HANDLING,/assets/machines/patty-wagon.png
+70000000-0000-4000-8000-000000000014,PAC-MAN Mobile,HANDLING,/assets/machines/pac-man-mobile.png
+70000000-0000-4000-8000-000000000015,Rush Roadstar,ACCELERATION,/assets/machines/rush-roadstar.png
+70000000-0000-4000-8000-000000000016,Pizzafire Van,POWER,/assets/machines/pizzafire-van.png
+70000000-0000-4000-8000-000000000017,Blue Star,BOOST,/assets/machines/blue-star.png
+745d828b-8a23-38c1-ef19-075c44b960a0,Radical Fours,ACCELERATION,/assets/machines/radical-fours.webp
+7568e2c4-217a-55f7-ad9b-5859f7c04f45,Super Shining,SPEED,/assets/machines/super-shining.webp
+7807812c-9616-c605-69b5-2ea3c5b18305,Fang Loader,POWER,/assets/machines/fang-loader.webp
+781a94e5-915b-90cb-9e1f-61a1c7cf9250,Royal Chariot,SPEED,/assets/machines/royal-chariot.webp
+79c17050-2f02-46e5-7329-7d07f364c48a,Pop Float,BOOST,/assets/machines/pop-float.webp
+86ddf10a-940e-c7f3-a431-adfe209120e1,Buster M,SPEED,/assets/machines/buster-m.webp
+909ded8a-6628-fa67-d5b8-5acb427e66e1,Retro Future,SPEED,/assets/machines/retro-future.webp
+92dabaee-5db6-4550-84c7-be3181f9f3ff,Hyper Scorpion,ACCELERATION,/assets/machines/hyper-scorpion.webp
+962739c9-bff4-94dd-4e07-4185d5f7eae8,Little Lady,HANDLING,/assets/machines/little-lady.webp
+9d01b9d1-1525-019a-629d-860e54d4ed76,Racing Buggy,ACCELERATION,/assets/machines/racing-buggy.webp
+a275a279-391f-506f-8fac-46aca6b01ad9,TYPE-J Iota,BOOST,/assets/machines/type-j-iota.png
+a3622cfb-49f6-520f-a7a6-5f73f1147326,Wispon Booster,BOOST,/assets/machines/wispon-booster.webp
+a706cd9a-1663-16c7-adbe-eb62051d6c11,Sakura Board,BOOST,/assets/machines/sakura-board.webp
+aeba4e52-9a41-e499-0f7a-dde64d5c1e21,Stealth Chaser,SPEED,/assets/machines/stealth-chaser.webp
+b76fb11e-d3ab-3acf-cea9-9ef03c745c69,Jaws Rocket,BOOST,/assets/machines/jaws-rocket.webp
+bb372c28-5fe9-54f9-9555-bff04f76b187,Whirlwind Sport,ACCELERATION,/assets/machines/whirlwind-sport.png
+c075c292-e6c2-5b7e-bae2-525039a77013,Neo Lightron,HANDLING,/assets/machines/neo-lightron.png
+c60a51f3-9d1f-5ee5-9329-34d92829a4e7,TYPE-S Stream,BOOST,/assets/machines/type-s-stream.png
+c6cf08c0-2925-1290-f43d-0983f42ade64,Wild GT,SPEED,/assets/machines/wild-gt.webp
+ce34529e-4556-6a08-cd01-04a71d9b2baf,Fossil Rock,HANDLING,/assets/machines/fossil-rock.webp
+d48c0e81-dda8-1eca-0da3-cf417e378ae4,Lip Spyder,HANDLING,/assets/machines/lip-spyder.webp
+d4a97949-eb78-5aca-c67a-57649c71d834,Cyber Spear,ACCELERATION,/assets/machines/cyber-spear.webp
+dcb29454-f83a-4d0a-0126-64aba90348f2,Mirage Blade,SPEED,/assets/machines/mirage-blade.webp
+df3cefb9-0475-1527-fbd9-73707e753d8c,Beast Spike,POWER,/assets/machines/beast-spike.webp
+ea109cd2-1526-1c84-70ae-3ee8027a623b,Hot Hatch,HANDLING,/assets/machines/hot-hatch.webp
+eb851153-4d31-a0de-6a19-fd6ef21ee9d1,Cross Dozer,POWER,/assets/machines/cross-dozer.webp
+edc27459-ecf9-66dd-4bbe-9b08f719fba3,Giganto Liner,ACCELERATION,/assets/machines/giganto-liner.webp
+f0a6b1b6-921a-5543-eb1b-e0a180cb29da,Moto Beetle,HANDLING,/assets/machines/moto-beetle.webp
+f2898979-c8e9-5638-80f6-2c9b1c3cee96,Pink Cabriolet,HANDLING,/assets/machines/pink-cabriolet.png
+f72cc6cc-9620-a071-a75f-8c3b7a244533,Victoria Carriage,HANDLING,/assets/machines/victoria-carriage.webp
+fc5a6823-88b8-5acd-9d9d-0bc2f8b52fb3,Dark Reaper,SPEED,/assets/machines/dark-reaper.png

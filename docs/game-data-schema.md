@@ -2,6 +2,9 @@
 
 This is the implemented relational shape after Flyway V28. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
+Later V30–V33 map/collection additions are described in their feature docs. The
+[Git-managed importer](../game-data/README.md) changes no schema or foreign keys:
+it maintains future catalog content through explicit validate/plan/apply commands.
 
 V28's private `saved_builds` relation cascades on both user and source-build deletion.
 Its composite primary key preserves one bookmark per user/build; database-generated
@@ -104,8 +107,9 @@ available Ver. 1.4.1 community-sheet snapshot: 35 racers and all three parts for
 V19 adds the sourced later-release rows. At the owner's direction, V22 copies that complete current
 snapshot into the three older selectable versions because RingLab currently treats their values as
 equal. These remain separate database rows, so a future patch can supply changed values without
-altering historical builds. Blank and missing rows remain unknown. Future imports must use new
-migrations, never modify earlier migrations. No 1.3.2 balance snapshot is seeded.
+altering historical builds. Blank and missing rows remain unknown. Future snapshots use the
+CSV importer; ordinary imports reject mutations of these published rows. Flyway owns
+structural changes, and earlier migrations remain unchanged. No 1.3.2 balance snapshot is seeded.
 
 Base build stats sum racer + front + rear and, for non-BOOST machines, tire per field; any unknown
 contribution makes only that resulting field unknown. Non-BOOST stock-machine totals sum three

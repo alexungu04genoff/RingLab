@@ -1,5 +1,58 @@
 # Verification
 
+## CSV game-data importer — 2026-10-02
+
+Full `mvn -f backend/pom.xml verify` passed against disposable PostgreSQL 17:
+450 Surefire tests and 18 packaged API tests, with no failures or skips. This
+includes 86 new importer cases covering strict CSV parsing, detached validation,
+safe/unsafe plans, approval-token drift, real FK/unique constraints, transaction
+rollback, repeat no-op imports, and original-version calculation for an old build
+after importing a new version. Existing test assertions were retained.
+
+Fresh JaCoCo execution data measured **97.12% instructions, 89.20% branches and
+97.29% lines**. All existing coverage gates passed unchanged. Reports are in
+`backend/target/site/jacoco/index.html` and `jacoco.xml`. Packaged API tests are
+separate from the instrumented Surefire coverage. Existing deprecated/unchecked
+test compiler notices and the Windows packaged-runner logging-category warning
+remain non-fatal.
+
+The packaged standalone command also passed offline VALIDATE and PLAN → APPLY
+→ PLAN against a separate scratch database containing only the final V1–V33
+catalog. All 1,319 CSV records matched; both plans had zero content writes and
+the same approval token. No production or normal development data was imported.
+
+For a manual full rerun, start a disposable PostgreSQL database (never the normal
+application database), generate temporary keys with
+`java backend/scripts/GenerateJwtKeys.java .tools/import-test-jwt`, and run from
+the repository root with the actual disposable connection settings:
+
+```powershell
+$env:QUARKUS_DATASOURCE_JDBC_URL = 'jdbc:postgresql://localhost:55433/ringlab_test'
+$env:QUARKUS_DATASOURCE_USERNAME = 'ringlab'
+$env:QUARKUS_DATASOURCE_PASSWORD = 'ringlab_test'
+$env:QUARKUS_DATASOURCE_DEVSERVICES_ENABLED = 'false'
+$env:DB_URL = $env:QUARKUS_DATASOURCE_JDBC_URL
+$env:DB_USER = $env:QUARKUS_DATASOURCE_USERNAME
+$env:DB_PASSWORD = $env:QUARKUS_DATASOURCE_PASSWORD
+$env:JWT_PUBLIC_KEY = (Resolve-Path .tools/import-test-jwt/public.pem).Path
+$env:JWT_PRIVATE_KEY = (Resolve-Path .tools/import-test-jwt/private.pem).Path
+$env:PUBLIC_BASE_URL = 'http://localhost:8081'
+mvn -f backend/pom.xml verify
+```
+
+Archive any previous JaCoCo execution file before measuring a fresh run.
+`GameDataCsvReaderTest`, `GameDataImportCommandTest` and
+`GameDataImportServiceTest` also run directly in IntelliJ without infrastructure;
+`GameDataImportIntegrationTest` requires the disposable datasource.
+
+Production Compose configuration validation passed. Building
+`docker build -f backend/Dockerfile -t ringlab-backend:game-data-review .` was
+blocked while downloading a base-image layer (`tls: bad record MAC`); no download
+retry was attempted. The container image and its one-shot entrypoint still need
+verification once that environment issue is resolved. Frontend tests/build were
+not rerun because frontend code and REST contracts did not change. No commit,
+push or deployment was performed.
+
 ## Current tooling
 
 Backend verification uses Java 21 and Maven:

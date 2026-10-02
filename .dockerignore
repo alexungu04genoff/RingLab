@@ -1,0 +1,8 @@
+*
+!backend/
+backend/*
+!backend/pom.xml
+!backend/src/
+backend/src/*
+!backend/src/main/
+!game-data/

@@ -1,0 +1,53 @@
+id,name,racing_type,image_path
+0093f0e6-3a7c-57ad-af1a-6f7db022fa09,Amy Rose,HANDLING,/assets/racers/amy.png
+013ecae2-55b9-58bb-b1c5-b054578058ff,Sonic the Hedgehog,SPEED,/assets/racers/sonic.png
+27768822-1ef3-599f-b8b6-a65d67693034,Knuckles the Echidna,POWER,/assets/racers/knuckles.png
+60000000-0000-4000-8000-000000000001,Cream & Cheese,HANDLING,/assets/racers/cream-and-cheese.png
+60000000-0000-4000-8000-000000000002,Silver the Hedgehog,HANDLING,/assets/racers/silver.png
+60000000-0000-4000-8000-000000000003,Blaze the Cat,SPEED,/assets/racers/blaze.png
+60000000-0000-4000-8000-000000000004,Rouge the Bat,HANDLING,/assets/racers/rouge.png
+60000000-0000-4000-8000-000000000005,E-123 Omega,POWER,/assets/racers/omega.png
+60000000-0000-4000-8000-000000000006,Vector the Crocodile,POWER,/assets/racers/vector.png
+60000000-0000-4000-8000-000000000007,Espio the Chameleon,SPEED,/assets/racers/espio.png
+60000000-0000-4000-8000-000000000008,Charmy Bee,ACCELERATION,/assets/racers/charmy.png
+60000000-0000-4000-8000-000000000009,Zavok,POWER,/assets/racers/zavok.png
+60000000-0000-4000-8000-000000000010,Zazz,ACCELERATION,/assets/racers/zazz.png
+60000000-0000-4000-8000-000000000011,Dr. Eggman,POWER,/assets/racers/eggman.png
+60000000-0000-4000-8000-000000000012,Metal Sonic,SPEED,/assets/racers/metal-sonic.png
+60000000-0000-4000-8000-000000000013,Egg Pawn,ACCELERATION,/assets/racers/egg-pawn.png
+60000000-0000-4000-8000-000000000014,Sage,ACCELERATION,/assets/racers/sage.png
+60000000-0000-4000-8000-000000000015,Jet the Hawk,SPEED,/assets/racers/jet.png
+60000000-0000-4000-8000-000000000016,Wave the Swallow,ACCELERATION,/assets/racers/wave.png
+60000000-0000-4000-8000-000000000017,Storm the Albatross,POWER,/assets/racers/storm.png
+60000000-0000-4000-8000-000000000018,Hatsune Miku,BOOST,/assets/racers/hatsune-miku.png
+60000000-0000-4000-8000-000000000019,Joker,HANDLING,/assets/racers/joker.png
+60000000-0000-4000-8000-000000000020,Ichiban Kasuga,POWER,/assets/racers/ichiban-kasuga.png
+60000000-0000-4000-8000-000000000021,NiGHTS,SPEED,/assets/racers/nights.png
+60000000-0000-4000-8000-000000000022,AiAi,HANDLING,/assets/racers/aiai.png
+60000000-0000-4000-8000-000000000023,Tangle,ACCELERATION,/assets/racers/tangle.png
+60000000-0000-4000-8000-000000000024,Whisper,BOOST,/assets/racers/whisper.png
+60000000-0000-4000-8000-000000000025,Red,SPEED,/assets/racers/red.png
+60000000-0000-4000-8000-000000000026,Goro Majima (Captain Majima),ACCELERATION,/assets/racers/captain-majima.png
+60000000-0000-4000-8000-000000000027,Arle,HANDLING,/assets/racers/arle.png
+60000000-0000-4000-8000-000000000028,Classic Sonic,SPEED,/assets/racers/classic-sonic.png
+60000000-0000-4000-8000-000000000029,Axel,ACCELERATION,/assets/racers/axel.png
+60000000-0000-4000-8000-000000000031,Steve,POWER,/assets/racers/steve.png
+60000000-0000-4000-8000-000000000032,Alex,POWER,/assets/racers/alex.png
+60000000-0000-4000-8000-000000000033,Creeper,ACCELERATION,/assets/racers/creeper.png
+60000000-0000-4000-8000-000000000034,SpongeBob SquarePants,HANDLING,/assets/racers/spongebob.png
+60000000-0000-4000-8000-000000000035,Patrick Star,POWER,/assets/racers/patrick.png
+60000000-0000-4000-8000-000000000036,PAC-MAN,ACCELERATION,/assets/racers/pac-man.png
+60000000-0000-4000-8000-000000000037,Blinky,SPEED,/assets/racers/blinky.png
+60000000-0000-4000-8000-000000000038,Mega Man,POWER,/assets/racers/mega-man.png
+60000000-0000-4000-8000-000000000039,Proto Man,SPEED,/assets/racers/proto-man.png
+60000000-0000-4000-8000-000000000040,Leonardo,SPEED,/assets/racers/leonardo.png
+60000000-0000-4000-8000-000000000041,Raphael,POWER,/assets/racers/raphael.png
+60000000-0000-4000-8000-000000000042,Donatello,HANDLING,/assets/racers/donatello.png
+60000000-0000-4000-8000-000000000043,Michelangelo,ACCELERATION,/assets/racers/michelangelo.png
+60000000-0000-4000-8000-000000000044,Tails Nine,ACCELERATION,/assets/racers/tails-nine.png
+60000000-0000-4000-8000-000000000045,Knuckles the Dread,POWER,/assets/racers/knuckles-the-dread.png
+60000000-0000-4000-8000-000000000046,Rusty Rose,HANDLING,/assets/racers/rusty-rose.png
+60000000-0000-4000-8000-000000000047,Werehog,POWER,/assets/racers/werehog.png
+8422764a-dba4-5b63-b072-7eaa544e3587,"Miles ""Tails"" Prower",ACCELERATION,/assets/racers/tails.png
+e1871d41-6751-5230-b831-b98e65a64b41,Big the Cat,POWER,/assets/racers/big.png
+e3c98730-beba-5b2e-8b2b-01de087c8bd1,Shadow the Hedgehog,SPEED,/assets/racers/shadow.png

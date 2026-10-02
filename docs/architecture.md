@@ -11,10 +11,11 @@ dev.ringlab/
   domain/{auth,build,collection,comment,gamedata,news,vote}/
   application/{auth,build,collection,comment,community,gamedata,news,validation,vote}/
   port/in/                         # capabilities RingLab provides
-    *UseCase.java                   # 17 feature contracts, including one dev-only capability
+    *UseCase.java                   # feature contracts, including import and dev-only capabilities
     CommunitySnapshot.java          # detached boundary result
   port/out/
-    {User,Build,SavedBuild,Collection,Comment,GameData,BaseStats,GameNews,Vote}Repository.java
+    {User,Build,SavedBuild,Collection,Comment,GameData,GameDataImport,BaseStats,GameNews,Vote}Repository.java
+  adapter/in/catalog/               # explicit CSV import command
   adapter/in/rest/{auth,build,collection,comment,community,gamedata,news,ratelimit,vote}/
     request/ and response/
   adapter/out/db/{auth,build,comment,gamedata,vote}/
@@ -23,6 +24,21 @@ dev.ringlab/
 ```
 
 ## Boundaries
+
+Game-data maintenance has a separate explicit command: `GameDataImportMain` is
+the composition root, wiring `adapter/in/catalog/GameDataImportCommand` and its
+concrete CSV reader to `ImportGameDataUseCase`, implemented by
+`GameDataImportService`. Its validator/planner receive typed detached
+`domain/gamedata/importing` records, never paths. `GameDataImportRepository` is a
+flat output port; `GameDataImportDbAdapter` uses JDBC to read a consistent snapshot
+or apply a safe plan atomically. Its preparation callback runs application policy
+inside the transaction before any write; the DB adapter never depends on input
+ports. The command bypasses Quarkus startup entirely, so offline validation needs
+no database and no mode invokes Flyway, HTTP or startup observers. Normal REST
+queries retain `GameDataRepository`/`BaseStatsRepository` and PostgreSQL. The
+canonical files, conservative update policy, approval token and operation commands
+are documented in [game-data/README.md](../game-data/README.md). No schema migration,
+rule persistence or runtime algorithm change accompanies this importer.
 
 Private bookmarks follow the same boundaries: `SavedBuildRestResource` obtains the
 actor through `CurrentUser`, calls `SavedBuildUseCase` implemented by `SavedBuildService`, and assembles normal live
@@ -40,11 +56,11 @@ ephemeral state and survives navigation within a session.
 - **domain:** immutable Java records (`User`, `Racer`, `Machine`, `MachinePart`, `Gadget`, `GameVersion`, `Build`, `Vote`, `Comment`), the `RacingType` and `MachinePartType` enums, and the pure `GadgetPlate` placement validator, using only the JDK. `Machine` owns its racing type; `MachineComposition` defines required slots; `Build` snapshots its ordered gadget list. Domain code imports no Quarkus, REST, Hibernate, or JPA types.
 - **application:** implements input ports and coordinates domain behavior and output ports. Services validate build references, enforce author ownership, normalize accounts, and orchestrate mutations. Expected failures use semantic application exceptions; this layer stores no HTTP status codes. CDI and transaction annotations are pragmatic dependencies. AuthService uses Quarkus's bcrypt utility directly because a second hashing abstraction would not serve a current implementation need.
 - **port/in:** capabilities provided by RingLab to inbound adapters. Contracts use domain/JDK types and boundary-owned commands, queries and results, including `BuildUseCase.Draft`, `Filter`, `Query`, `Page` and `CommunitySnapshot`. They never import application implementations, transport DTOs, JAX-RS, Quarkus or persistence. `BuildUseCase.Filter` is translated explicitly into `BuildRepository.Filter`; output contracts remain independent of input contracts.
-- **port/out:** the 15 flat contracts for capabilities required from infrastructure: repositories, identity verification and mail senders. They retain their existing names and meaning. Both port packages depend only on JDK/domain/port types.
+- **port/out:** flat contracts for capabilities required from infrastructure: repositories, identity verification and mail senders. Both port packages depend only on JDK/domain/port types.
 - **adapter/in/rest:** route/role annotations and conversion into service calls. Feature-specific transport records live in `request/` and `response/` subpackages beside their REST resource: for example, `build/request/BuildRequest` and `build/response/BuildResponse`. Entry points end in `RestResource`, including `AuthRestResource`, `BuildRestResource`, `CommentRestResource`, `CommentDeletionRestResource`, `GameDataRestResource`, `NewsRestResource`, and `VoteRestResource`. REST does not return JPA entities or password hashes. CurrentUser parses the verified JWT subject as a UUID, verifies that the RingLab user still exists, and treats a missing account as unavailable authentication. The `ratelimit` package owns application-level HTTP throttling and does not leak it into business services. Global error mapping remains directly under `adapter.in.rest` because it is shared rather than feature-specific, and this adapter owns the HTTP status assigned to each semantic application exception.
 - **adapter/out/db:** JPA entities named `*DbEntity`, persistence implementations named `*DbAdapter`, and MapStruct interfaces named `*DbMapper`. For example, `BuildDbAdapter` implements `BuildRepository` and uses `BuildDbMapper` with `BuildDbEntity`. Panache repositories remain where concise and EntityManager queries where more explicit. Only adapters know table names and PostgreSQL upsert syntax.
 
-`adapter/in` owns protocol-specific entry mechanisms, currently REST/JWT/HTTP. It calls
+`adapter/in` owns protocol-specific entry mechanisms, including REST/JWT/HTTP and the explicit CSV command. It calls
 input ports for application work, including simple catalog reads and response enrichment.
 `adapter/out` implements infrastructure contracts for PostgreSQL, Steam, Google and mail.
 The runtime path is `adapter/in → port/in → application/domain → port/out → adapter/out`.

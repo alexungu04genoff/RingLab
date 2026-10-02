@@ -1,0 +1,80 @@
+id,name,description,slot_cost,image_path
+174ea0a3-43bb-5001-bbd4-8b598482fe59,Inventory Swap,Use the Gadget Button to change item order.,3,/assets/gadgets/inventory-swap.png
+175c2797-0be5-571a-99ac-af4bfdbf58a4,Route Planner Bounty,"When choosing a Travel Ring, get 100 Rings and increase the maximum Ring limit.",1,/assets/gadgets/route-planner-bounty.png
+180a09fc-0034-5f56-be95-2938ce9ed61d,Less is More,Increase the Machine's top speed when holding fewer Rings.,3,/assets/gadgets/less-is-more.png
+182bdfa8-44d3-5de8-941b-d525381dd0a3,Hyper Ring Engine,Top-speed boost while holding Rings; drains Rings over time. Physical speed is not a Speed-point bonus.,2,/assets/gadgets/hyper-ring-engine.png
+238359e7-ba2a-582d-bc82-6ab1c14b0284,Item Stock Plus,Hold up to 3 items instead of 2.,2,/assets/gadgets/item-stock-plus.png
+3130026a-75cc-50c9-94ba-4748263acbfd,Ring Doubler,Double the number of Rings gained. Not counted for Team Matches.,3,/assets/gadgets/ring-doubler.png
+5a000a58-7d7a-581c-80e3-6ae8661215b7,Ring Engine,Top-speed boost while holding Rings; drains Rings over time. Physical speed is not a Speed-point bonus.,1,/assets/gadgets/ring-engine.png
+70000000-0000-4000-8000-000000000001,Ultimate Air Trick,Do more than 3 Air Tricks to become invincible for a short time.,2,/assets/gadgets/ultimate-air-trick.png
+70000000-0000-4000-8000-000000000002,Perfect Landing,Press accelerate as soon as you land to get a speed boost.,1,/assets/gadgets/perfect-landing.png
+70000000-0000-4000-8000-000000000003,Substitute Item,Taking a homing-item hit loses held items but grants invincibility.,1,/assets/gadgets/substitute-item.png
+70000000-0000-4000-8000-000000000004,Invincible Finish,Become invincible when close to the finish line.,3,/assets/gadgets/invincible-finish.png
+70000000-0000-4000-8000-000000000005,Collision Evolution,Bump into other Machines to change all stats by +1.,1,/assets/gadgets/collision-evolution.png
+70000000-0000-4000-8000-000000000006,Ring Evolution,Get 10 Rings to change all stats by +1.,1,/assets/gadgets/ring-evolution.png
+70000000-0000-4000-8000-000000000007,Damage Evolution,Taking damage changes all stats by +7.,1,/assets/gadgets/damage-evolution.png
+70000000-0000-4000-8000-000000000008,Item Hit Evolution,Land a hit with an item to change all stats by +7.,1,/assets/gadgets/item-hit-evolution.png
+70000000-0000-4000-8000-000000000009,Summon Item Box,Spend 40 Rings with the Gadget Button to get an item.,2,/assets/gadgets/summon-item-box.png
+70000000-0000-4000-8000-000000000010,Go Go Omochao,Omochao distributes Rings for longer and appears more often.,2,/assets/gadgets/go-go-omochao.png
+70000000-0000-4000-8000-000000000011,Boost Character Kit,Accelerate with Air Tricks; Boost characters receive stat adjustments.,3,/assets/gadgets/boost-character-kit.png
+70000000-0000-4000-8000-000000000012,Power Character Kit,Catch up with racers and Boost on collision; Power characters receive stat adjustments.,3,/assets/gadgets/power-character-kit.png
+70000000-0000-4000-8000-000000000013,Handling Character Kit,Collide with racers and steal Rings; Handling characters receive stat adjustments.,3,/assets/gadgets/handling-character-kit.png
+70000000-0000-4000-8000-000000000014,Comeback Kit,Raise the Ring limit to 110 and gain 2 items on Lap 3.,3,/assets/gadgets/comeback-kit.png
+70000000-0000-4000-8000-000000000015,Sea Dog Kit,Improve water-form performance and perform Air Tricks much faster.,3,/assets/gadgets/sea-dog-kit.png
+70000000-0000-4000-8000-000000000016,Acceleration Character Kit,Catch up with other racers and get Rings; Acceleration characters receive stat adjustments.,3,/assets/gadgets/acceleration-character-kit.png
+70000000-0000-4000-8000-000000000017,Ace Pilot Kit,Improve flight-form performance and gain Rings from Dash Panels and Gates.,3,/assets/gadgets/ace-pilot-kit.png
+70000000-0000-4000-8000-000000000018,All-Rounder Kit,Reduce deceleration-area and slippery-road effects and greatly improve water and flight stats.,3,/assets/gadgets/all-rounder-kit.png
+70000000-0000-4000-8000-000000000019,Wisp Hoarder Kit,Use many Wisp items and gain items when completing laps.,3,/assets/gadgets/wisp-hoarder-kit.png
+70000000-0000-4000-8000-000000000020,Speed Character Kit,Become invincible at the start and get Rings from a successful Starting Boost; Speed characters receive stat adjustments.,3,/assets/gadgets/speed-character-kit.png
+70000000-0000-4000-8000-000000000021,Item Buster Kit,Make Attack items more common and get Rings for attacking racers.,3,/assets/gadgets/item-buster-kit.png
+70000000-0000-4000-8000-000000000022,Drift Spinner Kit,Fill Level 1 Drift Charge slightly faster and knock away Machines while drifting.,3,/assets/gadgets/drift-spinner-kit.png
+70000000-0000-4000-8000-000000000023,Panel Combo Kit,Passive Handling and Power bonuses; consecutive Dash Panels separately grant Rings.,3,/assets/gadgets/panel-combo-kit.png
+70000000-0000-4000-8000-000000000027,Starting Boost Bounty,Get Rings with a successful Starting Boost.,1,/assets/gadgets/starting-boost-bounty.png
+70000000-0000-4000-8000-000000000028,130 Ring Limit,Hold up to 130 Rings.,1,/assets/gadgets/130-ring-limit.png
+70000000-0000-4000-8000-000000000029,Collision Boost,Collide with a Machine to Boost.,2,/assets/gadgets/collision-boost.png
+70000000-0000-4000-8000-000000000030,Extended Slipstream,Make slipstreams occur more often.,1,/assets/gadgets/extended-slipstream.png
+70000000-0000-4000-8000-000000000031,Ring Thief,Steal Rings when colliding with other Machines.,2,/assets/gadgets/ring-thief.png
+70000000-0000-4000-8000-000000000032,Mini Ring Thief,Steal a small amount of Rings when colliding with other Machines.,1,/assets/gadgets/mini-ring-thief.png
+70000000-0000-4000-8000-000000000033,Quick Recovery,Recover from attacks faster.,3,/assets/gadgets/quick-recovery.png
+70000000-0000-4000-8000-000000000034,Acceleration Machine Kit,Reduce the impact of damage; Acceleration Machines receive stat adjustments.,3,/assets/gadgets/acceleration-machine-kit.png
+70000000-0000-4000-8000-000000000035,Wisp Chance UP,Wisp items appear more often.,1,/assets/gadgets/wisp-chance-up.png
+70000000-0000-4000-8000-000000000036,Invincible Start,Become invincible for a short time when the race starts.,2,/assets/gadgets/invincible-start.png
+70000000-0000-4000-8000-000000000037,Handling Machine Kit,Become invincible with Charge Level 4 Boosts; Handling Machines receive stat adjustments.,3,/assets/gadgets/handling-machine-kit.png
+70000000-0000-4000-8000-000000000038,Power Machine Kit,Boost when colliding with other Machines; Power Machines receive stat adjustments.,3,/assets/gadgets/power-machine-kit.png
+70000000-0000-4000-8000-000000000039,Spin Drift,"While drifting, spin at high speed and knock away other Machines.",2,/assets/gadgets/spin-drift.png
+70000000-0000-4000-8000-000000000040,Crash Pads,Halve the number of Rings lost when taking damage.,1,/assets/gadgets/crash-pads.png
+70000000-0000-4000-8000-000000000041,Warp Ring Specialist,Start with a Warp Ring; Warp Rings can also appear in Item Boxes.,2,/assets/gadgets/warp-ring-specialist.png
+70000000-0000-4000-8000-000000000042,Item Keeper,Prevent items from being dropped.,2,/assets/gadgets/item-keeper.png
+70000000-0000-4000-8000-000000000043,Perfect Charge Boost,Release the drift as soon as a Charge Level fills to Boost faster.,2,/assets/gadgets/perfect-charge-boost.png
+70000000-0000-4000-8000-000000000044,Friction Drift,"Slow down while drifting in land form, but charge the Drift Gauge much faster.",2,/assets/gadgets/friction-drift.png
+70000000-0000-4000-8000-000000000045,Quick Starter,Gain +20 to all stats during Lap 1.,1,/assets/gadgets/quick-starter.png
+70000000-0000-4000-8000-000000000046,Slow Starter,Gain +20 to all stats during Lap 3.,2,/assets/gadgets/slow-starter.png
+70000000-0000-4000-8000-000000000047,Super Quick Starter,Gain +60 to all stats during Lap 1.,2,/assets/gadgets/super-quick-starter.png
+70000000-0000-4000-8000-000000000048,Super Slow Starter,Gain +60 to all stats during Lap 3.,3,/assets/gadgets/super-slow-starter.png
+70000000-0000-4000-8000-000000000049,Speed Machine Kit,Get more Rings and accelerate with them; Speed Machines receive stat adjustments.,3,/assets/gadgets/speed-machine-kit.png
+70000000-0000-4000-8000-000000000050,Drift Charge Kit,Fill the Drift Gauge faster and slightly improve Handling.,3,/assets/gadgets/drift-charge-kit.png
+70000000-0000-4000-8000-000000000051,Spin Dash Kit,Change drift charging to repeated acceleration presses; charges build slower but last longer.,3,/assets/gadgets/spin-dash-kit.png
+70000000-0000-4000-8000-000000000052,Speed Tuner 1,Adjust Speed; matching Speed machines also receive an Acceleration penalty.,1,
+70000000-0000-4000-8000-000000000053,Speed Tuner 2,Adjust Speed; matching Speed machines also receive Acceleration and Boost penalties.,1,
+70000000-0000-4000-8000-000000000054,Acceleration Tuner 1,Adjust Acceleration; matching Acceleration machines also receive a Handling penalty.,1,
+70000000-0000-4000-8000-000000000055,Acceleration Tuner 2,Adjust Acceleration; matching Acceleration machines also receive Handling and Boost penalties.,1,
+70000000-0000-4000-8000-000000000056,Handling Tuner 1,Adjust Handling; matching Handling machines also receive a Power penalty.,1,
+70000000-0000-4000-8000-000000000057,Handling Tuner 2,Adjust Handling; matching Handling machines also receive Speed and Power penalties.,1,
+70000000-0000-4000-8000-000000000058,Power Tuner 1,Adjust Power; matching Power machines also receive an Acceleration penalty.,1,
+70000000-0000-4000-8000-000000000059,Power Tuner 2,Adjust Power; matching Power machines also receive Acceleration and Handling penalties.,1,
+70000000-0000-4000-8000-000000000060,Boost Tuner 1,Adjust Boost; matching Boost machines also receive a Speed penalty.,1,
+70000000-0000-4000-8000-000000000061,Boost Tuner 2,Adjust Boost; matching Boost machines also receive Speed and Power penalties.,1,
+70000000-0000-4000-8000-000000000062,Boost Machine Kit,Matching Boost machines gain Boost stat points; drift boosts can grant rings.,3,
+82005d0f-575b-5350-934f-fb108d306a21,Attack Item Chance UP,Attack items appear more often.,1,/assets/gadgets/attack-item-chance-up.png
+83284989-3174-5cf8-a5ef-3d443b559b55,Defense Item Chance UP,Defense items appear more often.,2,/assets/gadgets/defense-item-chance-up.png
+84c606c3-0540-5a3e-bb92-27185533a89b,Lucky Pair,Occasionally get double items.,2,/assets/gadgets/lucky-pair.png
+966f8792-a6af-576f-885c-697a33064497,Boost Item Chance UP,Boost items appear more often.,3,/assets/gadgets/boost-item-chance-up.png
+97147799-cf1d-5f50-b133-3ff6091574d3,Damage Mercy,Become temporarily invincible after taking damage.,2,/assets/gadgets/damage-mercy.png
+9735d3ab-d53b-52a1-a80d-ed0cb89429c2,Strong Finish,Become temporarily invincible on Lap 3.,2,/assets/gadgets/strong-finish.png
+ae3d98e8-321c-5e19-b442-a2da09463467,Hazard Item Chance UP,Hazard items appear more often.,1,/assets/gadgets/hazard-item-chance-up.png
+b3002fe1-32a2-5a06-8c07-64d0511811ad,Champion Bounty,Get Rings while in 1st through 3rd place.,3,/assets/gadgets/champion-bounty.png
+b5f42975-23b3-5a1d-9173-c18d2e584244,Ring Mercy,Get Rings after taking damage.,1,/assets/gadgets/ring-mercy.png
+c857021b-d746-5d73-b54d-ccd594064c80,Giant Rocket Punch,Rocket Punch becomes bigger and appears more often.,1,/assets/gadgets/giant-rocket-punch.png
+f3b3dd31-9912-5a84-a8db-a76d1f93dcbe,Item Mercy,Get an item after taking damage.,2,/assets/gadgets/item-mercy.png
+f6f75d95-16dd-538d-89b5-49c71cc8a346,Double Down,"Debuff all stats, but always get double items.",3,/assets/gadgets/double-down.png
+f8a1e5bd-b342-5a88-87e1-908adb2e165f,Ultimate Charge,Add a fourth Drift Charge level and become invincible during its boost.,2,/assets/gadgets/ultimate-charge.png
