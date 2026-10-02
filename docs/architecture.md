@@ -51,6 +51,20 @@ never reach that storage or CSV. Reviewed-version permissions, exact stacking
 pairs and the scenario assumption remain Java policy. Source URLs and numeric facts
 are relational data; importing a new snapshot does not grant runtime permission.
 
+`ReviewedGadgetRules` synchronizes the first successful load and shares that immutable
+snapshot for the application instance. Missing snapshots and repository failures are
+not cached. A successful cold load executes six SELECTs: version, ruleset metadata,
+passive facts, scenario facts, passive sources and scenario sources. Later snapshot
+calls execute no SQL; callers still perform their other catalog/build/stat reads.
+Passive previews, nonempty build pages, scenario previews, recommendation catalog
+loads and both rule metadata endpoints each request the snapshot once. Community
+response projection requests it per entry (at most three); conditional 304 responses
+skip that projection. These callers share the same application-scoped rule cache.
+Published rule metadata, facts and ordered sources cannot be changed by the importer,
+and the snapshot contains no live persistence objects. Application restart refreshes
+the cache; changing the reviewed version requires Java policy changes and restart.
+Importing a future version neither invalidates existing facts nor enables that version.
+
 Private bookmarks follow the same boundaries: `SavedBuildRestResource` obtains the
 actor through `CurrentUser`, calls `SavedBuildUseCase` implemented by `SavedBuildService`, and assembles normal live
 build responses with a separate `savedAt`. `SavedBuildRepository` is a flat outbound

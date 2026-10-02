@@ -1,5 +1,45 @@
 # Verification
 
+## Post-refactor hardening — 2026-10-02
+
+Reviewed main `3a8030a` with the rule-fact import and solver decomposition together.
+The concrete runtime issue was repeated loading of the same immutable reviewed rule
+snapshot: six SELECTs per successful call. `ReviewedGadgetRules` now shares the first
+successful detached snapshot per application instance; missing/error loads remain
+retryable. Four pure tests cover load count, concurrent callers and both retry paths.
+The focused command `mvn -f backend/pom.xml "-Dtest=ReviewedGadgetRulesTest,ArchitectureTest" test`
+passed all eight tests.
+
+Then `mvn -f backend/pom.xml verify` passed **513 Surefire tests + 18 packaged API
+tests**, with no failures or skips, against disposable PostgreSQL 17.11. This included
+all nine importer integration tests, fresh V1–V34 canonical CSV/no-op parity, late
+FK/unique rollback, future-version isolation, the five frozen-rule characterization
+tests, all solver tests and ArchitectureTest. Solver, importer, rule policy and
+migrations were left unchanged; no coverage gate or assertion was weakened.
+
+Fresh JaCoCo measured **98.01% instructions, 90.33% branches and 97.97% lines**;
+the existing 90% / 80% / 90% gates passed. The cache has all instructions and both
+branches covered. Verification used a fresh source copy under
+`.tools/hardening-verification/` so the running development server's locked build
+files and obsolete pre-decomposition class files could not affect compilation or
+coverage. HTML/XML reports are at
+`.tools/hardening-verification/backend/target/site/jacoco/index.html` and `jacoco.xml`.
+Previous coverage execution data was excluded from this run.
+
+Static documentation checks reconciled the 241 Java files, 19 services, 18 input
+ports, 17 outbound ports, 26 application tables, 14 entities and four mappers,
+and confirmed all 31 embedded/standalone Mermaid pairs match. Stale counts,
+ruleset ID, current-head wording and community rule-loading dependencies were
+patched without regenerating the atlas. Earlier verification/baseline history
+remains explicitly historical.
+
+Existing deprecated/unchecked test compiler notices and the Windows packaged-runner
+logging-category warning remain non-fatal. Frontend source and REST contracts were
+untouched, so frontend verification was not rerun. No commit, push or deployment
+was performed; the disposable test database was removed after verification.
+For a manual rerun, use the focused command above (or IntelliJ's gutter actions),
+then the disposable datasource environment example below and `mvn -f backend/pom.xml verify`.
+
 ## Versioned gadget rule facts — 2026-10-02
 
 The frozen test-only rules/calculators from main `5655220` first passed five

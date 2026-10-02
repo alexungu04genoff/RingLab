@@ -172,8 +172,10 @@ adjustments `(0,40,-2,0,-2)` and result `(58,105,27,54,32)` for the same read-on
 draft request. No services were stopped and no saved data was changed. Integration
 and full-suite tests were not run.
 
-`PassiveGadgetRules` is a typed local table keyed by UUID, ruleset
-`crossworlds-1.4.1-passive-2026-09-28.5`. `PassiveStatsCalculator` is pure domain arithmetic;
+The current facts are authored in the versioned CSV bundle and loaded from PostgreSQL
+as a detached `GadgetRuleSnapshot`, ruleset `crossworlds-1.4.1-passive-2026-09-28.5`.
+`PassiveGadgetRules` retains reviewed-version and exact stacking policy; it no longer
+contains the authored fact table. `PassiveStatsCalculator` is pure domain arithmetic;
 `PassiveStatsService` validates drafts, resolves actual racer/machine types separately, and
 batches page data. Top-three exports reuse it with already resolved metadata. No new rules
 engine, live scraping, ranking, ownership, publication or map mechanics are introduced.

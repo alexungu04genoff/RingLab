@@ -225,6 +225,11 @@ once, preserving application behavior immediately on upgrade. It does not read
 CSV files. All future rule content uses the explicit importer; ordinary startup
 and HTTP requests never import/read CSV. PostgreSQL supplies detached snapshots
 through `GadgetRuleRepository` to application services and the pure calculators.
+`ReviewedGadgetRules` caches only a successfully loaded immutable snapshot for the
+application instance. Missing/error loads are retried. Published rules cannot be
+modified by this importer, so normal imports need no cache invalidation. Restart
+refreshes the cache; selecting another reviewed patch requires Java policy changes
+and restart. A cold successful load makes six SELECTs; later snapshot calls make none.
 
 ## Adding a future patch's reviewed facts
 

@@ -2,9 +2,9 @@
 
 **A source-based study guide · updated 2 October 2026 · Flyway V1–V34**
 
-This atlas describes the **current working tree**, updated for the input-port refactor,
+This atlas describes main `3a8030a`, including the input-port refactor,
 the explicit CSV importer, versioned gadget rule facts and internal recommendation
-search decomposition from baseline `5655220`.
+search decomposition, plus the local post-refactor hardening changes.
 The original inspection preceded these changes; only affected
 sections and diagrams have been patched. Java source, actual calls, implementations and the cumulative
 migration schema take precedence over older prose. This is a static architecture inspection,
@@ -326,10 +326,10 @@ flowchart TB
   classDef adapter fill:#ffe7ed,stroke:#b45370,color:#502333
 ```
 
-**How to read this:** there are **15 ports and 15 concrete outbound implementations**:
-11 storage adapters and 4 external adapters. Mail senders count as adapters despite their
+**How to read this:** there are **17 ports and 17 concrete outbound implementations**:
+13 storage adapters and 4 external adapters. Mail senders count as adapters despite their
 names. `SteamNewsClient` is a library-generated HTTP client interface, not a second port
-or a sixteenth concrete adapter. [Diagram source](architecture/outbound-adapters.mmd).
+or an eighteenth concrete adapter. [Diagram source](architecture/outbound-adapters.mmd).
 
 ## 5. Build lifecycle
 
@@ -949,6 +949,8 @@ flowchart TB
   rest --> dto
   dto --> input
   input -.-> projection["CommunitySnapshotCache.passiveStats<br/>PassiveStatsService.resolved; detached facts only"]:::app
+  projection --> reviewed["ReviewedGadgetRules<br/>successful snapshot cached per application instance"]:::app
+  reviewed --> rulePort["GadgetRuleRepository → GadgetRuleDbAdapter<br/>PostgreSQL on first successful load"]:::port
   rest -->|"Discord representation"| formatter
   dto -.->|"formatter input"| formatter
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
@@ -1505,8 +1507,8 @@ Source trail: [Steam adapter/client](../backend/src/main/java/dev/ringlab/adapte
 
 ## 14. Current-state database
 
-This is the schema after **all migrations V1–V33**, reconciled with the current entities
-and native SQL. There are **21 application tables**. Flyway's own schema-history table is
+This is the schema after **all migrations V1–V34**, reconciled with the current entities
+and native SQL. There are **26 application tables**. Flyway's own schema-history table is
 infrastructure metadata and is excluded from that count. The four ER panels form one
 current-state model; repeated anchor tables are the same tables across panels.
 
@@ -1634,8 +1636,8 @@ current user-deletion endpoint. [Diagram source](architecture/database-auth.mmd)
 
 ### 14.3 Game data and base-stat snapshots
 
-Which data can vary by patch? `racer_stats` and `machine_part_stats` have composite keys
-with `game_version_id`. Catalog identities, gadget cost and map catalog are independent
+Which data can vary by patch? `racer_stats`, `machine_part_stats` and the five rule
+tables below are keyed by `game_version_id`. Catalog identities, gadget cost and map catalog are independent
 of those snapshot tables. The current schema has no `machines.family` column.
 
 <!-- diagram: database-catalog-stats -->
@@ -2055,7 +2057,11 @@ AuthUseCase through the shared actor helper.
 (G) for catalog details. A single response also calls `VoteUseCase → VoteService.summary` (V);
 page callers supply vote summaries themselves. Thus
 `+ response` expands to U/B/G/V reads and their matching adapters. This is a REST helper,
-not a persistence mapper. **Stats path:** `PassiveStatsService → BaseStatsService` adds G/BS.
+not a persistence mapper. **Stats path:** `PassiveStatsService → BaseStatsService` adds G/BS,
+and `ReviewedGadgetRules → GadgetRuleRepository` adds GR on the first successful
+snapshot load. The immutable rule snapshot is then shared per application instance;
+missing/error loads are not cached. See [rule loading and refresh](architecture.md#boundaries)
+for the six-query cold load and restart/version selection boundary.
 **Top exclusion path:** a cache miss may invoke `CommunitySelectionService` and B/V/G/U/BS.
 
 “User” below means bearer JWT, role `user`, and `CurrentUser` account/version validation.
@@ -2083,7 +2089,7 @@ the relevant service even on a public route.
 
 | HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET `/api/builds` | `BuildRestResource` | `BuildUseCase`; optional `CommunityUseCase` / `PassiveStatsUseCase` | `BuildService`; optional `PassiveStatsService`; cache miss `CommunitySelectionService`; response services | `BuildRanking`, `WilsonScore`, `BuildResponseAssembler`, `CommunitySnapshotCache` | B, V, G + response; optional BS/U | B, V, G, U; optional BS | No | No | Public |
+| GET `/api/builds` | `BuildRestResource` | `BuildUseCase`; optional `CommunityUseCase` / `PassiveStatsUseCase` | `BuildService`; optional `PassiveStatsService`; cache miss `CommunitySelectionService`; response services | `BuildRanking`, `WilsonScore`, `BuildResponseAssembler`, `CommunitySnapshotCache` | B, V, G + response; optional BS/U/GR | B, V, G, U; optional BS/GR | No | No | Public |
 | GET `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildResponseAssembler` | B + response | B, U, G, V | No | No | Public |
 | POST `/api/builds` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildDraftValidator`, `ProfanityPolicy`, `GadgetPlate`, `MachineCompatibility`, `MachineComposition` | B, G + actor + response | B, G, U, V | Yes, including remix | No | User |
 | PUT `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | Same validation; `ForbiddenException.requireOwner` | B, G + actor + response | B, G, U, V | Yes | No | User; build owner |
@@ -2100,8 +2106,8 @@ the relevant service even on a public route.
 
 | HTTP method/path | REST resource | Input port(s) | Application service | Important domain/helper classes | Output ports (key) | Concrete adapters (key) | Writes DB? | External call? | Authentication |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| GET `/api/community/top-builds` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | `CommunitySnapshotCache`, `CommunityEligibility`, `CommunitySnapshotAssembler`, `BuildRanking`, `TopBuildsResponse` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | No | Public |
-| GET `/api/community/top-builds/discord` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | Same snapshot; `DiscordTopBuildsFormatter`, `CommunityPublicUrls` | Cache miss B, V, G, U, BS | B, V, G, U, BS | No | **No Discord API call** | Public |
+| GET `/api/community/top-builds` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | `CommunitySnapshotCache`, `CommunityEligibility`, `CommunitySnapshotAssembler`, `BuildRanking`, `TopBuildsResponse` | Cache miss B, V, G, U, BS; non-304 passive projection GR | B, V, G, U, BS, GR | No | No | Public |
+| GET `/api/community/top-builds/discord` | `CommunityRestResource` | `CommunityUseCase` | `CommunitySnapshotCache`; cache miss: `CommunitySelectionService` | Same snapshot; `DiscordTopBuildsFormatter`, `CommunityPublicUrls` | Cache miss B, V, G, U, BS; non-304 passive projection GR | B, V, G, U, BS, GR | No | **No Discord API call** | Public |
 | GET `/api/builds/{id}/comments` | `CommentRestResource` | `CommentUseCase` + `AuthUseCase` | `CommentService`, `BuildService`, `AuthService` | `Comment`, author response conversion | CM, B, U | CM, B, U | No | No | Public |
 | POST `/api/builds/{id}/comments` | `CommentRestResource` | `CommentUseCase` + `AuthUseCase` | `CommentService`, `BuildService`, `AuthService` | `ProfanityPolicy`, `Comment` | CM, B, U + actor | CM, B, U | Yes | No | User |
 | DELETE `/api/comments/{id}` | `CommentDeletionRestResource` | `CommentUseCase` | `CommentService` | `ForbiddenException.requireOwner` | CM + actor | CM, U | Yes | No | User; comment owner |
@@ -2151,9 +2157,9 @@ original index. The command is administrative and is not an HTTP operation.
 | `GadgetRuleRepository`, `GadgetRuleDbAdapter` | Load an immutable, detached runtime snapshot from PostgreSQL. |
 | `GameDataRuleStorage` | JDBC mapping shared by the import and runtime adapters. |
 | `GadgetRuleSnapshot` | Ordered passive/scenario facts, sources and fallback utility classifications. |
-| `ReviewedGadgetRules` | Select the current Java-approved runtime patch; imported versions are not automatically enabled. |
+| `ReviewedGadgetRules` | Select the current Java-approved runtime patch and cache its successful detached snapshot per application instance; imported versions are not automatically enabled. |
 
-This index covers **all 212 top-level production Java source files**, including transport
+This index covers **all 241 top-level production Java source files**, including transport
 records so IntelliJ names are searchable. Nested records/enums belong to their enclosing
 entry. The subsection names specify the layer; the feature column locates the responsibility.
 Links open the actual source file. The two `MachineCompatibility` classes are deliberately
@@ -2527,21 +2533,26 @@ then passed. See the exact commands and run sequence in
 | Recommendation orchestration | `BuildRecommendationServiceTest`: one catalog load, bounded concurrency/release and no build/community persistence dependency. |
 | Solver correctness | `BuildRecommendationSolverTest`, `BalancedSolverTest`, `BalancedObjectiveTest`: locks, exclusions, plate/BOOST constraints, reference floors, tiny exhaustive comparisons and bounded outcomes. |
 | Base/passive/scenario | `BaseStatsTest`, `BaseStatsBreakdownTest`, `PassiveStatsCalculatorTest`, `ScenarioStatsCalculatorTest`, plus corresponding application-service tests. |
+| Reviewed rule loading | `ReviewedGadgetRulesTest`: one shared successful load, concurrent callers, and retry after missing/error loads. |
 | Account/security behavior | `AuthServiceTest`, `ExternalAuthServiceTest`, `PasswordResetServiceTest`, `CurrentUserTest`; real transaction boundaries in `AccountRegistrationIntegrationTest`, `GoogleAuthIntegrationTest` and `PasswordResetIntegrationTest`. |
 | Personal/social state | `CollectionServiceTest`, `SavedBuildServiceTest`, `CommentServiceTest`, `VoteServiceTest`; real persistence boundaries in their integration counterparts. |
 | Community | `CommunityEligibilityTest`, `CommunitySelectionTest`, `CommunitySnapshotCacheTest`, `CommunityExportTest`, conditional projection in `CommunityRestResourceTest`, and `CommunityApiIntegrationTest`. |
 | HTTP failures and rate limits | `RateLimitTest`, the three exception-mapper tests and `HttpRobustnessIntegrationTest`. |
 | Relational evolution | Migration-specific tests, `ParentDeletionIntegrationTest`, `RecommendedMapsIntegrationTest` and `RepositoryContractIntegrationTest`. |
 
-Documentation verification for this snapshot checked all 45 route pairs against the resource
-annotations, all 212 index entries against source files, local links/heading anchors, fenced
+The original documentation verification checked all 45 route pairs against the resource
+annotations, its then-current 212 index entries against source files, local links/heading anchors, fenced
 blocks, table structure and equality between embedded Mermaid and standalone sources.
-All 31 diagrams were rendered with Mermaid 11.12.0 in headless Edge; the changed boundary,
+All 31 diagrams were rendered then with Mermaid 11.12.0 in headless Edge; the changed boundary,
 authentication and complete-map images were reviewed. Rendering tools and preview output
 stayed outside tracked project files; no project dependency was added. Static comparison also
 confirmed unchanged route signatures/annotations and all 66 transport record declarations.
 Full backend verification used disposable infrastructure; frontend source/contracts were
 unaffected and no frontend run was needed.
+The post-refactor hardening audit rechecked the current 241 source names in the class
+index, inventory counts, rule-loading relationships and all 31 embedded/standalone
+diagram pairs. It patched stale prose and the community projection's rule dependency;
+the atlas was not regenerated.
 
 No architecture relationship is knowingly left unresolved. Some behavior is deliberately
 conditional: cache misses, Google key refresh, eligible email delivery and optional stats

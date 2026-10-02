@@ -128,7 +128,7 @@ dependency is added.
 
 ## Supported data and honest outcomes
 
-Only the explicit `crossworlds-1.4.1-passive-2026-09-27.1` ruleset is supported.
+Only the explicit `crossworlds-1.4.1-passive-2026-09-28.5` ruleset is supported.
 Other selected patches return unavailable without fallback. Only fully known
 base vectors and `CALCULATED` passive results compete. Missing values are never
 zero; unresolved stacking and unreviewed gadgets cannot be optimized as base-only.

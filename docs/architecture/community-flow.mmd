@@ -33,6 +33,8 @@ flowchart TB
   rest --> dto
   dto --> input
   input -.-> projection["CommunitySnapshotCache.passiveStats<br/>PassiveStatsService.resolved; detached facts only"]:::app
+  projection --> reviewed["ReviewedGadgetRules<br/>successful snapshot cached per application instance"]:::app
+  reviewed --> rulePort["GadgetRuleRepository → GadgetRuleDbAdapter<br/>PostgreSQL on first successful load"]:::port
   rest -->|"Discord representation"| formatter
   dto -.->|"formatter input"| formatter
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
