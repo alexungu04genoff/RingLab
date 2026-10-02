@@ -1,6 +1,6 @@
 # RingLab
 
-A small community build-sharing platform for a bachelor's thesis, using **Sonic Racing: CrossWorlds** as its concrete domain. Share a racer, a Standard machine (FRONT + REAR + TIRE) or Board (FRONT + REAR), and an ordered gadget combination; explore builds, vote, and comment.
+A small community build-sharing platform for a bachelor's thesis, using **Sonic Racing: CrossWorlds** as its concrete domain. Share a racer, compatible machine parts (FRONT + REAR for BOOST, FRONT + REAR + TIRE for other racing types), and an ordered gadget combination; explore builds, vote, and comment.
 
 ## Stack and structure
 
@@ -15,27 +15,38 @@ normal requests and restarts do not load or import CSV files.
 
 ```text
 backend/src/main/java/dev/ringlab/
-  domain/{auth,build,comment,gamedata,news,vote}/
+  domain/{auth,build,collection,comment,gamedata,news,vote}/
                framework-independent domain records
-  application/{auth,build,comment,news,vote}/
+  application/{auth,build,collection,comment,community,gamedata,news,validation,vote}/
                application services
   port/in/                         # capabilities provided by RingLab
   port/out/                        # capabilities required from infrastructure
-               UserRepository, BuildRepository, CommentRepository,
-               GameDataRepository, GameNewsRepository and VoteRepository contracts
-  adapter/in/rest/{auth,build,comment,gamedata,news,ratelimit,vote}/
+               repository, mail-sender and external-identity verifier contracts
+  adapter/in/catalog/              # explicit CSV import command and reader
+  adapter/in/rest/{auth,build,collection,comment,community,gamedata,news,ratelimit,vote}/
                REST entry points, current JWT identity and HTTP rate limiting
                feature-local request/ and response/ DTO packages
   adapter/out/db/{auth,build,comment,gamedata,vote}/
                DbEntity, DbMapper and DbAdapter persistence types
   adapter/out/steam/
+  adapter/out/{google,mail}/
+  GameDataImportMain.java           # standalone import composition root
   application/AppException.java
 backend/src/main/resources/db/migration/
 frontend/src/
-  pages/       route-level screens
-  api.ts       HTTP, bearer token and error handling
-  auth.tsx     session context and protected routes
-  components.tsx, useLoad.ts, buildForm.ts
+  app/                             # application shell and router
+  pages/                           # route-level screens
+  features/                        # build, collection, recommendation and other feature UI
+    auth/auth.tsx                  # session context and protected routes
+    builds/buildForm.ts            # build form conversions and errors
+    builds/editor/                 # editor sections and catalog loading
+  shared/
+    api/api.ts                     # HTTP, bearer token and error handling
+    hooks/useLoad.ts               # abortable loading
+    ui/                            # shared presentation components
+    types.ts                       # explicit API-aligned types
+  styles/index.css                 # ordered CSS imports
+  main.tsx                         # React entry point
 docs/architecture.md
 ```
 
@@ -115,7 +126,7 @@ If dev reports a DNS error, compare the configured resolver with
 from the local resolver does not require recreating the tunnel. The dev hostname
 requires the local frontend, backend, database, and tunnel to remain running.
 
-The first start migrates the schema and seeds 52 racers, 62 source machines, 186 machine parts, and 70 gadgets. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
+The first start migrates the schema and seeds 52 racers, 62 source machines, 174 machine parts, 79 gadgets, 44 maps, and four game versions. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. Later migrations remove unknown-cost gadgets and BOOST tire rows, expand the reviewed catalog, and initialize versioned stats and rule facts. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
 
 ### Email verification and SMTP
 
@@ -179,10 +190,10 @@ With PostgreSQL and the Quarkus development server running, preview an explicitl
 ```
 
 The default plan contains **100 demo members, about 20 build authors, and 60 builds**. Build count,
-random seed, reference time, and the Standard/Extreme Gear ratio are configurable. For 60 builds,
+random seed, reference time, and the non-BOOST/BOOST ratio are configurable. For 60 builds,
 the planner creates exactly 54 on the newest released patch and 6 on older released patches, plus
-48 Standard and 12 Extreme Gear setups. Other build counts round both 10% older-patch and the
-configured Board ratio away from zero. Votes and comments are intentionally uneven and therefore
+48 non-BOOST and 12 BOOST (Extreme Gear) setups. Other build counts round both 10% older-patch and the
+configured `BoostMachineRatio` away from zero. Votes and comments are intentionally uneven and therefore
 vary in total with the seed.
 
 The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckles, Amy), **30% other Sonic characters**, and **10% guests**. These are fictional editorial weights, not measured player popularity. Authors have small preferred machine pools and recurring gadget themes (rings, drifting, items, recovery, starts/finishes, and air tricks). Titles and descriptions use the actual resolved setup. Attention is uneven, including overlooked builds and mixed reactions. The `sonic-speed` fixture is explicitly featured: it uses Sonic and the newest patch, with 65 positive votes from distinct non-owner demo accounts in a fresh plan. This does not change application ranking rules or represent real player approval.
@@ -190,7 +201,7 @@ The intended racer mix is **60% main Sonic cast** (Sonic, Shadow, Tails, Knuckle
 The pure planner in `backend/scripts/CommunityDemoPlan.ps1` consumes a canonically ordered catalog
 snapshot. The live runner proves that the API is loopback, the healthy PostgreSQL service comes
 from this repository's `compose.yaml` and is bound to loopback, and Flyway has applied every
-checked-in migration. It then validates all IDs, machine families, required parts, patch IDs,
+checked-in migration. It then validates all IDs, machine racing types, required parts, patch IDs,
 Gadget Plate layouts, text constraints, and remix ordering before any write. Timestamps remain
 server-generated because the public API has no fixture-only timestamp override. Live validation
 also checks the selected components against `/stats/catalog`; missing values cause a preflight
@@ -280,7 +291,7 @@ new patches receive independent CSV snapshots through the explicit game-data imp
 The existing older snapshots contain current-data placeholders; ordinary imports reject
 changes to already published stat rows.
 
-Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the explicit Standard/Board machine family and makes the tire reference nullable for Board builds. V26 classifies the verified Extreme Gear catalog and removes the obsolete generated tire rows for those Boards. Hibernate validates the migrated schema; it never creates or drops it.
+Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the transitional Standard/Board machine family and makes the tire reference nullable for Board builds. V26 classifies the verified Extreme Gear catalog and removes the obsolete generated tire rows for those Boards. V27 removes the family column; current composition uses `RacingType`, with no tire for BOOST. Hibernate validates the migrated schema; it never creates or drops it.
 
 Add a new numbered migration when changing schema. Future catalog/stat content is
 maintained through [the explicit game-data importer](game-data/README.md). Historical
@@ -392,7 +403,7 @@ cd backend
 mvn verify
 ```
 
-Open `backend/target/site/jacoco/index.html` for the HTML report. The XML report is `backend/target/site/jacoco/jacoco.xml`. The Maven JaCoCo agent covers plain JUnit tests, while Quarkus's JaCoCo test extension records classes loaded by `@QuarkusTest`; both append to the same report data. Coverage is used to locate untested domain and application branches; the project does not enforce an artificial percentage threshold.
+Open `backend/target/site/jacoco/index.html` for the HTML report. The XML report is `backend/target/site/jacoco/jacoco.xml`. The Maven JaCoCo agent covers plain JUnit tests, while Quarkus's JaCoCo test extension records classes loaded by `@QuarkusTest`; both append to the same report data. Coverage is used to locate untested domain and application branches. The existing Maven gates require 90% instruction, 80% branch, and 90% line coverage.
 
 ## Production builds and packaged API tests
 
@@ -422,7 +433,7 @@ Keep private keys outside source control; `.keys/` is ignored. Restrict file acc
 
 `mvn verify` also runs `PackagedApiIT`, repeating the acceptance suite against the packaged application. Set the above production environment variables to a **disposable test database**, not the development database. The normal test phase uses Dev Services unless overridden; the packaged test phase uses the configured database and signing keys. Do not run another backend on the integration-test port (8081) at the same time.
 
-`npm run build` produces `frontend/dist/`. Serve those static files with SPA fallback to `index.html` and proxy `/api` to Quarkus. `npm run preview` locally previews the built frontend and inherits the configured `/api` proxy to localhost:8080; keep the backend running. Vite's preview server is not a production hosting server. A hosted deployment is outside this local MVP.
+`npm run build` produces `frontend/dist/`. Serve those static files with SPA fallback to `index.html` and proxy `/api` to Quarkus. `npm run preview` locally previews the built frontend and inherits the configured `/api` proxy to localhost:8080; keep the backend running. Vite's preview server is not a production hosting server. The containerized hosted deployment and explicit maintenance commands are documented in [production operations](docs/production.md).
 
 ## REST overview
 
@@ -481,4 +492,4 @@ Vote body: `{"value":1}` or `{"value":-1}`. Comment body: `{"text":"Nice setup"}
 
 Artwork lives in `frontend/public/assets/racers/`, `frontend/public/assets/machines/`, and `frontend/public/assets/gadgets/`. V6–V9 assign local paths; V9 uses the user-approved Sonic Wiki as the sole presentation-artwork source. The [source ledger](docs/game-data-sources.md) keeps that presentation choice distinct from first-party catalog evidence. The UI displays an initials placeholder when a local image is absent or fails. New racing types remain unknown until verified; no game statistics are inferred from artwork.
 
-A build contains one racer and compatible machine parts: BOOST requires FRONT + REAR and no tire; other racing types require FRONT + REAR + TIRE. Each `MachinePart` originates from a source `Machine`; parts may come from different source machines only when their known racing types match. Racer type is independent. BuildService delegates these checks to BuildDraftValidator. Gadgets remain separate and ordered; the validator checks current costs and the two-row, three-slot Gadget Plate. Base stats are patch-aware and sum the racer plus selected parts; gadget effects are not included.
+A build contains one racer and compatible machine parts: BOOST requires FRONT + REAR and no tire; other racing types require FRONT + REAR + TIRE. Each `MachinePart` originates from a source `Machine`; parts may come from different source machines only when their known racing types match. Racer type is independent. BuildService delegates these checks to BuildDraftValidator. Gadgets remain separate and ordered; the validator checks current costs and the two-row, three-slot Gadget Plate. Base stats are patch-aware and sum the racer plus selected parts. Separate passive and scenario calculations apply reviewed gadget rules with explicit coverage and assumptions; the base-stat calculation excludes gadget effects.
