@@ -276,6 +276,80 @@ class BuildRecommendationSolverTest {
     finally { Thread.interrupted(); }
   }
 
+  @Test void exactWorkBoundariesPreserveBothSearchTraversals() {
+    var f = new Fixture();
+    for (var mode : RecommendationMode.values()) {
+      var current = selection(List.of());
+      var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode,
+          mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(ORDER, "100", "100", "100", "100", "100") : null);
+      long completeWork = mode == RecommendationMode.STRICT ? 7 : 13;
+      for (long limit = 1; limit <= completeWork + 1; limit++) {
+        var result = new BuildRecommendationSolver(f.snapshot(), request,
+            new BuildRecommendationSolver.Budget(limit, Duration.ofSeconds(1)), () -> 0).solve();
+        assertEquals(Math.min(limit, completeWork), result.work(), mode + " limit " + limit);
+        assertEquals(limit < completeWork ? BEST_FOUND : ESTABLISHED, result.outcome());
+        assertEquals(current, result.selection());
+        assertEquals(points(4, 4, 4, 4, 4), result.currentStats());
+        assertEquals(result.currentStats(), result.recommendedStats());
+        assertEquals(limit >= completeWork, result.alreadyBest());
+        assertEquals(0, result.elapsedMillis());
+        assertEquals(2, result.restrictions().size());
+        assertEquals(limit >= completeWork, result.reason().startsWith("Best supported result established"));
+        if (limit < completeWork) assertTrue(result.reason().startsWith("Best found before the search limit; optimality is not established."));
+      }
+    }
+  }
+
+  @Test void clockStartsAtConstructionAndTimeoutIncludesEqualityWithoutIncrementingWork() {
+    var f = new Fixture();
+    var ticks = new AtomicLong();
+    var request = request(selection(List.of()), EMPTY, RacingType.SPEED);
+    var result = new BuildRecommendationSolver(f.snapshot(), request,
+        new BuildRecommendationSolver.Budget(100, Duration.ofMillis(2)),
+        () -> ticks.getAndIncrement() * 1_000_000).solve();
+    assertEquals(BEST_FOUND, result.outcome());
+    assertEquals(1, result.work()); assertEquals(3, result.elapsedMillis()); assertEquals(4, ticks.get());
+    ticks.set(0);
+    result = new BuildRecommendationSolver(f.snapshot(), request,
+        new BuildRecommendationSolver.Budget(1, Duration.ofSeconds(1)),
+        () -> ticks.getAndIncrement() * 1_000_000).solve();
+    // Work exhaustion short-circuits the clock check; result timing still reads it once.
+    assertEquals(1, result.work()); assertEquals(2, result.elapsedMillis()); assertEquals(3, ticks.get());
+    var now = new AtomicLong(10_000_000);
+    var delayed = new BuildRecommendationSolver(f.snapshot(), request,
+        new BuildRecommendationSolver.Budget(100, Duration.ofMillis(2)), now::get);
+    now.set(12_000_000);
+    result = delayed.solve();
+    assertEquals(LIMIT_WITHOUT_CANDIDATE, result.outcome()); assertEquals(0, result.work());
+    assertEquals(2, result.elapsedMillis()); assertNull(result.currentStats());
+    now.set(10_000_000);
+    var backwards = new BuildRecommendationSolver(f.snapshot(), request, BUDGET, now::get);
+    now.set(0);
+    assertEquals(0, backwards.solve().elapsedMillis());
+  }
+
+  @Test void interruptionPreservesTheFlagAndDoesNotConsumeWork() {
+    var f = new Fixture(); var ticks = new AtomicLong();
+    Thread.currentThread().interrupt();
+    try {
+      var result = new BuildRecommendationSolver(f.snapshot(), request(EMPTY, EMPTY, RacingType.SPEED),
+          BUDGET, ticks::getAndIncrement).solve();
+      assertEquals(LIMIT_WITHOUT_CANDIDATE, result.outcome()); assertEquals(0, result.work());
+      assertTrue(Thread.currentThread().isInterrupted()); assertEquals(3, ticks.get());
+      assertEquals("Search limit reached before a fully evaluated candidate was found. This does not establish infeasibility.", result.reason());
+    } finally { Thread.interrupted(); }
+  }
+
+  @Test void equalUtilitySubsetsPreferLowerCostBeforeStableIdsAndKeepDisplayOrder() {
+    var f = new Fixture(); f.addGadget(45, 3); f.addGadget(46, 2); f.addGadget(47, 2);
+    var current = selection(List.of(PassiveGadgetRules.id(47), PassiveGadgetRules.id(45), PassiveGadgetRules.id(46)));
+    var result = solve(f, request(current, EMPTY, RacingType.SPEED));
+    assertEquals(ESTABLISHED, result.outcome()); assertNull(result.currentStats());
+    assertEquals(List.of(PassiveGadgetRules.id(47), PassiveGadgetRules.id(46)), result.selection().gadgetIds());
+    assertEquals(points(4, 4, 4, 4, 4), result.recommendedStats());
+    assertEquals("Best supported result established within the reviewed catalog and locks. Current passive stats are unavailable, so no numerical improvement over the current draft is claimed.", result.reason());
+  }
+
   @Test void immutableRequestsRejectMalformedPriorityPermutationsAndBudgets() {
     assertThrows(IllegalArgumentException.class, () -> new RecommendationRequest(null, RacingType.SPEED, ORDER, EMPTY, EMPTY));
     assertThrows(IllegalArgumentException.class, () -> request(EMPTY, EMPTY, null));
