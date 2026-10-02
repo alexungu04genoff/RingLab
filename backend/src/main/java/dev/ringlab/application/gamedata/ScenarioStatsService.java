@@ -19,9 +19,10 @@ import lombok.RequiredArgsConstructor;
 public class ScenarioStatsService implements ScenarioStatsUseCase {
   private final BaseStatsService base;
   private final GameDataRepository game;
+  private final ReviewedGadgetRules reviewed;
 
   public Rules rules() {
-    return new Rules(ScenarioGadgetRules.VERSION, ScenarioGadgetRules.all());
+    return new Rules(ScenarioGadgetRules.VERSION, reviewed.snapshot().scenario());
   }
 
   public ScenarioStatsResult preview(UUID version, UUID racer, UUID front, UUID rear, UUID tire,
@@ -42,11 +43,12 @@ public class ScenarioStatsService implements ScenarioStatsUseCase {
     var breakdown = base.draftBreakdown(version, racer, front, rear, tire);
     var parts = index(game.listMachineParts(), MachinePart::id);
     var machines = index(game.listMachines(), Machine::id);
-    var passive = PassiveStatsService.resolved(breakdown,
+    var rules = reviewed.snapshot();
+    var passive = PassiveStatsService.resolved(rules, breakdown,
         version == null ? null : game.findGameVersion(version).orElseThrow(() -> NotFoundException.missing("Game version")),
         racer == null ? null : game.findRacer(racer).orElseThrow(() -> NotFoundException.missing("Racer")),
         parts.get(front), parts.get(rear), parts.get(tire), machines, gadgets, true);
-    return ScenarioStatsCalculator.calculate(passive, context);
+    return ScenarioStatsCalculator.calculate(rules, passive, context);
   }
 
   private static <T> Map<UUID,T> index(List<T> values, Function<T,UUID> key) {

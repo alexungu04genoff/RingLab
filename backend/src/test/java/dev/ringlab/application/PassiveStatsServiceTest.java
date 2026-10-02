@@ -24,8 +24,8 @@ class PassiveStatsServiceTest {
       return Map.of(front,stats,rear,stats,tire,stats,boardFront,stats,boardRear,stats);
     }
   };
-  private final PassiveStatsService service=new PassiveStatsService(new BaseStatsService(values,game),game);
-  private final ScenarioStatsService scenarios=new ScenarioStatsService(new BaseStatsService(values,game),game);
+  private final PassiveStatsService service=new PassiveStatsService(new BaseStatsService(values,game),game,dev.ringlab.importing.RuleFixtures.loader());
+  private final ScenarioStatsService scenarios=new ScenarioStatsService(new BaseStatsService(values,game),game,dev.ringlab.importing.RuleFixtures.loader());
   private Build build(UUID f,UUID r,UUID t,List<UUID> gadgets) {
     return new Build(UUID.randomUUID(),"Example","",UUID.randomUUID(),racer,f,r,t,version,null,gadgets,Instant.EPOCH,Instant.EPOCH);
   }
@@ -43,7 +43,7 @@ class PassiveStatsServiceTest {
     assertEquals(draft,page.get(carBuild.id()));
     assertEquals(new BigDecimal("12.50"),page.get(boardBuild.id()).base().total().speed());
     assertEquals(new BigDecimal("19.50"),page.get(boardBuild.id()).adjusted().boost());
-    var snapshot=PassiveStatsService.resolved(draft.base(),game.findGameVersion(version).orElseThrow(),game.findRacer(racer).orElseThrow(),
+    var snapshot=PassiveStatsService.resolved(dev.ringlab.importing.RuleFixtures.snapshot(),draft.base(),game.findGameVersion(version).orElseThrow(),game.findRacer(racer).orElseThrow(),
         game.findMachinePart(front).orElseThrow(),game.findMachinePart(rear).orElseThrow(),game.findMachinePart(tire).orElseThrow(),
         Map.of(car,game.findMachine(car).orElseThrow()),List.of(game.findGadget(ids.getFirst()).orElseThrow()),true);
     assertEquals(draft,snapshot);

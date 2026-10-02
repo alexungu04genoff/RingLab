@@ -35,12 +35,14 @@ public final class ImportFixture {
     public final List<CatalogRow<RaceMap>> maps;
     public final List<CatalogRow<GameVersion>> versions;
     public final List<VersionStats> snapshots;
+    public final List<GameDataRuleSet> ruleSets;
     public Edit(GameDataSet d) {
       racers = new ArrayList<>(d.racers()); machines = new ArrayList<>(d.machines());
       parts = new ArrayList<>(d.parts()); gadgets = new ArrayList<>(d.gadgets());
       maps = new ArrayList<>(d.maps()); versions = new ArrayList<>(d.versions());
       snapshots = new ArrayList<>(d.snapshots());
+      ruleSets = new ArrayList<>(d.ruleSets());
     }
-    public GameDataSet build() { return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots); }
+    public GameDataSet build() { return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots, ruleSets); }
   }
 }

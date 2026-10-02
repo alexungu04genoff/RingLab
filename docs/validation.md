@@ -1,5 +1,47 @@
 # Verification
 
+## Versioned gadget rule facts — 2026-10-02
+
+The frozen test-only rules/calculators from main `5655220` first passed five
+characterization tests against unchanged production code. The same tests then
+compared imported facts and calculations against that independent oracle: all
+79 gadgets, known/unknown racer and machine types, all passive pairs, all scenario
+conditions across true/false/unknown contexts, utility effects, unsupported patches,
+invalid loadouts, unknown base stats and the explicit reviewed/assumed interactions.
+There are 29,781 result comparisons plus complete metadata/order/source comparisons.
+The old authored tables remain only in `src/test/java/dev/ringlab/characterization`.
+
+The focused 196-test run passed, followed by a fresh full
+`mvn -f backend/pom.xml verify`: **505 Surefire tests + 18 packaged API tests**, no
+failures or skips. All prior assertions were retained. Fifty-five new test cases
+cover parity, rule parsing/validation, immutable plans, source relationships and
+PostgreSQL atomicity. All nine importer integration tests passed, including V1–V34
+canonical no-op, runtime snapshot equality, a new version/rule snapshot, old rule
+calculation preservation, FK failure after early catalog/rule writes and a real
+rule-source uniqueness rollback. API, recommendation and ArchitectureTest passed.
+
+Fresh JaCoCo: **97.31% instructions, 89.80% branches, 97.52% lines**, compared with
+the phase-one 97.12% / 89.20% / 97.29%. Existing 90% / 80% / 90% gates remain
+unchanged. Old execution data was archived before the full run. HTML/XML reports
+remain under `backend/target/site/jacoco/`.
+
+The standalone packaged CLI passed offline VALIDATE and PLAN → APPLY → PLAN against
+the disposable PostgreSQL database, with zero content writes and a stable approval
+token. The new bundle contains 99 passive facts,
+10 scenario facts, 274 source rows and one metadata row. The application image
+already includes this version directory; no Docker/CI changes were required.
+Frontend code and REST DTOs were untouched, so frontend tests/build were not rerun.
+Existing deprecated/unchecked compiler notices and the Windows packaged-runner
+logging-category warning remain non-fatal.
+
+For a manual full rerun use the environment example below, replacing its disposable
+database name with `ringlab_rule_test` (or your own isolated test database), then
+run `mvn -f backend/pom.xml verify`. The relevant new classes are
+`RuleFactsParityTest`, `GameDataRuleCsvTest`, `GameDataRuleImportTest` and the expanded
+`GameDataImportIntegrationTest`. The first three can run from IntelliJ without
+PostgreSQL; the integration suite requires the disposable datasource. No commit,
+push or deployment is part of this task.
+
 ## CSV game-data importer — 2026-10-02
 
 Full `mvn -f backend/pom.xml verify` passed against disposable PostgreSQL 17:

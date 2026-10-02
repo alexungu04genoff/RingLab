@@ -2,6 +2,7 @@ package dev.ringlab.application.gamedata;
 
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.gamedata.importing.GameDataSet.StatRow;
+import dev.ringlab.domain.gamedata.importing.GameDataRuleSet.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -28,6 +29,32 @@ final class CatalogFields {
   static Map<String, Object> stats(StatRow r) {
     var s = r.stats();
     return fields("id", r.itemId(), "speed", s.speed(), "acceleration", s.acceleration(), "handling", s.handling(), "power", s.power(), "boost", s.boost());
+  }
+  static Map<String, Object> ruleSet(Metadata m) {
+    return fields("id", m.versionId(), "passive_ruleset", m.passiveRuleset(), "scenario_ruleset", m.scenarioRuleset());
+  }
+  static Map<String, Object> passive(PassiveFact f) {
+    var r = f.rule();
+    var values = fields("id", r.gadgetId() + "/" + r.effectId(), "position", f.position(), "kind", r.kind(),
+        "subject", r.subject(), "required_racing_type", r.requiredType(), "label", r.label(), "explanation", r.explanation(),
+        "stacking_group", r.stackingGroup(), "scenario_stat_potential", f.scenarioStatPotential());
+    vector(values, "matching_", r.matching()); vector(values, "nonmatching_", r.nonMatching());
+    return values;
+  }
+  static Map<String, Object> scenario(ScenarioFact f) {
+    var r = f.rule();
+    var values = fields("id", r.gadgetId() + "/" + r.effectId(), "position", f.position(), "condition", r.condition(),
+        "label", r.label(), "explanation", r.explanation());
+    vector(values, "", r.adjustment());
+    return values;
+  }
+  static Map<String, Object> source(Source s) {
+    return fields("id", s.effectType() + "/" + s.gadgetId() + "/" + s.effectId() + "/" + s.position(), "url", s.url());
+  }
+  private static void vector(Map<String, Object> values, String prefix, BaseStats s) {
+    var stats = s == null ? BaseStats.UNKNOWN : s;
+    values.put(prefix + "speed", stats.speed()); values.put(prefix + "acceleration", stats.acceleration());
+    values.put(prefix + "handling", stats.handling()); values.put(prefix + "power", stats.power()); values.put(prefix + "boost", stats.boost());
   }
   private static Map<String, Object> fields(Object... pairs) {
     var result = new LinkedHashMap<String, Object>();

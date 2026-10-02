@@ -1,9 +1,11 @@
 # RingLab Backend Architecture Atlas
 
-**A source-based study guide · inspected 1 October 2026 · Flyway V1–V33**
+**A source-based study guide · updated 2 October 2026 · Flyway V1–V34**
 
-This atlas describes the **current working tree**, updated for the input-port refactor
-from baseline `f408299`. The original inspection preceded this change; only affected
+This atlas describes the **current working tree**, updated for the input-port refactor,
+the explicit CSV importer, versioned gadget rule facts and internal recommendation
+search decomposition from baseline `5655220`.
+The original inspection preceded these changes; only affected
 sections and diagrams have been patched. Java source, actual calls, implementations and the cumulative
 migration schema take precedence over older prose. This is a static architecture inspection,
 not a claim that a particular running database or deployed revision matches the checkout.
@@ -16,12 +18,12 @@ Its features communicate through Java method calls inside the same process.
 | Mermaid diagrams, each with a matching standalone source | 31 |
 | Explicit HTTP operations | 45: 44 production + 1 DEV ONLY |
 | REST resource classes | 16: 15 production + 1 DEV ONLY |
-| Application classes named `*Service` | 18: 17 production + 1 DEV ONLY |
-| Input ports / application implementations | 17 / 17 (one DEV ONLY) |
-| Outbound ports / concrete implementations | 15 / 15 |
-| Application database tables | 21 |
+| Application classes named `*Service` | 19: 18 production + 1 DEV ONLY |
+| Input ports / application implementations | 18 / 18 (one DEV ONLY) |
+| Outbound ports / concrete implementations | 17 / 17 |
+| Application database tables | 26 |
 | JPA entity classes / MapStruct mapper interfaces | 14 / 4 |
-| Top-level production Java files indexed | 212 |
+| Top-level production Java files | 241 |
 
 ## Reading route
 
@@ -253,6 +255,12 @@ flowchart TB
     nr["NewsRestResource"]:::rest --> news["GameNewsUseCase"]:::port -.-> ns["GameNewsService"]:::app
   end
   %% Invisible links stack independent feature panels; they are not calls.
+  pss --> ruleLoader["ReviewedGadgetRules → GadgetRuleRepository<br/>GadgetRuleDbAdapter → PostgreSQL"]:::app
+  scs --> ruleLoader
+  recs --> ruleLoader
+  command["GameDataImportCommand + GameDataCsvReader"]:::rest --> importInput["ImportGameDataUseCase"]:::port
+  importInput -.-> importService["GameDataImportService<br/>typed validation / immutable planning / atomic apply"]:::app
+  importService --> importOutput["GameDataImportRepository → GameDataImportDbAdapter"]:::port
   accounts ~~~ builds ~~~ personal ~~~ social ~~~ catalog
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
@@ -302,6 +310,8 @@ flowchart TB
     direction LR
     g["GameDataRepository"]:::port -.-> ga["GameDataDbAdapter"]:::adapter
     st["BaseStatsRepository"]:::port -.-> sta["BaseStatsDbAdapter — native SQL"]:::adapter
+    gr["GadgetRuleRepository"]:::port -.-> gra["GadgetRuleDbAdapter — detached JDBC snapshots"]:::adapter
+    gi["GameDataImportRepository"]:::port -.-> gia["GameDataImportDbAdapter — explicit atomic command"]:::adapter
   end
   subgraph external["External infrastructure"]
     direction LR
@@ -561,9 +571,9 @@ flowchart TB
   sa["BaseStatsDbAdapter<br/>two native SQL queries"]:::adapter
   ca["CollectionDbAdapter<br/>three native SQL reads"]:::adapter
   db[("catalog + racer_stats + machine_part_stats<br/>collection_*_exclusions")]:::outside
-  cat["RecommendationCatalog<br/>detached immutable maps"]:::domain
+  cat["RecommendationCatalog<br/>detached maps + GadgetRuleSnapshot"]:::domain
   exc["CollectionExclusions"]:::domain
-  solver["BuildRecommendationSolver.solve<br/>100,000 work steps / two seconds"]:::domain
+  solver["BuildRecommendationSolver.solve<br/>internal Strict / Balanced search collaborators<br/>100,000 work steps / two seconds"]:::domain
   result["RecommendationResult<br/>selection + stats + honest outcome"]:::domain
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
   h --> r
@@ -573,6 +583,8 @@ flowchart TB
   s --> loader
   loader --> gp
   loader --> sp
+  loader --> rules["ReviewedGadgetRules → GadgetRuleRepository"]:::port
+  rules -.-> ruleAdapter["GadgetRuleDbAdapter"]:::adapter --> db
   gp -.-> ga
   sp -.-> sa
   ga --> db
@@ -606,23 +618,28 @@ solver. Applying a proposal changes the client's draft; publishing later follows
 How does the solver choose a candidate? Both modes preserve hard constraints and reuse the
 same passive calculator. Strict can choose component maxima independently within fixed type
 groups. Balanced searches combinations because its loss floors concern the complete loadout.
-Boxes named after methods below are operations of `BuildRecommendationSolver`, not new classes.
+`BuildRecommendationSolver` retains validation/reference orchestration, mode dispatch and result
+wording. Its six package-private collaborators are internal domain implementation, with no
+new ports, services or repositories. `RecommendationCandidates` keeps legal/evaluable candidate
+preparation together; `RecommendationCandidateOrder` owns comparison, incumbent tracking and
+observed secondary ties. Strict and Balanced retain separate component loops and their existing
+work checkpoints. Only gadget-subset traversal is shared; no generic search framework is used.
 
 <!-- diagram: recommendation-solver -->
 ```mermaid
 flowchart TB
   req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
-  validate["BuildRecommendationSolver.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
-  baseline["legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>PassiveStatsCalculator"]:::domain
-  pools["Owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
+  validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
+  baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>PassiveStatsCalculator"]:::domain
+  pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
-  strict["STRICT<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
+  strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
-  subsets["search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
+  subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
-  calc["PassiveStatsCalculator<br/>PassiveGadgetRules + reviewed stacking"]:::domain
-  components["BALANCED searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
-  compare["consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
+  calc["PassiveStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
+  components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
+  compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
   req --> validate --> baseline --> pools --> branch
   branch --> strict
@@ -634,6 +651,10 @@ flowchart TB
   subsets -->|"Strict: fixed base + supported adjustments"| compare
   subsets -->|"Balanced"| components --> compare
   compare --> result
+  budget["RecommendationSearchBudget<br/>unchanged step boundaries, deadline and interruption"]:::domain
+  budget -.-> strict
+  budget -.-> subsets
+  budget -.-> components
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
 ```
 
@@ -653,10 +674,10 @@ This reduction is specific to the implemented rules.
 percentages. It ranks feasible candidates with fixed rank weights and reference denominators.
 `BalancedObjective` uses exact `BigDecimal` coefficients equivalent to the weighted relative
 score, without division or rounding. Equal scores compare active values lexicographically,
-then the sum of secondary values. The solver then uses the shared convenience/UUID ties.
+then the sum of secondary values. `RecommendationCandidateOrder` then uses the shared convenience/UUID ties.
 Optimistic per-stat maxima allow pruning without discarding a possible better completion.
 
-The supported patch is `1.4.1`; the current passive ruleset constant is
+The supported patch is `1.4.1`; the current imported passive ruleset label is
 `crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unsupported modifier stacks
 do not compete as zero or base-only values. Conditional/utility effects may be retained,
 but their race-time benefit is outside the objective. The new proposal is a selection,
@@ -672,9 +693,10 @@ Source trail: [orchestration](../backend/src/main/java/dev/ringlab/application/b
 
 ### 7.1 The three-layer numerical pipeline
 
-Which numbers are stored, and which are calculated? Only versioned racer/part contributions
-are persistent source numbers. Passive and scenario rules are reviewed Java data, and all
-combined results are transient. The pipeline below is data flow; it does not claim that
+Which numbers are stored, and which are calculated? Versioned racer/part contributions
+and reviewed passive/scenario rule facts are persisted in PostgreSQL. Git-managed CSVs
+maintain those facts through the explicit importer; Java owns interpretation, arithmetic,
+review permissions and interactions. All combined results are transient. This data flow does not claim that
 `PassiveStatsService` calls `ScenarioStatsService`.
 
 <!-- diagram: stats-flow -->
@@ -691,15 +713,20 @@ flowchart TB
   numbers[("racer_stats / machine_part_stats<br/>persistent per-version contributions")]:::outside
   breakdown["BaseStatsBreakdown + BaseStats<br/>character + selected machine parts = base total"]:::domain
   ps["PassiveStatsService.resolved<br/>resolved catalog, type coherence and completeness"]:::app
-  pr["PassiveGadgetRules / GadgetEffectRule<br/>code-defined reviewed rules"]:::domain
+  pr["GadgetRuleSnapshot / GadgetEffectRule<br/>detached imported facts + PassiveGadgetRules policy"]:::domain
   pc["PassiveStatsCalculator"]:::domain
   po["PassiveStatsResult<br/>base, adjustments, adjusted, coverage, effects"]:::domain
-  sr["ScenarioGadgetRules / ScenarioEffectRule<br/>code-defined reviewed rules and explicit assumption"]:::domain
+  sr["ScenarioEffectRule / ScenarioGadgetRules<br/>detached facts and Java assumption policy"]:::domain
   ctx["ScenarioContext<br/>ephemeral player-selected conditions"]:::domain
   sc["ScenarioStatsCalculator"]:::domain
   so["ScenarioStatsResult<br/>passive + scenario delta<br/>knownSubtotal + nullable exact total"]:::domain
   endpoints --> input["BaseStatsUseCase"]:::port -.-> base
   consumers --> base
+  consumers --> reviewed["ReviewedGadgetRules → GadgetRuleRepository"]:::port
+  reviewed -.-> ruleAdapter["GadgetRuleDbAdapter"]:::adapter
+  ruleAdapter --> ruleTables[("gadget_rule_sets / passive_gadget_rules / scenario_gadget_rules<br/>passive_rule_sources / scenario_rule_sources")]:::outside
+  reviewed -.-> pr
+  reviewed -.-> sr
   base --> gp
   base --> sp
   gp -.-> ga --> catalog
@@ -721,7 +748,7 @@ flowchart TB
   classDef outside fill:#edf0f4,stroke:#657184,color:#202938
 ```
 
-**How to read this:** gray tables provide source data; green rule tables live in source code;
+**How to read this:** gray tables provide source data; green rule snapshots are detached domain inputs;
 green result records are constructed per calculation. Nothing writes computed totals back
 to builds. The individual endpoint/service call paths are expanded below and in section 8.
 [Diagram source](architecture/stats-flow.mmd).
@@ -746,7 +773,7 @@ flowchart TB
   cat["catalog / stockMachineStats<br/>derive stock totals from required part count"]:::app
   resolved["PassiveStatsService.resolved<br/>resolved racer / parts / source machines / gadgets"]:::app
   plate["GadgetPlate.canFit"]:::domain
-  calc["PassiveStatsCalculator<br/>PassiveGadgetRules"]:::domain
+  calc["PassiveStatsCalculator<br/>detached facts + PassiveGadgetRules policy"]:::domain
   dto["BuildStatsResponse.withPassive<br/>or BuildStatsResponse.from / CatalogResponse"]:::rest
   game["GameDataRepository<br/>resolve catalog metadata"]:::port
   stats["BaseStatsRepository<br/>read per-version maps"]:::port
@@ -757,7 +784,10 @@ flowchart TB
   base --> stats
   pr -->|"persisted"| builds["BuildUseCase"]:::port -.-> bs
   pr -->|"draft, persisted page or rule catalog"| input["PassiveStatsUseCase"]:::port -.-> passive
-  passive -->|"rules"| metadata["PassiveGadgetRules + gadget catalog"]:::domain
+  passive -->|"rules"| metadata["GadgetRuleSnapshot + gadget catalog"]:::domain
+  passive --> reviewed["ReviewedGadgetRules"]:::app
+  reviewed --> rulePort["GadgetRuleRepository → GadgetRuleDbAdapter<br/>PostgreSQL rule facts"]:::port
+  reviewed -.->|"detached snapshot"| calc
   passive -->|"draft"| draft
   passive -->|"saved build list"| page
   passive --> game
@@ -786,7 +816,7 @@ not call repositories. `buildPage` in `PassiveStatsService` loads the catalog on
 | `GET /api/stats/passive-build` | `passive.draft`: validates distinct gadgets and plate, then `base.draftBreakdown`. Omitted selected components use zero subtotal; incomplete selection is still marked PARTIAL when appropriate. |
 | `GET /api/stats/persisted/{id}` | `BuildService.get` → `PassiveStatsService.buildPage(List.of(build))`; uses the stored patch and selections. |
 | Build/saved list enrichment | Same passive page pipeline, batching base reads by patch. Optional failure remains separate from the build data response. |
-| `GET /api/stats/gadget-rules` | `PassiveStatsUseCase.rules → PassiveStatsService` combines `game.listGadgets()` and `PassiveGadgetRules.forGadget`; REST only converts the result. |
+| `GET /api/stats/gadget-rules` | `PassiveStatsUseCase.rules → PassiveStatsService` combines `game.listGadgets()` and `GadgetRuleSnapshot.forGadget`, loaded through `ReviewedGadgetRules → GadgetRuleRepository`; REST only converts the result. |
 
 `BaseStats` uses exact decimal addition and propagates null per stat field. Missing source
 rows mean unknown, not zero. There is no implicit latest-patch fallback. V22/V24 explicitly
@@ -824,13 +854,17 @@ flowchart TB
   passive["PassiveStatsService.resolved<br/>static call with resolved metadata"]:::app
   pc["PassiveStatsCalculator → PassiveStatsResult"]:::domain
   ctx["ScenarioContext<br/>lap / vehicleForm / ringsHeld<br/>landingBoostActive / distanceToFinish"]:::domain
-  sc["ScenarioStatsCalculator.calculate(passive, context)"]:::domain
-  rules["PassiveGadgetRules: identify conditional effects<br/>ScenarioGadgetRules: lookup + pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
+  sc["ScenarioStatsCalculator.calculate(snapshot, passive, context)"]:::domain
+  rules["GadgetRuleSnapshot: effects + utility classification<br/>ScenarioGadgetRules: exact pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
   result["ScenarioStatsResult<br/>effect statuses + adjustments + knownSubtotal<br/>exact total only when coverage supports it"]:::domain
   dto["ScenarioStatsResponse.from<br/>no persistence"]:::rest
   h --> r --> input["ScenarioStatsUseCase"]:::port -.-> s
   r -->|"GET scenario-rules"| input
-  input -.-> metadata["ScenarioStatsService.rules → ScenarioGadgetRules"]:::app
+  input -.-> metadata["ScenarioStatsService.rules → detached snapshot"]:::app
+  s --> reviewed["ReviewedGadgetRules → GadgetRuleRepository<br/>GadgetRuleDbAdapter reads PostgreSQL"]:::port
+  reviewed -.->|"same detached facts"| pc
+  reviewed -.-> sc
+  metadata --> reviewed
   r --> ctx
   s --> game
   s --> plate
@@ -857,7 +891,7 @@ All five context fields can be unknown. Unknown differs from a specified conditi
 does not activate an effect. REST validates integral numeric inputs before conversion;
 domain bounds validate the resulting context. These input bounds are not game-effect caps.
 `GET /api/stats/scenario-rules` calls `ScenarioStatsUseCase.rules → ScenarioStatsService`,
-which retrieves `ScenarioGadgetRules.all()`; REST returns control
+which retrieves the detached snapshot's ordered scenario effects through `GadgetRuleRepository`; REST returns control
 metadata, with no repository or service call.
 
 The current ruleset is `crossworlds-1.4.1-scenario-2026-10-01.1`. It allows the explicitly
@@ -1613,6 +1647,68 @@ erDiagram
   game_versions ||--o{ racer_stats : snapshot
   machine_parts ||--o{ machine_part_stats : contribution
   game_versions ||--o{ machine_part_stats : snapshot
+  game_versions ||--o| gadget_rule_sets : reviewed_facts
+  gadget_rule_sets ||--|{ passive_gadget_rules : contains
+  gadgets ||--o{ passive_gadget_rules : effect_identity
+  passive_gadget_rules ||--o| scenario_gadget_rules : conditional_model
+  passive_gadget_rules ||--|{ passive_rule_sources : ordered_evidence
+  scenario_gadget_rules ||--|{ scenario_rule_sources : ordered_evidence
+  gadget_rule_sets {
+    uuid game_version_id PK,FK
+    varchar passive_ruleset
+    varchar scenario_ruleset
+  }
+  passive_gadget_rules {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK
+    int position "unique per version/gadget"
+    varchar kind
+    varchar subject
+    varchar required_racing_type "nullable"
+    numeric matching_speed
+    numeric matching_acceleration
+    numeric matching_handling
+    numeric matching_power
+    numeric matching_boost
+    numeric nonmatching_speed
+    numeric nonmatching_acceleration
+    numeric nonmatching_handling
+    numeric nonmatching_power
+    numeric nonmatching_boost
+    varchar label
+    text explanation
+    varchar stacking_group "nullable; Java grants permission"
+    boolean scenario_stat_potential "conditional fallback only"
+  }
+  scenario_gadget_rules {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position "unique per version"
+    varchar condition "existing Java enum"
+    numeric speed "all five null or all known"
+    numeric acceleration
+    numeric handling
+    numeric power
+    numeric boost
+    varchar label
+    text explanation
+  }
+  passive_rule_sources {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position PK
+    varchar url
+  }
+  scenario_rule_sources {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position PK
+    varchar url
+  }
   racers {
     uuid id PK
     varchar name UK
@@ -1733,6 +1829,7 @@ builds. [Diagram source](architecture/database-collection.mmd).
 | GAME DATA · `race_maps` | `RaceMapDbEntity` | `GameDataDbAdapter`; entity's explicit `toDomain()` | `RaceMap` |
 | STATS · `racer_stats` | Native SQL `Object[]`; **no entity** | `BaseStatsDbAdapter` | `Map<UUID, BaseStats>` |
 | STATS · `machine_part_stats` | Native SQL `Object[]`; **no entity** | `BaseStatsDbAdapter` | `Map<UUID, BaseStats>` |
+| RULES · `gadget_rule_sets`, `passive_gadget_rules`, `scenario_gadget_rules`, `passive_rule_sources`, `scenario_rule_sources` | JDBC rows; **no entity** | `GadgetRuleDbAdapter` and importer share `GameDataRuleStorage` | Detached `GadgetRuleSnapshot`; source-aware `GameDataRuleSet` during imports |
 | COLLECTION · `collection_racer_exclusions` | Native SQL UUID rows; **no entity** | `CollectionDbAdapter` | `CollectionExclusions.racers` |
 | COLLECTION · `collection_machine_exclusions` | Native SQL UUID rows; **no entity** | `CollectionDbAdapter` | `CollectionExclusions.machines` |
 | COLLECTION · `collection_gadget_exclusions` | Native SQL UUID rows; **no entity** | `CollectionDbAdapter` | `CollectionExclusions.gadgets` |
@@ -1753,8 +1850,9 @@ implementations are build output, not additional handwritten architecture layers
 | V16–V24 | Versioned numeric contribution tables and seed/copy/correction data; V23 removes unknown-cost gadget rows and their build associations. |
 | V25–V27 | Transitional machine family, nullable tire and board tire removal; final V27 removes family and uses racing type for composition. |
 | V28–V29 | Private bookmarks and password recovery; adds authentication version. |
-| V30–V32 | Map catalog/associations and reviewed passive gadget identities; numerical gadget rules remain Java code. |
+| V30–V32 | Map catalog/associations and reviewed passive gadget identities. |
 | V33 | Three typed collection exclusion tables. |
+| V34 | Versioned passive/scenario fact tables and two ordered source tables; one-time bootstrap of the already-published 1.4.1 facts. Future content uses explicit CSV imports. |
 
 SQL foreign keys guarantee referenced rows, but do not express all publishability rules.
 For example, the database permits a legacy build with unspecified patch and does not check
@@ -1849,7 +1947,7 @@ flowchart LR
     selection["BuildSelection<br/>current, locked or proposed IDs"]:::domain
     mode["RecommendationMode / StatPriority"]:::domain
     config["BalancedConfiguration"]:::domain
-    catalog["RecommendationCatalog<br/>catalog + versioned BaseStats maps"]:::domain
+    catalog["RecommendationCatalog<br/>catalog + BaseStats maps + GadgetRuleSnapshot"]:::domain
     solver["BuildRecommendationSolver / Budget"]:::domain
     objective["BalancedObjective"]:::domain
     result["RecommendationResult / Outcome / BalancedDetails"]:::domain
@@ -1860,6 +1958,15 @@ flowchart LR
     solver --> catalog
     solver --> objective
     solver --> result
+    solver --> candidates["RecommendationCandidates"]:::domain
+    solver --> searches["StrictRecommendationSearch / BalancedRecommendationSearch"]:::domain
+    searches --> gadgets["RecommendationGadgetSearch"]:::domain
+    searches --> order["RecommendationCandidateOrder"]:::domain
+    searches --> budget["RecommendationSearchBudget"]:::domain
+    gadgets --> candidates
+    gadgets --> budget
+    searches --> objective
+    order --> objective
     result --> selection
   end
   subgraph stats["GAME DATA: calculated statistics"]
@@ -1867,11 +1974,11 @@ flowchart LR
     breakdown["BaseStatsBreakdown<br/>total / character / machine"]:::domain --> base
     passive["PassiveStatsResult<br/>coverage + effect records"]:::domain --> breakdown
     pc["PassiveStatsCalculator"]:::domain --> passive
-    pr["PassiveGadgetRules / GadgetEffectRule"]:::domain
+    pr["GadgetRuleSnapshot / GadgetEffectRule<br/>PassiveGadgetRules: reviewed policy only"]:::domain
     pc --> pr
     context["ScenarioContext / VehicleForm"]:::domain
     sc["ScenarioStatsCalculator"]:::domain --> context
-    sr["ScenarioGadgetRules / ScenarioEffectRule<br/>Condition / Field"]:::domain
+    sr["GadgetRuleSnapshot / ScenarioEffectRule<br/>Condition / Field / ScenarioGadgetRules policy"]:::domain
     sc --> sr
     scenario["ScenarioStatsResult<br/>subtotal / nullable total / effects"]:::domain --> passive
     sc --> scenario
@@ -1882,7 +1989,7 @@ flowchart LR
     rank --> wilson["WilsonScore"]:::domain
     rank --> votes["VoteSummary"]:::domain
   end
-  solver --> pc
+  candidates --> pc
   catalog --> base
   result --> base
   objective --> base
@@ -1936,6 +2043,8 @@ AuthUseCase through the shared actor helper.
 | S | `SavedBuildRepository` | `SavedBuildDbAdapter` |
 | G | `GameDataRepository` | `GameDataDbAdapter` |
 | BS | `BaseStatsRepository` | `BaseStatsDbAdapter` |
+| GR | `GadgetRuleRepository` | `GadgetRuleDbAdapter` |
+| GI | `GameDataImportRepository` | `GameDataImportDbAdapter` |
 | C | `CollectionRepository` | `CollectionDbAdapter` |
 | CM | `CommentRepository` | `CommentDbAdapter` |
 | V | `VoteRepository` | `VoteDbAdapter` |
@@ -1979,8 +2088,8 @@ the relevant service even on a public route.
 | POST `/api/builds` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildDraftValidator`, `ProfanityPolicy`, `GadgetPlate`, `MachineCompatibility`, `MachineComposition` | B, G + actor + response | B, G, U, V | Yes, including remix | No | User |
 | PUT `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | Same validation; `ForbiddenException.requireOwner` | B, G + actor + response | B, G, U, V | Yes | No | User; build owner |
 | DELETE `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService` | `ForbiddenException.requireOwner` | B + actor | B, U | Yes; cascades and remix SET NULL | No | User; build owner |
-| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationUseCase` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedObjective`, plate/compatibility rules | G, BS, C + actor | G, BS, C, U | **No** | No | User |
-| GET `/api/saved-builds` | `SavedBuildRestResource` | `SavedBuildUseCase` + `VoteUseCase` + `PassiveStatsUseCase` | `SavedBuildService`, `PassiveStatsService`, response services | `BuildDraftValidator` map check, `BuildResponseAssembler`; `VoteUseCase.summaries` supplies live vote facts | S, B, G, V, BS + actor + response | S, B, G, V, BS, U | No | No | User |
+| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationUseCase` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedObjective`, plate/compatibility rules | G, BS, GR, C + actor | G, BS, GR, C, U | **No** | No | User |
+| GET `/api/saved-builds` | `SavedBuildRestResource` | `SavedBuildUseCase` + `VoteUseCase` + `PassiveStatsUseCase` | `SavedBuildService`, `PassiveStatsService`, response services | `BuildDraftValidator` map check, `BuildResponseAssembler`; `VoteUseCase.summaries` supplies live vote facts | S, B, G, V, BS, GR + actor + response | S, B, G, V, BS, GR, U | No | No | User |
 | GET `/api/saved-builds/status` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Up to 50 distinct requested IDs | S + actor | S, U | No | No | User |
 | PUT `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Build existence; idempotent bookmark | B, S + actor | B, S, U | Conditional | No | User |
 | DELETE `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Idempotent removal; no build existence check | S + actor | S, U | Conditional | No | User |
@@ -2013,11 +2122,11 @@ the relevant service even on a public route.
 | GET `/api/machine-parts` | `GameDataRestResource` | `GameDataQueryUseCase` | `GameDataQueryService` | `MachinePartResponse` enriches source-machine details | G | G | No | No | Public |
 | GET `/api/stats/catalog` | `BaseStatsRestResource` | `BaseStatsUseCase` | `BaseStatsService` | `BaseStats`; catalog contributions/stock composition | G, BS | G, BS | No | No | Public |
 | GET `/api/stats/build` | `BaseStatsRestResource` | `BaseStatsUseCase` | `BaseStatsService` | `BaseStatsBreakdown`, `BaseStats` | G, BS | G, BS | No | No | Public |
-| GET `/api/stats/persisted/{id}` | `PassiveStatsRestResource` | `PassiveStatsUseCase` + `BuildUseCase` | `BuildService`, `PassiveStatsService`, `BaseStatsService` | `PassiveStatsCalculator`, `PassiveGadgetRules`, `BuildStatsResponse` | B, G, BS | B, G, BS | No | No | Public |
-| GET `/api/stats/passive-build` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService`, `BaseStatsService` | `GadgetPlate`, `PassiveStatsCalculator`, `PassiveGadgetRules` | G, BS | G, BS | No | No | Public |
-| GET `/api/stats/gadget-rules` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService.rules` | `PassiveGadgetRules`, `GadgetEffectRule` | G | G | No | No | Public |
-| POST `/api/stats/scenario-build` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService`, `BaseStatsService`; static `PassiveStatsService.resolved` | `ScenarioContext`, `PassiveStatsCalculator`, `ScenarioStatsCalculator`, `ScenarioGadgetRules` | G, BS | G, BS | **No** | No | Public |
-| GET `/api/stats/scenario-rules` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService.rules` | `ScenarioGadgetRules`, `ScenarioEffectRule` | None | None | No | No | Public |
+| GET `/api/stats/persisted/{id}` | `PassiveStatsRestResource` | `PassiveStatsUseCase` + `BuildUseCase` | `BuildService`, `PassiveStatsService`, `BaseStatsService` | `PassiveStatsCalculator`, `PassiveGadgetRules`, `BuildStatsResponse` | B, G, BS, GR | B, G, BS, GR | No | No | Public |
+| GET `/api/stats/passive-build` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService`, `BaseStatsService` | `GadgetPlate`, `PassiveStatsCalculator`, `PassiveGadgetRules` | G, BS, GR | G, BS, GR | No | No | Public |
+| GET `/api/stats/gadget-rules` | `PassiveStatsRestResource` | `PassiveStatsUseCase` | `PassiveStatsService.rules` | `GadgetRuleSnapshot`, `GadgetEffectRule` | G, GR | G, GR | No | No | Public |
+| POST `/api/stats/scenario-build` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService`, `BaseStatsService`; static `PassiveStatsService.resolved` | `ScenarioContext`, `PassiveStatsCalculator`, `ScenarioStatsCalculator`, `ScenarioGadgetRules` | G, BS, GR | G, BS, GR | **No** | No | Public |
+| GET `/api/stats/scenario-rules` | `ScenarioStatsRestResource` | `ScenarioStatsUseCase` | `ScenarioStatsService.rules` | `GadgetRuleSnapshot`, `ScenarioEffectRule` | GR | GR | No | No | Public |
 
 Browse defaults are `sort=rated`, `page=0`, `size=12`, and a maximum size of 50.
 Saved builds have their own bookmark-time ordering and always attempt optional page stats;
@@ -2026,6 +2135,23 @@ leave the content page available with `statsError`. Comment defaults are page 0 
 also capped at 50. Community endpoints reject query parameters and expose ETag-based responses.
 
 ## 17. Class responsibility index
+
+The CSV importer and rule extraction add these focused responsibilities to the
+original index. The command is administrative and is not an HTTP operation.
+
+| Class/group | Responsibility |
+|---|---|
+| `GameDataImportMain` | Standalone command composition; no Quarkus/Flyway startup. |
+| `GameDataImportCommand`, `GameDataCsvReader`, `CsvRecords` | Command modes and external CSV syntax, preserving file/row diagnostics. |
+| `ImportGameDataUseCase`, `GameDataImportService` | Validate/plan/approved atomic import capability. |
+| `GameDataSetValidator`, `GameDataRuleValidator` | Detached catalog and relational rule-bundle validation. |
+| `GameDataImportPlanner`, `CatalogFields`, `CatalogFingerprint` | Conservative differences, immutable publication policy and deterministic approval token. |
+| `GameDataSet`, `GameDataRuleSet`, `CatalogRow`, `GameDataImportPlan`, `ImportValidationException` | Typed import data, source locations, plans and validation failures. |
+| `GameDataImportRepository`, `GameDataImportDbAdapter` | Consistent reads and one transaction for all approved content changes. |
+| `GadgetRuleRepository`, `GadgetRuleDbAdapter` | Load an immutable, detached runtime snapshot from PostgreSQL. |
+| `GameDataRuleStorage` | JDBC mapping shared by the import and runtime adapters. |
+| `GadgetRuleSnapshot` | Ordered passive/scenario facts, sources and fallback utility classifications. |
+| `ReviewedGadgetRules` | Select the current Java-approved runtime patch; imported versions are not automatically enabled. |
 
 This index covers **all 212 top-level production Java source files**, including transport
 records so IntelliJ names are searchable. Nested records/enums belong to their enclosing
@@ -2093,7 +2219,13 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [StatPriority] | Recommendation | Enumerates the five stat dimensions and provides their value selection. |
 | [BalancedConfiguration] | Recommendation | Validates active/secondary stat partitioning and allowed loss percentages. |
 | [BalancedObjective] | Recommendation | Defines reference floors, exact normalized weighted comparisons and admissible bound comparisons. |
-| [BuildRecommendationSolver] | Recommendation | Searches legal available selections under locks and budget using the current passive-stat rules. |
+| [BuildRecommendationSolver] | Recommendation | Orchestrates validation, frozen reference, mode dispatch, outcomes and unchanged result wording. |
+| [RecommendationCandidates] | Recommendation | Validates IDs, slots, locks and availability; prepares legal pools and passive evaluations from detached facts. |
+| [RecommendationCandidateOrder] | Recommendation | Exact mode comparison, convenience/UUID tie-breaks, incumbent and observed secondary ties. |
+| [RecommendationSearchBudget] | Recommendation | Preserves step increments, short-circuit checks, constructor-time deadline and interruption behavior. |
+| [RecommendationGadgetSearch] | Recommendation | Ordered optional gadgets and subset traversal; plate/support pruning and retained display order. |
+| [StrictRecommendationSearch] | Recommendation | Independent component maxima per racer type, locked-effect restrictions and Strict candidate evaluation. |
+| [BalancedRecommendationSearch] | Recommendation | Complete component choices, optimistic remaining maxima and Balanced branch-and-bound. |
 | [RecommendationResult] | Recommendation | Reports a suggested selection, stats, search outcome and optional Balanced comparison details. |
 | [CollectionCategory] | Collection | Limits ownership categories to racer, machine and gadget. |
 | [CollectionExclusions] | Collection | Immutable sets of unavailable catalog IDs; absence means available. |
@@ -2111,12 +2243,12 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [BaseStats] | Stats | Five nullable decimal contributions with explicit unknown-preserving arithmetic. |
 | [BaseStatsBreakdown] | Stats | Separates total, character and machine contributions and calculates the canonical base result. |
 | [GadgetEffectRule] | Stats | Typed reviewed passive/conditional/non-stat/unsupported effect metadata with subject and stacking information. |
-| [PassiveGadgetRules] | Stats | Supplies version-specific, code-defined passive gadget rules and reviewed combination facts. |
+| [PassiveGadgetRules] | Stats | Retains reviewed-version permission, tuner identity restrictions and the exact tuner/kit stacking permission; no authored fact table. |
 | [PassiveStatsCalculator] | Stats | Resolves applicable passive effects and produces conservative totals and coverage without I/O. |
 | [PassiveStatsResult] | Stats | Carries base/passive totals, effect audit entries and calculation coverage. |
 | [ScenarioContext] | Stats | Validates nullable transient lap, form, ring, landing and travel-distance inputs. |
 | [ScenarioEffectRule] | Stats | Describes a condition, required input field and reviewed stat or utility effect. |
-| [ScenarioGadgetRules] | Stats | Supplies the supported scenario rules, pair-review facts and explicitly labeled assumptions. |
+| [ScenarioGadgetRules] | Stats | Retains reviewed-version permission and the exact Quick Starter + Sea Dog assumption; no authored fact table. |
 | [ScenarioStatsCalculator] | Stats | Applies resolvable conditional effects over an existing passive result while retaining uncertainty. |
 | [ScenarioStatsResult] | Stats | Carries scenario audit, known subtotal, possibly unknown total and inherited passive context. |
 | [GameNewsItem] | News | Immutable external news article metadata exposed by the news port. |
@@ -2466,9 +2598,10 @@ outside a static source inspection.
    which acquires one of two calculation permits. Its detached-data
    preparation uses `RecommendationCatalogLoader` for the selected patch/catalog/stat maps and
    `CollectionService.load` for the actor's private exclusions.
-3. `BuildRecommendationSolver` validates available locked choices and legal part/gadget shapes.
-   Strict mode uses priority ordering; Balanced mode establishes a reference, enforces floors
-   and uses `BalancedObjective` while searching joint component choices with pruning.
+3. `BuildRecommendationSolver` delegates lock/selection validation to `RecommendationCandidates`
+   and prepares the current reference. `StrictRecommendationSearch` uses priority ordering;
+   `BalancedRecommendationSearch` uses the frozen `BalancedObjective` while searching joint
+   component choices with pruning. Both reuse gadget traversal, candidate order and budget checks.
 4. Candidate stats use the same reviewed `PassiveStatsCalculator` path. Budget and coverage
    determine whether the outcome establishes the result or only reports a best-found candidate.
 5. The permit is released and `BuildRecommendationResponse` returns selection/stat/outcome data.
@@ -2484,8 +2617,10 @@ outside a static source inspection.
    validates the current plate and calls `BaseStatsService.draftBreakdown`. That service obtains
    contributions from `BaseStatsRepository → BaseStatsDbAdapter` for the requested patch.
 3. Static `PassiveStatsService.resolved` calculates the passive result using the resolved facts.
-   `ScenarioStatsCalculator` receives that existing result and the transient context, consulting
-   `ScenarioGadgetRules` for the selected gadgets' conditions and permitted combinations.
+   `ScenarioStatsCalculator` receives that existing result, the transient context and
+   the detached `GadgetRuleSnapshot` loaded through `ReviewedGadgetRules → GadgetRuleRepository`.
+   Imported facts select conditions; `ScenarioEffectRule.Condition.matches` interprets
+   them, and `ScenarioGadgetRules` retains the exact pair permission.
 4. Lap 1 and WATER satisfy relevant conditions only if the corresponding gadgets are selected.
    For Quick Starter plus Sea Dog, the current rule set exposes its documented pair assumption;
    missing context, missing numbers or unreviewed overlap can still make a total unknown.
@@ -2764,3 +2899,11 @@ outside a static source inspection.
 [AccountRegistrationService]: ../backend/src/main/java/dev/ringlab/application/auth/AccountRegistrationService.java
 
 [GameDataQueryService]: ../backend/src/main/java/dev/ringlab/application/gamedata/GameDataQueryService.java
+
+
+[RecommendationCandidates]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/RecommendationCandidates.java
+[RecommendationCandidateOrder]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/RecommendationCandidateOrder.java
+[RecommendationSearchBudget]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/RecommendationSearchBudget.java
+[RecommendationGadgetSearch]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/RecommendationGadgetSearch.java
+[StrictRecommendationSearch]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/StrictRecommendationSearch.java
+[BalancedRecommendationSearch]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedRecommendationSearch.java

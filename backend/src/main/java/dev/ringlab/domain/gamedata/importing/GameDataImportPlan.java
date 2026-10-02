@@ -17,6 +17,7 @@ public record GameDataImportPlan(GameDataSet additions, GameDataSet updates,
   private static int count(GameDataSet data) {
     return data.racers().size() + data.machines().size() + data.parts().size()
         + data.gadgets().size() + data.maps().size() + data.versions().size()
-        + data.snapshots().stream().mapToInt(s -> s.racers().size() + s.parts().size()).sum();
+        + data.snapshots().stream().mapToInt(s -> s.racers().size() + s.parts().size()).sum()
+        + data.ruleSets().stream().mapToInt(GameDataRuleSet::rowCount).sum();
   }
 }

@@ -12,9 +12,9 @@ flowchart TB
   sa["BaseStatsDbAdapter<br/>two native SQL queries"]:::adapter
   ca["CollectionDbAdapter<br/>three native SQL reads"]:::adapter
   db[("catalog + racer_stats + machine_part_stats<br/>collection_*_exclusions")]:::outside
-  cat["RecommendationCatalog<br/>detached immutable maps"]:::domain
+  cat["RecommendationCatalog<br/>detached maps + GadgetRuleSnapshot"]:::domain
   exc["CollectionExclusions"]:::domain
-  solver["BuildRecommendationSolver.solve<br/>100,000 work steps / two seconds"]:::domain
+  solver["BuildRecommendationSolver.solve<br/>internal Strict / Balanced search collaborators<br/>100,000 work steps / two seconds"]:::domain
   result["RecommendationResult<br/>selection + stats + honest outcome"]:::domain
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
   h --> r
@@ -24,6 +24,8 @@ flowchart TB
   s --> loader
   loader --> gp
   loader --> sp
+  loader --> rules["ReviewedGadgetRules → GadgetRuleRepository"]:::port
+  rules -.-> ruleAdapter["GadgetRuleDbAdapter"]:::adapter --> db
   gp -.-> ga
   sp -.-> sa
   ga --> db

@@ -18,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class RecommendationCatalogLoader {
   private final GameDataRepository game;
   private final BaseStatsRepository stats;
+  private final dev.ringlab.application.gamedata.ReviewedGadgetRules reviewed;
 
   @Transactional(Transactional.TxType.REQUIRES_NEW)
   public RecommendationCatalog load(UUID versionId) {
@@ -25,7 +26,7 @@ public class RecommendationCatalogLoader {
         .orElseThrow(() -> new ValidationException("Unknown game version / patch ID"));
     return new RecommendationCatalog(version, index(game.listRacers(), Racer::id),
         index(game.listMachines(), Machine::id), index(game.listMachineParts(), MachinePart::id),
-        index(game.listGadgets(), Gadget::id), stats.racerStats(versionId), stats.machinePartStats(versionId));
+        index(game.listGadgets(), Gadget::id), stats.racerStats(versionId), stats.machinePartStats(versionId), reviewed.snapshot());
   }
 
   private static <T> Map<UUID, T> index(List<T> values, Function<T, UUID> key) {

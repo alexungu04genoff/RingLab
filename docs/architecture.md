@@ -14,7 +14,7 @@ dev.ringlab/
     *UseCase.java                   # feature contracts, including import and dev-only capabilities
     CommunitySnapshot.java          # detached boundary result
   port/out/
-    {User,Build,SavedBuild,Collection,Comment,GameData,GameDataImport,BaseStats,GameNews,Vote}Repository.java
+    {User,Build,SavedBuild,Collection,Comment,GameData,GameDataImport,GadgetRule,BaseStats,GameNews,Vote}Repository.java
   adapter/in/catalog/               # explicit CSV import command
   adapter/in/rest/{auth,build,collection,comment,community,gamedata,news,ratelimit,vote}/
     request/ and response/
@@ -37,8 +37,19 @@ ports. The command bypasses Quarkus startup entirely, so offline validation need
 no database and no mode invokes Flyway, HTTP or startup observers. Normal REST
 queries retain `GameDataRepository`/`BaseStatsRepository` and PostgreSQL. The
 canonical files, conservative update policy, approval token and operation commands
-are documented in [game-data/README.md](../game-data/README.md). No schema migration,
-rule persistence or runtime algorithm change accompanies this importer.
+are documented in [game-data/README.md](../game-data/README.md).
+
+Rule facts use the same importer and transaction through `GameDataRuleSet` rows.
+V34 creates the versioned passive/scenario tables and their ordered source tables,
+bootstrapping existing 1.4.1 facts so upgrades preserve results. Normal runtime
+loads `GadgetRuleSnapshot` through `GadgetRuleRepository`/`GadgetRuleDbAdapter`;
+`ReviewedGadgetRules` owns the current application version selection. Passive,
+scenario, community and recommendation callers pass detached facts into pure
+calculators. `RecommendationCatalog` includes the same passive snapshot. JDBC
+mapping is shared inside the outbound adapter by `GameDataRuleStorage`; calculators
+never reach that storage or CSV. Reviewed-version permissions, exact stacking
+pairs and the scenario assumption remain Java policy. Source URLs and numeric facts
+are relational data; importing a new snapshot does not grant runtime permission.
 
 Private bookmarks follow the same boundaries: `SavedBuildRestResource` obtains the
 actor through `CurrentUser`, calls `SavedBuildUseCase` implemented by `SavedBuildService`, and assembles normal live
@@ -607,6 +618,15 @@ lexicographic stat comparison, the exact `BalancedObjective`, and a bounded dete
 `PassiveStatsCalculator`, `GadgetPlate` and the now-pure
 `domain/gamedata/MachineCompatibility`; the existing application compatibility
 facade translates validation failures without changing existing build behavior.
+`BuildRecommendationSolver` orchestrates validation, frozen-reference preparation,
+mode selection and result explanations. Six package-private domain collaborators
+own candidate validation/evaluation (`RecommendationCandidates`), ordering and
+incumbent tracking (`RecommendationCandidateOrder`), budget checks
+(`RecommendationSearchBudget`), shared gadget traversal (`RecommendationGadgetSearch`),
+and the separate Strict and Balanced algorithms (`StrictRecommendationSearch`,
+`BalancedRecommendationSearch`). They consume detached values only; none is a
+port, application service or persistence boundary. `BalancedObjective` still owns
+the exact floors and weighted comparison.
 `RecommendationCatalogLoader` resolves catalog and versioned contributions once
 through the existing outbound ports in a short transaction.
 `BuildRecommendationService` then searches detached facts outside a transaction,

@@ -55,6 +55,7 @@ final class GameDataSetValidator {
     for (var version : data.versions()) {
       if (!seen.contains(version.value().id())) errors.add(version.problem("id", version.value().id(), "Missing stat snapshot files"));
     }
+    new GameDataRuleValidator().validate(data, errors);
     if (!errors.isEmpty()) throw new ImportValidationException(errors);
   }
 

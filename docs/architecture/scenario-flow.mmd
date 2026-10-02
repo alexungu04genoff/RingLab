@@ -9,13 +9,17 @@ flowchart TB
   passive["PassiveStatsService.resolved<br/>static call with resolved metadata"]:::app
   pc["PassiveStatsCalculator → PassiveStatsResult"]:::domain
   ctx["ScenarioContext<br/>lap / vehicleForm / ringsHeld<br/>landingBoostActive / distanceToFinish"]:::domain
-  sc["ScenarioStatsCalculator.calculate(passive, context)"]:::domain
-  rules["PassiveGadgetRules: identify conditional effects<br/>ScenarioGadgetRules: lookup + pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
+  sc["ScenarioStatsCalculator.calculate(snapshot, passive, context)"]:::domain
+  rules["GadgetRuleSnapshot: effects + utility classification<br/>ScenarioGadgetRules: exact pair permission<br/>ScenarioEffectRule.Condition.matches"]:::domain
   result["ScenarioStatsResult<br/>effect statuses + adjustments + knownSubtotal<br/>exact total only when coverage supports it"]:::domain
   dto["ScenarioStatsResponse.from<br/>no persistence"]:::rest
   h --> r --> input["ScenarioStatsUseCase"]:::port -.-> s
   r -->|"GET scenario-rules"| input
-  input -.-> metadata["ScenarioStatsService.rules → ScenarioGadgetRules"]:::app
+  input -.-> metadata["ScenarioStatsService.rules → detached snapshot"]:::app
+  s --> reviewed["ReviewedGadgetRules → GadgetRuleRepository<br/>GadgetRuleDbAdapter reads PostgreSQL"]:::port
+  reviewed -.->|"same detached facts"| pc
+  reviewed -.-> sc
+  metadata --> reviewed
   r --> ctx
   s --> game
   s --> plate

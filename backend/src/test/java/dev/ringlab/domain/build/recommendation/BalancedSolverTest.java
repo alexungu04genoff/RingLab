@@ -29,7 +29,7 @@ class BalancedSolverTest {
     void part(int n, MachinePartType type, BaseStats stats) { parts.put(id(n), new MachinePart(id(n), id(3), type)); partStats.put(id(n), stats); }
     void gadget(int n, int cost) { var uuid = PassiveGadgetRules.id(n); gadgets.put(uuid, new Gadget(uuid, "Gadget " + n, null, cost, null)); }
     BuildSelection reference() { return new BuildSelection(id(2), id(10), id(11), id(12), List.of()); }
-    RecommendationCatalog catalog() { return new RecommendationCatalog(version, racers, machines, parts, gadgets, racerStats, partStats); }
+    RecommendationCatalog catalog() { return new RecommendationCatalog(version, racers, machines, parts, gadgets, racerStats, partStats, dev.ringlab.importing.RuleFixtures.snapshot()); }
     RecommendationRequest request(BuildSelection current, List<StatPriority> active, String... losses) {
       return new RecommendationRequest(id(1), RacingType.SPEED, active, current, EMPTY, RecommendationMode.BALANCED, config(active, losses));
     }
@@ -168,7 +168,7 @@ class BalancedSolverTest {
     return winner;
   }
   private static BaseStats evaluate(Fixture f, BuildSelection s) {
-    var result = PassiveStatsCalculator.calculate(BaseStatsBreakdown.calculate(s.racerId(), s.frontPartId(), s.rearPartId(), s.tirePartId(), f.racerStats, f.partStats),
+    var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BaseStatsBreakdown.calculate(s.racerId(), s.frontPartId(), s.rearPartId(), s.tirePartId(), f.racerStats, f.partStats),
         "1.4.1", f.racers.get(s.racerId()).racingType(), RacingType.SPEED, s.gadgetIds().stream().map(f.gadgets::get).toList(), true);
     return result.coverage() == PassiveStatsResult.Coverage.CALCULATED ? result.adjusted() : null;
   }

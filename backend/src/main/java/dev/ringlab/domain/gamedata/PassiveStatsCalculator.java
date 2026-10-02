@@ -11,12 +11,12 @@ public final class PassiveStatsCalculator {
   private PassiveStatsCalculator() {}
   public static final String ARITHMETIC_NOTE = "Known passive stat-point arithmetic; effective in-game caps are not established. Race-time effects are excluded.";
 
-  public static PassiveStatsResult calculate(BaseStatsBreakdown base, String version,
+  public static PassiveStatsResult calculate(GadgetRuleSnapshot snapshot, BaseStatsBreakdown base, String version,
       RacingType racerType, RacingType machineType, List<Gadget> gadgets, boolean validLoadout) {
     var effects = new ArrayList<PassiveStatsResult.Effect>();
-    boolean supported = PassiveGadgetRules.VERSION.equals(version);
+    boolean supported = PassiveGadgetRules.VERSION.equals(version) && snapshot.version().version().equals(version);
     for (var gadget : gadgets) {
-      var rules = PassiveGadgetRules.forGadget(gadget.id());
+      var rules = snapshot.forGadget(gadget.id());
       if (rules.isEmpty()) {
         effects.add(new PassiveStatsResult.Effect(gadget.id(),gadget.name(),"unreviewed","Unverified effects",
             UNSUPPORTED,PassiveGadgetRules.ZERO,"No reviewed rule for this gadget; an unknown effect is not zero.",List.of()));
@@ -59,7 +59,7 @@ public final class PassiveStatsCalculator {
       for (int i = 0; i < effects.size(); i++) {
         var effect = effects.get(i);
         boolean unresolved = effect.status() == APPLIED && applied.stream().anyMatch(other -> other != effect
-            && overlaps(effect.adjustment(), other.adjustment()) && !verifiedStack(List.of(effect, other)));
+            && overlaps(effect.adjustment(), other.adjustment()) && !verifiedStack(snapshot, List.of(effect, other)));
         if (unresolved) effects.set(i,new PassiveStatsResult.Effect(effect.gadgetId(),effect.gadgetName(),
             effect.effectId(),effect.label(),UNSUPPORTED,PassiveGadgetRules.ZERO,
             "Individual modifier is verified, but stacking with the other selected passive modifiers is unresolved. This combination is not added.",effect.sources()));
@@ -74,15 +74,15 @@ public final class PassiveStatsCalculator {
         || adjusted.speed() == null || adjusted.acceleration() == null || adjusted.handling() == null
         || adjusted.power() == null || adjusted.boost() == null;
     var coverage = !validLoadout ? INVALID_LOADOUT : !supported ? UNSUPPORTED_VERSION : incomplete ? PARTIAL : CALCULATED;
-    return new PassiveStatsResult(base,adjustments,adjusted,coverage,PassiveGadgetRules.RULESET,
+    return new PassiveStatsResult(base,adjustments,adjusted,coverage,snapshot.passiveRuleset(),
         PassiveGadgetRules.VERSION,ARITHMETIC_NOTE,effects);
   }
 
-  private static boolean verifiedStack(List<PassiveStatsResult.Effect> effects) {
+  private static boolean verifiedStack(GadgetRuleSnapshot snapshot, List<PassiveStatsResult.Effect> effects) {
     if (effects.size() != 2 || effects.get(0).gadgetId().equals(effects.get(1).gadgetId())) return false;
-    var first = PassiveGadgetRules.forGadget(effects.get(0).gadgetId()).stream()
+    var first = snapshot.forGadget(effects.get(0).gadgetId()).stream()
         .filter(r -> r.effectId().equals(effects.get(0).effectId())).findFirst().orElseThrow();
-    var second = PassiveGadgetRules.forGadget(effects.get(1).gadgetId()).stream()
+    var second = snapshot.forGadget(effects.get(1).gadgetId()).stream()
         .filter(r -> r.effectId().equals(effects.get(1).effectId())).findFirst().orElseThrow();
     return PassiveGadgetRules.verifiedStack(first, second);
   }

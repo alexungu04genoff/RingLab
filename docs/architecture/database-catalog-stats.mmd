@@ -5,6 +5,68 @@ erDiagram
   game_versions ||--o{ racer_stats : snapshot
   machine_parts ||--o{ machine_part_stats : contribution
   game_versions ||--o{ machine_part_stats : snapshot
+  game_versions ||--o| gadget_rule_sets : reviewed_facts
+  gadget_rule_sets ||--|{ passive_gadget_rules : contains
+  gadgets ||--o{ passive_gadget_rules : effect_identity
+  passive_gadget_rules ||--o| scenario_gadget_rules : conditional_model
+  passive_gadget_rules ||--|{ passive_rule_sources : ordered_evidence
+  scenario_gadget_rules ||--|{ scenario_rule_sources : ordered_evidence
+  gadget_rule_sets {
+    uuid game_version_id PK,FK
+    varchar passive_ruleset
+    varchar scenario_ruleset
+  }
+  passive_gadget_rules {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK
+    int position "unique per version/gadget"
+    varchar kind
+    varchar subject
+    varchar required_racing_type "nullable"
+    numeric matching_speed
+    numeric matching_acceleration
+    numeric matching_handling
+    numeric matching_power
+    numeric matching_boost
+    numeric nonmatching_speed
+    numeric nonmatching_acceleration
+    numeric nonmatching_handling
+    numeric nonmatching_power
+    numeric nonmatching_boost
+    varchar label
+    text explanation
+    varchar stacking_group "nullable; Java grants permission"
+    boolean scenario_stat_potential "conditional fallback only"
+  }
+  scenario_gadget_rules {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position "unique per version"
+    varchar condition "existing Java enum"
+    numeric speed "all five null or all known"
+    numeric acceleration
+    numeric handling
+    numeric power
+    numeric boost
+    varchar label
+    text explanation
+  }
+  passive_rule_sources {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position PK
+    varchar url
+  }
+  scenario_rule_sources {
+    uuid game_version_id PK,FK
+    uuid gadget_id PK,FK
+    varchar effect_id PK,FK
+    int position PK
+    varchar url
+  }
   racers {
     uuid id PK
     varchar name UK

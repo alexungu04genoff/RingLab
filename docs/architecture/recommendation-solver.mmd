@@ -1,16 +1,16 @@
 flowchart TB
   req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
-  validate["BuildRecommendationSolver.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
-  baseline["legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>PassiveStatsCalculator"]:::domain
-  pools["Owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
+  validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
+  baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>PassiveStatsCalculator"]:::domain
+  pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
-  strict["STRICT<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
+  strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
-  subsets["search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
+  subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
-  calc["PassiveStatsCalculator<br/>PassiveGadgetRules + reviewed stacking"]:::domain
-  components["BALANCED searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
-  compare["consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
+  calc["PassiveStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
+  components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
+  compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
   req --> validate --> baseline --> pools --> branch
   branch --> strict
@@ -22,4 +22,8 @@ flowchart TB
   subsets -->|"Strict: fixed base + supported adjustments"| compare
   subsets -->|"Balanced"| components --> compare
   compare --> result
+  budget["RecommendationSearchBudget<br/>unchanged step boundaries, deadline and interruption"]:::domain
+  budget -.-> strict
+  budget -.-> subsets
+  budget -.-> components
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24

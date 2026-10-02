@@ -8,7 +8,7 @@ import java.util.UUID;
 public record GameDataSet(List<CatalogRow<Racer>> racers, List<CatalogRow<Machine>> machines,
     List<CatalogRow<MachinePart>> parts, List<CatalogRow<Gadget>> gadgets,
     List<CatalogRow<RaceMap>> maps, List<CatalogRow<GameVersion>> versions,
-    List<VersionStats> snapshots) {
+    List<VersionStats> snapshots, List<GameDataRuleSet> ruleSets) {
   public GameDataSet {
     racers = List.copyOf(racers);
     machines = List.copyOf(machines);
@@ -17,6 +17,14 @@ public record GameDataSet(List<CatalogRow<Racer>> racers, List<CatalogRow<Machin
     maps = List.copyOf(maps);
     versions = List.copyOf(versions);
     snapshots = List.copyOf(snapshots);
+    ruleSets = List.copyOf(ruleSets);
+  }
+
+  /** Catalog-only datasets remain valid; rules are an explicit optional version bundle. */
+  public GameDataSet(List<CatalogRow<Racer>> racers, List<CatalogRow<Machine>> machines,
+      List<CatalogRow<MachinePart>> parts, List<CatalogRow<Gadget>> gadgets,
+      List<CatalogRow<RaceMap>> maps, List<CatalogRow<GameVersion>> versions, List<VersionStats> snapshots) {
+    this(racers, machines, parts, gadgets, maps, versions, snapshots, List.of());
   }
 
   public record StatRow(UUID itemId, BaseStats stats) {}

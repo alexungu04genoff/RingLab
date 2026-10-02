@@ -18,6 +18,8 @@ flowchart TB
     direction LR
     g["GameDataRepository"]:::port -.-> ga["GameDataDbAdapter"]:::adapter
     st["BaseStatsRepository"]:::port -.-> sta["BaseStatsDbAdapter — native SQL"]:::adapter
+    gr["GadgetRuleRepository"]:::port -.-> gra["GadgetRuleDbAdapter — detached JDBC snapshots"]:::adapter
+    gi["GameDataImportRepository"]:::port -.-> gia["GameDataImportDbAdapter — explicit atomic command"]:::adapter
   end
   subgraph external["External infrastructure"]
     direction LR

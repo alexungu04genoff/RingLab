@@ -5,11 +5,13 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import dev.ringlab.adapter.in.catalog.GameDataCsvReader;
 import dev.ringlab.adapter.out.db.gamedata.GameDataImportDbAdapter;
+import dev.ringlab.adapter.out.db.gamedata.GadgetRuleDbAdapter;
 import dev.ringlab.application.gamedata.GameDataImportService;
 import dev.ringlab.application.gamedata.BaseStatsService;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.gamedata.importing.*;
 import dev.ringlab.domain.gamedata.importing.GameDataSet.*;
+import dev.ringlab.domain.gamedata.importing.GameDataRuleSet.*;
 import dev.ringlab.port.out.BuildRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import io.quarkus.narayana.jta.QuarkusTransaction;
@@ -66,6 +68,63 @@ class GameDataImportIntegrationTest {
     importer.apply(canonical, plan.approvalToken());
     var second = importer.plan(canonical);
     assertEquals(plan, second);
+    var runtime = new GadgetRuleDbAdapter(isolated);
+    assertEquals(dev.ringlab.importing.RuleFixtures.snapshot(), runtime.findByVersion("1.4.1").orElseThrow());
+    assertTrue(runtime.findByVersion("missing-version").isEmpty());
+    assertTrue(runtime.findByVersion("1.3.1").isEmpty());
+  }
+
+  @Test void newRuleFactsAndBaseStatsAreImportedTogetherWithoutEnablingAnUnreviewedPatch() {
+    var edit = new Edit(canonical);
+    var next = new GameVersion(id(950), "test-rules-next", LocalDate.of(2026, 12, 1));
+    edit.versions.add(row(next));
+    var oldStats = canonical.snapshots().getFirst();
+    edit.snapshots.add(new VersionStats(next.id(), oldStats.racers(), oldStats.parts()));
+    var original = canonical.ruleSets().getFirst();
+    edit.ruleSets.add(new GameDataRuleSet(row(new Metadata(next.id(), "test-passive-next", "test-scenario-next")),
+        original.passive(), original.scenario(), original.sources()));
+    var runtime = new GadgetRuleDbAdapter(isolated);
+    var oldRules = runtime.findByVersion("1.4.1").orElseThrow();
+    var base = new BaseStatsBreakdown(BaseStats.ZERO, BaseStats.ZERO, BaseStats.ZERO);
+    var selected = canonical.gadgets().stream().map(CatalogRow::value)
+        .filter(g -> List.of(PassiveGadgetRules.id(55), PassiveGadgetRules.id(34)).contains(g.id())).toList();
+    var before = PassiveStatsCalculator.calculate(oldRules, base, "1.4.1", RacingType.ACCELERATION, RacingType.ACCELERATION, selected, true);
+    var plan = importer.plan(edit.build()); assertTrue(plan.safe()); assertEquals(611, plan.inserts());
+    importer.apply(edit.build(), plan.approvalToken());
+    var imported = runtime.findByVersion(next.version()).orElseThrow();
+    assertEquals("test-passive-next", imported.passiveRuleset()); assertEquals(oldRules.passive(), imported.passive());
+    assertEquals(oldRules.scenario(), imported.scenario()); assertEquals(oldRules.scenarioUtilities(), imported.scenarioUtilities());
+    assertEquals(oldRules, runtime.findByVersion("1.4.1").orElseThrow());
+    assertEquals(before, PassiveStatsCalculator.calculate(runtime.findByVersion("1.4.1").orElseThrow(), base,
+        "1.4.1", RacingType.ACCELERATION, RacingType.ACCELERATION, selected, true));
+    var unavailable = PassiveStatsCalculator.calculate(imported, base, next.version(), RacingType.ACCELERATION, RacingType.ACCELERATION, selected, true);
+    assertEquals(PassiveStatsResult.Coverage.UNSUPPORTED_VERSION, unavailable.coverage());
+    assertEquals(ScenarioStatsResult.Coverage.UNAVAILABLE, ScenarioStatsCalculator.calculate(imported, unavailable, ScenarioContext.UNSPECIFIED).coverage());
+    var noOp = importer.plan(edit.build()); assertEquals(0, noOp.inserts()); importer.apply(edit.build(), noOp.approvalToken());
+  }
+
+  @Test void lateRuleSourceForeignKeyFailureRollsBackCatalogVersionAndEveryRuleRow() {
+    var additions = new Edit(empty()); additions.racers.addAll(sample().racers());
+    additions.versions.add(row(new GameVersion(id(951), "test-rule-rollback", LocalDate.of(2026, 12, 2))));
+    var original = canonical.ruleSets().getFirst(); var sources = new ArrayList<>(original.sources());
+    sources.add(row(new Source(EffectType.SCENARIO, PassiveGadgetRules.id(45), "missing-effect", 0, "https://example.test/source")));
+    additions.ruleSets.add(new GameDataRuleSet(row(new Metadata(id(951), "rollback-passive", "rollback-scenario")), original.passive(), original.scenario(), sources));
+    var invalid = new GameDataImportPlan(additions.build(), empty(), List.of(), List.of(), "test");
+    assertTrue(assertThrows(IllegalStateException.class, () -> repository.apply(current -> invalid)).getMessage().contains("23503"));
+    assertTrue(new GadgetRuleDbAdapter(isolated).findByVersion("test-rule-rollback").isEmpty());
+    assertFalse(repository.read().racers().stream().anyMatch(r -> r.value().id().equals(id(1))));
+    assertTrue(importer.plan(canonical).safe()); assertEquals(0, importer.plan(canonical).inserts());
+  }
+
+  @Test void realRuleUniqueConstraintRollsBackTheEntireNewSnapshot() {
+    var additions = new Edit(empty());
+    additions.versions.add(row(new GameVersion(id(952), "test-rule-unique", LocalDate.of(2026, 12, 3))));
+    var original = canonical.ruleSets().getFirst(); var sources = new ArrayList<>(original.sources()); sources.add(sources.getFirst());
+    additions.ruleSets.add(new GameDataRuleSet(row(new Metadata(id(952), "unique-passive", "unique-scenario")), original.passive(), original.scenario(), sources));
+    var invalid = new GameDataImportPlan(additions.build(), empty(), List.of(), List.of(), "test");
+    assertTrue(assertThrows(IllegalStateException.class, () -> repository.apply(current -> invalid)).getMessage().contains("23505"));
+    assertTrue(new GadgetRuleDbAdapter(isolated).findByVersion("test-rule-unique").isEmpty());
+    assertTrue(importer.plan(canonical).changes().isEmpty());
   }
 
   @Test void insertsAllCatalogKindsAndCompleteVersionThenReimportsAsNoOp() {

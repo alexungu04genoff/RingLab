@@ -45,6 +45,21 @@ final class GameDataImportPlanner {
         changes.add("+ machine-part stats: " + snapshot.parts().size() + " rows for " + label);
       }
     }
+    for (var old : current.ruleSets()) if (desired.ruleSets().stream().noneMatch(r -> r.versionId().equals(old.versionId())))
+      unsafe.add(old.metadata().problem("game_version_id", old.versionId(), "Published rule snapshot omitted; deletion is forbidden"));
+    for (var rules : desired.ruleSets()) {
+      var old = current.ruleSets().stream().filter(r -> r.versionId().equals(rules.versionId())).findFirst();
+      if (old.isEmpty()) {
+        added.ruleSets.add(rules);
+        changes.add("+ reviewed rule snapshot for " + labels.get(rules.versionId()).value().version() + ": "
+            + rules.passive().size() + " passive, " + rules.scenario().size() + " scenario, " + rules.sources().size() + " sources");
+      } else {
+        publishedRules(List.of(old.get().metadata()), List.of(rules.metadata()), CatalogFields::ruleSet, unsafe);
+        publishedRules(old.get().passive(), rules.passive(), CatalogFields::passive, unsafe);
+        publishedRules(old.get().scenario(), rules.scenario(), CatalogFields::scenario, unsafe);
+        publishedRules(old.get().sources(), rules.sources(), CatalogFields::source, unsafe);
+      }
+    }
     return new GameDataImportPlan(added.dataset(), updated.dataset(), changes.stream().sorted().toList(),
         unsafe.stream().sorted().toList(), CatalogFingerprint.approval(current, desired));
   }
@@ -120,6 +135,25 @@ final class GameDataImportPlanner {
     return value == null ? "<unknown>" : '"' + value.toString().replace("\r", "\\r").replace("\n", "\\n") + '"';
   }
 
+  private <T> void publishedRules(List<CatalogRow<T>> before, List<CatalogRow<T>> after,
+      Function<T, Map<String, Object>> fields, List<String> unsafe) {
+    var old = new LinkedHashMap<Object, CatalogRow<T>>();
+    before.forEach(r -> old.put(fields.apply(r.value()).get("id"), r));
+    for (var row : after) {
+      var values = fields.apply(row.value());
+      var previous = old.remove(values.get("id"));
+      if (previous == null) unsafe.add(row.problem("effect_key", values.get("id"), "Cannot add rows to a published rule snapshot"));
+      else {
+        var previousValues = fields.apply(previous.value());
+        values.forEach((field, value) -> {
+          if (!Objects.equals(CatalogFingerprint.normalized(previousValues.get(field)), CatalogFingerprint.normalized(value)))
+            unsafe.add(row.problem(field, value, "Published rule field is immutable (was " + previousValues.get(field) + ")"));
+        });
+      }
+    }
+    old.forEach((key, row) -> unsafe.add(row.problem("effect_key", key, "Previously published rule row omitted")));
+  }
+
   private <T> Map<UUID, CatalogRow<T>> index(List<CatalogRow<T>> rows, Function<T, UUID> id) {
     var result = new LinkedHashMap<UUID, CatalogRow<T>>();
     rows.forEach(r -> result.put(id.apply(r.value()), r));
@@ -140,6 +174,7 @@ final class GameDataImportPlanner {
     final List<CatalogRow<RaceMap>> maps = new ArrayList<>();
     final List<CatalogRow<GameVersion>> versions = new ArrayList<>();
     final List<VersionStats> snapshots = new ArrayList<>();
-    GameDataSet dataset() { return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots); }
+    final List<GameDataRuleSet> ruleSets = new ArrayList<>();
+    GameDataSet dataset() { return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots, ruleSets); }
   }
 }

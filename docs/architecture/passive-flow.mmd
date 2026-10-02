@@ -10,7 +10,7 @@ flowchart TB
   cat["catalog / stockMachineStats<br/>derive stock totals from required part count"]:::app
   resolved["PassiveStatsService.resolved<br/>resolved racer / parts / source machines / gadgets"]:::app
   plate["GadgetPlate.canFit"]:::domain
-  calc["PassiveStatsCalculator<br/>PassiveGadgetRules"]:::domain
+  calc["PassiveStatsCalculator<br/>detached facts + PassiveGadgetRules policy"]:::domain
   dto["BuildStatsResponse.withPassive<br/>or BuildStatsResponse.from / CatalogResponse"]:::rest
   game["GameDataRepository<br/>resolve catalog metadata"]:::port
   stats["BaseStatsRepository<br/>read per-version maps"]:::port
@@ -21,7 +21,10 @@ flowchart TB
   base --> stats
   pr -->|"persisted"| builds["BuildUseCase"]:::port -.-> bs
   pr -->|"draft, persisted page or rule catalog"| input["PassiveStatsUseCase"]:::port -.-> passive
-  passive -->|"rules"| metadata["PassiveGadgetRules + gadget catalog"]:::domain
+  passive -->|"rules"| metadata["GadgetRuleSnapshot + gadget catalog"]:::domain
+  passive --> reviewed["ReviewedGadgetRules"]:::app
+  reviewed --> rulePort["GadgetRuleRepository → GadgetRuleDbAdapter<br/>PostgreSQL rule facts"]:::port
+  reviewed -.->|"detached snapshot"| calc
   passive -->|"draft"| draft
   passive -->|"saved build list"| page
   passive --> game

@@ -61,6 +61,15 @@ three slots. Total cost alone is insufficient: three two-slot gadgets do not fit
 
 `domain/build/recommendation` contains immutable selections, request, catalog
 snapshot and result records, exact stat comparison and `BuildRecommendationSolver`.
+The solver is the facade for validation, reference preparation, mode dispatch and
+result wording. Package-private `RecommendationCandidates` owns selection/lock/
+availability validation, legal catalog pools and passive evaluation.
+`StrictRecommendationSearch` owns the independent component maxima;
+`BalancedRecommendationSearch` owns joint choices, optimistic bounds and pruning.
+Both reuse `RecommendationGadgetSearch` for the existing ordered subset traversal,
+`RecommendationCandidateOrder` for the incumbent and deterministic comparison,
+and `RecommendationSearchBudget` for the same work/time/interruption checkpoints.
+`BalancedObjective` remains the sole owner of Balanced objective semantics.
 These classes use only the JDK and domain. The compatibility rule now lives in
 `domain/gamedata/MachineCompatibility`; the existing application facade preserves
 its validation messages and semantic exceptions for existing callers.

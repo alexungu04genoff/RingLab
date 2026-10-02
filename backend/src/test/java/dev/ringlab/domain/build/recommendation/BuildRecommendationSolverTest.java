@@ -319,7 +319,7 @@ class BuildRecommendationSolverTest {
               for (int index = 0; index < gadgets.size(); index++) if ((mask & (1 << index)) != 0) selected.add(gadgets.get(index));
               if (!GadgetPlate.canFit(selected.stream().map(Gadget::slotCost).toList())) continue;
               var base = BaseStatsBreakdown.calculate(racer.id(), front.id(), rear.id(), tire.id(), f.racerStats, f.partStats);
-              var evaluated = PassiveStatsCalculator.calculate(base, "1.4.1", racer.racingType(), RacingType.SPEED, selected, true);
+              var evaluated = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base, "1.4.1", racer.racingType(), RacingType.SPEED, selected, true);
               if (evaluated.coverage() != PassiveStatsResult.Coverage.CALCULATED) continue;
               if (exhaustiveBest == null || StatPriority.compare(evaluated.adjusted(), exhaustiveBest, ORDER) > 0) exhaustiveBest = evaluated.adjusted();
             }
@@ -348,6 +348,6 @@ class BuildRecommendationSolverTest {
       parts.put(id(21), new MachinePart(id(21), id(7), MachinePartType.REAR));
       partStats.put(id(20), points(1, 1, 1, 1, 1)); partStats.put(id(21), points(1, 1, 1, 1, 1));
     }
-    RecommendationCatalog snapshot() { return new RecommendationCatalog(version, racers, machines, parts, gadgets, racerStats, partStats); }
+    RecommendationCatalog snapshot() { return new RecommendationCatalog(version, racers, machines, parts, gadgets, racerStats, partStats, dev.ringlab.importing.RuleFixtures.snapshot()); }
   }
 }

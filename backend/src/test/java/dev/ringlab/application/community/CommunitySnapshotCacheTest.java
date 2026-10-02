@@ -30,7 +30,7 @@ class CommunitySnapshotCacheTest {
       var entry = new CommunitySnapshot.Entry(build, "author", null, null, null, null, null,
           List.of(), votes, null, null, maps);
       return new CommunitySnapshot(UUID.randomUUID(), clock.instant(), List.of(entry));
-    }, Duration.ofSeconds(60), clock);
+    }, Duration.ofSeconds(60), clock, dev.ringlab.importing.RuleFixtures.loader());
     var before = cache.get();
     selection.set(List.of(map));
     assertSame(before, cache.get());
@@ -55,7 +55,7 @@ class CommunitySnapshotCacheTest {
       calls.incrementAndGet();
       if (fail.get()) throw new IllegalStateException("Database unavailable");
       return new CommunitySnapshot(UUID.randomUUID(), clock.instant(), List.of());
-    }, Duration.ofSeconds(60), clock);
+    }, Duration.ofSeconds(60), clock, dev.ringlab.importing.RuleFixtures.loader());
     var first = cache.get();
     assertSame(first, cache.get());
     assertEquals(1, calls.get());
@@ -72,7 +72,7 @@ class CommunitySnapshotCacheTest {
     var cache = new CommunitySnapshotCache(() -> {
       calls.incrementAndGet();
       return new CommunitySnapshot(UUID.randomUUID(), Instant.now(), List.of());
-    }, Duration.ofSeconds(60), Clock.systemUTC());
+    }, Duration.ofSeconds(60), Clock.systemUTC(), dev.ringlab.importing.RuleFixtures.loader());
     try (var executor = Executors.newFixedThreadPool(8)) {
       var start = new CountDownLatch(1);
       var futures = new ArrayList<Future<CommunitySnapshot>>();
@@ -82,7 +82,7 @@ class CommunitySnapshotCacheTest {
       for (var future : futures) assertSame(result, future.get(5, TimeUnit.SECONDS));
       assertEquals(1, calls.get());
     }
-    assertThrows(IllegalArgumentException.class, () -> new CommunitySnapshotCache(() -> null, Duration.ZERO, Clock.systemUTC()));
-    assertThrows(IllegalArgumentException.class, () -> new CommunitySnapshotCache(() -> null, Duration.ofHours(1), Clock.systemUTC()));
+    assertThrows(IllegalArgumentException.class, () -> new CommunitySnapshotCache(() -> null, Duration.ZERO, Clock.systemUTC(), dev.ringlab.importing.RuleFixtures.loader()));
+    assertThrows(IllegalArgumentException.class, () -> new CommunitySnapshotCache(() -> null, Duration.ofHours(1), Clock.systemUTC(), dev.ringlab.importing.RuleFixtures.loader()));
   }
 }

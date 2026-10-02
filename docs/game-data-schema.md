@@ -3,8 +3,9 @@
 This is the implemented relational shape after Flyway V28. It shows the game catalog and the
 build references that consume it; user, vote and comment details are intentionally abbreviated.
 Later V30–V33 map/collection additions are described in their feature docs. The
-[Git-managed importer](../game-data/README.md) changes no schema or foreign keys:
-it maintains future catalog content through explicit validate/plan/apply commands.
+[Git-managed importer](../game-data/README.md) maintains future content through
+explicit validate/plan/apply commands. V34 adds the rule tables described below;
+the original catalog/build foreign keys remain intact.
 
 V28's private `saved_builds` relation cascades on both user and source-build deletion.
 Its composite primary key preserves one bookmark per user/build; database-generated
@@ -94,6 +95,32 @@ erDiagram
         uuid gadget_id FK
     }
 ```
+
+V34 adds these relations for rule facts:
+
+- `gadget_rule_sets`: one row per game-version UUID, carrying passive/scenario ruleset labels.
+- `passive_gadget_rules`: `(game_version_id, gadget_id, effect_id)` primary key;
+  explicit position per gadget, kind, subject, required type, two five-column NUMERIC
+  vectors, label, explanation, stacking group and nullable conditional fallback classification.
+- `scenario_gadget_rules`: the same composite identity references a passive effect;
+  explicit global position, condition enum, five NUMERIC adjustment columns, label and explanation.
+- `passive_rule_sources` and `scenario_rule_sources`: composite effect foreign key
+  plus position identifies each source URL. Separate tables give each source a real
+  foreign key without a polymorphic relationship.
+
+Rule vectors retain arbitrary decimal precision. Passive vectors must be fully
+known; a scenario vector is either fully known or entirely NULL (utility-only).
+SQL enforces identity, foreign keys, enum checks and unique nonnegative positions;
+offline validation additionally requires contiguous ordering, correct conditional
+references and allowed Java stacking groups. No cascading deletion is introduced.
+The [catalog/rules diagram](architecture/database-catalog-stats.mmd) shows the new relations.
+
+V34 bootstraps only the existing published 1.4.1 rules so an application upgrade
+preserves behavior before any administrative import. New content uses the same
+atomic importer as catalog/base stats. Published rule snapshots cannot be mutated
+or removed by APPLY; a successful canonical import after V34 is a no-op. Runtime
+calculations use detached database snapshots and retain their current Java review
+permissions, including the explicitly assumed Quick Starter + Sea Dog interaction.
 
 The current `machine_parts` rows identify selectable components and their source machine only.
 They do not yet store the Wiki's front/back display labels. Five base stats live separately in

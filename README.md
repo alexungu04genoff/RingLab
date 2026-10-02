@@ -4,7 +4,7 @@ A small community build-sharing platform for a bachelor's thesis, using **Sonic 
 
 ## Stack and structure
 
-Catalog and versioned base-stat maintenance lives in [game-data/](game-data/README.md).
+Catalog, versioned base stats and reviewed gadget rule facts live in [game-data/](game-data/README.md).
 Its explicit `validate`, `plan`, and `apply` commands maintain PostgreSQL;
 normal requests and restarts do not load or import CSV files.
 

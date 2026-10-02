@@ -17,7 +17,7 @@ class PassiveStatsCalculatorTest {
   private static final BaseStatsBreakdown BASE = new BaseStatsBreakdown(TOTAL,points(20,20,20,20,20),points(65,10,22,-8,34));
   private Gadget gadget(int n) { return new Gadget(id(n),"Gadget " + n,null,1,null); }
   private PassiveStatsResult calculate(RacingType racer, RacingType machine, int... ids) {
-    return PassiveStatsCalculator.calculate(BASE,"1.4.1",racer,machine,Arrays.stream(ids).mapToObj(this::gadget).toList(),true);
+    return PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",racer,machine,Arrays.stream(ids).mapToObj(this::gadget).toList(),true);
   }
 
   @Test void noGadgetsPreservesTheExactBaseAndPrecision() {
@@ -30,7 +30,7 @@ class PassiveStatsCalculatorTest {
   @Test void driftSpinnerAndInventorySwapDoNotBlockTheFiveStatBaseline() {
     var inventorySwap = new Gadget(UUID.fromString("174ea0a3-43bb-5001-bbd4-8b598482fe59"), "Inventory Swap", null, 3, null);
     var spinner = new Gadget(id(22), "Drift Spinner Kit", null, 3, null);
-    var result = PassiveStatsCalculator.calculate(BASE, "1.4.1", BOOST, ACCELERATION,
+    var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE, "1.4.1", BOOST, ACCELERATION,
         List.of(spinner, inventorySwap), true);
     assertEquals(CALCULATED, result.coverage());
     assertEquals(TOTAL, result.adjusted());
@@ -59,7 +59,7 @@ class PassiveStatsCalculatorTest {
     assertEquals(56,new HashSet<>(utilityIds).size());
     for (var utilityId : utilityIds) {
       var utility = new Gadget(utilityId, "Utility", null, 3, null);
-      var result = PassiveStatsCalculator.calculate(BASE,"1.4.1",null,null,List.of(utility),true);
+      var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",null,null,List.of(utility),true);
       assertEquals(CALCULATED,result.coverage(),utilityId.toString());
       assertEquals(TOTAL,result.adjusted());
       assertEquals(BaseStats.ZERO,result.adjustments());
@@ -68,11 +68,11 @@ class PassiveStatsCalculatorTest {
 
       for (var racer : RacingType.values()) for (var machine : RacingType.values()) {
         var context = utilityId + " racer=" + racer + " machine=" + machine;
-        var alone = PassiveStatsCalculator.calculate(BASE,"1.4.1",racer,machine,List.of(utility),true);
+        var alone = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",racer,machine,List.of(utility),true);
         assertEquals(CALCULATED,alone.coverage(),context);
         assertEquals(TOTAL,alone.adjusted(),context);
         assertEquals(BaseStats.ZERO,alone.adjustments(),context);
-        var withTuner = PassiveStatsCalculator.calculate(BASE,"1.4.1",racer,machine,List.of(utility,gadget(60)),true);
+        var withTuner = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",racer,machine,List.of(utility,gadget(60)),true);
         var expected = machine == BOOST ? points(-4,0,0,0,20) : points(0,0,0,0,8);
         assertEquals(CALCULATED,withTuner.coverage(),context);
         assertEquals(expected,withTuner.adjustments(),context);
@@ -86,7 +86,7 @@ class PassiveStatsCalculatorTest {
     var base = new BaseStatsBreakdown(total,points(14,18,10,11,7),points(15,48,51,24,42));
     var gadgets = List.of(new Gadget(id(7),"Damage Evolution",null,1,null),
         new Gadget(id(4),"Invincible Finish",null,3,null), new Gadget(id(2),"Perfect Landing",null,1,null));
-    var result = PassiveStatsCalculator.calculate(base,"1.4.1",ACCELERATION,HANDLING,gadgets,true);
+    var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base,"1.4.1",ACCELERATION,HANDLING,gadgets,true);
     assertEquals(CALCULATED,result.coverage());
     assertEquals(total,result.adjusted());
     assertEquals(BaseStats.ZERO,result.adjustments());
@@ -160,14 +160,14 @@ class PassiveStatsCalculatorTest {
   @Test void mixedTunersOffsetPenaltiesAndKeepEveryIndependentBonus() {
     var base = new BaseStatsBreakdown(points(62,30,43,62,43), points(11,9,7,20,13), points(51,21,36,42,30));
     var gadgets = List.of(gadget(54), gadget(55), gadget(52), gadget(53), gadget(58), gadget(59));
-    var result = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,SPEED,gadgets,true);
+    var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base,"1.4.1",POWER,SPEED,gadgets,true);
     assertEquals(CALCULATED,result.coverage());
     assertEquals(points(40,10,0,16,-2),result.adjustments());
     assertEquals(points(102,40,43,78,41),result.adjusted());
     assertTrue(result.effects().stream().allMatch(effect -> effect.status() == APPLIED));
-    assertEquals(result.adjusted(),PassiveStatsCalculator.calculate(base,"1.4.1",POWER,SPEED,gadgets.reversed(),true).adjusted());
+    assertEquals(result.adjusted(),PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base,"1.4.1",POWER,SPEED,gadgets.reversed(),true).adjusted());
     // The same gadgets on an Acceleration machine use different bonuses and penalties.
-    var acceleration = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,ACCELERATION,gadgets,true);
+    var acceleration = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base,"1.4.1",POWER,ACCELERATION,gadgets,true);
     assertEquals(CALCULATED,acceleration.coverage());
     assertEquals(points(16,40,-6,16,-2),acceleration.adjustments());
   }
@@ -185,7 +185,7 @@ class PassiveStatsCalculatorTest {
     assertEquals(points(0,20,-2,0,-2),calculate(POWER,ACCELERATION,55).adjustments());
     assertEquals(points(0,20,0,0,0),calculate(POWER,ACCELERATION,34).adjustments());
     for (var machine : RacingType.values()) for (var ids : List.of(List.of(55,34),List.of(34,55))) {
-      var result = PassiveStatsCalculator.calculate(base,"1.4.1",POWER,machine,ids.stream().map(this::gadget).toList(),true);
+      var result = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base,"1.4.1",POWER,machine,ids.stream().map(this::gadget).toList(),true);
       assertEquals(CALCULATED,result.coverage());
       assertEquals(machine == ACCELERATION ? points(0,40,-2,0,-2) : points(0,8,0,0,0),result.adjustments());
       assertEquals(machine == ACCELERATION ? points(58,105,27,54,32) : points(58,73,29,54,34),result.adjusted());
@@ -204,13 +204,13 @@ class PassiveStatsCalculatorTest {
     assertEquals(points(0,0,8,8,0),calculate(null,null,23).adjustments());
     assertEquals(CONDITIONAL,calculate(null,null,23).effects().getLast().status());
     var doubleDown=new Gadget(UUID.fromString("f6f75d95-16dd-538d-89b5-49c71cc8a346"),"Double Down",null,3,null);
-    var result=PassiveStatsCalculator.calculate(BASE,"1.4.1",null,null,List.of(doubleDown),true);
+    var result=PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",null,null,List.of(doubleDown),true);
     assertEquals(points(-10,-10,-10,-10,-10),result.adjustments());
     assertEquals(NON_STAT,result.effects().getLast().status());
     for (var racer : RacingType.values()) for (var machine : RacingType.values()) {
       var drift = calculate(racer,machine,50);
       var panel = calculate(racer,machine,23);
-      var penalty = PassiveStatsCalculator.calculate(BASE,"1.4.1",racer,machine,List.of(doubleDown),true);
+      var penalty = PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",racer,machine,List.of(doubleDown),true);
       assertEquals(CALCULATED,drift.coverage());
       assertEquals(CALCULATED,panel.coverage());
       assertEquals(CALCULATED,penalty.coverage());
@@ -242,7 +242,7 @@ class PassiveStatsCalculatorTest {
       assertTrue(result.effects().stream().anyMatch(e -> e.status()==CONDITIONAL));
     }
     for(String id:List.of("174ea0a3-43bb-5001-bbd4-8b598482fe59","5a000a58-7d7a-581c-80e3-6ae8661215b7","182bdfa8-44d3-5de8-941b-d525381dd0a3")) {
-      var result=PassiveStatsCalculator.calculate(BASE,"1.4.1",BOOST,POWER,List.of(new Gadget(UUID.fromString(id),"Other",null,1,null)),true);
+      var result=PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",BOOST,POWER,List.of(new Gadget(UUID.fromString(id),"Other",null,1,null)),true);
       assertEquals(TOTAL,result.adjusted());assertEquals(CALCULATED,result.coverage());
     }
   }
@@ -252,17 +252,17 @@ class PassiveStatsCalculatorTest {
     assertEquals(REQUIRES_SELECTION,calculate(null,POWER,11).effects().getFirst().status());
     assertEquals(PARTIAL,calculate(BOOST,POWER,999).coverage());
     var unknown=new BaseStatsBreakdown(new BaseStats(null,BigDecimal.ONE,null,null,null),BaseStats.UNKNOWN,BaseStats.UNKNOWN);
-    var result=PassiveStatsCalculator.calculate(unknown,"1.4.1",BOOST,POWER,List.of(gadget(23)),true);
+    var result=PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), unknown,"1.4.1",BOOST,POWER,List.of(gadget(23)),true);
     assertNull(result.adjusted().speed());assertNull(result.adjusted().handling());
     assertEquals(BigDecimal.ONE,result.adjusted().acceleration());assertEquals(PARTIAL,result.coverage());
   }
 
   @Test void oldOrMissingPatchDoesNotFallBackAndInvalidLegacyLoadoutsKeepBase() {
     for(String version:Arrays.asList(null,"1.3.1","1.5.0")) {
-      var result=PassiveStatsCalculator.calculate(BASE,version,BOOST,POWER,List.of(gadget(38)),true);
+      var result=PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,version,BOOST,POWER,List.of(gadget(38)),true);
       assertEquals(UNSUPPORTED_VERSION,result.coverage());assertEquals(BASE,result.base());assertEquals(TOTAL,result.adjusted());
     }
-    var result=PassiveStatsCalculator.calculate(BASE,"1.4.1",BOOST,POWER,List.of(gadget(38)),false);
+    var result=PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), BASE,"1.4.1",BOOST,POWER,List.of(gadget(38)),false);
     assertEquals(INVALID_LOADOUT,result.coverage());assertEquals(TOTAL,result.adjusted());
   }
 }

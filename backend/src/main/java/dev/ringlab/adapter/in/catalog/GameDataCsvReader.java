@@ -3,6 +3,7 @@ package dev.ringlab.adapter.in.catalog;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.gamedata.importing.*;
 import dev.ringlab.domain.gamedata.importing.GameDataSet.*;
+import dev.ringlab.domain.gamedata.importing.GameDataRuleSet.*;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,7 @@ public final class GameDataCsvReader {
     var versions = rows(root, "catalog/game-versions.csv", "id,version,released_at", r ->
         new GameVersion(r.uuid("id"), r.version(), r.date("released_at")), errors);
     var snapshots = new ArrayList<VersionStats>();
+    var ruleSets = new ArrayList<GameDataRuleSet>();
     for (var row : versions) {
       var version = row.value();
       String folder = "versions/" + version.version() + "/";
@@ -42,6 +44,28 @@ public final class GameDataCsvReader {
               r -> new StatRow(r.uuid("racer_id"), r.stats()), errors),
           rows(root, folder + "machine-part-stats.csv", "machine_part_id,speed,acceleration,handling,power,boost",
               r -> new StatRow(r.uuid("machine_part_id"), r.stats()), errors)));
+      if (List.of("rule-set.csv", "passive-gadget-rules.csv", "scenario-gadget-rules.csv", "rule-sources.csv")
+          .stream().anyMatch(file -> Files.exists(root.resolve(folder + file)))) {
+        var metadata = rows(root, folder + "rule-set.csv", "passive_ruleset,scenario_ruleset", r ->
+            new Metadata(version.id(), r.text("passive_ruleset", 120, false), r.text("scenario_ruleset", 120, false)), errors);
+        var passive = rows(root, folder + "passive-gadget-rules.csv",
+            "gadget_id,effect_id,position,kind,subject,required_racing_type,matching_speed,matching_acceleration,matching_handling,matching_power,matching_boost,nonmatching_speed,nonmatching_acceleration,nonmatching_handling,nonmatching_power,nonmatching_boost,label,explanation,stacking_group,scenario_stat_potential",
+            r -> new PassiveFact(r.integer("position", false), new GadgetEffectRule(r.uuid("gadget_id"), r.effectId(),
+                r.text("label", 255, false), r.type("kind", GadgetEffectRule.Kind.class, false),
+                r.type("subject", GadgetEffectRule.Subject.class, false), r.type("required_racing_type", RacingType.class, true),
+                r.stats("matching_"), r.stats("nonmatching_"), r.text("explanation", Integer.MAX_VALUE, false), List.of(),
+                r.text("stacking_group", 80, true)), r.bool("scenario_stat_potential")), errors);
+        var scenario = rows(root, folder + "scenario-gadget-rules.csv",
+            "gadget_id,effect_id,position,condition,speed,acceleration,handling,power,boost,label,explanation",
+            r -> new ScenarioFact(r.integer("position", false), new ScenarioEffectRule(r.uuid("gadget_id"), r.effectId(),
+                r.text("label", 255, false), r.type("condition", ScenarioEffectRule.Condition.class, false),
+                r.scenarioStats(), r.text("explanation", Integer.MAX_VALUE, false), List.of())), errors);
+        var sources = rows(root, folder + "rule-sources.csv", "effect_type,gadget_id,effect_id,position,url", r ->
+            new Source(r.type("effect_type", EffectType.class, false), r.uuid("gadget_id"), r.effectId(),
+                r.integer("position", false), r.text("url", 2048, false)), errors);
+        if (metadata.size() != 1) errors.add(folder + "rule-set.csv:1 field=ruleset value=\"" + metadata.size() + "\": Expected exactly one ruleset row");
+        else ruleSets.add(new GameDataRuleSet(metadata.getFirst(), passive, scenario, sources));
+      }
     }
     if (Files.isDirectory(root.resolve("versions"))) {
       try (var folders = Files.list(root.resolve("versions"))) {
@@ -52,7 +76,7 @@ public final class GameDataCsvReader {
       } catch (IOException e) { errors.add("versions:1 field=file value=\"versions\": Cannot list directory"); }
     }
     if (!errors.isEmpty()) throw new ImportValidationException(errors);
-    return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots);
+    return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots, ruleSets);
   }
 
   private <T> List<CatalogRow<T>> rows(Path root, String file, String columns,
@@ -127,7 +151,27 @@ public final class GameDataCsvReader {
       return value;
     }
     private BaseStats stats() {
-      return new BaseStats(decimal("speed"), decimal("acceleration"), decimal("handling"), decimal("power"), decimal("boost"));
+      return stats("");
+    }
+    private BaseStats stats(String prefix) {
+      return new BaseStats(decimal(prefix + "speed"), decimal(prefix + "acceleration"), decimal(prefix + "handling"), decimal(prefix + "power"), decimal(prefix + "boost"));
+    }
+    private BaseStats scenarioStats() {
+      var values = stats();
+      return values.equals(BaseStats.UNKNOWN) ? null : values;
+    }
+    private String effectId() {
+      String value = text("effect_id", 80, false);
+      if (!value.matches("[a-z0-9][a-z0-9-]*")) throw bad("effect_id", "Expected a stable lowercase effect ID; never derive IDs from row position");
+      return value;
+    }
+    private Boolean bool(String field) {
+      return switch (fields.get(field)) {
+        case "" -> null;
+        case "true" -> true;
+        case "false" -> false;
+        default -> throw bad(field, "Expected true, false or blank");
+      };
     }
     private ImportValidationException bad(String field, String reason) {
       return failure(file, line, field, fields.get(field), reason);

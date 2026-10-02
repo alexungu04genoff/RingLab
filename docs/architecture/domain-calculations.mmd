@@ -4,7 +4,7 @@ flowchart LR
     selection["BuildSelection<br/>current, locked or proposed IDs"]:::domain
     mode["RecommendationMode / StatPriority"]:::domain
     config["BalancedConfiguration"]:::domain
-    catalog["RecommendationCatalog<br/>catalog + versioned BaseStats maps"]:::domain
+    catalog["RecommendationCatalog<br/>catalog + BaseStats maps + GadgetRuleSnapshot"]:::domain
     solver["BuildRecommendationSolver / Budget"]:::domain
     objective["BalancedObjective"]:::domain
     result["RecommendationResult / Outcome / BalancedDetails"]:::domain
@@ -15,6 +15,15 @@ flowchart LR
     solver --> catalog
     solver --> objective
     solver --> result
+    solver --> candidates["RecommendationCandidates"]:::domain
+    solver --> searches["StrictRecommendationSearch / BalancedRecommendationSearch"]:::domain
+    searches --> gadgets["RecommendationGadgetSearch"]:::domain
+    searches --> order["RecommendationCandidateOrder"]:::domain
+    searches --> budget["RecommendationSearchBudget"]:::domain
+    gadgets --> candidates
+    gadgets --> budget
+    searches --> objective
+    order --> objective
     result --> selection
   end
   subgraph stats["GAME DATA: calculated statistics"]
@@ -22,11 +31,11 @@ flowchart LR
     breakdown["BaseStatsBreakdown<br/>total / character / machine"]:::domain --> base
     passive["PassiveStatsResult<br/>coverage + effect records"]:::domain --> breakdown
     pc["PassiveStatsCalculator"]:::domain --> passive
-    pr["PassiveGadgetRules / GadgetEffectRule"]:::domain
+    pr["GadgetRuleSnapshot / GadgetEffectRule<br/>PassiveGadgetRules: reviewed policy only"]:::domain
     pc --> pr
     context["ScenarioContext / VehicleForm"]:::domain
     sc["ScenarioStatsCalculator"]:::domain --> context
-    sr["ScenarioGadgetRules / ScenarioEffectRule<br/>Condition / Field"]:::domain
+    sr["GadgetRuleSnapshot / ScenarioEffectRule<br/>Condition / Field / ScenarioGadgetRules policy"]:::domain
     sc --> sr
     scenario["ScenarioStatsResult<br/>subtotal / nullable total / effects"]:::domain --> passive
     sc --> scenario
@@ -37,7 +46,7 @@ flowchart LR
     rank --> wilson["WilsonScore"]:::domain
     rank --> votes["VoteSummary"]:::domain
   end
-  solver --> pc
+  candidates --> pc
   catalog --> base
   result --> base
   objective --> base

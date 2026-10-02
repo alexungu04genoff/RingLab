@@ -76,7 +76,7 @@ public final class GameDataImportDbAdapter implements GameDataImportRepository {
     var partStats = readStats(c, "machine_part_stats", "machine_part_id");
     var snapshots = versions.stream().map(v -> new VersionStats(v.value().id(),
         racerStats.getOrDefault(v.value().id(), List.of()), partStats.getOrDefault(v.value().id(), List.of()))).toList();
-    return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots);
+    return new GameDataSet(racers, machines, parts, gadgets, maps, versions, snapshots, new GameDataRuleStorage().read(c, null));
   }
 
   private Map<UUID, List<CatalogRow<StatRow>>> readStats(Connection c, String table, String id) throws SQLException {
@@ -124,6 +124,7 @@ public final class GameDataImportDbAdapter implements GameDataImportRepository {
       insertStats(c, "racer_stats", "racer_id", snapshot.versionId(), snapshot.racers());
       insertStats(c, "machine_part_stats", "machine_part_id", snapshot.versionId(), snapshot.parts());
     }
+    new GameDataRuleStorage().insert(c, d.ruleSets());
   }
 
   private void insertStats(Connection c, String table, String column, UUID version, List<CatalogRow<StatRow>> rows) throws SQLException {

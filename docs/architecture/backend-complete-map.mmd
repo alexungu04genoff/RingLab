@@ -43,6 +43,12 @@ flowchart TB
     nr["NewsRestResource"]:::rest --> news["GameNewsUseCase"]:::port -.-> ns["GameNewsService"]:::app
   end
   %% Invisible links stack independent feature panels; they are not calls.
+  pss --> ruleLoader["ReviewedGadgetRules → GadgetRuleRepository<br/>GadgetRuleDbAdapter → PostgreSQL"]:::app
+  scs --> ruleLoader
+  recs --> ruleLoader
+  command["GameDataImportCommand + GameDataCsvReader"]:::rest --> importInput["ImportGameDataUseCase"]:::port
+  importInput -.-> importService["GameDataImportService<br/>typed validation / immutable planning / atomic apply"]:::app
+  importService --> importOutput["GameDataImportRepository → GameDataImportDbAdapter"]:::port
   accounts ~~~ builds ~~~ personal ~~~ social ~~~ catalog
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

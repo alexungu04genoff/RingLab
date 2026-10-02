@@ -10,15 +10,20 @@ flowchart TB
   numbers[("racer_stats / machine_part_stats<br/>persistent per-version contributions")]:::outside
   breakdown["BaseStatsBreakdown + BaseStats<br/>character + selected machine parts = base total"]:::domain
   ps["PassiveStatsService.resolved<br/>resolved catalog, type coherence and completeness"]:::app
-  pr["PassiveGadgetRules / GadgetEffectRule<br/>code-defined reviewed rules"]:::domain
+  pr["GadgetRuleSnapshot / GadgetEffectRule<br/>detached imported facts + PassiveGadgetRules policy"]:::domain
   pc["PassiveStatsCalculator"]:::domain
   po["PassiveStatsResult<br/>base, adjustments, adjusted, coverage, effects"]:::domain
-  sr["ScenarioGadgetRules / ScenarioEffectRule<br/>code-defined reviewed rules and explicit assumption"]:::domain
+  sr["ScenarioEffectRule / ScenarioGadgetRules<br/>detached facts and Java assumption policy"]:::domain
   ctx["ScenarioContext<br/>ephemeral player-selected conditions"]:::domain
   sc["ScenarioStatsCalculator"]:::domain
   so["ScenarioStatsResult<br/>passive + scenario delta<br/>knownSubtotal + nullable exact total"]:::domain
   endpoints --> input["BaseStatsUseCase"]:::port -.-> base
   consumers --> base
+  consumers --> reviewed["ReviewedGadgetRules → GadgetRuleRepository"]:::port
+  reviewed -.-> ruleAdapter["GadgetRuleDbAdapter"]:::adapter
+  ruleAdapter --> ruleTables[("gadget_rule_sets / passive_gadget_rules / scenario_gadget_rules<br/>passive_rule_sources / scenario_rule_sources")]:::outside
+  reviewed -.-> pr
+  reviewed -.-> sr
   base --> gp
   base --> sp
   gp -.-> ga --> catalog

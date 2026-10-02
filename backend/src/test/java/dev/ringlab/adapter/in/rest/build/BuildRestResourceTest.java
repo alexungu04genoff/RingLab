@@ -48,7 +48,7 @@ class BuildRestResourceTest {
     var builds = new BuildService(null, null, null, null) {
       @Override public Page list(Query query) { return new Page(List.of(), 19); }
     };
-    var stats = new PassiveStatsService(null, null) {
+    var stats = new PassiveStatsService(null, null, null) {
       @Override public Map<UUID, PassiveStatsResult> buildPage(List<Build> page) {
         assertTrue(page.isEmpty());
         throw new IllegalStateException("Internal database detail");

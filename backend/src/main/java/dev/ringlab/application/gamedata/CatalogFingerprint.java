@@ -12,7 +12,7 @@ final class CatalogFingerprint {
   static String approval(GameDataSet current, GameDataSet desired) {
     try {
       var digest = MessageDigest.getInstance("SHA-256");
-      value(digest, "ringlab-import-policy-v1");
+      value(digest, "ringlab-import-policy-v2");
       dataset(digest, current);
       dataset(digest, desired);
       return HexFormat.of().formatHex(digest.digest());
@@ -35,6 +35,14 @@ final class CatalogFingerprint {
       value(digest, s.versionId());
       rows(digest, "racer-stats", s.racers(), CatalogFields::stats);
       rows(digest, "part-stats", s.parts(), CatalogFields::stats);
+    }
+    value(digest, "rule-sets");
+    value(digest, d.ruleSets().size());
+    for (var rules : d.ruleSets().stream().sorted(Comparator.comparing(r -> r.versionId().toString())).toList()) {
+      rows(digest, "rule-set", List.of(rules.metadata()), CatalogFields::ruleSet);
+      rows(digest, "passive", rules.passive(), CatalogFields::passive);
+      rows(digest, "scenario", rules.scenario(), CatalogFields::scenario);
+      rows(digest, "sources", rules.sources(), CatalogFields::source);
     }
     value(digest, "end-dataset");
   }

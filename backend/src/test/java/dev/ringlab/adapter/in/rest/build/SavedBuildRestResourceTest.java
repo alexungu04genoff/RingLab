@@ -18,7 +18,7 @@ class SavedBuildRestResourceTest {
       }
     };
     var actor = new CurrentUser(null,null) { @Override public UUID id() { return actorId; } };
-    var stats = new PassiveStatsService(null,null) {
+    var stats = new PassiveStatsService(null,null,null) {
       @Override public Map<UUID,PassiveStatsResult> buildPage(List<Build> builds) {
         throw new IllegalStateException("Internal database detail");
       }

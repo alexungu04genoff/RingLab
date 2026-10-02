@@ -19,21 +19,24 @@ public class CommunitySnapshotCache implements CommunityUseCase {
   private final Supplier<CommunitySnapshot> loader;
   private final Duration lifetime;
   private final Clock clock;
+  private final dev.ringlab.application.gamedata.ReviewedGadgetRules reviewed;
   private CommunitySnapshot snapshot;
   private Instant expiresAt = Instant.MIN;
 
   @Inject
-  public CommunitySnapshotCache(CommunitySelectionService selection,
+  public CommunitySnapshotCache(CommunitySelectionService selection, dev.ringlab.application.gamedata.ReviewedGadgetRules reviewed,
       @ConfigProperty(name = "ringlab.community.snapshot-lifetime", defaultValue = "PT60S") Duration lifetime) {
-    this(selection::select, lifetime, Clock.systemUTC());
+    this(selection::select, lifetime, Clock.systemUTC(), reviewed);
   }
 
-  public CommunitySnapshotCache(Supplier<CommunitySnapshot> loader, Duration lifetime, Clock clock) {
+  public CommunitySnapshotCache(Supplier<CommunitySnapshot> loader, Duration lifetime, Clock clock,
+      dev.ringlab.application.gamedata.ReviewedGadgetRules reviewed) {
     if (lifetime.compareTo(Duration.ofSeconds(1)) < 0 || lifetime.compareTo(Duration.ofMinutes(5)) > 0)
       throw new IllegalArgumentException("Community snapshot lifetime must be between 1 and 300 seconds");
     this.loader = loader;
     this.lifetime = lifetime;
     this.clock = clock;
+    this.reviewed = reviewed;
   }
 
   public synchronized CommunitySnapshot get() {
@@ -51,7 +54,7 @@ public class CommunitySnapshotCache implements CommunityUseCase {
     for (var part : java.util.Arrays.asList(entry.front(), entry.rear(), entry.tire())) {
       if (part != null && part.source() != null) machines.put(part.source().id(), part.source());
     }
-    return dev.ringlab.application.gamedata.PassiveStatsService.resolved(entry.stats(), entry.patch(), entry.racer(),
+    return dev.ringlab.application.gamedata.PassiveStatsService.resolved(reviewed.snapshot(), entry.stats(), entry.patch(), entry.racer(),
         entry.front() == null ? null : entry.front().part(), entry.rear() == null ? null : entry.rear().part(),
         entry.tire() == null ? null : entry.tire().part(), machines, entry.gadgets(),
         dev.ringlab.domain.build.GadgetPlate.canFit(entry.gadgets().stream().map(Gadget::slotCost).toList()));

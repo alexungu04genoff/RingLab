@@ -6,9 +6,10 @@ import java.util.*;
 /** One detached, immutable catalog/patch snapshot; search never performs I/O. */
 public record RecommendationCatalog(GameVersion version, Map<UUID, Racer> racers,
     Map<UUID, Machine> machines, Map<UUID, MachinePart> parts, Map<UUID, Gadget> gadgets,
-    Map<UUID, BaseStats> racerStats, Map<UUID, BaseStats> partStats) {
+    Map<UUID, BaseStats> racerStats, Map<UUID, BaseStats> partStats, GadgetRuleSnapshot rules) {
   public RecommendationCatalog {
     Objects.requireNonNull(version);
+    Objects.requireNonNull(rules);
     racers = Map.copyOf(racers);
     machines = Map.copyOf(machines);
     parts = Map.copyOf(parts);

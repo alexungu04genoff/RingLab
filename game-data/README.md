@@ -101,8 +101,8 @@ membership and values.
 Use full independent snapshots. Copy files into a new version directory and edit
 the new copy, adding its UUID/date to `game-versions.csv`. No inheritance/deltas.
 Do not copy a number unless its continued value is supported; explicit unknown
-cells are accepted. A new base-stat snapshot does not enable passive/scenario
-rules or recommendations for that patch; their existing Java support is unchanged.
+cells are accepted. A new base-stat or rule snapshot does not enable passive/scenario
+rules or recommendations for that patch; reviewed-version permissions remain Java policy.
 
 ## Local commands (PowerShell, repository root)
 
@@ -152,7 +152,8 @@ review. Decimal scale-only differences (`1.0` versus `1.00`) are numerically equ
 The transaction inserts dependencies first and uses explicit presentation-only
 UPDATEs. Exceptions roll back the transaction. A connection failure during COMMIT
 can leave the outcome uncertain: run PLAN again before retrying. Identical
-reimports perform zero content writes. No history table or new migration is needed.
+reimports perform zero content writes. No import-history table is needed. V34
+introduces rule storage; subsequent content imports need no content migrations.
 
 The advisory lock coordinates importer processes only. Do not run manual catalog
 SQL/content migrations concurrently. Existing application requests continue
@@ -171,10 +172,85 @@ undo an import: builds may reference new identities. Successful changes require
 a reviewed forward correction. Mechanics/historical corrections that this version
 rejects need a focused implementation first.
 
-## Deliberately deferred
+## Versioned gadget rule facts
 
-Passive/scenario rule facts remain in Java. A follow-up can add CSV parsing into
-typed rule records and compare complete current calculator outputs before changing
-their source. Arithmetic, matching, stacking, conditions, coverage and search stay
-Java. Retirement, versioned types/costs, provenance tables and historical revision
-pinning are outside this importer.
+The reviewed 1.4.1 bundle adds **99 passive rows, 10 scenario rows, 274 ordered
+source references and one ruleset row** (384 additional database rows; 1,703 total
+canonical records). These are the resolved facts from main `5655220`, including
+the exact existing `other-N` IDs. IDs are authored explicitly and never derived
+from CSV position. The deeper evidence remains in
+[passive sources](../docs/passive-gadget-sources.md) and
+[scenario evidence](../docs/scenario-preview-evidence.md).
+
+Each version may have either all four rule files or none:
+
+| File | Exact columns |
+|---|---|
+| `rule-set.csv` | `passive_ruleset,scenario_ruleset` (exactly one row) |
+| `passive-gadget-rules.csv` | `gadget_id,effect_id,position,kind,subject,required_racing_type,matching_speed,matching_acceleration,matching_handling,matching_power,matching_boost,nonmatching_speed,nonmatching_acceleration,nonmatching_handling,nonmatching_power,nonmatching_boost,label,explanation,stacking_group,scenario_stat_potential` |
+| `scenario-gadget-rules.csv` | `gadget_id,effect_id,position,condition,speed,acceleration,handling,power,boost,label,explanation` |
+| `rule-sources.csv` | `effect_type,gadget_id,effect_id,position,url` |
+
+The version directory resolves through `catalog/game-versions.csv` to the real
+game-version UUID. `gadget_id + effect_id` identifies an effect within that version.
+Positions start at 0 and are contiguous: passive positions are per gadget,
+scenario positions are for the whole scenario list, and source positions are per
+effect type/gadget/effect. File row order does not affect identity or output order.
+
+Passive kinds are `PASSIVE`, `CONDITIONAL`, `NON_STAT`, `UNSUPPORTED`; subjects
+are `ANY`, `MACHINE`, `RACER`. ANY requires a blank racing type; the other subjects
+require a valid racing type. Both passive vectors require five known decimals.
+Non-passive facts use zero vectors; their kind/classification expresses that they
+are conditional, utility-only or unsupported. Zero vectors never establish that an
+unknown effect is known zero.
+
+`scenario_stat_potential` must be `true` or `false` for CONDITIONAL rows and blank
+otherwise. It preserves the old **fallback** classification when no scenario rule
+models that effect. An existing scenario row instead determines whether it is a
+numeric or utility effect from its adjustment: five decimal cells means numeric;
+five blank cells means utility-only. Partial vectors are rejected. Conditions are
+the existing Java enums `LAP_ONE`, `LAP_THREE`, `WATER`, `FLIGHT`, `TRANSFORMED`,
+`HAS_RINGS`, `LANDING_BOOST`, `FINISH_ZONE`. The meaning of those enums remains Java.
+
+Every effect needs at least one source. `effect_type` is `PASSIVE` or `SCENARIO`;
+URLs occupy separate rows and retain their exact order. No packed lists or JSON
+cells are accepted. Rule labels, explanations, source URLs, conditions, vectors,
+classifications, identities, ordering and ruleset labels are all immutable after
+the snapshot is published. A first rule bundle can be added to an existing version
+that has no published rules, or together with a new version/base-stat snapshot.
+All catalog, stats and rule inserts share one approved transaction.
+
+V34 creates five focused tables and bootstraps the **existing** reviewed facts
+once, preserving application behavior immediately on upgrade. It does not read
+CSV files. All future rule content uses the explicit importer; ordinary startup
+and HTTP requests never import/read CSV. PostgreSQL supplies detached snapshots
+through `GadgetRuleRepository` to application services and the pure calculators.
+
+## Adding a future patch's reviewed facts
+
+1. Add its explicit UUID/date to `game-versions.csv`, and complete base-stat files
+   under `versions/<patch>/` using the existing workflow.
+2. Add the four rule files. Preserve continuing gadget/effect IDs, explicit effect
+   and source positions, and authored ruleset labels. Change only reviewed facts
+   with evidence; copy no unsupported numerical assumptions into the new patch.
+3. Run the local VALIDATE and PLAN commands above. The plan lists new passive,
+   scenario and source counts; existing published snapshots must remain identical.
+4. Review the diff, tests and plan, then APPLY with its exact approval token.
+   Production uses the same documented one-shot command after an authorized release.
+5. Runtime activation is a separate Java policy review. Currently
+   `ReviewedGadgetRules` loads 1.4.1 and both calculators/recommendations retain their
+   1.4.1 gates. Importing future facts alone therefore leaves that patch unsupported.
+   Enabling another patch must select its detached snapshot, preserve access to old
+   snapshots, and review its version permissions, interactions and API rule-catalog
+   selection with parity tests. No CSV field can grant those permissions.
+
+`PassiveGadgetRules` retains the reviewed tuner identities and the exact
+Acceleration Tuner 2 + Acceleration Machine Kit permission. An arbitrary group
+label cannot grant stacking. `ScenarioGadgetRules` retains only the exact
+Quick Starter + Sea Dog **user-approved additive assumption**; it remains ASSUMED,
+not verified game behavior. Matching, arithmetic, unknown propagation, condition
+interpretation, interaction rejection, coverage, synthetic terrain/speed-drain
+presentation and recommendation search remain Java.
+
+Retirement, versioned types/costs, provenance tables and historical revision
+pinning remain outside this importer.

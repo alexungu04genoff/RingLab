@@ -19,10 +19,12 @@ import lombok.RequiredArgsConstructor;
 public class PassiveStatsService implements PassiveStatsUseCase {
   private final BaseStatsService base;
   private final GameDataRepository game;
+  private final ReviewedGadgetRules reviewed;
 
   public Rules rules() {
-    return new Rules(PassiveGadgetRules.RULESET, PassiveGadgetRules.VERSION, PassiveStatsCalculator.ARITHMETIC_NOTE,
-        game.listGadgets().stream().map(g -> new GadgetRules(g.id(), PassiveGadgetRules.forGadget(g.id()))).toList());
+    var snapshot = reviewed.snapshot();
+    return new Rules(snapshot.passiveRuleset(), PassiveGadgetRules.VERSION, PassiveStatsCalculator.ARITHMETIC_NOTE,
+        game.listGadgets().stream().map(g -> new GadgetRules(g.id(), snapshot.forGadget(g.id()))).toList());
   }
 
   public PassiveStatsResult draft(UUID version, UUID racer, UUID front, UUID rear, UUID tire, List<UUID> ids) {
@@ -34,7 +36,7 @@ public class PassiveStatsService implements PassiveStatsUseCase {
     var breakdown = base.draftBreakdown(version,racer,front,rear,tire);
     var parts = index(game.listMachineParts(),MachinePart::id);
     var machines = index(game.listMachines(),Machine::id);
-    return resolved(breakdown,version == null ? null : game.findGameVersion(version).orElseThrow(),
+    return resolved(reviewed.snapshot(),breakdown,version == null ? null : game.findGameVersion(version).orElseThrow(),
         racer == null ? null : game.findRacer(racer).orElseThrow(),
         parts.get(front),parts.get(rear),parts.get(tire),machines,gadgets,true);
   }
@@ -49,19 +51,20 @@ public class PassiveStatsService implements PassiveStatsUseCase {
     var gadgets = index(game.listGadgets(),Gadget::id);
     var versions = index(game.listGameVersions(),GameVersion::id);
     var result = new HashMap<UUID, PassiveStatsResult>();
+    var rules = reviewed.snapshot();
     for (var build : builds) {
       var selected = build.gadgetIds().stream().map(gadgets::get).filter(Objects::nonNull).toList();
       boolean valid = selected.size() == build.gadgetIds().size()
           && new HashSet<>(build.gadgetIds()).size() == build.gadgetIds().size()
           && GadgetPlate.canFit(selected.stream().map(Gadget::slotCost).toList());
-      result.put(build.id(),resolved(bases.get(build.id()),versions.get(build.gameVersionId()),racers.get(build.racerId()),
+      result.put(build.id(),resolved(rules,bases.get(build.id()),versions.get(build.gameVersionId()),racers.get(build.racerId()),
           parts.get(build.frontPartId()),parts.get(build.rearPartId()),parts.get(build.tirePartId()),machines,selected,valid));
     }
     return Map.copyOf(result);
   }
 
   /** Reused by snapshot exports with already resolved catalog metadata. */
-  public static PassiveStatsResult resolved(BaseStatsBreakdown base, GameVersion patch, Racer racer,
+  public static PassiveStatsResult resolved(GadgetRuleSnapshot rules, BaseStatsBreakdown base, GameVersion patch, Racer racer,
       MachinePart front, MachinePart rear, MachinePart tire, Map<UUID, Machine> machines,
       List<Gadget> gadgets, boolean validGadgets) {
     boolean coherent = true;
@@ -79,7 +82,7 @@ public class PassiveStatsService implements PassiveStatsUseCase {
         || (machineType == RacingType.BOOST && tire != null)) coherent = false;
     boolean complete = racer != null && front != null && rear != null && machineType != null
         && (machineType == RacingType.BOOST || tire != null);
-    var result = PassiveStatsCalculator.calculate(base,patch == null ? null : patch.version(),
+    var result = PassiveStatsCalculator.calculate(rules,base,patch == null ? null : patch.version(),
         racer == null ? null : racer.racingType(),coherent ? machineType : null,
         gadgets,validGadgets && coherent);
     if (complete || result.coverage() != PassiveStatsResult.Coverage.CALCULATED) return result;

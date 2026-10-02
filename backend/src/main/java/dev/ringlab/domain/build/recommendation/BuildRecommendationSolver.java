@@ -314,12 +314,12 @@ public final class BuildRecommendationSolver {
   }
 
   private PassiveStatsResult passive(RacingType racerType, List<UUID> ids) {
-    return PassiveStatsCalculator.calculate(ZERO, catalog.version().version(), racerType,
+    return PassiveStatsCalculator.calculate(catalog.rules(), ZERO, catalog.version().version(), racerType,
         request.machineType(), ids.stream().map(catalog.gadgets()::get).toList(), true);
   }
 
   private PassiveStatsResult evaluate(BuildSelection selection, RacingType type) {
-    return PassiveStatsCalculator.calculate(baseStats(selection), catalog.version().version(),
+    return PassiveStatsCalculator.calculate(catalog.rules(), baseStats(selection), catalog.version().version(),
         catalog.racers().get(selection.racerId()).racingType(), type,
         selection.gadgetIds().stream().map(catalog.gadgets()::get).toList(), true);
   }
@@ -428,7 +428,7 @@ public final class BuildRecommendationSolver {
   private RecommendationResult result(RecommendationResult.Outcome outcome, String reason) {
     return new RecommendationResult(outcome, best == null ? null : best.selection(), currentStats,
         best == null ? null : best.stats(), outcome == ESTABLISHED && best != null && best.selection().equals(request.current()),
-        reason, List.copyOf(restrictions), PassiveGadgetRules.RULESET, PassiveStatsCalculator.ARITHMETIC_NOTE,
+        reason, List.copyOf(restrictions), catalog.rules().passiveRuleset(), PassiveStatsCalculator.ARITHMETIC_NOTE,
         work, Math.max(0, (clock.getAsLong() - started) / 1_000_000),
         balanced == null ? null : new RecommendationResult.BalancedDetails(balanced.minimum(), outcome == ESTABLISHED && secondaryTieBreakDecided));
   }

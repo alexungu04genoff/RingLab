@@ -10,19 +10,19 @@ import java.util.Objects;
 public final class ScenarioStatsCalculator {
   private ScenarioStatsCalculator() {}
 
-  public static ScenarioStatsResult calculate(PassiveStatsResult passive, ScenarioContext context) {
+  public static ScenarioStatsResult calculate(GadgetRuleSnapshot snapshot, PassiveStatsResult passive, ScenarioContext context) {
     Objects.requireNonNull(passive);
     Objects.requireNonNull(context);
     boolean unavailable = passive.coverage() == PassiveStatsResult.Coverage.UNSUPPORTED_VERSION
         || passive.coverage() == PassiveStatsResult.Coverage.INVALID_LOADOUT;
     var effects = new ArrayList<ScenarioStatsResult.Effect>();
     for (var original : passive.effects()) {
-      boolean conditional = PassiveGadgetRules.forGadget(original.gadgetId()).stream()
+      boolean conditional = snapshot.forGadget(original.gadgetId()).stream()
           .anyMatch(r -> r.effectId().equals(original.effectId()) && r.kind() == GadgetEffectRule.Kind.CONDITIONAL);
       if (!conditional) continue;
-      var rule = ScenarioGadgetRules.find(original.gadgetId(), original.effectId());
+      var rule = snapshot.scenarioRule(original.gadgetId(), original.effectId());
       boolean stat = rule == null
-          ? ScenarioGadgetRules.unsupportedMayAffectStats(original.gadgetId(), original.effectId()) : rule.statEffect();
+          ? snapshot.unsupportedMayAffectStats(original.gadgetId(), original.effectId()) : rule.statEffect();
       Boolean active = rule == null ? null : rule.condition().matches(context);
       var status = unavailable || rule == null ? UNSUPPORTED : active == null ? CONDITION_UNKNOWN
           : !active ? CONDITION_NOT_MET : stat ? ACTIVE_AND_APPLIED : ACTIVE_NON_STAT;
@@ -81,7 +81,7 @@ public final class ScenarioStatsCalculator {
     var coverage = unavailable ? ScenarioStatsResult.Coverage.UNAVAILABLE
         : partial ? ScenarioStatsResult.Coverage.PARTIAL : ScenarioStatsResult.Coverage.CALCULATED;
     return new ScenarioStatsResult(passive, delta, subtotal, partial ? null : subtotal, coverage,
-        ScenarioGadgetRules.RULESET, ScenarioGadgetRules.VERSION,
+        snapshot.scenarioRuleset(), ScenarioGadgetRules.VERSION,
         "Raw stat-point preview, not a prediction of race performance. Unknown effects are not zero; physical speed, timing and effective in-game caps are not calculated.", effects);
   }
 }

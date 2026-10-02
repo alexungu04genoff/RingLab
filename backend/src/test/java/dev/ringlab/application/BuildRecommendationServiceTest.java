@@ -32,7 +32,7 @@ class BuildRecommendationServiceTest {
   };
 
   @Test void snapshotLoadsEveryFactOnceAndNeverUsesBuildOrCommunityPorts() {
-    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats), collection);
+    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats, dev.ringlab.importing.RuleFixtures.loader()), collection);
     assertEquals(RecommendationResult.Outcome.NO_LEGAL_COMPLETION, service.recommend(ACTOR, request()).outcome());
     assertEquals(5, game.reads); assertEquals(2, statReads);
     assertThrows(ValidationException.class, () -> service.recommend(ACTOR, null));
@@ -41,7 +41,7 @@ class BuildRecommendationServiceTest {
   }
 
   @Test void translatesDomainValidationAndReleasesCapacityAfterFailure() {
-    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats), collection);
+    var service = new BuildRecommendationService(new RecommendationCatalogLoader(game, stats, dev.ringlab.importing.RuleFixtures.loader()), collection);
     var unknown = new BuildSelection(UUID.randomUUID(), null, null, null, List.of());
     var invalid = new RecommendationRequest(VERSION, RacingType.SPEED, List.of(StatPriority.values()), unknown, EMPTY);
     for (int attempt = 0; attempt < 4; attempt++)
@@ -52,8 +52,8 @@ class BuildRecommendationServiceTest {
   @Test void concurrentSearchesHaveTwoPermitsAndNeverQueueUnboundedWork() throws Exception {
     var entered = new CountDownLatch(2); var release = new CountDownLatch(1); var loads = new AtomicInteger();
     var snapshot = new RecommendationCatalog(new GameVersion(VERSION, "1.4.1", LocalDate.EPOCH),
-        Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of());
-    var loader = new RecommendationCatalogLoader(game, stats) {
+        Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), dev.ringlab.importing.RuleFixtures.snapshot());
+    var loader = new RecommendationCatalogLoader(game, stats, dev.ringlab.importing.RuleFixtures.loader()) {
       @Override public RecommendationCatalog load(UUID id) {
         loads.incrementAndGet(); entered.countDown();
         try { if (!release.await(10, TimeUnit.SECONDS)) throw new AssertionError("Test release missing"); }

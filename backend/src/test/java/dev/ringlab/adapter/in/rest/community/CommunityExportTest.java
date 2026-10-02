@@ -28,7 +28,7 @@ class CommunityExportTest {
         new CommunitySnapshot.Part(rear,machine),new CommunitySnapshot.Part(tire,machine),patch,List.of(gadget),new VoteSummary(8,1),base,null,List.of());
     var response=TopBuildsResponse.from(new CommunitySnapshot(UUID.randomUUID(),Instant.EPOCH,List.of(entry)),
         new CommunityPublicUrls("http://localhost:5175","http://localhost:5175"),
-        new CommunitySnapshotCache(() -> null, Duration.ofSeconds(60), Clock.systemUTC()));
+        new CommunitySnapshotCache(() -> null, Duration.ofSeconds(60), Clock.systemUTC(), dev.ringlab.importing.RuleFixtures.loader()));
     var stats=response.items().getFirst().stats();
     assertEquals(new java.math.BigDecimal("90"),stats.speed());
     assertEquals(new java.math.BigDecimal("110"),stats.passive().adjusted().speed());
@@ -69,7 +69,7 @@ class CommunityExportTest {
     }
     var snapshot = new CommunitySnapshot(UUID.randomUUID(), Instant.EPOCH, entries);
     var response = TopBuildsResponse.from(snapshot, new CommunityPublicUrls("http://localhost:5173", "http://localhost:5173"),
-        new CommunitySnapshotCache(() -> null, Duration.ofSeconds(60), Clock.systemUTC()));
+        new CommunitySnapshotCache(() -> null, Duration.ofSeconds(60), Clock.systemUTC(), dev.ringlab.importing.RuleFixtures.loader()));
     var message = DiscordTopBuildsFormatter.format(response);
     assertEquals(response.items().stream().map(TopBuildsResponse.Item::buildUrl).toList(),
         message.embeds().stream().map(DiscordTopBuildsFormatter.Embed::url).toList());
