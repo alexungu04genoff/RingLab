@@ -24,7 +24,6 @@ public final class BuildRecommendationSolver {
   private final RecommendationGadgetSearch gadgets;
   private final Set<String> restrictions = new LinkedHashSet<>();
   private BaseStats currentStats;
-  private ScenarioStatsResult currentScenario;
   private BalancedObjective balanced;
 
   public BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget) {
@@ -56,20 +55,13 @@ public final class BuildRecommendationSolver {
     if (!PassiveGadgetRules.VERSION.equals(catalog.version().version()))
       return result(UNAVAILABLE, "Recommendation requires the reviewed Ver. " + PassiveGadgetRules.VERSION
           + " ruleset. The selected patch has not been changed.");
-    if (request.basis() == RecommendationBasis.PASSIVE) {
-      restrictions.add("Only fully known base contributions and reviewed passive combinations compete; unreviewed effects and unresolved stacking are excluded.");
-      restrictions.add("Race-time, conditional and utility effects are not the objective. Current gadget costs and the complete two-row plate are used.");
-    } else {
-      restrictions.add("Only complete base, passive and scenario totals compete for the supplied context; unknown numerical conditions and unresolved stacking are excluded.");
-      restrictions.add("Utility effects do not contribute points. Current gadget costs and the complete two-row plate are used. This is modeled stat optimization, not race simulation.");
-      restrictions.add("The exact Quick Starter + Sea Dog additive interaction is permitted as ASSUMED, not VERIFIED; no other scenario stacking permission is implied.");
-    }
+    restrictions.add("Only fully known base contributions and reviewed passive combinations compete; unreviewed effects and unresolved stacking are excluded.");
+    restrictions.add("Race-time, conditional and utility effects are not the objective. Current gadget costs and the complete two-row plate are used.");
     try {
       budget.step();
       var currentType = candidates.legalType(request.current());
       if (currentType != null) {
         var evaluation = candidates.evaluate(request.current(), currentType);
-        currentScenario = evaluation.scenario();
         if (evaluation.eligible()) {
           currentStats = evaluation.total();
           if (currentType == request.machineType() && candidates.available(request.current())) order.seed(request.current(), currentStats);
@@ -81,7 +73,7 @@ public final class BuildRecommendationSolver {
         if (currentStats == null || !StatPriority.complete(currentStats)
             || Arrays.stream(StatPriority.values()).anyMatch(s -> s.value(currentStats).signum() < 0)) {
           order.clear();
-          return result(UNAVAILABLE, "Balanced unavailable: the frozen reference must be a complete legal setup with fully supported, nonnegative " + objectiveName() + " values for all five stats.");
+          return result(UNAVAILABLE, "Balanced unavailable: the frozen reference must be a complete legal setup with fully supported, nonnegative passive-adjusted values for all five stats.");
         }
         balanced = new BalancedObjective(currentStats, request.priorities(), request.balanced());
         order.useBalancedObjective(balanced);
@@ -105,8 +97,7 @@ public final class BuildRecommendationSolver {
       if (!new StrictRecommendationSearch(catalog, request, candidates, gadgets, order, budget, restrictions)
           .search(racers, fronts, rears, tires))
         return result(UNAVAILABLE, "Legal machine parts exist, but required slots lack fully verified base stats for this patch.");
-      return order.best() == null ? result(UNAVAILABLE, "Legal completions exist, but no fully evaluable "
-          + (request.basis() == RecommendationBasis.PASSIVE ? "passive-stat" : "scenario-stat") + " candidate is available with these locks.")
+      return order.best() == null ? result(UNAVAILABLE, "Legal completions exist, but no fully evaluable passive-stat candidate is available with these locks.")
           : result(ESTABLISHED, explanation(true));
     } catch (SearchLimit reached) {
       return result(order.best() == null ? LIMIT_WITHOUT_CANDIDATE : BEST_FOUND, order.best() == null
@@ -131,8 +122,7 @@ public final class BuildRecommendationSolver {
           + (complete && order.secondaryTieBreakDecided() ? " The secondary total decided between candidates with identical active values." : "");
     }
     if (complete && best.selection().equals(request.current())) return prefix + "Your current setup is already best under this strict priority order.";
-    if (currentStats == null) return prefix + "Current " + (request.basis() == RecommendationBasis.PASSIVE ? "passive" : "scenario")
-        + " stats are unavailable, so no numerical improvement over the current draft is claimed.";
+    if (currentStats == null) return prefix + "Current passive stats are unavailable, so no numerical improvement over the current draft is claimed.";
     for (var priority : request.priorities()) {
       if (priority.value(best.stats()).compareTo(priority.value(currentStats)) != 0)
         return prefix + "Compared with the current setup, the first differing priority is " + priority
@@ -143,18 +133,11 @@ public final class BuildRecommendationSolver {
 
   private RecommendationResult result(RecommendationResult.Outcome outcome, String reason) {
     var best = order.best();
-    var scenario = request.basis() == RecommendationBasis.CURRENT_SCENARIO
-        ? new RecommendationResult.ScenarioDetails(request.scenario(), catalog.rules().scenarioRuleset(), currentScenario,
-            best == null ? null : candidates.evaluate(best.selection(), request.machineType()).scenario()) : null;
     return new RecommendationResult(outcome, best == null ? null : best.selection(), currentStats,
         best == null ? null : best.stats(), outcome == ESTABLISHED && best != null && best.selection().equals(request.current()),
-        reason, List.copyOf(restrictions), catalog.rules().passiveRuleset(), scenario == null ? PassiveStatsCalculator.ARITHMETIC_NOTE
-            : "Modeled stat points for one supplied scenario, not race simulation. Assumptions are not verified evidence; unknown effects are not zero.",
+        reason, List.copyOf(restrictions), catalog.rules().passiveRuleset(), PassiveStatsCalculator.ARITHMETIC_NOTE,
         budget.work(), budget.elapsedMillis(),
-        balanced == null ? null : new RecommendationResult.BalancedDetails(balanced.minimum(), outcome == ESTABLISHED && order.secondaryTieBreakDecided()), scenario);
+        balanced == null ? null : new RecommendationResult.BalancedDetails(balanced.minimum(), outcome == ESTABLISHED && order.secondaryTieBreakDecided()));
   }
 
-  private String objectiveName() {
-    return request.basis() == RecommendationBasis.PASSIVE ? "passive-adjusted" : "scenario-adjusted";
-  }
 }

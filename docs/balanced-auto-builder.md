@@ -6,14 +6,11 @@ absolute precedence. Balanced lets improvements compensate for **permitted**
 losses using a fixed weighted score, while enforcing every loss floor separately.
 Neither mode changes the draft until Apply; neither saves or publishes it.
 
-The backend additionally accepts `basis: CURRENT_SCENARIO` and a required scenario
-object; omission remains PASSIVE, as used by the current frontend. In scenario mode,
-the same fixed context evaluates both the frozen selection and every candidate.
-Normalization and floors derive from the complete scenario reference, not passive
-values. Partial/unknown or negative reference values make Balanced unavailable;
-there is no passive fallback. Constant scenario adjustments preserve the existing
-optimistic component bound and strict-worse pruning. This is modeled stat optimization,
-not race simulation. See [basis semantics and diagnostics](auto-builder.md#backend-optimization-basis).
+Both modes optimize base stats plus reviewed always-active passive adjustments.
+Race-state and triggered effects belong only in Scenario Preview. Removed
+recommendation `basis`/`scenario` request fields are rejected with HTTP 400.
+This cleanup does not change Balanced's complete-reference requirement, weighted
+score, floors, secondary total or pruning. See [the passive-only contract](auto-builder.md#passive-only-objective).
 
 ## Reference, inputs and arithmetic
 

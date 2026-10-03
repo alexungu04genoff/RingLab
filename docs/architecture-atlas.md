@@ -609,20 +609,19 @@ flowchart TB
 **How to read this:** catalog I/O finishes before CPU search. Collection loading is a
 separate service transaction; these are not one atomic snapshot of catalog plus ownership.
 The two-second solver budget starts when the solver is constructed, after those reads.
-Title, description, map preferences and vote counts do not enter the solver. Optional
-CURRENT_SCENARIO requests supply a fixed ScenarioContext as a domain value, without I/O.
+Title, description, map preferences, vote counts and ScenarioContext do not enter the solver.
 Applying a proposal changes the client's draft; publishing later follows section 5.
 [Diagram source](architecture/recommendation-flow.mmd).
 
 ### 6.2 Strict and Balanced inside the solver
 
 How does the solver choose a candidate? Both modes preserve hard constraints and reuse the
-same basis-aware evaluator composing the passive and scenario calculators. Strict can choose component maxima independently within fixed type/context
+same passive evaluator. Strict can choose component maxima independently within fixed type
 groups. Balanced searches combinations because its loss floors concern the complete loadout.
 `BuildRecommendationSolver` retains validation/reference orchestration, mode dispatch and result
 wording. Its package-private collaborators are internal domain implementation, with no
 new ports, services or repositories. `RecommendationCandidates` keeps legal/evaluable candidate
-preparation together; `RecommendationStatsEvaluator` owns full-selection and subset basis evaluation;
+preparation together; `RecommendationStatsEvaluator` owns full-selection and subset passive evaluation;
 `RecommendationCandidateOrder` owns comparison, incumbent tracking and
 observed secondary ties. Strict and Balanced retain separate component loops and their existing
 work checkpoints. Only gadget-subset traversal is shared; no generic search framework is used.
@@ -630,7 +629,7 @@ work checkpoints. Only gadget-subset traversal is shared; no generic search fram
 <!-- diagram: recommendation-solver -->
 ```mermaid
 flowchart TB
-  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode<br/>basis + optional ScenarioContext"]:::domain
+  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
   validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
   baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>RecommendationStatsEvaluator"]:::domain
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
@@ -639,7 +638,7 @@ flowchart TB
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
   subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
-  calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator + optional ScenarioStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
+  calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator only<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
   components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
   compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
@@ -681,11 +680,11 @@ Optimistic per-stat maxima allow pruning without discarding a possible better co
 
 The supported patch is `1.4.1`; the current imported passive ruleset label is
 `crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unsupported modifier stacks
-do not compete as zero or base-only values. PASSIVE excludes conditional benefits from its
-objective. CURRENT_SCENARIO requires complete passive/scenario coverage for its fixed
-context; utility benefits never score. Balanced derives floors and normalization from
-that same scenario reference. The exact Quick Starter + Sea Dog exception is structurally
-ASSUMED, not VERIFIED. Context is not saved and the frontend still defaults to PASSIVE.
+do not compete as zero or base-only values. Recommendations optimize base stats plus
+reviewed always-active passive stat adjustments. Race-state and triggered effects are
+intentionally excluded and remain available in Scenario Preview. Utility benefits never
+score. Balanced retains its passive reference floors and normalization. Recommendation
+domain code cannot depend on Scenario types; the preview's assumptions remain separate.
 The new proposal is a selection,
 not a persistent `Build`, and has no author or publication identity.
 
@@ -1299,6 +1298,14 @@ while user/item values are bound parameters. Ownership updates serialize on the 
 Collection exclusions do not rewrite builds, block manual publishing, change vote ranking,
 or alter community eligibility. A current unavailable selection may still be evaluated as
 a reference, but cannot become the available recommendation incumbent.
+
+In React, CollectionProvider normalizes exclusion arrays to sorted distinct IDs.
+Only a successful authoritative read with changed sets advances the revision for
+the current account/session. Focus and recommendation Apply share an in-flight
+read; its result includes data, revision and session identity. Apply compares that
+snapshot directly, without waiting for a React render, and preserves draft/lock/
+configuration/session checks plus final selected-item ownership validation.
+Identical reads do not stale proposals; failures and pending mutations block Apply.
 
 Source trail: [CollectionService](../backend/src/main/java/dev/ringlab/application/collection/CollectionService.java),
 [CollectionDbAdapter](../backend/src/main/java/dev/ringlab/adapter/out/db/CollectionDbAdapter.java),

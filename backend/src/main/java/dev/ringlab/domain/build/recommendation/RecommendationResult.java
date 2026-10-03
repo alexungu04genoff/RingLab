@@ -1,17 +1,13 @@
 package dev.ringlab.domain.build.recommendation;
 
 import dev.ringlab.domain.gamedata.BaseStats;
-import dev.ringlab.domain.gamedata.ScenarioContext;
-import dev.ringlab.domain.gamedata.ScenarioStatsResult;
 import java.util.List;
 import java.util.Map;
 import java.math.BigDecimal;
 
 public record RecommendationResult(Outcome outcome, BuildSelection selection, BaseStats currentStats,
     BaseStats recommendedStats, boolean alreadyBest, String reason, List<String> restrictions,
-    String ruleset, String note, long work, long elapsedMillis, BalancedDetails balanced, ScenarioDetails scenario) {
-  public record ScenarioDetails(ScenarioContext context, String ruleset,
-      ScenarioStatsResult current, ScenarioStatsResult recommended) {}
+    String ruleset, String note, long work, long elapsedMillis, BalancedDetails balanced) {
   public record BalancedDetails(Map<StatPriority, BigDecimal> minimum, boolean secondaryTieBreakDecided) {
     public BalancedDetails { minimum = Map.copyOf(minimum); }
   }

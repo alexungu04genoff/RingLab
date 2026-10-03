@@ -14,7 +14,7 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
   const live = useRef({ draft, locks, context, catalog, onApply, configuration });
   live.current = { draft, locks, context, catalog, onApply, configuration };
   const active = useRef<AbortController | null>(null);
-  const proposal = useRef<{ request: RecommendationRequest; identity: string; context: string; session: number; configuration: string; revision: number } | null>(null);
+  const proposal = useRef<{ request: RecommendationRequest; identity: string; context: string; session: number; configuration: string; revision: number; collectionIdentity: string } | null>(null);
 
   const cancel = useCallback(() => {
     active.current?.abort(); active.current = null; proposal.current = null;
@@ -34,7 +34,8 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
     }
     const controller = new AbortController(); active.current = controller;
     const snapshot = { request, identity: recommendationIdentity(live.current.draft, live.current.locks),
-      context: live.current.context, session: currentSessionGeneration(), configuration, revision: collection.revision };
+      context: live.current.context, session: currentSessionGeneration(), configuration, revision: collection.revision,
+      collectionIdentity: collection.identity };
     const current = () => active.current === controller && !controller.signal.aborted
       && live.current.context === snapshot.context && currentSessionGeneration() === snapshot.session
       && live.current.configuration === configuration;
@@ -56,11 +57,14 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
     try {
       if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration())
         throw new Error("This proposal belongs to an earlier editor session. Calculate again.");
-      if (collectionLive.current.busy || collectionLive.current.status !== "ready" || snapshot.revision !== collectionLive.current.revision)
+      if (collectionLive.current.busy || !["ready", "loading"].includes(collectionLive.current.status)
+          || snapshot.revision !== collectionLive.current.revision || snapshot.collectionIdentity !== collectionLive.current.identity)
         throw new Error("Collection settings changed or are unavailable. Calculate again.");
       setState(current => ({ ...current, busy: true }));
-      const exclusions = await collectionLive.current.refresh();
-      if (proposal.current !== snapshot || collectionLive.current.busy || snapshot.revision !== collectionLive.current.revision)
+      const refreshed = await collectionLive.current.refresh();
+      if (proposal.current !== snapshot || collectionLive.current.busy || snapshot.revision !== collectionLive.current.revision
+          || snapshot.revision !== refreshed.revision || snapshot.collectionIdentity !== refreshed.identity
+          || snapshot.collectionIdentity !== collectionLive.current.identity)
         throw new Error("Collection settings changed. Calculate again.");
       if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration())
         throw new Error("This proposal belongs to an earlier editor session. Calculate again.");
@@ -68,6 +72,7 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
         throw new Error("This proposal belongs to an earlier configuration. Calculate again.");
       const selection = state.result.selection;
       if (!selection) throw new Error("No recommendation to apply.");
+      const exclusions = refreshed.data;
       if ((selection.racerId && exclusions.racers.includes(selection.racerId))
           || selection.gadgetIds.some(id => exclusions.gadgets.includes(id))
           || [selection.frontPartId, selection.rearPartId, selection.tirePartId].some(id => {

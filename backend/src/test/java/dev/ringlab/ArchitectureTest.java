@@ -37,8 +37,7 @@ class ArchitectureTest {
                 .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
                 .check(classes);
         noClasses().that().resideInAPackage("..domain.build.recommendation..")
-                .and().doNotHaveSimpleName("RecommendationStatsEvaluator")
-                .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
+                .should().dependOnClassesThat().haveSimpleNameStartingWith("Scenario")
                 .check(classes);
         noClasses().that().haveSimpleName("ScenarioStatsService").should().dependOnClassesThat()
                 .resideInAnyPackage("..domain.build.recommendation..", "..domain.collection..", "..adapter..")

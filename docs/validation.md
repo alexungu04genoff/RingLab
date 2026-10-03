@@ -1,26 +1,69 @@
 # Verification
 
-## Scenario-aware recommendation API
+## Passive-only recommendation API and collection revisions
 
-`POST /api/build-recommendations` defaults missing/null `basis` to PASSIVE. A non-null
-scenario with PASSIVE is rejected; CURRENT_SCENARIO requires a scenario object.
-An empty object and individually null fields mean unknown. Both recommendation and
-preview requests use `ScenarioContextRequest`: lap 1–3, rings 0–999, distance
-0–50000, NORMAL/WATER/FLIGHT and nullable landing Boolean. Decimal numeric transport
-values are validated before exact integer conversion; fractional integers are rejected.
-Existing ID, lock, ownership, patch, plate and authentication checks still apply.
+`POST /api/build-recommendations` optimizes base stats plus reviewed always-active
+passive adjustments. Race-state and triggered effects are intentionally excluded
+and remain available in Scenario Preview. The removed `basis` and `scenario`
+fields, including null values, are rejected as unknown top-level fields with HTTP 400.
+No scenario diagnostics are serialized. Existing ID, lock, ownership, patch, plate,
+authentication, Strict and Balanced behavior remains unchanged.
+
+Standalone preview still uses `ScenarioContextRequest`, its existing exact numeric
+validation, scenario facts and Quick Starter + Sea Dog assumption. No shared preview
+contract was removed.
 
 Focused command:
-`mvn -f backend/pom.xml "-Dtest=BuildRecommendationSolverTest,ScenarioRecommendationTest,ScenarioStatsCalculatorTest,RuleFactsParityTest,ArchitectureTest" test`.
+`mvn -f backend/pom.xml "-Dtest=BuildRecommendationSolverTest,BalancedSolverTest,BalancedObjectiveTest,ArchitectureTest" test`.
 `RecommendationExhaustiveOracle` independently enumerates legal owned component
 products and gadget subsets, calls public calculators and implements the comparator
-without production search/pruning. Trials vary context, racer/machine types, locks,
+without production search/pruning. Trials vary racer/machine types, locks,
 ownership, priorities, Balanced floors and catalog iteration order.
-`BuildRecommendationIntegrationTest` checks API defaults, parity, diagnostics and
-validation. `ApiContract.scenarioRecommendationContractSurvivesPackaging` also runs
+`BuildRecommendationIntegrationTest` checks passive totals, removed-field rejection and
+validation. `ApiContract.passiveRecommendationContractRejectsRemovedScenarioFieldsAfterPackaging` also runs
 through `PackagedApiIT`. Full verification: `mvn -f backend/pom.xml verify`;
-coverage remains at `backend/target/site/jacoco/index.html`. No frontend verification
-is needed for this backend-only change.
+coverage remains at `backend/target/site/jacoco/index.html`.
+
+Collection tests verify normalized racer/machine/gadget exclusion sets: identical,
+reordered, duplicate and no-op reads keep the revision; a successful changed state
+increments it once. Refresh returns the authoritative data and revision together.
+Apply waits for a shared in-flight focus refresh and still rejects real changes,
+failed reads, pending mutations and changed sessions/drafts/locks/configuration.
+Focused frontend files: `Collection.test.tsx`, `CollectionRecommendation.test.tsx`
+and `BuildRecommendationDialog.test.tsx`. Run `npm run test:coverage -- --maxWorkers=2`
+and `npm run build` from frontend for the complete requested verification.
+
+Verification on 2026-10-03 used an isolated worktree based on main `ff69aba`.
+The focused solver/architecture command passed 36 tests. Focused frontend collection/
+recommendation verification passed 51 tests in three files; full frontend coverage
+passed 377 tests in 42 files. Coverage measured 95.19% statements/lines, 91.87%
+branches and 89.38% functions, with existing gates unchanged. `npm run build` passed.
+The initial build exposed a missing required remix field in the new test fixture;
+the fixture now includes it. No application contract was relaxed.
+
+Full `mvn -f backend/pom.xml verify` executed 518 Surefire tests against a separate
+disposable PostgreSQL 17.11 database. The new passive-contract test initially failed:
+its fixed recommendation total overlooked optional passive tuners, its numeric
+matcher assumed a float, and its follow-up query encoded a gadget list incorrectly.
+The corrected test asserts the known starting total, preservation of both locked
+conditional gadgets, and equality of all recommended stats with the standalone
+passive endpoint. Production code was unchanged during these fixture corrections.
+Completion command `mvn -f backend/pom.xml -Dtest=BuildRecommendationIntegrationTest verify`
+passed all eight affected tests, all 19 packaged API tests, packaging and coverage
+checks. The other 510 passing tests were not repeated after the final test-only fix.
+Final reports contain 518 passing Surefire cases plus 19 packaged cases, no skips.
+ArchitectureTest, exhaustive passive solver characterization, shared Scenario Preview
+and rule-fact parity tests passed. JaCoCo measured 98.01% instructions, 90.33%
+branches and 97.98% lines across these runs; 90%/80%/90% gates were unchanged.
+
+The database was `ringlab_recommendation_cleanup_20261003` on the existing local
+PostgreSQL container, with HTTP test port 8087 and dev services disabled. Test keys
+were ephemeral; the normal development database and services were not changed.
+The disposable database was removed after verification. `git diff --check` passed.
+Existing deprecated/unchecked test compiler notices and the packaged runner's ignored
+logging-category setting remain non-fatal. No commit, push or deployment was performed.
+
+### Historical verification of the removed scenario objective
 
 Verification on 2026-10-02: the final full `mvn -f backend/pom.xml verify` passed
 527 unit/integration tests and 19 packaged API tests, with no failures or skips.

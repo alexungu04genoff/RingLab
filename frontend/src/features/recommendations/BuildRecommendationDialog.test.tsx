@@ -10,9 +10,10 @@ import type { RecommendationCatalog, RecommendationRequest, RecommendationResult
 import type { BuildDraft, BuildStatsResult } from "../../shared/types";
 
 vi.mock("../../shared/api/api", async original => ({ ...await original<typeof import("../../shared/api/api")>(), api: vi.fn() }));
-const collection = vi.hoisted(() => ({ status: "ready", busy: false, revision: 0,
+const collection = vi.hoisted(() => ({ status: "ready", busy: false, revision: 0, identity: "account",
   data: { racers: [] as string[], machines: [] as string[], gadgets: [] as string[] },
-  refresh: vi.fn(async () => ({ racers: [] as string[], machines: [] as string[], gadgets: [] as string[] })) }));
+  refresh: vi.fn(async () => ({ data: { racers: [] as string[], machines: [] as string[], gadgets: [] as string[] },
+    revision: 0, identity: "account" })) }));
 vi.mock("../collection/Collection", async original => ({ ...await original<typeof import("../collection/Collection")>(), useCollection: () => collection }));
 const draft: BuildDraft = { title: "Keep", description: "Details", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
   machineType: "SPEED", gameVersionId: "patch", gadgetIds: ["a"], recommendedMapIds: ["map"], mapRecommendationMode: "SELECTED", remixedFromBuildId: "source" };
@@ -37,7 +38,7 @@ it("blocks failed collection loads and revalidates every selected source before 
   expect(api).not.toHaveBeenCalled();
   collection.status = "ready"; hook.rerender();
   await act(async () => { await hook.result.current.calculate(request); });
-  collection.refresh.mockResolvedValue({ racers: [], machines: ["b"], gadgets: [] });
+  collection.refresh.mockResolvedValue({ data: { racers: [], machines: ["b"], gadgets: [] }, revision: 0, identity: "account" });
   await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
   expect(hook.result.current.error).toContain("no longer own");
   expect(applied).not.toHaveBeenCalled();
@@ -58,21 +59,21 @@ it("invalidates proposals when collection changes during calculation", async () 
 
 it("Cancel or unmount during Apply's collection check never writes the draft", async () => {
   for (const unmount of [false, true]) {
-    let resolve!: (value: typeof collection.data) => void;
+    let resolve!: (value: Awaited<ReturnType<typeof collection.refresh>>) => void;
     collection.refresh.mockReturnValueOnce(new Promise(done => { resolve = done; }));
     const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
     await act(async () => { await hook.result.current.calculate(request); });
     let applying!: Promise<boolean>;
     act(() => { applying = hook.result.current.apply(); });
     if (unmount) hook.unmount(); else act(() => hook.result.current.cancel());
-    await act(async () => { resolve({ racers: [], machines: [], gadgets: [] }); expect(await applying).toBe(false); });
+    await act(async () => { resolve({ data: { racers: [], machines: [], gadgets: [] }, revision: 0, identity: "account" }); expect(await applying).toBe(false); });
     expect(applied).not.toHaveBeenCalled();
     hook.unmount();
   }
 });
 beforeEach(() => {
-  collection.status = "ready"; collection.busy = false; collection.revision = 0;
-  collection.refresh.mockResolvedValue({ racers: [], machines: [], gadgets: [] });
+  collection.status = "ready"; collection.busy = false; collection.revision = 0; collection.identity = "account";
+  collection.refresh.mockResolvedValue({ data: { racers: [], machines: [], gadgets: [] }, revision: 0, identity: "account" });
   vi.clearAllMocks(); vi.mocked(api).mockResolvedValue(result);
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function(this: HTMLDialogElement) { this.open = true; } });
   Object.defineProperty(HTMLDialogElement.prototype, "close", { configurable: true, value: function(this: HTMLDialogElement) { this.open = false; } });

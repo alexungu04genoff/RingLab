@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 public abstract class ApiContract {
   @Test
-  void scenarioRecommendationContractSurvivesPackaging() {
+  void passiveRecommendationContractRejectsRemovedScenarioFieldsAfterPackaging() {
     var account = register();
     String version = request(null).get("/api/game-versions").then().statusCode(200)
         .extract().jsonPath().getString("find { it.version == '1.4.1' }.id");
@@ -19,14 +19,14 @@ public abstract class ApiContract {
     body.put("gameVersionId",version); body.put("machineType","SPEED");
     body.put("priorities",List.of("SPEED","ACCELERATION","HANDLING","POWER","BOOST"));
     body.put("current",Map.of("gadgetIds",List.of())); body.put("locked",Map.of("gadgetIds",List.of()));
-    body.put("basis","CURRENT_SCENARIO"); body.put("scenario",Map.of("lap",1,"vehicleForm","WATER","ringsHeld",0));
-    request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(200)
-        .body("outcome",is(oneOf("ESTABLISHED","BEST_FOUND"))).body("basis",equalTo("CURRENT_SCENARIO"))
+    var result = request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(200)
+        .body("outcome",is(oneOf("ESTABLISHED","BEST_FOUND")))
         .body("currentStats",nullValue()).body("recommendedStats",notNullValue())
-        .body("scenario.recommended.coverage",equalTo("CALCULATED"))
-        .body("scenario.context.ringsHeld",equalTo(0)).body("scenario.recommended.assumptions",notNullValue())
-        .body("scenario.recommended.knownSubtotal",nullValue());
-    body.put("scenario",Map.of("lap",1.5));
+        .extract().jsonPath().getMap("$");
+    assertThat(result, not(hasKey("basis"))); assertThat(result, not(hasKey("scenario")));
+    body.put("basis","CURRENT_SCENARIO");
+    request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(400);
+    body.remove("basis"); body.put("scenario",Map.of("lap",1,"vehicleForm","WATER"));
     request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(400);
   }
   @Test

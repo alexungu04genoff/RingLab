@@ -7,8 +7,8 @@ import { BuildEditor } from "./BuildEditor";
 
 vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: { id: "owner" } }) }));
 vi.mock("../features/collection/Collection", async original => ({ ...await original<typeof import("../features/collection/Collection")>(),
-  useCollection: () => ({ status: "ready", busy: false, revision: 0, data: { racers: [], machines: [], gadgets: [] },
-    refresh: async () => ({ racers: [], machines: [], gadgets: [] }) }) }));
+  useCollection: () => ({ status: "ready", busy: false, revision: 0, identity: "owner", data: { racers: [], machines: [], gadgets: [] },
+    refresh: async () => ({ data: { racers: [], machines: [], gadgets: [] }, revision: 0, identity: "owner" }) }) }));
 vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({
   id: type, type, sourceMachineId: "machine", sourceMachineName: "Machine",

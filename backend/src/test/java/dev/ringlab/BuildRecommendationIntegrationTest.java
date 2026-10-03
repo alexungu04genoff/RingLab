@@ -16,51 +16,43 @@ class BuildRecommendationIntegrationTest {
   @Inject GameDataRepository game;
   @Inject EntityManager em;
 
-  @Test void scenarioObjectiveDiagnosticsAndLegacyPassiveSerializationAreExplicit() {
+  @Test void recommendationsExcludeScenarioBonusesAndDiagnostics() {
     var token = VerifiedUserFixture.createToken(em); var before = communityCounts();
     var current = selection(); current.put("gadgetIds",List.of(PassiveGadgetRules.id(45),PassiveGadgetRules.id(15)));
     var body = request(current,current);
-    var legacy = post(token,body).statusCode(200).extract().jsonPath().getMap("$");
-    assertFalse(legacy.containsKey("basis")); assertFalse(legacy.containsKey("scenario"));
-    body.put("basis","PASSIVE");
-    var explicit = post(token,body).statusCode(200).extract().jsonPath().getMap("$");
-    legacy.remove("elapsedMillis"); explicit.remove("elapsedMillis"); assertEquals(legacy,explicit);
-    body.put("basis","CURRENT_SCENARIO"); body.put("scenario",Map.of("lap",1,"vehicleForm","WATER"));
-    var result = post(token,body).statusCode(200).body("basis",equalTo("CURRENT_SCENARIO"))
-        .body("scenario.context.lap",equalTo(1)).body("scenario.context.ringsHeld",nullValue())
-        .body("scenario.recommended.coverage",equalTo("CALCULATED"))
-        .body("scenario.recommended.assumptions",contains("QUICK_STARTER_SEA_DOG_ASSUMED_ADDITIVE"))
-        .body("scenario.current.knownSubtotal",nullValue()).body("scenario.recommended.knownSubtotal",nullValue())
-        .extract().jsonPath();
-    assertEquals(40d,result.getDouble("recommendedStats.speed") - result.getDouble("scenario.recommended.passive.adjusted.speed"));
-    body.put("scenario",Map.of());
-    post(token,body).statusCode(200).body("outcome",equalTo("UNAVAILABLE"))
-        .body("currentStats",nullValue()).body("recommendedStats",nullValue())
-        .body("scenario.current.coverage",equalTo("PARTIAL"));
-    body.put("mode","BALANCED"); body.put("priorities",List.of("SPEED"));
-    body.put("balanced",Map.of("maximumLossPercent",Map.of("SPEED",0),"secondary",List.of("ACCELERATION","HANDLING","POWER","BOOST")));
-    post(token,body).statusCode(200).body("outcome",equalTo("UNAVAILABLE"))
-        .body("reason",containsString("scenario-adjusted")).body("currentStats",nullValue());
+    for (var mode : List.of("STRICT", "BALANCED")) {
+      body.put("mode", mode);
+      if (mode.equals("BALANCED")) {
+        body.put("priorities",List.of("SPEED"));
+        body.put("balanced",Map.of("maximumLossPercent",Map.of("SPEED",0),"secondary",List.of("ACCELERATION","HANDLING","POWER","BOOST")));
+      }
+      var result = post(token,body).statusCode(200).body("outcome",equalTo("ESTABLISHED"))
+          .body("currentStats.speed",equalTo(80))
+          .body("selection.gadgetIds",hasItems(PassiveGadgetRules.id(45).toString(),PassiveGadgetRules.id(15).toString()))
+          .extract().jsonPath();
+      var proposed = new HashMap<String,Object>(result.getMap("selection"));
+      proposed.remove("gadgetIds");
+      List<String> gadgets = result.getList("selection.gadgetIds");
+      proposed.put("gameVersionId",body.get("gameVersionId"));
+      var passive = given().queryParams(proposed).queryParam("gadgetId",gadgets)
+          .get("/api/stats/passive-build").then().statusCode(200)
+          .body("passive.coverage",equalTo("CALCULATED")).extract().jsonPath();
+      assertEquals(passive.getMap("passive.adjusted"),result.getMap("recommendedStats"));
+      assertFalse(result.getMap("$").containsKey("basis")); assertFalse(result.getMap("$").containsKey("scenario"));
+    }
     assertEquals(before,communityCounts());
   }
 
-  @Test void scenarioContextValidationIsSharedWithPreviewAndDoesNotCoerceUnknowns() {
-    for (var invalid : List.of(Map.of("lap",0),Map.of("lap",4),Map.of("lap",1.5),Map.of("ringsHeld",-1),
-        Map.of("ringsHeld",1000),Map.of("ringsHeld",2.5),Map.of("distanceToFinish",-1),Map.of("distanceToFinish",50001),
-        Map.of("distanceToFinish",3.5),Map.of("vehicleForm","SPACE"),Map.of("landingBoostActive","not-a-boolean"))) {
-      var token = VerifiedUserFixture.createToken(em);
-      var body = request(selection(),empty()); body.put("basis","CURRENT_SCENARIO"); body.put("scenario",invalid);
-      post(token,body).statusCode(400);
+  @Test void removedObjectiveFieldsAreRejectedRatherThanSilentlyIgnored() {
+    var token = VerifiedUserFixture.createToken(em);
+    for (var value : List.of("CURRENT_SCENARIO", "PASSIVE", "RACE_SIMULATION")) {
+      var body = request(selection(), empty()); body.put("basis", value);
+      post(token, body).statusCode(400);
     }
-    var token = VerifiedUserFixture.createToken(em); var current = selection(); var body = request(current,current);
-    body.put("scenario",Map.of()); post(token,body).statusCode(400).body("message",containsString("PASSIVE"));
-    body.put("basis","CURRENT_SCENARIO"); body.remove("scenario");
-    post(token,body).statusCode(400).body("message",containsString("requires a scenario"));
-    body.put("scenario",null); post(token,body).statusCode(400);
-    body.put("scenario",Map.of()); post(token,body).statusCode(200).body("scenario.current.coverage",equalTo("CALCULATED"));
-    body.put("basis",null); body.remove("scenario");
-    post(token,body).statusCode(200).body("basis",nullValue()).body("scenario",nullValue());
-    body.put("basis","RACE_SIMULATION"); post(token,body).statusCode(400);
+    for (var value : Arrays.asList(Map.of(), Map.of("lap",1,"vehicleForm","WATER"), null)) {
+      var body = request(selection(), empty()); body.put("scenario", value);
+      post(token, body).statusCode(400);
+    }
   }
 
   private Map<String, Object> selection() {

@@ -50,7 +50,6 @@ final class RecommendationGadgetSearch {
     if (!GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) return;
     var effects = candidates.effects(racerType, selected);
     // For fixed types, adding gadgets cannot cure unknown effects or an unresolved applied-modifier stack.
-    // Context is fixed too: additions cannot resolve an unknown condition or legalize a rejected pair.
     if (!effects.eligible()) return;
     visit.accept(ordered(selected), effects.adjustments());
     for (int index = start; index < optional.size(); index++) {

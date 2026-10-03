@@ -12,22 +12,25 @@ import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outco
 import static dev.ringlab.domain.gamedata.PassiveGadgetRules.points;
 
 class BuildRecommendationSolverTest {
-  @Test void explicitPassivePreservesLegacyResultsAtEveryWorkBoundaryAndClockTick() {
+  @Test void scenarioFactsDoNotAffectPassiveResultsAtAnyWorkBoundaryOrClockTick() {
     var f = new Fixture();
     f.addGadget(45, 1); // New conditional gadgets must still be omitted in PASSIVE.
     f.racerStats.put(OTHER, f.racerStats.get(RACER)); // Retain the current racer on equal stats.
     for (var mode : RecommendationMode.values()) for (var current : List.of(EMPTY, selection(List.of()))) {
       var configuration = mode == RecommendationMode.BALANCED
           ? BalancedObjectiveTest.config(ORDER, "100", "100", "100", "100", "100") : null;
-      var legacy = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration);
-      var explicit = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration,
-          RecommendationBasis.PASSIVE, null);
+      var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration);
+      var catalog = f.snapshot();
+      var rules = catalog.rules();
+      var passiveOnly = new RecommendationCatalog(catalog.version(), catalog.racers(), catalog.machines(),
+          catalog.parts(), catalog.gadgets(), catalog.racerStats(), catalog.partStats(),
+          new GadgetRuleSnapshot(rules.version(), rules.passiveRuleset(), "unused", rules.passive(), List.of(), Set.of()));
       for (int limit = 1; limit <= 25; limit++) {
         var budget = new BuildRecommendationSolver.Budget(limit, Duration.ofMillis(20));
         var firstClock = new AtomicLong(); var secondClock = new AtomicLong();
-        var expected = new BuildRecommendationSolver(f.snapshot(), legacy, budget,
+        var expected = new BuildRecommendationSolver(passiveOnly, request, budget,
             () -> firstClock.getAndAdd(1_000_000)).solve();
-        var actual = new BuildRecommendationSolver(f.snapshot(), explicit, budget,
+        var actual = new BuildRecommendationSolver(catalog, request, budget,
             () -> secondClock.getAndAdd(1_000_000)).solve();
         assertEquals(expected, actual);
         assertEquals(firstClock.get(), secondClock.get());

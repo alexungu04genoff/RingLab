@@ -55,9 +55,7 @@ final class RecommendationExhaustiveOracle {
         catalog.racers().get(selection.racerId()).racingType(), request.machineType(),
         selection.gadgetIds().stream().map(catalog.gadgets()::get).toList(), true);
     if (passive.coverage() != PassiveStatsResult.Coverage.CALCULATED) return null;
-    if (request.basis() == RecommendationBasis.PASSIVE) return passive.adjusted();
-    var scenario = ScenarioStatsCalculator.calculate(catalog.rules(), passive, request.scenario());
-    return scenario.coverage() == ScenarioStatsResult.Coverage.CALCULATED ? scenario.total() : null;
+    return passive.adjusted();
   }
 
   private static boolean feasible(RecommendationRequest request, BaseStats reference, BaseStats stats) {

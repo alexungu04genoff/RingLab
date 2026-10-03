@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { CollectionProvider, MissingItems, OwnershipCheckbox, useCollection, type CollectionExclusions } from "./Collection";
@@ -27,6 +27,51 @@ beforeEach(() => {
   setToken("disposable-demo-token"); vi.mocked(api).mockResolvedValue(empty);
 });
 afterEach(cleanup);
+
+it("focus and refetch preserve the revision for identical, reordered and duplicate exclusion sets", async () => {
+  const initial = { racers: ["r2", "r1"], machines: ["m2", "m1"], gadgets: ["g2", "g1"] };
+  vi.mocked(api).mockResolvedValue(initial);
+  const hook = renderHook(() => useCollection(), { wrapper: CollectionProvider });
+  await waitFor(() => expect(hook.result.current.status).toBe("ready"));
+  const revision = hook.result.current.revision;
+  fireEvent.focus(window);
+  await waitFor(() => expect(api).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(hook.result.current.status).toBe("ready"));
+  expect(hook.result.current.revision).toBe(revision);
+  for (const data of [initial,
+    { racers: ["r1", "r2"], machines: ["m1", "m2"], gadgets: ["g1", "g2"] },
+    { racers: ["r2", "r1", "r1"], machines: ["m2", "m2", "m1"], gadgets: ["g1", "g2", "g1"] }]) {
+    vi.mocked(api).mockResolvedValue(data);
+    await act(async () => { expect((await hook.result.current.refresh()).revision).toBe(revision); });
+    expect(hook.result.current.revision).toBe(revision);
+  }
+});
+
+it.each(["racers", "machines", "gadgets"] as const)("increments once for a real %s change and not for its repeated read", async category => {
+  const hook = renderHook(() => useCollection(), { wrapper: CollectionProvider });
+  await waitFor(() => expect(hook.result.current.status).toBe("ready"));
+  const revision = hook.result.current.revision;
+  vi.mocked(api).mockResolvedValue({ ...empty, [category]: ["excluded"] });
+  await act(async () => { expect((await hook.result.current.refresh()).revision).toBe(revision + 1); });
+  expect(hook.result.current.revision).toBe(revision + 1);
+  await act(async () => { await hook.result.current.refresh(); });
+  expect(hook.result.current.revision).toBe(revision + 1);
+});
+
+it("a no-op update and failed refetch do not pretend ownership changed", async () => {
+  const hook = renderHook(() => useCollection(), { wrapper: CollectionProvider });
+  await waitFor(() => expect(hook.result.current.status).toBe("ready"));
+  const revision = hook.result.current.revision;
+  await act(async () => { await hook.result.current.update("RACER", "r", true); });
+  expect(hook.result.current.revision).toBe(revision);
+  vi.mocked(api).mockRejectedValueOnce(new Error("Offline"));
+  await act(async () => { await expect(hook.result.current.refresh()).rejects.toThrow("Offline"); });
+  expect(hook.result.current.status).toBe("error");
+  expect(hook.result.current.revision).toBe(revision);
+  await act(async () => { await hook.result.current.refresh(); });
+  expect(hook.result.current.status).toBe("ready");
+  expect(hook.result.current.revision).toBe(revision);
+});
 
 it("defaults owned, persists explicit unchecks and restores ownership without hiding artwork", async () => {
   let exclusions = empty;

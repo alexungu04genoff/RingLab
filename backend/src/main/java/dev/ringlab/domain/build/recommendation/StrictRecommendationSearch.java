@@ -50,11 +50,6 @@ final class StrictRecommendationSearch {
             || e.status() == PassiveStatsResult.Status.REQUIRES_SELECTION)
             .forEach(e -> restrictions.add("Excluded racer type " + (type == null ? "unknown" : type)
                 + " with locked " + e.gadgetName() + ": " + e.explanation()));
-        if (lockedEffects.scenario() != null) lockedEffects.scenario().effects().stream()
-            .filter(e -> e.statEffect() && (e.status() == ScenarioStatsResult.Status.UNSUPPORTED
-                || e.status() == ScenarioStatsResult.Status.CONDITION_UNKNOWN))
-            .forEach(e -> restrictions.add("Excluded racer type " + (type == null ? "unknown" : type)
-                + " with locked " + e.gadgetName() + ": " + e.explanation()));
         continue;
       }
       gadgets.search(type, (selected, adjustments) -> {

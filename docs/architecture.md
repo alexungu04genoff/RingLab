@@ -221,11 +221,13 @@ unmounts it. Serialized calculation keys and AbortControllers invalidate results
 selection/patch/context changes and unmount, including the render before effect
 cleanup. Maps and titles are not inputs, and no scenario fields enter saving/remixing.
 
-The backend recommendation API also accepts an optional `CURRENT_SCENARIO` basis;
-the existing frontend still requests PASSIVE. `RecommendationStatsEvaluator` is
-the only recommendation-domain collaborator permitted to call the scenario calculator.
-Adapters remain prohibited from executing it. `ScenarioStatsService` remains independent
-from recommendations. Passive rules, interaction permissions, ownership and schema are unchanged.
+Recommendations optimize base stats plus reviewed always-active passive stat
+adjustments. Race-state and triggered effects are intentionally excluded and remain
+available in Scenario Preview. `RecommendationStatsEvaluator` calls only the passive
+calculator. ArchitectureTest prohibits every recommendation-domain class from
+depending on Scenario types; adapters remain prohibited from executing the scenario
+calculator. `ScenarioStatsService` stays independent from recommendations.
+Passive rules, interaction permissions, ownership and schema are unchanged.
 `ScenarioStatsResult.assumptions()` identifies the exact Quick Starter + Sea Dog
 modeling assumption after interaction checks; CALCULATED coverage is not a VERIFIED label.
 
@@ -638,22 +640,20 @@ lexicographic stat comparison, the exact `BalancedObjective`, and a bounded dete
 facade translates validation failures without changing existing build behavior.
 `BuildRecommendationSolver` orchestrates validation, frozen-reference preparation,
 mode selection and result explanations. Package-private domain collaborators
-own candidate validation/pools (`RecommendationCandidates`), basis-aware calculator
-composition (`RecommendationStatsEvaluator`), ordering and
+own candidate validation/pools (`RecommendationCandidates`), passive calculation
+(`RecommendationStatsEvaluator`), ordering and
 incumbent tracking (`RecommendationCandidateOrder`), budget checks
 (`RecommendationSearchBudget`), shared gadget traversal (`RecommendationGadgetSearch`),
 and the separate Strict and Balanced algorithms (`StrictRecommendationSearch`,
 `BalancedRecommendationSearch`). They consume detached values only; none is a
 port, application service or persistence boundary. `BalancedObjective` still owns
 the exact floors and weighted comparison.
-`RecommendationBasis.PASSIVE` is base + supported passive adjustments and remains
-the transport default. `CURRENT_SCENARIO` adds supported scenario adjustments for
-one supplied immutable `ScenarioContext`. Only complete base/passive/scenario totals
-compete; partial subtotals never become objective scores. Strict keeps its component
-reduction because adjustments remain ID-independent within fixed types/context.
-Balanced keeps its optimistic bound, but reference normalization and floors use
-the same scenario total. The evaluator runs per gadget subset, not per component leaf.
-This is modeled stat optimization, not race simulation. Context is never persisted.
+Only complete base/passive totals compete; unknown passive values never become zero
+or partial objective scores. Strict retains its component reduction because passive
+adjustments are ID-independent within fixed racer/machine types. Balanced retains
+its passive reference normalization, floors and optimistic bound. The evaluator
+runs per gadget subset, not per component leaf. The REST request/response have no
+scenario objective fields; unknown top-level request fields are rejected.
 `RecommendationCatalogLoader` resolves catalog and versioned contributions once
 through the existing outbound ports in a short transaction.
 `BuildRecommendationService` then searches detached facts outside a transaction,
@@ -663,6 +663,11 @@ runs on a worker thread and has a dedicated per-user REST rate policy.
 
 Frontend lock/priority/draft-merge helpers live in `recommendation.ts`; the
 `useBuildRecommendation` hook owns abortable requests and stale-context checks.
+Collection revisions advance only when a successful authoritative read changes
+normalized exclusion sets within the current account/session. Focus and Apply share
+an in-flight read. Refresh returns data, revision and account/session identity together,
+so Apply detects changes without waiting for a React render. Failed reads block Apply
+without advancing revision; pending mutations and all other stale-result guards remain.
 `useEditorRecommendationLocks` owns desktop lock and popup lifetimes.
 `useRecommendationConfiguration` owns the frozen starting setup, mode, priorities,
 loss settings and calculation eligibility. The dialog keeps modal focus and execution

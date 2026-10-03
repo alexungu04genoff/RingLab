@@ -3,13 +3,13 @@
 Reviewed 2026-09-30, **1.4.1 only**, before adding numerical rules. This is
 stat-point previewing, not a race simulation or a claim about effective performance.
 
-Backend recommendation integration (2026-10-02) reuses these same reviewed facts and
-interaction policy for `CURRENT_SCENARIO`. It adds no game evidence or stacking
-permission. `ScenarioStatsResult.assumptions()` and both API diagnostics expose
+Scenario Preview retains these reviewed facts and interaction policy.
+Recommendations optimize passive stats only and do not consume scenario totals.
+`ScenarioStatsResult.assumptions()` and the preview API diagnostics expose
 `QUICK_STARTER_SEA_DOG_ASSUMED_ADDITIVE` only when that pair's effects remain applied.
 CALCULATED means complete within the model, not independently verified interaction
 evidence. Preview may display a partial known subtotal; recommendations never optimize
-it. The frontend recommendation dialog remains PASSIVE pending separate UI work.
+it. No scenario objective is available in the recommendation API or dialog.
 
 ## Sources actually inspected
 

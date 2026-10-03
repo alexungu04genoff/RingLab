@@ -1,5 +1,5 @@
 flowchart TB
-  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode<br/>basis + optional ScenarioContext"]:::domain
+  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
   validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
   baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>RecommendationStatsEvaluator"]:::domain
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
@@ -8,7 +8,7 @@ flowchart TB
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
   subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
-  calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator + optional ScenarioStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
+  calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator only<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
   components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
   compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
