@@ -638,11 +638,11 @@ Maps never affect these calculations.
 ## Desktop build recommendations
 
 `domain/build/recommendation` owns immutable request/catalog/result types, strict
-lexicographic stat comparison, the exact `BalancedObjective`, and a bounded deterministic solver. It reuses
-`PassiveStatsCalculator`, `ScenarioStatsCalculator`, `GadgetPlate` and the now-pure
+lexicographic stat comparison, exact `BalancedStage` thresholds, and a bounded deterministic solver. It reuses
+`PassiveStatsCalculator`, `GadgetPlate` and the now-pure
 `domain/gamedata/MachineCompatibility`; the existing application compatibility
 facade translates validation failures without changing existing build behavior.
-`BuildRecommendationSolver` orchestrates validation, frozen-reference preparation,
+`BuildRecommendationSolver` orchestrates validation, optional current-stat comparison,
 mode selection and result explanations. Package-private domain collaborators
 own candidate validation/pools (`RecommendationCandidates`), passive calculation
 (`RecommendationStatsEvaluator`), ordering and
@@ -650,17 +650,17 @@ incumbent tracking (`RecommendationCandidateOrder`), budget checks
 (`RecommendationSearchBudget`), shared gadget traversal (`RecommendationGadgetSearch`),
 and the separate Strict and Balanced algorithms (`StrictRecommendationSearch`,
 `BalancedRecommendationSearch`). They consume detached values only; none is a
-port, application service or persistence boundary. `BalancedObjective` still owns
-the exact floors and weighted comparison.
+port, application service or persistence boundary. `BalancedConfiguration` validates
+active/ignored settings; `BalancedStage` defines the exact signed sacrifice formula.
 The request's `GadgetRecommendationScope` defaults to `KEEP_CURRENT`: the shared
 gadget traversal evaluates the current ordered plate for each candidate type.
 `OPTIMIZE_UNLOCKED` enables existing subset enumeration around gadget locks.
-Both modes retain their existing objective and budgets. Scope is part of the
+Both modes retain the Phase 2 passive policy and budgets. Scope is part of the
 frontend configuration identity; Phase 1 collection snapshot checks remain intact.
 Only complete base/passive totals compete; unknown passive values never become zero
 or partial objective scores. Strict retains its component reduction because passive
-adjustments are ID-independent within fixed racer/machine types. Balanced retains
-its passive reference normalization, floors and optimistic bound. The evaluator
+adjustments are ID-independent within fixed racer/machine types. Balanced uses
+sequential thresholds over surviving candidates without a current-build baseline. The evaluator
 runs per gadget subset, not per component leaf. The REST request/response have no
 scenario objective fields; unknown top-level request fields are rejected.
 `RecommendationCatalogLoader` resolves catalog and versioned contributions once
@@ -688,16 +688,18 @@ clears invisible locks while preserving the draft. No optimizer policy is copied
 into React or persistence. See [Auto-builder v1](auto-builder.md) for the exact
 objective, separability proof, data limits, endpoint and demonstration.
 
-Balanced retains the shared catalog resolution and gadget-subset evaluation but
-searches complete component combinations with optimistic per-stat suffix bounds.
-It does not use Strict's independent component maxima. Fixed positive coefficients
-compare weighted relative changes without division/rounding; active loss floors
-are mandatory, followed by active-value, secondary-total and convenience ties.
-The popup freezes reference selections/patch for its lifetime; server passive
-calculation supplies both reference and candidate values. Configuration changes
-invalidate pending requests and Apply proposals. No preferences or locks are
-persisted. See [Balanced mode](balanced-auto-builder.md) for the bound proof,
-reference requirements and exact comparison order.
+Balanced is sequential constrained lexicographic optimization using per-priority
+sacrifice thresholds over the surviving candidate set. A streaming pass proves each
+active maximum and applies `b - abs(b) * loss / 100` with exact decimals. The next
+pass counts survivors; the final pass compares active values, then shared convenience
+ties. Ignored stats never rank candidates. Safe suffix minima/maxima collapse wholly
+surviving subtrees or prune wholly failing ones; other branches recurse. No full
+candidate population is stored. BEST_FOUND withholds all stage claims; ESTABLISHED
+includes proven maxima, thresholds and counts. Empty/partial drafts are supported.
+The captured current selections are for locks, gadget scope, convenience and display
+only. Configuration changes invalidate pending requests and Apply proposals. No
+preferences or locks are persisted. See [Balanced mode](balanced-auto-builder.md)
+for the bound proof, independent oracle and exact comparison order.
 
 ## Frontend page responsibilities
 

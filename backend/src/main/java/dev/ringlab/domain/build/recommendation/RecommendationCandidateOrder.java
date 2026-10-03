@@ -3,7 +3,7 @@ package dev.ringlab.domain.build.recommendation;
 import dev.ringlab.domain.gamedata.BaseStats;
 import java.util.*;
 
-/** Exact objective and convenience tie-breaks, plus the incumbent and observed Balanced ties. */
+/** Active lexicographic comparison followed by the shared convenience ordering. */
 final class RecommendationCandidateOrder {
   record Candidate(BuildSelection selection, BaseStats stats) {}
   static final Comparator<UUID> IDS = Comparator.comparing(UUID::toString);
@@ -11,8 +11,6 @@ final class RecommendationCandidateOrder {
   private final RecommendationCatalog catalog;
   private final RecommendationRequest request;
   private Candidate best;
-  private BalancedObjective balanced;
-  private boolean secondaryTieBreakDecided;
 
   RecommendationCandidateOrder(RecommendationCatalog catalog, RecommendationRequest request) {
     this.catalog = catalog;
@@ -20,27 +18,15 @@ final class RecommendationCandidateOrder {
   }
 
   Candidate best() { return best; }
-  boolean secondaryTieBreakDecided() { return secondaryTieBreakDecided; }
   void seed(BuildSelection selection, BaseStats stats) { best = new Candidate(selection, stats); }
   void clear() { best = null; }
-  void useBalancedObjective(BalancedObjective objective) { balanced = objective; }
 
   void consider(Candidate candidate) {
-    if (balanced != null) {
-      if (!balanced.feasible(candidate.stats())) return;
-      if (best != null) {
-        int active = balanced.compareActive(candidate.stats(), best.stats());
-        if (active > 0) secondaryTieBreakDecided = false;
-        else if (active == 0 && balanced.secondaryTotal(candidate.stats()).compareTo(balanced.secondaryTotal(best.stats())) != 0)
-          secondaryTieBreakDecided = true;
-      }
-    }
     if (best == null || compare(candidate, best) > 0) best = candidate;
   }
 
   private int compare(Candidate left, Candidate right) {
-    int stats = balanced == null ? StatPriority.compare(left.stats(), right.stats(), request.priorities())
-        : balanced.compare(left.stats(), right.stats());
+    int stats = StatPriority.compare(left.stats(), right.stats(), request.activePriorities());
     if (stats != 0) return stats;
     int changes = Integer.compare(changes(right.selection()), changes(left.selection()));
     if (changes != 0) return changes;

@@ -16,7 +16,7 @@ class BuildRecommendationSolverTest {
     var f = new Fixture();
     f.addGadget(45,3); f.addGadget(54,3); f.addGadget(55,3); f.addGadget(22,1); f.addGadget(52,1);
     for (var mode : RecommendationMode.values()) {
-      var config = mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(ORDER,"100","100","100","100","100") : null;
+      var config = mode == RecommendationMode.BALANCED ? BalancedConfigurationTest.config(ORDER,"0","0","0","0","0") : null;
       for (var ids : List.of(List.<UUID>of(),List.of(PassiveGadgetRules.id(52),PassiveGadgetRules.id(22),PassiveGadgetRules.id(45)))) {
         var current = selection(ids);
         var kept = solve(f,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY,mode,config));
@@ -48,7 +48,7 @@ class BuildRecommendationSolverTest {
     var order = List.of(StatPriority.BOOST,StatPriority.SPEED,StatPriority.ACCELERATION,StatPriority.HANDLING,StatPriority.POWER);
     for (var mode : RecommendationMode.values()) {
       var active = mode == RecommendationMode.STRICT ? order : List.of(StatPriority.BOOST);
-      var config = mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(active,"100") : null;
+      var config = mode == RecommendationMode.BALANCED ? BalancedConfigurationTest.config(active,"0") : null;
       var result = solve(f,new RecommendationRequest(VERSION,RacingType.BOOST,active,current,EMPTY,mode,config));
       assertEquals(ESTABLISHED,result.outcome());
       assertEquals(OTHER,result.selection().racerId()); assertNull(result.selection().tirePartId());
@@ -80,7 +80,7 @@ class BuildRecommendationSolverTest {
     f.racerStats.put(OTHER, f.racerStats.get(RACER)); // Retain the current racer on equal stats.
     for (var mode : RecommendationMode.values()) for (var current : List.of(EMPTY, selection(List.of()))) {
       var configuration = mode == RecommendationMode.BALANCED
-          ? BalancedObjectiveTest.config(ORDER, "100", "100", "100", "100", "100") : null;
+          ? BalancedConfigurationTest.config(ORDER, "0", "0", "0", "0", "0") : null;
       var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration);
       var catalog = f.snapshot();
       var rules = catalog.rules();
@@ -109,7 +109,7 @@ class BuildRecommendationSolverTest {
     f.racerStats.put(RACER,points(55,62,26,51,31));
     var pair = List.of(PassiveGadgetRules.id(55),PassiveGadgetRules.id(34));
     var losses = new EnumMap<StatPriority,BigDecimal>(StatPriority.class);
-    ORDER.forEach(stat -> losses.put(stat,BigDecimal.valueOf(100)));
+    ORDER.forEach(stat -> losses.put(stat,BigDecimal.ZERO));
     for (var mode : RecommendationMode.values()) for (var order : List.of(pair,pair.reversed())) {
       var current = selection(order);
       var config = mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses,List.of()) : null;
@@ -175,7 +175,7 @@ class BuildRecommendationSolverTest {
     }
   }
 
-  @Test void unavailableMixedSourceAndBalancedZeroLossReferenceCannotBypassFeasibility() {
+  @Test void unavailableMixedSourceAndExcludedReferenceCannotEstablishBalancedMaxima() {
     var f = new Fixture();
     f.machines.put(id(6), new Machine(id(6), "Mixed rear", RacingType.SPEED, null));
     f.parts.put(REAR, new MachinePart(REAR, id(6), MachinePartType.REAR));
@@ -188,8 +188,8 @@ class BuildRecommendationSolverTest {
         RecommendationMode.BALANCED, new BalancedConfiguration(losses, List.of()));
     var racerExcluded = new dev.ringlab.domain.collection.CollectionExclusions(Set.of(RACER), Set.of(), Set.of());
     var result = new BuildRecommendationSolver(f.snapshot(), request, BUDGET, racerExcluded).solve();
-    assertEquals(NO_FEASIBLE_CANDIDATE, result.outcome());
-    assertNotNull(result.currentStats()); assertNull(result.selection());
+    assertEquals(ESTABLISHED, result.outcome());
+    assertNotNull(result.currentStats()); assertEquals(OTHER,result.selection().racerId());
   }
   static final UUID VERSION = id(1), RACER = id(2), OTHER = id(3), FRONT = id(10), REAR = id(11), TIRE = id(12);
   static final List<StatPriority> ORDER = List.of(StatPriority.ACCELERATION, StatPriority.SPEED,
@@ -373,8 +373,9 @@ class BuildRecommendationSolverTest {
     for (var mode : RecommendationMode.values()) {
       var current = selection(List.of());
       var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode,
-          mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(ORDER, "100", "100", "100", "100", "100") : null);
-      long completeWork = mode == RecommendationMode.STRICT ? 7 : 13;
+          mode == RecommendationMode.BALANCED ? BalancedConfigurationTest.config(ORDER, "0", "0", "0", "0", "0") : null);
+      long completeWork = new BuildRecommendationSolver(f.snapshot(),request,
+          new BuildRecommendationSolver.Budget(100_000,Duration.ofSeconds(2)),() -> 0).solve().work();
       for (long limit = 1; limit <= completeWork + 1; limit++) {
         var result = new BuildRecommendationSolver(f.snapshot(), request,
             new BuildRecommendationSolver.Budget(limit, Duration.ofSeconds(1)), () -> 0).solve();

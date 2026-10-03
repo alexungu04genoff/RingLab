@@ -11,6 +11,25 @@ import org.junit.jupiter.api.Test;
 
 public abstract class ApiContract {
   @Test
+  void balancedCompletesAnEmptyDraftAndSerializesProvenSurvivorStages() {
+    var account=register();
+    String version=request(null).get("/api/game-versions").then().statusCode(200)
+        .extract().jsonPath().getString("find { it.version == '1.4.1' }.id");
+    var priorities=List.of("BOOST","ACCELERATION","SPEED","HANDLING","POWER");
+    var body=Map.of("gameVersionId",version,"machineType","BOOST","mode","BALANCED",
+        "priorities",priorities,"gadgetScope","KEEP_CURRENT",
+        "current",Map.of("gadgetIds",List.of()),"locked",Map.of("gadgetIds",List.of()),
+        "balanced",Map.of("maximumLossPercent",Map.of("BOOST",0,"ACCELERATION",10,"SPEED",20,"HANDLING",50),"ignored",List.of("POWER")));
+    request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(200)
+        .body("outcome",equalTo("ESTABLISHED")).body("currentStats",nullValue())
+        .body("selection.racerId",notNullValue()).body("selection.frontPartId",notNullValue())
+        .body("selection.rearPartId",notNullValue()).body("selection.tirePartId",nullValue())
+        .body("selection.gadgetIds",empty()).body("balanced.proven",equalTo(true))
+        .body("balanced.stages.stat",contains("BOOST","ACCELERATION","SPEED","HANDLING"))
+        .body("balanced.stages[0].lossPercent",equalTo(0))
+        .body("balanced.stages[0].candidatesAfter",greaterThan(0));
+  }
+  @Test
   void passiveRecommendationContractRejectsRemovedScenarioFieldsAfterPackaging() {
     var account = register();
     String version = request(null).get("/api/game-versions").then().statusCode(200)

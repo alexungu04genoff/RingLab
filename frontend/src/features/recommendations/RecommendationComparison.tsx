@@ -11,7 +11,8 @@ function RecommendationStatBar({ label, before, after, difference, scale }: {
   const tooltipId = useId();
   const [open, setOpen] = useState(false);
   const change = difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference} points`;
-  const bar = <span className={`card-stat-track recommendation-stat-track${difference === null ? " unknown" : ""}`} role="img" aria-label={`${label}: ${before ?? "Unavailable"} to ${after ?? "Unavailable"}`}>
+  const bar = <span className={`card-stat-track recommendation-stat-track${after === null ? " unknown" : ""}`} role="img" aria-label={before === null ? `${label}: ${after ?? "Unavailable"}` : `${label}: ${before} to ${after ?? "Unavailable"}`}>
+    {before === null && after !== null && <span className="recommendation-stat-base" style={{ width: `${Math.max(0,after) / scale * 100}%` }} />}
     {before !== null && after !== null && <>
       <span className="recommendation-stat-base" style={{ width: `${Math.max(0, Math.min(before, after)) / scale * 100}%` }} />
       {difference !== null && difference !== 0 && <span className={`card-stat-gadget-segment ${difference > 0 ? "bonus" : "penalty"}`}
@@ -63,10 +64,10 @@ function BalancedSelectionChanges({ reference, selected, locks, catalog, machine
 }
 
 export function RecommendationComparison({ result, reference, locks, catalog, machineType, mode,
-  activePriorities, secondary, losses }: {
+  priorities, ignored }: {
   result: RecommendationResult; reference: BuildDraft; locks: RecommendationSelection; catalog: RecommendationCatalog;
   machineType: RacingType | null; mode: "STRICT" | "BALANCED";
-  activePriorities: RacingType[]; secondary: RacingType[]; losses: Record<RacingType, string>;
+  priorities: RacingType[]; ignored: RacingType[];
 }) {
   const selected = result.selection;
   const comparisonScale = Math.max(100, ...Object.values(result.currentStats ?? {}), ...Object.values(result.recommendedStats ?? {}));
@@ -83,24 +84,33 @@ export function RecommendationComparison({ result, reference, locks, catalog, ma
       </dl>}{machineType === "BOOST" && <p className="recommendation-setup-note">Boost uses Front and Rear only. The proposed setup has no tire.</p>}
       <section className="recommendation-stat-comparison" aria-label="Stat comparison">
         <h3>Passive-adjusted stats · same selected patch</h3>
-        <p className="recommendation-stat-legend">Starting → recommended · Outlined: gain · Hatched: loss. Hover, focus or tap a bar for details.</p>
-        <dl className="card-stats recommendation-stat-list">{[...activePriorities, ...(mode === "BALANCED" ? secondary : [])].map(priority => {
+        {result.currentStats ? <p className="recommendation-stat-legend">Starting → recommended · Outlined: gain · Hatched: loss. Hover, focus or tap a bar for details.</p>
+          : <p>Recommended values</p>}
+        <dl className="card-stats recommendation-stat-list">{priorities.map(priority => {
           const before = stat(result.currentStats, priority), after = stat(result.recommendedStats, priority);
           const difference = before === null || after === null ? null : Number((after - before).toFixed(8));
           const changeClass = difference === null || difference === 0 ? "recommendation-neutral" : difference > 0 ? "recommendation-gain" : "recommendation-loss";
           return <div key={priority} className={`card-stat recommendation-stat-row stat-${priority.toLowerCase()}`}>
             <div className="recommendation-stat-label"><dt>{racingTypeLabel(priority)}</dt>
-              <dd><span className="recommendation-stat-before">{before ?? "—"} → </span>{after ?? "—"}</dd>
+              <dd>{result.currentStats && <span className="recommendation-stat-before">{before ?? "—"} → </span>}{after ?? "—"}</dd>
             </div>
             <RecommendationStatBar label={racingTypeLabel(priority)} before={before} after={after} difference={difference}
               scale={comparisonScale} />
-            <span className={`recommendation-stat-delta ${changeClass}`}>{difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference}`}
-              {mode === "BALANCED" && difference !== null && difference !== 0 && <small> ({signedStatChange(before, after)})</small>}</span>
-            {mode === "BALANCED" && <small className="recommendation-stat-limit">{secondary.includes(priority) ? "Tie-break / Ignore — no minimum"
-              : `Maximum loss ${losses[priority]}% · Minimum allowed ${result.balanced?.minimum[priority] ?? "Unavailable"}`}</small>}
+            {result.currentStats && <span className={`recommendation-stat-delta ${changeClass}`}>{difference === null ? "Unavailable" : difference === 0 ? "No change" : `${difference > 0 ? "+" : ""}${difference}`}
+              {mode === "BALANCED" && difference !== null && difference !== 0 && <small> ({signedStatChange(before, after)})</small>}</span>}
+            {mode === "BALANCED" && ignored.includes(priority) && <small className="recommendation-stat-limit">Ignored in the recommendation</small>}
           </div>;
         })}</dl></section>
       {mode === "BALANCED" && <BalancedSelectionChanges reference={reference} selected={selected} locks={locks} catalog={catalog} machineType={machineType} />}</>}
+    {mode === "BALANCED" && result.balanced && <details className="balanced-explanation"><summary>Balanced filtering stages</summary>
+      {!result.balanced.proven ? <p>The search limit prevented proof. Stage thresholds are withheld for this best-found result.</p>
+        : result.balanced.stages.length === 0 ? <p>All stats were ignored. Convenience ordering selected this setup.</p>
+        : <div className="balanced-priorities-scroll"><table className="balanced-stage-table" aria-label="Balanced filtering stages">
+          <thead><tr><th>Stat</th><th>Allowed loss</th><th>Best among survivors</th><th>Minimum</th><th>Builds remaining</th></tr></thead>
+          <tbody>{result.balanced.stages.map(stage => <tr key={stage.stat}><th>{racingTypeLabel(stage.stat)}</th>
+            <td>{stage.lossPercent}%</td><td>{stage.best}</td><td>{stage.threshold}</td><td>{stage.candidatesBefore} → {stage.candidatesAfter}</td></tr>)}</tbody>
+        </table></div>}
+    </details>}
     <ExplanationContainer aria-label="Recommendation explanation" className={mode === "BALANCED" ? "balanced-explanation" : undefined}>
       {mode === "BALANCED" ? <summary>Why this setup</summary> : <h3>Reason</h3>}<p>{result.reason}</p>
       <p>Machine type: {racingTypeLabel(machineType)}. All locked selections are hard constraints.</p>

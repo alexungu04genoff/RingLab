@@ -6,14 +6,13 @@ flowchart LR
     config["BalancedConfiguration"]:::domain
     catalog["RecommendationCatalog<br/>catalog + BaseStats maps + GadgetRuleSnapshot"]:::domain
     solver["BuildRecommendationSolver / Budget"]:::domain
-    objective["BalancedObjective"]:::domain
+    objective["BalancedStage"]:::domain
     result["RecommendationResult / Outcome / BalancedDetails"]:::domain
     request --> selection
     request --> mode
     request --> config
     solver --> request
     solver --> catalog
-    solver --> objective
     solver --> result
     solver --> candidates["RecommendationCandidates"]:::domain
     solver --> searches["StrictRecommendationSearch / BalancedRecommendationSearch"]:::domain
@@ -23,7 +22,7 @@ flowchart LR
     gadgets --> candidates
     gadgets --> budget
     searches --> objective
-    order --> objective
+    result --> objective
     result --> selection
   end
   subgraph stats["GAME DATA: calculated statistics"]
@@ -49,5 +48,5 @@ flowchart LR
   candidates --> pc
   catalog --> base
   result --> base
-  objective --> base
+  objective --> mode
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24

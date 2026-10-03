@@ -19,7 +19,8 @@ it("provides the public guide sections in player-facing language", () => {
   expect(html).toContain("Best rated");
   expect(html).toContain("Highest score");
   expect(html).toContain("Apply to draft");
-  expect(html).toContain("Tie-break / Ignore");
+  expect(html).toContain("Ignore");
+  expect(html).toContain("The next stat is compared only among those builds");
   expect(html).toContain("everything is treated as available");
   expect(html).toContain("Explore builds. Make them your own.");
   expect(html).toContain("Recommendations: build around your preferences");

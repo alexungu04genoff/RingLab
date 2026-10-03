@@ -5,12 +5,12 @@ flowchart TB
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
   strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
-  balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
+  balanced["BALANCED<br/>empty or partial current draft allowed<br/>BalancedConfiguration: active sacrifices / Ignore"]:::domain
   subsets["RecommendationGadgetSearch<br/>KEEP_CURRENT: evaluate current ordered gadgets<br/>OPTIMIZE_UNLOCKED: subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
   calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator only<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
-  components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
-  compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
+  components["BalancedRecommendationSearch<br/>successive survivor passes prove maxima<br/>signed floors; safe suffix bounds / subtree counts<br/>final active lexicographic pass"]:::domain
+  compare["RecommendationCandidateOrder<br/>active lexicographic values → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
   req --> validate --> baseline --> pools --> branch
   branch --> strict
@@ -22,7 +22,9 @@ flowchart TB
   subsets -->|"Strict: fixed base + supported adjustments"| compare
   subsets -->|"Balanced"| components --> compare
   compare --> result
-  budget["RecommendationSearchBudget<br/>unchanged step boundaries, deadline and interruption"]:::domain
+  components --> stages["BalancedStage<br/>proven best / floor / survivor counts<br/>withheld if search is truncated"]:::domain
+  stages --> result
+  budget["RecommendationSearchBudget<br/>100,000 work steps / two seconds / interruption"]:::domain
   budget -.-> strict
   budget -.-> subsets
   budget -.-> components

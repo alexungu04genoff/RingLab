@@ -1,5 +1,84 @@
 # Verification
 
+## Phase 3: sequential-survivor Balanced — 2026-10-03
+
+Started from clean main `7b4e0e4`, after verifying Phase 1 passive-only recommendations
+and collection revisions and Phase 2 additive passives / gadget scope. Work is isolated
+on `codex/balanced-survivor-thresholds`; no deployment is part of this phase.
+
+The old current-reference floors, weighted score and secondary total are removed.
+Balanced now accepts empty/partial drafts and proves successive maxima over surviving
+candidates with exact signed thresholds. Explicit Ignore removes all numerical influence.
+The streaming implementation uses safe suffix bounds and Cartesian subtree counts;
+it retains the existing 100,000-step/two-second/two-calculation limits.
+
+### API validation and proof contract
+
+- Required: supported patch, machine type, current/locked selections, five-stat order,
+  and Balanced configuration. Current IDs may be null; locks must match selected IDs.
+- `balanced.maximumLossPercent` supplies exactly the active stats, each in `[0,100)`.
+  `balanced.ignored` contains distinct ignored stats. All Ignore is valid.
+- Compatibility: legacy `secondary` aliases `ignored`, active-only order can append
+  the ignored tail, and 100% normalizes to Ignore. Duplicate/missing stats, unknown
+  names, negative/out-of-range/nonfinite percentages are rejected.
+- Current stats are optional presentation data. Unsupported candidate totals remain
+  excluded, and unsupported kept gadget data produces UNAVAILABLE, never zero.
+- Established responses contain `balanced: {proven: true, stages: [...]}`. Each stage
+  exposes stat, sacrifice, exact best, threshold and survivor counts. Non-established
+  responses contain `proven: false, stages: []`; truncated searches never claim
+  infeasibility or proven maxima. No candidate list is exposed.
+- Both Quarkus REST tests and the shared packaged API contract exercise empty Balanced
+  requests, BOOST/no tire and structured proven stages. REST tests also cover legacy
+  100%/secondary compatibility, all Ignore and server-authoritative current stats.
+
+`BalancedConfigurationTest`, `BalancedSolverTest` and `RecommendationExhaustiveOracle`
+cover exact boundaries, negative/zero maxima, ignored stats, ordered final survivors,
+locks, ownership, all Ignore and budget cutoffs. The oracle independently materializes
+small catalogs, evaluates trusted passive totals, filters survivor lists and compares
+convenience ties. There are 480 oracle comparisons across 240 seeded catalogs, 240
+Strict-at-zero-loss equivalence checks, and 240 reversed-catalog determinism checks.
+They cover all machine types, both scopes, decimals, overlapping passives, part/racer/
+gadget locks and racer/source-machine/gadget exclusions. Imported game facts are unchanged.
+
+Frontend tests exercise incomplete drafts without a reference fetch, explicit Ignore,
+loss validation, preserved ordering/settings, proven versus withheld stage displays,
+optional Current comparison, collection revision safety and unchanged gadget scopes.
+
+Verification commands: `mvn -f backend/pom.xml verify` against a disposable PostgreSQL
+database, `npm run test:coverage -- --maxWorkers=2`, `npm run build`, and `git diff --check`.
+The existing PostgreSQL container is reused without modifying the development database.
+Coverage reports remain `backend/target/site/jacoco/index.html` and `frontend/coverage/index.html`.
+
+Real-catalog empty-draft benchmark (same production limits, measured during verification):
+
+| Machine type | Keep current: work / ms | Optimize unlocked: work / ms |
+| --- | --- | --- |
+| SPEED | 5,805 / 7, ESTABLISHED | 100,000 / 477, BEST_FOUND |
+| ACCELERATION | 6,203 / 12, ESTABLISHED | 100,000 / 249, BEST_FOUND |
+| HANDLING | 3,707 / 3, ESTABLISHED | 100,000 / 349, BEST_FOUND |
+| POWER | 4,227 / 4, ESTABLISHED | 100,000 / 215, BEST_FOUND |
+| BOOST | 1,920 / 1, ESTABLISHED | 100,000 / 287, BEST_FOUND |
+
+Elapsed times are observations from this machine, not guarantees. The unrestricted
+gadget population remains a material limit: all five OPTIMIZE_UNLOCKED requests
+returned a legal candidate without completing proof. Their threshold lists were empty.
+The existing budgets were not increased to force establishment.
+
+Final results:
+
+- `mvn -f backend/pom.xml verify`: **passed**, 523 Surefire tests and 20 packaged API
+  tests, including architecture, application/service, passive/scenario and recommendation
+  tests. The disposable database URL, credentials, disabled dev services and test port
+  8087 were supplied as environment/system properties. No application limits changed.
+- JaCoCo: **98.03% instructions, 90.50% branches, 97.99% lines**; existing gates passed.
+  Recommendation domain: **99.52% instructions, 95.25% branches, 99.80% lines**.
+- Frontend: **381 tests in 42 files passed**. Coverage: **95.20% statements/lines,
+  91.93% branches, 89.38% functions**; existing gates passed.
+- `npm run build`: passed. `git diff --check`: passed.
+- During transition, old backend weighted-objective assertions and an editor test
+  looking for the removed Balanced Current column were updated. Final runs have no failures.
+- No deployment, database migration, catalog import or game-fact change was performed.
+
 ## Phase 2: closed passive addition and gadget scope — 2026-10-03
 
 Started from clean main `6551bee`, after Phase 1 was committed and fast-forwarded.

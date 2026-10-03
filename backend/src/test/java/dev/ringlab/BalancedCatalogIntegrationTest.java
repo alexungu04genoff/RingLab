@@ -44,9 +44,9 @@ class BalancedCatalogIntegrationTest {
         var request = new RecommendationRequest(version.id(), RacingType.BOOST, ACTIVE, current, locks, RecommendationMode.BALANCED, CONFIG);
         var result = new BuildRecommendationSolver(catalog, request, BuildRecommendationService.BUDGET).solve(); evaluated++;
         assertNotNull(result.selection(), result.reason());
-        assertTrue(new BalancedObjective(result.currentStats(), ACTIVE, CONFIG).feasible(result.recommendedStats()));
+        assertDiagnostics(result);
         System.out.printf("BALANCED CATALOG %s gadgets=%s outcome=%s work=%d ms=%d reference=%s minimum=%s recommended=%s selection=%s%n",
-            machine.name(), gadgets, result.outcome(), result.work(), result.elapsedMillis(), result.currentStats(), result.balanced().minimum(), result.recommendedStats(), result.selection());
+            machine.name(), gadgets, result.outcome(), result.work(), result.elapsedMillis(), result.currentStats(), result.balanced().stages(), result.recommendedStats(), result.selection());
       }
     }
     assertTrue(evaluated > 0 && evaluated <= 30);
@@ -61,7 +61,7 @@ class BalancedCatalogIntegrationTest {
           new BuildSelection(null, null, null, null, List.of()), RecommendationMode.BALANCED, CONFIG);
       var result = new BuildRecommendationSolver(catalog, request, BuildRecommendationService.BUDGET).solve();
       assertNotNull(result.selection(), result.reason());
-      assertTrue(new BalancedObjective(result.currentStats(), ACTIVE, CONFIG).feasible(result.recommendedStats()));
+      assertDiagnostics(result);
       System.out.printf("BALANCED UNLOCKED type=%s outcome=%s work=%d ms=%d%n", type, result.outcome(), result.work(), result.elapsedMillis());
     }
   }
@@ -88,20 +88,47 @@ class BalancedCatalogIntegrationTest {
       var result = given().auth().oauth2(token).contentType("application/json").body(body).post("/api/build-recommendations")
           .then().statusCode(200).body("outcome", equalTo("ESTABLISHED")).body("selection.tirePartId", nullValue()).extract().jsonPath();
       assertEquals(116, result.getDouble("currentStats.boost"));
-      assertEquals(110.2, result.getDouble("balanced.minimum.BOOST"));
-      var referenceStats = json.convertValue(result.getMap("currentStats"), BaseStats.class);
+      assertTrue(result.getBoolean("balanced.proven"));
       var recommendedStats = json.convertValue(result.getMap("recommendedStats"), BaseStats.class);
-      var objective = new BalancedObjective(referenceStats, ACTIVE, CONFIG);
-      // Expanded tuner combinations may improve the old winner; preserve every floor
-      // and require at least the original demonstration's weighted result.
-      assertTrue(objective.feasible(recommendedStats));
-      assertTrue(objective.compare(recommendedStats, referenceStats) >= 0);
-      assertTrue(objective.compare(recommendedStats, PassiveGadgetRules.points(31,47,61,24,112)) >= 0);
+      for (int stage=0;stage<ACTIVE.size();stage++) {
+        assertTrue(ACTIVE.get(stage).value(recommendedStats).doubleValue() >= result.getDouble("balanced.stages["+stage+"].threshold"));
+      }
       given().get("/api/builds/" + id).then().statusCode(200).body("frontPart.id", equalTo(definition.get("frontPartId")))
           .body("rearPart.id", equalTo(definition.get("rearPartId"))).body("title", equalTo(definition.get("title")));
       System.out.printf("BALANCED FROZEN FIXTURE isolatedId=%s outcome=%s work=%d ms=%d%n", id, result.getString("outcome"), result.getLong("work"), result.getLong("elapsedMillis"));
     } finally {
       given().auth().oauth2(token).delete("/api/builds/" + id).then().statusCode(204);
+    }
+  }
+
+  @Test void emptyAndRacerOnlyDraftsBenchmarkBothGadgetScopesUnderProductionLimits() {
+    var version=game.listGameVersions().stream().filter(v -> v.version().equals("1.4.1")).findFirst().orElseThrow();
+    var catalog=loader.load(version.id());
+    var miku=catalog.racers().values().stream().filter(r -> r.name().equals("Hatsune Miku")).findFirst().orElseThrow();
+    var empty=new BuildSelection(null,null,null,null,List.of());
+    for(var scope : GadgetRecommendationScope.values()) for(var type : RacingType.values()) {
+      var request=new RecommendationRequest(version.id(),type,ACTIVE,empty,empty,RecommendationMode.BALANCED,CONFIG,scope);
+      var result=new BuildRecommendationSolver(catalog,request,BuildRecommendationService.BUDGET).solve();
+      assertNotNull(result.selection()); assertNull(result.currentStats()); assertDiagnostics(result);
+      System.out.printf("BALANCED EMPTY type=%s scope=%s outcome=%s work=%d ms=%d%n",type,scope,result.outcome(),result.work(),result.elapsedMillis());
+    }
+    var locked=new BuildSelection(miku.id(),null,null,null,List.of());
+    var request=new RecommendationRequest(version.id(),RacingType.BOOST,ACTIVE,locked,locked,RecommendationMode.BALANCED,CONFIG);
+    var result=new BuildRecommendationSolver(catalog,request,BuildRecommendationService.BUDGET).solve();
+    assertEquals(miku.id(),result.selection().racerId()); assertNull(result.selection().tirePartId()); assertDiagnostics(result);
+  }
+
+  private static void assertDiagnostics(RecommendationResult result) {
+    assertTrue(result.work() <= 100_000);
+    if (result.outcome() == RecommendationResult.Outcome.ESTABLISHED) {
+      assertTrue(result.balanced().proven()); assertEquals(ACTIVE.size(),result.balanced().stages().size());
+      for(var stage : result.balanced().stages()) {
+        assertTrue(stage.stat().value(result.recommendedStats()).compareTo(stage.threshold()) >= 0);
+        assertTrue(stage.candidatesBefore() >= stage.candidatesAfter()); assertTrue(stage.candidatesAfter() > 0);
+      }
+    } else {
+      assertEquals(RecommendationResult.Outcome.BEST_FOUND,result.outcome());
+      assertFalse(result.balanced().proven()); assertTrue(result.balanced().stages().isEmpty());
     }
   }
 }

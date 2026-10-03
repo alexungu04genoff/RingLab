@@ -24,7 +24,7 @@ public final class BuildRecommendationSolver {
   private final RecommendationGadgetSearch gadgets;
   private final Set<String> restrictions = new LinkedHashSet<>();
   private BaseStats currentStats;
-  private BalancedObjective balanced;
+  private BalancedRecommendationSearch balanced;
 
   public BuildRecommendationSolver(RecommendationCatalog catalog, RecommendationRequest request, Budget budget) {
     this(catalog, request, budget, System::nanoTime);
@@ -71,17 +71,6 @@ public final class BuildRecommendationSolver {
         }
       }
 
-      if (request.mode() == RecommendationMode.BALANCED) {
-        // Even secondary values must be known. Do not substitute base-only or zero stats.
-        if (currentStats == null || !StatPriority.complete(currentStats)
-            || Arrays.stream(StatPriority.values()).anyMatch(s -> s.value(currentStats).signum() < 0)) {
-          order.clear();
-          return result(UNAVAILABLE, "Balanced unavailable: the frozen reference must be a complete legal setup with fully supported, nonnegative passive-adjusted values for all five stats.");
-        }
-        balanced = new BalancedObjective(currentStats, request.priorities(), request.balanced());
-        order.useBalancedObjective(balanced);
-      }
-
       // Check feasibility before data completeness: unknown contributions are not an empty legal catalog.
       var racers = candidates.racers();
       var fronts = candidates.parts(MachinePartType.FRONT, request.locked().frontPartId());
@@ -91,10 +80,10 @@ public final class BuildRecommendationSolver {
       if (racers.isEmpty() || fronts.isEmpty() || rears.isEmpty()
           || (request.machineType() != RacingType.BOOST && tires.isEmpty()))
         return result(NO_LEGAL_COMPLETION, "No legal catalog completion exists for the chosen machine type and locks.");
-      if (balanced != null) {
-        new BalancedRecommendationSearch(catalog, request, gadgets, order, budget, restrictions, balanced)
-            .search(racers, fronts, rears, tires);
-        return order.best() == null ? result(NO_FEASIBLE_CANDIDATE, "Complete supported search found no candidate satisfying every loss floor, chosen machine type and lock. Limits have not been relaxed.")
+      if (request.mode() == RecommendationMode.BALANCED) {
+        balanced = new BalancedRecommendationSearch(catalog,request,gadgets,order,budget,restrictions);
+        balanced.search(racers, fronts, rears, tires);
+        return order.best() == null ? result(UNAVAILABLE, "Legal completions exist, but no complete supported passive candidate can be evaluated. Check the selected patch, parts and kept/locked gadgets.")
             : result(ESTABLISHED, explanation(true));
       }
       if (!new StrictRecommendationSearch(catalog, request, candidates, gadgets, order, budget, restrictions)
@@ -112,17 +101,10 @@ public final class BuildRecommendationSolver {
   private String explanation(boolean complete) {
     var best = order.best();
     String prefix = complete ? "Best supported result established within the reviewed catalog and locks. " : "Best found before the search limit; optimality is not established. ";
-    if (balanced != null) {
-      if (complete && best.selection().equals(request.current()))
-        return prefix + "No improvement: the frozen reference is already best under the complete Balanced comparator. Every floor and lock is respected.";
-      var changes = new ArrayList<String>();
-      for (var stat : StatPriority.values()) {
-        var delta = stat.value(best.stats()).subtract(stat.value(currentStats));
-        if (delta.signum() != 0) changes.add(stat + " " + (delta.signum() > 0 ? "+" : "") + delta.stripTrailingZeros().toPlainString() + " points");
-      }
-      return prefix + "Compared with the frozen reference: " + (changes.isEmpty() ? "all stats equal" : String.join(", ", changes))
-          + ". Every loss floor and lock is respected. Rank weights determine the primary trade-off."
-          + (complete && order.secondaryTieBreakDecided() ? " The secondary total decided between candidates with identical active values." : "");
+    if (request.mode() == RecommendationMode.BALANCED) {
+      return prefix + (complete
+          ? "Priorities were filtered in order using the permitted sacrifice at each stage. Final survivors use active-priority order, then convenience ties. Ignored stats have no influence."
+          : "This is a legal candidate observed before completion. Balanced thresholds and the final survivor winner are not proven; stage claims are withheld.");
     }
     if (complete && best.selection().equals(request.current())) return prefix + "Your current setup is already best under this strict priority order.";
     if (currentStats == null) return prefix + "Current passive stats are unavailable, so no numerical improvement over the current draft is claimed.";
@@ -140,7 +122,8 @@ public final class BuildRecommendationSolver {
         best == null ? null : best.stats(), outcome == ESTABLISHED && best != null && best.selection().equals(request.current()),
         reason, List.copyOf(restrictions), catalog.rules().passiveRuleset(), PassiveStatsCalculator.ARITHMETIC_NOTE,
         budget.work(), budget.elapsedMillis(),
-        balanced == null ? null : new RecommendationResult.BalancedDetails(balanced.minimum(), outcome == ESTABLISHED && order.secondaryTieBreakDecided()));
+        request.mode() != RecommendationMode.BALANCED ? null : new RecommendationResult.BalancedDetails(
+            outcome == ESTABLISHED, outcome == ESTABLISHED && balanced != null ? balanced.stages() : List.of()));
   }
 
 }

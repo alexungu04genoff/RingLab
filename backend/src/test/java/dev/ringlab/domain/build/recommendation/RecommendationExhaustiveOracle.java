@@ -11,13 +11,12 @@ final class RecommendationExhaustiveOracle {
   record Winner(BuildSelection selection, BaseStats stats) {}
 
   static Winner solve(RecommendationCatalog catalog, RecommendationRequest request, CollectionExclusions owned) {
-    BaseStats reference = request.mode() == RecommendationMode.BALANCED ? evaluate(catalog, request, request.current()) : null;
     var fronts = parts(catalog, request, owned, MachinePartType.FRONT, request.locked().frontPartId());
     var rears = parts(catalog, request, owned, MachinePartType.REAR, request.locked().rearPartId());
     var tires = request.machineType() == RacingType.BOOST ? Collections.<UUID>singletonList(null)
         : parts(catalog, request, owned, MachinePartType.TIRE, request.locked().tirePartId());
     var gadgets = catalog.gadgets().values().stream().filter(g -> owned.gadgetAvailable(g.id())).toList();
-    Winner best = null;
+    var population = new ArrayList<Winner>();
     for (var racer : catalog.racers().values()) {
       if (!owned.racerAvailable(racer.id()) || !keeps(request.locked().racerId(), racer.id())) continue;
       for (var front : fronts) for (var rear : rears) for (var tire : tires)
@@ -33,12 +32,20 @@ final class RecommendationExhaustiveOracle {
           selected.stream().filter(id -> !ordered.contains(id)).sorted(Comparator.comparing(UUID::toString)).forEach(ordered::add);
           var selection = new BuildSelection(racer.id(), front, rear, tire, ordered);
           var stats = evaluate(catalog, request, selection);
-          if (stats == null || !feasible(request, reference, stats)) continue;
-          var candidate = new Winner(selection, stats);
-          if (best == null || compare(catalog, request, reference, candidate, best) > 0) best = candidate;
+          if (stats != null) population.add(new Winner(selection, stats));
         }
     }
-    return best;
+    // Intentionally materialize and filter directly: no production traversal, bounds or stages.
+    if (request.mode() == RecommendationMode.BALANCED) {
+      for (var stat : request.priorities()) {
+        if (request.balanced().ignored().contains(stat) || population.isEmpty()) continue;
+        var best = population.stream().map(c -> stat.value(c.stats())).max(BigDecimal::compareTo).orElseThrow();
+        var allowance = best.abs().multiply(request.balanced().maximumLossPercent().get(stat)).divide(new BigDecimal("100"));
+        var floor = best.subtract(allowance);
+        population.removeIf(c -> stat.value(c.stats()).compareTo(floor) < 0);
+      }
+    }
+    return population.stream().max((a,b) -> compare(catalog,request,a,b)).orElse(null);
   }
 
   private static boolean keeps(UUID locked, UUID selected) { return locked == null || locked.equals(selected); }
@@ -60,27 +67,11 @@ final class RecommendationExhaustiveOracle {
     return passive.adjusted();
   }
 
-  private static boolean feasible(RecommendationRequest request, BaseStats reference, BaseStats stats) {
-    if (request.mode() == RecommendationMode.STRICT) return true;
-    for (var stat : request.priorities()) {
-      var floor = stat.value(reference).multiply(new BigDecimal("100").subtract(request.balanced().maximumLossPercent().get(stat)));
-      if (stat.value(stats).multiply(new BigDecimal("100")).compareTo(floor) < 0) return false;
-    }
-    return true;
-  }
-
-  private static int compare(RecommendationCatalog catalog, RecommendationRequest request, BaseStats reference, Winner a, Winner b) {
+  private static int compare(RecommendationCatalog catalog, RecommendationRequest request, Winner a, Winner b) {
     int compared;
-    if (request.mode() == RecommendationMode.BALANCED) {
-      compared = score(request, reference, a.stats()).compareTo(score(request, reference, b.stats()));
-      if (compared != 0) return compared;
-    }
     for (var stat : request.priorities()) {
+      if (request.mode() == RecommendationMode.BALANCED && request.balanced().ignored().contains(stat)) continue;
       compared = stat.value(a.stats()).compareTo(stat.value(b.stats()));
-      if (compared != 0) return compared;
-    }
-    if (request.mode() == RecommendationMode.BALANCED) {
-      compared = secondary(request, a.stats()).compareTo(secondary(request, b.stats()));
       if (compared != 0) return compared;
     }
     compared = Integer.compare(changes(request.current(), b.selection()), changes(request.current(), a.selection()));
@@ -91,18 +82,6 @@ final class RecommendationExhaustiveOracle {
     return compared != 0 ? compared : key(b.selection()).compareTo(key(a.selection()));
   }
 
-  private static BigDecimal score(RecommendationRequest request, BaseStats reference, BaseStats stats) {
-    // Exact common denominator; no rounding and no production BalancedObjective dependency.
-    var denominators = request.priorities().stream().map(s -> s.value(reference).signum() == 0 ? BigDecimal.ONE : s.value(reference)).toList();
-    var common = denominators.stream().reduce(BigDecimal.ONE, BigDecimal::multiply);
-    var score = BigDecimal.ZERO;
-    for (int i = 0; i < denominators.size(); i++) score = score.add(
-        request.priorities().get(i).value(stats).multiply(BigDecimal.valueOf(denominators.size() - i)).multiply(common.divide(denominators.get(i))));
-    return score;
-  }
-  private static BigDecimal secondary(RecommendationRequest request, BaseStats stats) {
-    return request.balanced().secondary().stream().map(s -> s.value(stats)).reduce(BigDecimal.ZERO, BigDecimal::add);
-  }
   private static long additions(BuildSelection current, BuildSelection selection) {
     return selection.gadgetIds().stream().filter(id -> !current.gadgetIds().contains(id)).count();
   }

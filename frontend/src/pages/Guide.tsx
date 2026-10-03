@@ -45,9 +45,9 @@ export function GuidePage() {
       <p><strong>Keep current</strong> is the default gadget scope: recommend the racer and machine around your selected gadgets, including an empty plate. Their passive effects are recalculated for the proposed types.</p>
       <p>Choose <strong>Optimize unlocked gadgets</strong> to allow additions, removals and replacements. Locked gadgets remain. This optimizes reviewed passive stat points; utility, scenario effects and race strategy are not valued.</p>
       <p><strong>Strict</strong> puts your first stat above everything else. Choose it when you want as much of that stat as possible.</p>
-      <p><strong>Balanced</strong> lets you trade a little of one stat for improvements elsewhere. You decide how much each stat may drop.</p>
-      <p className="guide-callout">For example, <strong>5% maximum loss on 80 Boost means it cannot fall below 76</strong>. Set a limit to <strong>0%</strong> to allow improvements without accepting any decrease.</p>
-      <p>Not bothered about Power? Move it to <strong>Tie-break / Ignore</strong>. It won’t be protected, but extra Power is still preferred when your important stats are equal. With several stats in this group, their combined total decides.</p>
+      <p><strong>Balanced</strong> considers your priorities in order. For each stat, it keeps builds within the loss you allow, then evaluates the next priority. You can start with an empty setup or just a locked racer or part.</p>
+      <p className="guide-callout">For example, if the best remaining build has <strong>100 Boost</strong>, a <strong>5% maximum sacrifice</strong> keeps builds with at least <strong>95 Boost</strong>. The next stat is compared only among those builds. <strong>0%</strong> keeps only the best value at that stage.</p>
+      <p>Not bothered about Power? Choose <strong>Ignore</strong>. It has no effect on the recommendation, even to break ties. If several builds survive every stage, your active priority order decides; exact ties prefer fewer changes, fewer added gadgets, then lower slot cost. Your current stats are shown for comparison only.</p>
       <p>Conflicting locks or locked items marked as unavailable can prevent a recommendation until you change those choices.</p>
       <p>Select <strong>Calculate recommendation</strong> to see the proposed changes. Your locked items stay in place. Choose <strong>Apply to draft</strong> to use the suggestion, or <strong>Cancel</strong> to leave your setup untouched. Saving or publishing is still your choice.</p>
     </section>

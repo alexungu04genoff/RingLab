@@ -617,19 +617,19 @@ Applying a proposal changes the client's draft; publishing later follows section
 
 How does the solver choose a candidate? Both modes preserve hard constraints and reuse the
 same passive evaluator. Strict can choose component maxima independently within fixed type
-groups. Balanced searches combinations because its loss floors concern the complete loadout.
+groups. Balanced streams survivor passes because its loss floors concern the complete loadout.
 `BuildRecommendationSolver` retains validation/reference orchestration, mode dispatch and result
 wording. Its package-private collaborators are internal domain implementation, with no
 new ports, services or repositories. `RecommendationCandidates` keeps legal/evaluable candidate
 preparation together; `RecommendationStatsEvaluator` owns full-selection and subset passive evaluation;
-`RecommendationCandidateOrder` owns comparison, incumbent tracking and
-observed secondary ties. Strict and Balanced retain separate component loops and their existing
-work checkpoints. Only gadget-subset traversal is shared; no generic search framework is used.
+`RecommendationCandidateOrder` owns active lexicographic comparison, convenience ties and
+incumbent tracking. Strict and Balanced retain separate search code and shared unchanged
+budgets. Gadget-subset traversal is shared; no generic search framework is used.
 The shared traversal now accepts `GadgetRecommendationScope`: `KEEP_CURRENT`
 (default) evaluates only the exact current ordered gadget plate per type;
 `OPTIMIZE_UNLOCKED` enumerates subsets extending explicit gadget locks.
 The REST field is `gadgetScope`; the UI includes it in configuration identity.
-Neither scope changes Strict's comparison or Balanced's reference-based objective.
+Both scopes evaluate passive-adjusted candidate totals before Balanced thresholds are applied.
 
 <!-- diagram: recommendation-solver -->
 ```mermaid
@@ -640,12 +640,12 @@ flowchart TB
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
   strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
-  balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
+  balanced["BALANCED<br/>empty or partial current draft allowed<br/>BalancedConfiguration: active sacrifices / Ignore"]:::domain
   subsets["RecommendationGadgetSearch<br/>KEEP_CURRENT: evaluate current ordered gadgets<br/>OPTIMIZE_UNLOCKED: subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
   calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator only<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
-  components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
-  compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
+  components["BalancedRecommendationSearch<br/>successive survivor passes prove maxima<br/>signed floors; safe suffix bounds / subtree counts<br/>final active lexicographic pass"]:::domain
+  compare["RecommendationCandidateOrder<br/>active lexicographic values → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
   req --> validate --> baseline --> pools --> branch
   branch --> strict
@@ -657,7 +657,9 @@ flowchart TB
   subsets -->|"Strict: fixed base + supported adjustments"| compare
   subsets -->|"Balanced"| components --> compare
   compare --> result
-  budget["RecommendationSearchBudget<br/>unchanged step boundaries, deadline and interruption"]:::domain
+  components --> stages["BalancedStage<br/>proven best / floor / survivor counts<br/>withheld if search is truncated"]:::domain
+  stages --> result
+  budget["RecommendationSearchBudget<br/>100,000 work steps / two seconds / interruption"]:::domain
   budget -.-> strict
   budget -.-> subsets
   budget -.-> components
@@ -676,19 +678,21 @@ loss. The current additive, type-dependent passive rules let it choose the best 
 base contribution per component, grouped by racer type, then jointly enumerate gadgets.
 This reduction is specific to the implemented rules.
 
-**Balanced** computes minimum allowed values from the frozen reference and the active loss
-percentages. It ranks feasible candidates with fixed rank weights and reference denominators.
-`BalancedObjective` uses exact `BigDecimal` coefficients equivalent to the weighted relative
-score, without division or rounding. Equal scores compare active values lexicographically,
-then the sum of secondary values. `RecommendationCandidateOrder` then uses the shared convenience/UUID ties.
-Optimistic per-stat maxima allow pruning without discarding a possible better completion.
+**Balanced** is sequential constrained lexicographic optimization using per-priority sacrifice
+thresholds over the surviving candidate set. Each pass proves the next active maximum `b`,
+then applies `b - abs(b) * loss / 100` with exact `BigDecimal` arithmetic. Final survivors
+compare active values in user order, then shared convenience/UUID ties. Ignore never affects
+filtering or comparison; all Ignore uses convenience only. Empty and partial drafts work.
+Suffix upper bounds prune impossible completions; lower bounds allow counting entire surviving
+subtrees and selecting their best representative. Otherwise the search recurses. ESTABLISHED
+publishes proven stage counts and thresholds; BEST_FOUND withholds all stage claims.
 
 The supported patch is `1.4.1`; the current imported passive ruleset label is
 `crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unreviewed numerical effects
 do not compete as zero or base-only values. Recommendations optimize base stats plus
 reviewed always-active passive stat adjustments. Race-state and triggered effects are
 intentionally excluded and remain available in Scenario Preview. Utility benefits never
-score. Balanced retains its passive reference floors and normalization. Recommendation
+score. Current stats are presentation only and never define thresholds. Recommendation
 domain code cannot depend on Scenario types; the preview's assumptions remain separate.
 The new proposal is a selection,
 not a persistent `Build`, and has no author or publication identity.
@@ -696,7 +700,7 @@ not a persistent `Build`, and has no author or publication identity.
 Source trail: [orchestration](../backend/src/main/java/dev/ringlab/application/build/BuildRecommendationService.java),
 [loader](../backend/src/main/java/dev/ringlab/application/build/RecommendationCatalogLoader.java),
 [solver](../backend/src/main/java/dev/ringlab/domain/build/recommendation/BuildRecommendationSolver.java),
-[BalancedObjective](../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedObjective.java),
+[BalancedStage](../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedStage.java),
 [Strict guide](auto-builder.md), [Balanced guide](balanced-auto-builder.md).
 
 ## 7. Base and passive stats
@@ -1972,14 +1976,13 @@ flowchart LR
     config["BalancedConfiguration"]:::domain
     catalog["RecommendationCatalog<br/>catalog + BaseStats maps + GadgetRuleSnapshot"]:::domain
     solver["BuildRecommendationSolver / Budget"]:::domain
-    objective["BalancedObjective"]:::domain
+    objective["BalancedStage"]:::domain
     result["RecommendationResult / Outcome / BalancedDetails"]:::domain
     request --> selection
     request --> mode
     request --> config
     solver --> request
     solver --> catalog
-    solver --> objective
     solver --> result
     solver --> candidates["RecommendationCandidates"]:::domain
     solver --> searches["StrictRecommendationSearch / BalancedRecommendationSearch"]:::domain
@@ -1989,7 +1992,7 @@ flowchart LR
     gadgets --> candidates
     gadgets --> budget
     searches --> objective
-    order --> objective
+    result --> objective
     result --> selection
   end
   subgraph stats["GAME DATA: calculated statistics"]
@@ -2015,7 +2018,7 @@ flowchart LR
   candidates --> pc
   catalog --> base
   result --> base
-  objective --> base
+  objective --> mode
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
 ```
 
@@ -2115,7 +2118,7 @@ the relevant service even on a public route.
 | POST `/api/builds` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | `BuildDraftValidator`, `ProfanityPolicy`, `GadgetPlate`, `MachineCompatibility`, `MachineComposition` | B, G + actor + response | B, G, U, V | Yes, including remix | No | User |
 | PUT `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService`, response services | Same validation; `ForbiddenException.requireOwner` | B, G + actor + response | B, G, U, V | Yes | No | User; build owner |
 | DELETE `/api/builds/{id}` | `BuildRestResource` | `BuildUseCase` | `BuildService` | `ForbiddenException.requireOwner` | B + actor | B, U | Yes; cascades and remix SET NULL | No | User; build owner |
-| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationUseCase` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedObjective`, plate/compatibility rules | G, BS, GR, C + actor | G, BS, GR, C, U | **No** | No | User |
+| POST `/api/build-recommendations` | `BuildRecommendationRestResource` | `BuildRecommendationUseCase` | `BuildRecommendationService`, `CollectionService` | `RecommendationCatalogLoader`, `BuildRecommendationSolver`, `BalancedStage`, plate/compatibility rules | G, BS, GR, C + actor | G, BS, GR, C, U | **No** | No | User |
 | GET `/api/saved-builds` | `SavedBuildRestResource` | `SavedBuildUseCase` + `VoteUseCase` + `PassiveStatsUseCase` | `SavedBuildService`, `PassiveStatsService`, response services | `BuildDraftValidator` map check, `BuildResponseAssembler`; `VoteUseCase.summaries` supplies live vote facts | S, B, G, V, BS, GR + actor + response | S, B, G, V, BS, GR, U | No | No | User |
 | GET `/api/saved-builds/status` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Up to 50 distinct requested IDs | S + actor | S, U | No | No | User |
 | PUT `/api/saved-builds/{id}` | `SavedBuildRestResource` | `SavedBuildUseCase` | `SavedBuildService` | Build existence; idempotent bookmark | B, S + actor | B, S, U | Conditional | No | User |
@@ -2244,15 +2247,15 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [RecommendationCatalog] | Recommendation | Detached immutable catalog and per-component base-stat maps consumed without I/O by the solver. |
 | [RecommendationMode] | Recommendation | Distinguishes Strict lexicographic and Balanced objective execution. |
 | [StatPriority] | Recommendation | Enumerates the five stat dimensions and provides their value selection. |
-| [BalancedConfiguration] | Recommendation | Validates active/secondary stat partitioning and allowed loss percentages. |
-| [BalancedObjective] | Recommendation | Defines reference floors, exact normalized weighted comparisons and admissible bound comparisons. |
-| [BuildRecommendationSolver] | Recommendation | Orchestrates validation, frozen reference, mode dispatch, outcomes and unchanged result wording. |
+| [BalancedConfiguration] | Recommendation | Validates active/ignored settings and normalizes legacy 100% sacrifices to Ignore. |
+| [BalancedStage] | Recommendation | Exact signed threshold formula and proven stage maximum, floor and survivor counts. |
+| [BuildRecommendationSolver] | Recommendation | Orchestrates validation, optional current comparison, mode dispatch and honest proof outcomes. |
 | [RecommendationCandidates] | Recommendation | Validates IDs, slots, locks and availability; prepares legal pools and passive evaluations from detached facts. |
-| [RecommendationCandidateOrder] | Recommendation | Exact mode comparison, convenience/UUID tie-breaks, incumbent and observed secondary ties. |
+| [RecommendationCandidateOrder] | Recommendation | Exact active lexicographic comparison, convenience/UUID ties and incumbent tracking. |
 | [RecommendationSearchBudget] | Recommendation | Preserves step increments, short-circuit checks, constructor-time deadline and interruption behavior. |
 | [RecommendationGadgetSearch] | Recommendation | Ordered optional gadgets and subset traversal; plate/support pruning and retained display order. |
 | [StrictRecommendationSearch] | Recommendation | Independent component maxima per racer type, locked-effect restrictions and Strict candidate evaluation. |
-| [BalancedRecommendationSearch] | Recommendation | Complete component choices, optimistic remaining maxima and Balanced branch-and-bound. |
+| [BalancedRecommendationSearch] | Recommendation | Streaming survivor passes, signed floors, safe suffix bounds and subtree counting. |
 | [RecommendationResult] | Recommendation | Reports a suggested selection, stats, search outcome and optional Balanced comparison details. |
 | [CollectionCategory] | Collection | Limits ownership categories to racer, machine and gadget. |
 | [CollectionExclusions] | Collection | Immutable sets of unavailable catalog IDs; absence means available. |
@@ -2552,7 +2555,7 @@ then passed. See the exact commands and run sequence in
 | Layer boundaries | `ArchitectureTest`: JDK-only domain/ports; inbound input-port boundary with exact error exceptions; outbound input-port prohibition; positive/negative fixtures; ranking and calculator separation. |
 | Build validation and browsing | `BuildServiceTest`, `BuildResponseAssemblerTest`, `BuildRankingTest`, `WilsonScoreTest`; real SQL behavior in `RepositoryContractIntegrationTest` and `BuildRankingIntegrationTest`. |
 | Recommendation orchestration | `BuildRecommendationServiceTest`: one catalog load, bounded concurrency/release and no build/community persistence dependency. |
-| Solver correctness | `BuildRecommendationSolverTest`, `BalancedSolverTest`, `BalancedObjectiveTest`: locks, exclusions, plate/BOOST constraints, reference floors, tiny exhaustive comparisons and bounded outcomes. |
+| Solver correctness | `BuildRecommendationSolverTest`, `BalancedSolverTest`, `BalancedConfigurationTest`: locks, exclusions, plate/BOOST, signed survivor thresholds, 480 independent oracle comparisons, 240 Strict equivalence cases and bounded outcomes. |
 | Base/passive/scenario | `BaseStatsTest`, `BaseStatsBreakdownTest`, `PassiveStatsCalculatorTest`, `ScenarioStatsCalculatorTest`, plus corresponding application-service tests. |
 | Reviewed rule loading | `ReviewedGadgetRulesTest`: one shared successful load, concurrent callers, and retry after missing/error loads. |
 | Account/security behavior | `AuthServiceTest`, `ExternalAuthServiceTest`, `PasswordResetServiceTest`, `CurrentUserTest`; real transaction boundaries in `AccountRegistrationIntegrationTest`, `GoogleAuthIntegrationTest` and `PasswordResetIntegrationTest`. |
@@ -2631,9 +2634,9 @@ outside a static source inspection.
    preparation uses `RecommendationCatalogLoader` for the selected patch/catalog/stat maps and
    `CollectionService.load` for the actor's private exclusions.
 3. `BuildRecommendationSolver` delegates lock/selection validation to `RecommendationCandidates`
-   and prepares the current reference. `StrictRecommendationSearch` uses priority ordering;
-   `BalancedRecommendationSearch` uses the frozen `BalancedObjective` while searching joint
-   component choices with pruning. Both reuse gadget traversal, candidate order and budget checks.
+   and prepares optional current comparison stats. `StrictRecommendationSearch` uses priority ordering;
+   `BalancedRecommendationSearch` proves sequential survivor thresholds using streaming passes,
+   suffix bounds and subtree counting. Both reuse gadget traversal, candidate order and budget checks.
 4. Candidate stats use the same reviewed `PassiveStatsCalculator` path. Budget and coverage
    determine whether the outcome establishes the result or only reports a best-found candidate.
 5. The permit is released and `BuildRecommendationResponse` returns selection/stat/outcome data.
@@ -2708,7 +2711,7 @@ outside a static source inspection.
 [AuthRestResource]: ../backend/src/main/java/dev/ringlab/adapter/in/rest/auth/AuthRestResource.java
 [AuthService]: ../backend/src/main/java/dev/ringlab/application/auth/AuthService.java
 [BalancedConfiguration]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedConfiguration.java
-[BalancedObjective]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedObjective.java
+[BalancedStage]: ../backend/src/main/java/dev/ringlab/domain/build/recommendation/BalancedStage.java
 [BaseStats]: ../backend/src/main/java/dev/ringlab/domain/gamedata/BaseStats.java
 [BaseStatsBreakdown]: ../backend/src/main/java/dev/ringlab/domain/gamedata/BaseStatsBreakdown.java
 [BaseStatsDbAdapter]: ../backend/src/main/java/dev/ringlab/adapter/out/db/gamedata/BaseStatsDbAdapter.java

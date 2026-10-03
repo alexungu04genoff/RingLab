@@ -115,9 +115,9 @@ it("opens configuration with current stats without requesting, exposes prioritie
   const guide = screen.getByRole("link", { name: "How recommendations work ↗" });
   expect(guide.getAttribute("href")).toBe("/guide#recommendations");
   expect(guide.getAttribute("target")).toBe("_blank");
-  const reference = screen.getByLabelText("Frozen reference");
+  const reference = screen.getByLabelText("Starting setup");
   expect(reference.querySelector("details")?.open).toBe(true);
-  expect(within(reference).getByRole("img", { name: "This setup stays fixed for this recommendation session." })).toBeTruthy();
+  expect(within(reference).getByRole("img", { name: "This setup is shown for comparison; it does not set Balanced thresholds." })).toBeTruthy();
   expect(within(reference).getByRole("img", { name: "Racer type: Speed" })).toBeTruthy();
   expect(within(reference).getAllByRole("img", { name: "Machine type: Speed" })).toHaveLength(3);
   expect((screen.getByLabelText("Recommendation machine type") as HTMLSelectElement).value).toBe("SPEED");
@@ -222,7 +222,7 @@ it("shows unavailable current stats and result outcome without claiming improvem
   vi.mocked(api).mockResolvedValue({ ...result, currentStats: null, recommendedStats: null, outcome: "BEST_FOUND" });
   render(<Harness initial={{ ...draft, machineType: "BOOST", tirePartId: null }} />); open(); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
-  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Unavailable");
+  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Recommended values");
   expect(screen.getByText(/Boost uses Front and Rear only/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
   expect(screen.queryByRole("button", { name: "Apply to draft" })).toBeNull(); expect(api).toHaveBeenCalledTimes(1);
@@ -281,43 +281,39 @@ it("aborts on unmount and ignores superseded responses after another calculation
   hook.unmount(); expect(signal.aborted).toBe(true);
 });
 
-it("freezes Balanced reference, defaults to zero losses and restores previous settings and rank", async () => {
-  vi.mocked(api).mockImplementation(async path => path.startsWith("/stats/")
-    ? { passive: { coverage: "CALCULATED", adjusted: stats } }
-    : { ...result, balanced: { minimum: { BOOST: 57, SPEED: 30, ACCELERATION: 20, HANDLING: 40 }, secondaryTieBreakDecided: false } });
+it("sends the complete order, preserves Ignore settings and displays proven stages", async () => {
+  vi.mocked(api).mockResolvedValue({ ...result, balanced: { proven: true, stages: [
+    { stat: "BOOST", lossPercent: 5, best: 100, threshold: 95, candidatesBefore: 312, candidatesAfter: 47 },
+  ] } });
   render(<Harness locked />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
   const prioritiesTable = screen.getByRole("table", { name: "Stat priorities" });
-  for (const heading of ["Stat", "Move", "Current", "Maximum loss", "Minimum allowed", "Tie-break / Ignore"])
+  for (const heading of ["Stat", "Move", "Maximum sacrifice", "Ignore"])
     expect(within(prioritiesTable).getByRole("columnheader", { name: heading })).toBeTruthy();
   expect(within(prioritiesTable).getAllByRole("row")).toHaveLength(6);
-  expect(within(prioritiesTable).getAllByText("Maximum loss")).toHaveLength(1);
-  const boost = screen.getByLabelText("Boost maximum loss (%)") as HTMLInputElement;
+  const boost = screen.getByLabelText("Boost maximum sacrifice (%)") as HTMLInputElement;
   expect(boost.value).toBe("0");
   fireEvent.change(boost, { target: { value: "5" } });
-  expect(screen.getByLabelText("Boost minimum allowed: 57")).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Move Boost to tie-break / ignore" }));
-  expect(screen.queryByLabelText("Boost maximum loss (%)")).toBeNull();
-  const secondaryTable = screen.getByRole("table", { name: "Tie-break / Ignore stats" });
-  expect(within(secondaryTable).getByRole("columnheader", { name: "Current" })).toBeTruthy();
-  expect(within(secondaryTable).getByRole("rowheader", { name: "Boost" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Restore Boost" }));
+  fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Boost" }));
+  expect(boost.disabled).toBe(true);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Boost" }));
+  expect(boost.disabled).toBe(false);
   expect(within(prioritiesTable).getAllByRole("rowheader").map(row => row.textContent))
-    .toEqual(["Acceleration", "Speed", "Handling", "Power", "Boost"]);
-  expect((screen.getByRole("button", { name: "Move Boost down" }) as HTMLButtonElement).disabled).toBe(true);
-  expect((screen.getByLabelText("Boost maximum loss (%)") as HTMLInputElement).value).toBe("5");
-  fireEvent.click(screen.getByRole("button", { name: "Move Power to tie-break / ignore" }));
+    .toEqual(["Acceleration", "Speed", "Handling", "Boost", "Power"]);
+  fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Power" }));
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   const calls = vi.mocked(api).mock.calls.filter(([path]) => path === "/build-recommendations");
   expect(JSON.parse(calls[0][1]!.body as string)).toMatchObject({ mode: "BALANCED", current: draftSelection(draft),
-    priorities: ["ACCELERATION", "SPEED", "HANDLING", "BOOST"],
-    balanced: { maximumLossPercent: { BOOST: 5, SPEED: 0, ACCELERATION: 0, HANDLING: 0 }, secondary: ["POWER"] } });
-  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Tie-break / Ignore — no minimum");
+    priorities: ["ACCELERATION", "SPEED", "HANDLING", "BOOST", "POWER"],
+    balanced: { maximumLossPercent: { BOOST: 5, SPEED: 0, ACCELERATION: 0, HANDLING: 0 }, ignored: ["POWER"] } });
+  expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Ignored in the recommendation");
+  fireEvent.click(screen.getByText("Balanced filtering stages"));
+  expect(screen.getByRole("table", { name: "Balanced filtering stages" }).textContent).toContain("312 → 47");
   expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("-3.3333%");
   expect(applied).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
-  expect(screen.getByLabelText("Boost minimum allowed: 57")).toBeTruthy();
+  expect((screen.getByLabelText("Boost maximum sacrifice (%)") as HTMLInputElement).value).toBe("5");
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   const repeated = vi.mocked(api).mock.calls.filter(([path]) => path === "/build-recommendations");
   expect(JSON.parse(repeated[1][1]!.body as string).current).toEqual(draftSelection(draft));
@@ -330,7 +326,7 @@ it("allows zero-loss Balanced calculation when the frozen patch's catalog detail
     ? { passive: { coverage: "CALCULATED", adjusted: stats } } : result);
   const mounted = render(<Harness versionLoaded={false} />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
   const button = screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement;
   expect(button.disabled).toBe(true);
   expect(document.getElementById(button.getAttribute("aria-describedby")!)?.textContent).toContain("patch details");
@@ -349,14 +345,14 @@ it("compares Balanced selections with type badges and explicit unchanged rows, i
     ? { passive: { coverage: "CALCULATED", adjusted: stats } } : result);
   render(<Harness locked />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
-  const reference = screen.getByLabelText("Frozen reference").querySelector("details")!;
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
+  const reference = screen.getByLabelText("Starting setup").querySelector("details")!;
   expect(reference.open).toBe(true);
   const body = screen.getByRole("dialog").querySelector(".recommendation-body")!;
   body.scrollTop = 200;
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   await waitFor(() => expect(body.scrollTop).toBe(0));
-  expect(screen.getByLabelText("Frozen reference").querySelector("details")!.open).toBe(false);
+  expect(screen.getByLabelText("Starting setup").querySelector("details")!.open).toBe(false);
   const comparison = screen.getByRole("region", { name: "Setup comparison" });
   expect(within(comparison).getByRole("img", { name: "Racer type: Speed" })).toBeTruthy();
   expect(within(screen.getByLabelText("Recommended Front")).getByRole("img", { name: "Machine type: Speed" })).toBeTruthy();
@@ -367,8 +363,8 @@ it("compares Balanced selections with type badges and explicit unchanged rows, i
   expect(screen.getByLabelText("Current Racer").parentElement?.textContent).toContain("Locked");
   expect(applied).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
-  expect(screen.getByLabelText("Frozen reference").querySelector("details")!.open).toBe(true);
-  const summary = screen.getByLabelText("Frozen reference").querySelector("summary")!;
+  expect(screen.getByLabelText("Starting setup").querySelector("details")!.open).toBe(true);
+  const summary = screen.getByLabelText("Starting setup").querySelector("summary")!;
   summary.focus();
   const tab = new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true });
   fireEvent(summary, tab); expect(tab.defaultPrevented).toBe(false);
@@ -380,20 +376,20 @@ it("shows a changed gadget list and correctly labels an unchanged empty list", a
     : { ...result, selection: { ...result.selection!, gadgetIds: [] } });
   const mounted = render(<Harness />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60"); calculate();
+  await screen.findByLabelText("Boost maximum sacrifice (%)"); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(within(screen.getByLabelText("Current gadgets")).getByText("Gadget A", { exact: true })).toBeTruthy();
   expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("None");
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   mounted.rerender(<Harness initial={{ ...draft, gadgetIds: [] }} />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60"); calculate();
+  await screen.findByLabelText("Boost maximum sacrifice (%)"); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(screen.getByLabelText("Current gadgets").textContent).toBe("None");
   expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("No change");
 });
 
-it("names unsupported gadget effects and offers a usable Strict fallback", () => {
+it("does not use unsupported presentation stats to block the server's candidate search", () => {
   const partial: BuildStatsResult = { ...loadedStats, passive: { ...loadedStats.passive!, coverage: "PARTIAL", effects: [{
     gadgetId: "a", gadgetName: "Gadget A", effectId: "unreviewed", label: "Unverified effects", status: "UNSUPPORTED",
     adjustment: zeroStats, explanation: "No reviewed rule for this gadget.", sources: [],
@@ -401,11 +397,6 @@ it("names unsupported gadget effects and offers a usable Strict fallback", () =>
   render(<Harness referenceStats={partial} />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   const button = screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement;
-  expect(button.disabled).toBe(true);
-  expect(screen.getByRole("status").textContent).toContain("Gadget A: No reviewed rule");
-  expect(screen.getByRole("status").textContent).not.toContain("complete your racer");
-  expect(screen.getByRole("button", { name: "Edit starting setup" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Use Strict" }));
   expect(button.disabled).toBe(false);
   expect(api).not.toHaveBeenCalled();
 });
@@ -418,7 +409,7 @@ it("allows Balanced with reviewed non-stat gadgets without inventing stat bonuse
   render(<Harness referenceStats={nonStat} />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
-  expect(screen.getByLabelText("Handling current: 40")).toBeTruthy();
+  expect(screen.getByLabelText("Handling maximum sacrifice (%)")).toBeTruthy();
 });
 
 it("calculates Balanced for a remixed setup whose race-time gadgets contribute zero passive stats", async () => {
@@ -438,7 +429,7 @@ it("calculates Balanced for a remixed setup whose race-time gadgets contribute z
     referenceStats={reference} returnFocus={null} onClose={vi.fn()} onApply={applied} />);
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
-  expect(screen.getByLabelText("Speed current: 30")).toBeTruthy();
+  expect(screen.getByLabelText("Speed maximum sacrifice (%)")).toBeTruthy();
   calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
   const call = vi.mocked(api).mock.calls.find(([path]) => path === "/build-recommendations")!;
@@ -460,36 +451,52 @@ it("explains a missing patch beside Calculate and requires reopening after the d
   expect(screen.getByRole("status").textContent).toContain("Close and reopen");
   fireEvent.click(screen.getByRole("button", { name: "Cancel" })); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
-it("requires one active stat and valid finite losses, preserves mode settings, and cancels without mutation", async () => {
+it("allows all Ignore, validates active losses and preserves settings across modes", async () => {
   vi.mocked(api).mockResolvedValue({ passive: { coverage: "CALCULATED", adjusted: stats } });
   render(<Harness />); open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
   for (const name of ["Power", "Handling", "Speed", "Acceleration"])
-    fireEvent.click(screen.getByRole("button", { name: `Move ${name} to tie-break / ignore` }));
-  expect((screen.getByRole("button", { name: "Move Boost to tie-break / ignore" }) as HTMLButtonElement).disabled).toBe(true);
-  for (const value of ["", "-1", "101"]) {
-    fireEvent.change(screen.getByLabelText("Boost maximum loss (%)"), { target: { value } });
+    fireEvent.click(screen.getByRole("checkbox", { name: `Ignore ${name}` }));
+  for (const value of ["", "-1", "100", "101"]) {
+    fireEvent.change(screen.getByLabelText("Boost maximum sacrifice (%)"), { target: { value } });
     expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
   }
-  fireEvent.change(screen.getByLabelText("Boost maximum loss (%)"), { target: { value: "5.5" } });
+  fireEvent.change(screen.getByLabelText("Boost maximum sacrifice (%)"), { target: { value: "5.5" } });
   fireEvent.click(screen.getByRole("button", { name: "Strict" }));
   expect(screen.getByRole("button", { name: "Move Power up" })).toBeTruthy();
-  fireEvent.click(screen.getByRole("button", { name: "Balanced" })); await screen.findByLabelText("Boost current: 60");
-  expect((screen.getByLabelText("Boost maximum loss (%)") as HTMLInputElement).value).toBe("5.5");
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" })); await screen.findByLabelText("Boost maximum sacrifice (%)");
+  expect((screen.getByLabelText("Boost maximum sacrifice (%)") as HTMLInputElement).value).toBe("5.5");
+  fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Boost" }));
+  expect(screen.getByText(/All stats are ignored/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   expect(applied).not.toHaveBeenCalled();
   expect(vi.mocked(api).mock.calls.every(([path]) => path.startsWith("/stats/"))).toBe(true);
 });
 
-it("reports unsupported or negative reference values instead of offering Balanced calculation", async () => {
-  vi.mocked(api).mockResolvedValue({ passive: { coverage: "CALCULATED", adjusted: { ...stats, power: -1 } } });
-  render(<Harness />); open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByText("Balanced cannot use a starting stat below zero. Change your setup in the editor, or use Strict.");
-  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
+it("allows negative current values as presentation only", () => {
+  render(<Harness referenceStats={{ ...loadedStats, passive: { ...loadedStats.passive!, adjusted: { ...stats, power: -1 } } }} />);
+  open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+  expect(api).not.toHaveBeenCalled();
+});
+
+it.each([false,true])("calculates an incomplete draft without fetching current stats; provisional=%s", async provisional => {
+  vi.mocked(api).mockResolvedValue({ ...result, currentStats: null, outcome: provisional ? "BEST_FOUND" : "ESTABLISHED",
+    balanced: { proven: !provisional, stages: [] } });
+  render(<Harness initial={{ ...draft, racerId: "", frontPartId: "", rearPartId: "", tirePartId: null, gadgetIds: [] }} />);
+  open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect(api).not.toHaveBeenCalled(); calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
+  const comparison=screen.getByRole("region", { name: "Stat comparison" });
+  expect(comparison.textContent).toContain("Recommended values"); expect(comparison.textContent).not.toContain("Unavailable");
+  expect(comparison.querySelector(".recommendation-stat-before")).toBeNull();
+  fireEvent.click(screen.getByText("Balanced filtering stages"));
+  expect(screen.getByText(provisional ? /Stage thresholds are withheld/ : /All stats were ignored/)).toBeTruthy();
+  expect(api).toHaveBeenCalledTimes(1);
 });
 
 it("configuration changes abort calculations and discard late responses and proposals", async () => {
@@ -520,7 +527,7 @@ it("rejects a changed draft before calculation against an earlier frozen referen
 it("validates stat partitions and renders positive, negative and zero-baseline changes honestly", () => {
   const losses = { BOOST: "5", SPEED: "10", ACCELERATION: "25", HANDLING: "50", POWER: "0" };
   expect(validBalanced(["BOOST"], ["SPEED", "ACCELERATION", "HANDLING", "POWER"], losses)).toBe(true);
-  expect(validBalanced([], defaultPriorities, losses)).toBe(false);
+  expect(validBalanced([], defaultPriorities, losses)).toBe(true);
   expect(validBalanced(["BOOST"], ["BOOST", "SPEED", "ACCELERATION", "HANDLING"], losses)).toBe(false);
   for (const value of ["NaN", "Infinity", "-1", "101", ""])
     expect(validBalanced(defaultPriorities, [], { ...losses, BOOST: value })).toBe(false);

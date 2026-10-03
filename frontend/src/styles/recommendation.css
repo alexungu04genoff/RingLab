@@ -63,7 +63,7 @@
 .balanced-reference details[open] > summary { margin-bottom: 12px; }
 .balanced-reference p { font-size: 16px; line-height: 1.5; margin-bottom: 12px; }
 .balanced-priorities-scroll { max-width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; }
-.balanced-priorities-table { width: 100%; min-width: 760px; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
+.balanced-priorities-table { width: 100%; min-width: 520px; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
 .balanced-priorities-table thead { background: #1b2430; color: var(--muted); }
 .balanced-priorities-table th,
 .balanced-priorities-table td { padding: 9px 8px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
@@ -76,24 +76,13 @@
 .balanced-priorities-table .type-badge { min-width: 0; justify-content: center; font-size: 14px; text-transform: none; }
 .balanced-priorities-table .priority-reorder { display: flex; gap: 4px; }
 .balanced-priorities-table button { padding: 5px 8px; font-size: 16px; }
-.balanced-current { font-weight: 700; }
-.balanced-minimum { color: var(--muted); }
 .balanced-loss-input { display: flex; align-items: center; width: 92px; }
 .balanced-loss-input input { width: 66px; margin: 0; padding: 5px 7px; font-size: 16px; border-radius: 6px 0 0 6px; }
 .balanced-loss-input span { align-self: stretch; display: inline-flex; align-items: center; padding: 0 7px; border: 1px solid #39404e; border-left: 0; border-radius: 0 6px 6px 0; background: #202733; color: var(--muted); }
-.balanced-demote { white-space: nowrap; }
-.balanced-secondary-table { width: 100%; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
-.balanced-secondary-table tbody { background: #171e28; }
-.balanced-secondary-table tbody tr:last-child > * { border-bottom: 0; }
-.balanced-secondary-table .type-badge { font-size: 14px; text-transform: none; }
-.balanced-secondary-table thead { background: #1b2430; color: var(--muted); }
-.balanced-secondary-table th,
-.balanced-secondary-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
-.balanced-secondary-table td:last-child { text-align: right; }
-.balanced-secondary-table button { padding: 5px 10px; font-size: 16px; }
-.balanced-scoring-details { margin: 0 0 16px; color: var(--muted); font-size: 16px; }
-.balanced-scoring-details summary { cursor: pointer; }
-.balanced-scoring-details p { margin: 8px 0; font-size: 16px; line-height: 1.5; }
+.balanced-stage-table { width: 100%; min-width: 600px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.balanced-stage-table thead { background: #1b2430; color: var(--muted); }
+.balanced-stage-table th,
+.balanced-stage-table td { padding: 8px 12px; border-bottom: 1px solid var(--border); text-align: left; }
 
 @media (min-width: 1001px) {
   .build-recommendation-dialog.balanced-result[open] {

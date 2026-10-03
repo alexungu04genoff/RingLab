@@ -23,8 +23,8 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
   const headingId = useId();
   const blockerId = useId();
   const configuration = useRecommendationConfiguration(draft, locks, catalog, version, referenceStats);
-  const { mode, setMode, machineType, activePriorities, secondary, losses, reference, referenceVersion,
-    referenceIdentity, referenceAvailable, passiveReference, calculationBlocker } = configuration;
+  const { mode, setMode, machineType, priorities, activePriorities, ignored, losses, reference, referenceVersion,
+    referenceIdentity, passiveReference, calculationBlocker } = configuration;
   const recommendation = useBuildRecommendation(draft, locks, context, catalog, onApply, configuration.identity, referenceIdentity);
   const result = recommendation.result;
   useEffect(() => {
@@ -89,20 +89,18 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       {recommendation.busy && <p className="recommendation-activity" role="status">Calculating recommendation…</p>}
       {!result ? <RecommendationPriorityControls configuration={configuration} headingId={headingId} />
         : <RecommendationComparison result={result} reference={reference} locks={locks} catalog={catalog}
-          machineType={machineType} mode={mode} activePriorities={activePriorities} secondary={secondary} losses={losses} />}
+          machineType={machineType} mode={mode} priorities={priorities} ignored={ignored} />}
     </div>
     <div className="recommendation-actions">
       {!result && !recommendation.busy && calculationBlocker && <p id={blockerId} className="recommendation-blocker" role="status">{calculationBlocker}</p>}
       {!result && !recommendation.busy && <button type="button" className="primary"
       disabled={!!calculationBlocker} aria-describedby={calculationBlocker ? blockerId : undefined}
-      onClick={() => recommendation.calculate({ gameVersionId: reference.gameVersionId!, machineType: machineType!, priorities: activePriorities,
+      onClick={() => recommendation.calculate({ gameVersionId: reference.gameVersionId!, machineType: machineType!, priorities,
         current: draftSelection(reference), locked: locks, gadgetScope: configuration.gadgetScope, ...(mode === "BALANCED" ? { mode, balanced: {
-          maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), secondary } } : {}) })}>Calculate recommendation</button>}
+          maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), ignored } } : {}) })}>Calculate recommendation</button>}
       {selected && <button type="button" className="primary" disabled={recommendation.busy} onClick={async () => { if (await recommendation.apply()) onClose(); }}>Apply to draft</button>}
       {result && <button type="button" onClick={recommendation.cancel}>Back to priorities</button>}
-      {!result && mode === "BALANCED" && !referenceAvailable && passiveReference &&
-        <button type="button" onClick={() => { recommendation.cancel(); setMode("STRICT"); }}>Use Strict</button>}
-      <button type="button" onClick={close}>{!result && mode === "BALANCED" && !referenceAvailable && passiveReference ? "Edit starting setup" : "Cancel"}</button></div>
+      <button type="button" onClick={close}>Cancel</button></div>
     {selected && <p className="recommendation-draft-note">Apply changes only your unsaved draft. Publish or save separately.</p>}
   </dialog>, document.body);
 }

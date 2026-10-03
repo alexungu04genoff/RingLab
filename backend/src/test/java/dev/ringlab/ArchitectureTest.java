@@ -143,7 +143,7 @@ class ArchitectureTest {
                     for (var call : type.getAccessesFromSelf()) {
                         String owner = call.getTargetOwner().getName();
                         if (owner.equals("dev.ringlab.domain.build.recommendation.BuildRecommendationSolver")
-                                || owner.equals("dev.ringlab.domain.build.recommendation.BalancedObjective")
+                                || owner.equals("dev.ringlab.domain.build.recommendation.BalancedStage")
                                 || (owner.equals("dev.ringlab.domain.build.recommendation.StatPriority")
                                     && call.getName().equals("compare")))
                             events.add(SimpleConditionEvent.violated(type, call.getDescription()));

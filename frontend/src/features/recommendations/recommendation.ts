@@ -19,13 +19,17 @@ export interface RecommendationRequest {
   gameVersionId: string; machineType: RacingType; priorities: RacingType[];
   current: RecommendationSelection; locked: RecommendationSelection;
   mode?: "STRICT" | "BALANCED";
-  balanced?: { maximumLossPercent: Partial<Record<RacingType, number>>; secondary: RacingType[] };
+  balanced?: { maximumLossPercent: Partial<Record<RacingType, number>>; ignored: RacingType[] };
 }
 export interface RecommendationResult {
   outcome: "ESTABLISHED" | "BEST_FOUND" | "NO_LEGAL_COMPLETION" | "NO_FEASIBLE_CANDIDATE" | "UNAVAILABLE" | "LIMIT_WITHOUT_CANDIDATE";
   selection: RecommendationSelection | null; currentStats: BaseStats | null; recommendedStats: BaseStats | null;
   alreadyBest: boolean; reason: string; restrictions: string[]; ruleset: string; note: string; work: number; elapsedMillis: number;
-  balanced?: { minimum: Partial<Record<RacingType, number>>; secondaryTieBreakDecided: boolean } | null;
+  balanced?: { proven: boolean; stages: BalancedStage[] } | null;
+}
+export interface BalancedStage {
+  stat: RacingType; lossPercent: number; best: number; threshold: number;
+  candidatesBefore: number; candidatesAfter: number;
 }
 export interface RecommendationCatalog { racers: Racer[]; parts: MachinePart[]; gadgets: Gadget[] }
 
@@ -42,10 +46,10 @@ export function validPriorities(priorities: RacingType[]): boolean {
   return priorities.length === 5 && new Set(priorities).size === 5 && priorities.every(value => defaultPriorities.includes(value));
 }
 
-export function validBalanced(priorities: RacingType[], secondary: RacingType[], losses: Record<RacingType, string>): boolean {
-  return priorities.length > 0 && validPriorities([...priorities, ...secondary])
+export function validBalanced(priorities: RacingType[], ignored: RacingType[], losses: Record<RacingType, string>): boolean {
+  return validPriorities([...priorities, ...ignored])
     && priorities.every(stat => losses[stat].trim() !== "" && Number.isFinite(Number(losses[stat]))
-      && Number(losses[stat]) >= 0 && Number(losses[stat]) <= 100);
+      && Number(losses[stat]) >= 0 && Number(losses[stat]) < 100);
 }
 
 /** Display only: the server evaluates exact floors and the complete objective. */

@@ -5,8 +5,8 @@ not a language model, race simulation, popularity ranking or map recommendation.
 The existing editor owns publishing. No recommendation request writes builds,
 bookmarks, votes, comments or catalog data.
 
-Strict remains the default. [Balanced mode](balanced-auto-builder.md) adds hard
-per-stat loss floors and a weighted trade-off objective, using the same popup,
+Strict remains the default. [Balanced mode](balanced-auto-builder.md) adds sequential
+sacrifice thresholds over surviving candidates, using the same popup,
 endpoint, locks, detached catalog, budgets and Apply-to-draft flow.
 
 ## Passive-only objective
@@ -28,8 +28,8 @@ frontend configuration identity, so changing it cancels the old proposal.
 The closed 23-effect passive model uses signed addition, supported by the community
 calculator. `PassiveGadgetRules.POLICY` identifies `crossworlds-1.4.1-passive-additive-v1`;
 this is not independent official verification. Imported fact ruleset IDs and CSVs
-are unchanged. Strict remains lexicographic; Balanced retains its current reference
-floors, weighted objective and complete-reference requirement. Search budgets are unchanged.
+are unchanged. Strict remains lexicographic; Balanced uses per-stage survivor maxima
+and works from incomplete drafts. Search budgets are unchanged.
 
 Recommendations optimize base stats plus reviewed always-active passive stat
 adjustments. Race-state and triggered effects are intentionally excluded and remain
@@ -39,7 +39,7 @@ Current reference evaluation, optional gadget filtering, locked/subset eligibili
 and component-search adjustments all use the same passive calculator. Known
 conditional/utility gadgets may remain selected but their race-time benefits receive
 no points. Numerical effects outside the closed reviewed set remain unsupported.
-Strict reduction, Balanced reference floors/weights and the
+Strict reduction, Phase 2 gadget scope and the
 100,000-step/two-second/two-calculation limits are unchanged.
 
 The request and response no longer contain `basis` or `scenario`. Unknown top-level
@@ -106,11 +106,13 @@ result wording. Package-private `RecommendationCandidates` owns selection/lock/
 availability validation and legal catalog pools. `RecommendationStatsEvaluator`
 calls the passive calculator using detached facts and values.
 `StrictRecommendationSearch` owns the independent component maxima;
-`BalancedRecommendationSearch` owns joint choices, optimistic bounds and pruning.
+`BalancedRecommendationSearch` streams successive survivor passes with exact suffix
+bounds and safe Cartesian subtree counting, followed by active lexicographic selection.
 Both reuse `RecommendationGadgetSearch` for the existing ordered subset traversal,
 `RecommendationCandidateOrder` for the incumbent and deterministic comparison,
 and `RecommendationSearchBudget` for the same work/time/interruption checkpoints.
-`BalancedObjective` remains the sole owner of Balanced objective semantics.
+`BalancedConfiguration` owns active/ignored validation; `BalancedStage` contains exact
+signed thresholds and proven counts. The old weighted `BalancedObjective` was removed.
 These classes use only the JDK and domain. The compatibility rule now lives in
 `domain/gamedata/MachineCompatibility`; the existing application facade preserves
 its validation messages and semantic exceptions for existing callers.
@@ -188,13 +190,13 @@ The response distinguishes:
 | `ESTABLISHED` | Completed search established the best supported candidate. |
 | `BEST_FOUND` | A valid candidate exists, but search hit a budget. |
 | `NO_LEGAL_COMPLETION` | Complete feasibility check found no catalog completion. |
-| `NO_FEASIBLE_CANDIDATE` | Complete Balanced supported search found no candidate meeting all floors and hard constraints. |
+| `NO_FEASIBLE_CANDIDATE` | Reserved for proven empty feasible sets; sequential thresholds retain a maximum witness whenever supported candidates exist. |
 | `UNAVAILABLE` | Required patch, base contributions or locked effects cannot be fully evaluated. |
 | `LIMIT_WITHOUT_CANDIDATE` | Budget ended before finding a supported candidate; not proof of infeasibility. |
 
 Current stats use the same selected patch and passive calculation as the proposal. If
 the current setup is incomplete, illegal or partially supported, all current
-comparison values display unavailable rather than fabricated improvements.
+stat comparison is omitted rather than fabricated. Recommended values still display.
 Explanations identify the first actual differing priority relative to the current
 setup, the fixed machine type, locks and search coverage. They do not assert an
 unobserved tie between competing candidates.
@@ -222,12 +224,14 @@ this explicit route while keeping development-fixture endpoints blocked.
 ```
 
 Incomplete current selections are allowed; title/description/maps are not request
-inputs. This applies to Strict; Balanced explicitly requires a complete supported
-reference. Omitting `mode` preserves Strict. Balanced adds `mode: "BALANCED"`,
-active `priorities` and a typed `balanced` configuration; see the focused guide.
+inputs. Both modes complete empty or partial drafts. Omitting `mode` preserves Strict.
+Balanced adds `mode: "BALANCED"`, all five `priorities` and a typed `balanced`
+configuration with `maximumLossPercent` and `ignored`; see the focused guide.
 The server supplies stats, costs, compatibility and rules. The response
 contains `outcome`, nullable `selection`, `currentStats`, `recommendedStats`,
 `alreadyBest`, `reason`, `restrictions`, `ruleset`, `note`, `work`, `elapsedMillis`.
+Balanced adds `balanced: {proven, stages}`. Only completed searches publish stages;
+BEST_FOUND withholds provisional thresholds and never claims mathematical optimality.
 Validation uses existing safe 400 errors; unsupported data is a typed 200 outcome.
 
 The REST method is `@Blocking` (worker execution). The singleton service admits
@@ -292,7 +296,7 @@ Safe demonstration on an isolated database and local preview:
 ## Strict implementation verification history
 
 The measurements below describe the original Strict implementation. Current
-Balanced verification and its frozen real-catalog demonstration are recorded in
+Balanced verification and its current real-catalog benchmarks are recorded in
 [Balanced mode](balanced-auto-builder.md).
 
 Pure solver tests compare exact arithmetic and independently enumerate small

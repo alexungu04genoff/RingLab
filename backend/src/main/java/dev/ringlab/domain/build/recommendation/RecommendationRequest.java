@@ -27,7 +27,7 @@ public record RecommendationRequest(UUID gameVersionId, RacingType machineType,
         throw new IllegalArgumentException("Priorities must contain every stat exactly once");
     } else {
       if (balanced == null) throw new IllegalArgumentException("Balanced configuration is required");
-      balanced.validate(priorities);
+      priorities = balanced.completeOrder(priorities);
     }
     priorities = List.copyOf(priorities);
     if (current == null || locked == null) throw new IllegalArgumentException("Current selections and locks are required");
@@ -35,5 +35,9 @@ public record RecommendationRequest(UUID gameVersionId, RacingType machineType,
 
   public List<UUID> fixedGadgets() {
     return gadgetScope == GadgetRecommendationScope.KEEP_CURRENT ? current.gadgetIds() : locked.gadgetIds();
+  }
+
+  public List<StatPriority> activePriorities() {
+    return mode == RecommendationMode.STRICT ? priorities : priorities.stream().filter(s -> !balanced.ignored().contains(s)).toList();
   }
 }

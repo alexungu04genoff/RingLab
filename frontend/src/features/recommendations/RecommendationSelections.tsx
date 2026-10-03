@@ -28,12 +28,12 @@ export function RecommendationReference({ reference, catalog, passiveReference, 
   hasResult: boolean;
 }) {
   return (
-    <section aria-label="Frozen reference" className="balanced-reference">
+    <section aria-label="Starting setup" className="balanced-reference">
       <details key={hasResult ? "result" : "configuration"} open={!hasResult}>
       <summary>Starting setup <span className="recommendation-info-icon" role="img"
-        aria-label="This setup stays fixed for this recommendation session."
-        title="This setup stays fixed for this recommendation session.">i</span></summary>
-      <p>Selections and patch from when you opened this popup. Recalculating never compounds losses.</p>
+        aria-label="This setup is shown for comparison; it does not set Balanced thresholds."
+        title="This setup is shown for comparison; it does not set Balanced thresholds.">i</span></summary>
+      <p>Selections and patch from when you opened this popup. Current stats are for comparison only.</p>
       <div className="balanced-reference-items">{slots.filter(slot => draftSelection(reference)[slot.key]).map(slot =>
         <span key={slot.key}><strong>{slot.label}</strong><SelectionItem id={draftSelection(reference)[slot.key]} slot={slot.key} catalog={catalog} showType /></span>)}</div>
       <section className="recommendation-reference-gadgets" aria-label="Starting gadgets">

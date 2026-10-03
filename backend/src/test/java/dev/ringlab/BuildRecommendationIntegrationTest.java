@@ -131,7 +131,7 @@ class BuildRecommendationIntegrationTest {
     given().auth().oauth2(token).get("/api/saved-builds").then().statusCode(200);
   }
 
-  @Test void balancedUsesServerReferenceAndExactFloorsWithoutMutation() {
+  @Test void balancedUsesSurvivorThresholdsAndAcceptsEmptyDraftWithoutMutation() {
     var token = VerifiedUserFixture.createToken(em); var before = communityCounts();
     var current = selection(); current.put("stats", Map.of("boost", 999999));
     var body = request(current, empty());
@@ -139,12 +139,23 @@ class BuildRecommendationIntegrationTest {
     body.put("balanced", Map.of("maximumLossPercent", Map.of("BOOST", 5, "SPEED", 10, "ACCELERATION", 25, "HANDLING", 50), "secondary", List.of("POWER")));
     var result = post(token, body).statusCode(200).body("selection", notNullValue())
         .body("outcome", is(oneOf("ESTABLISHED", "BEST_FOUND"))).extract().jsonPath();
-    for (var stat : List.of("BOOST", "SPEED", "ACCELERATION", "HANDLING"))
-      assertTrue(result.getDouble("recommendedStats." + stat.toLowerCase()) >= result.getDouble("balanced.minimum." + stat));
+    if (result.getBoolean("balanced.proven")) {
+      var stats=List.of("BOOST","SPEED","ACCELERATION","HANDLING");
+      for (int i=0;i<stats.size();i++)
+        assertTrue(result.getDouble("recommendedStats."+stats.get(i).toLowerCase()) >= result.getDouble("balanced.stages["+i+"].threshold"));
+    } else assertTrue(result.getList("balanced.stages").isEmpty());
     assertTrue(result.getDouble("currentStats.boost") < 999999);
     assertEquals(before, communityCounts());
     body.put("current", empty());
-    post(token, body).statusCode(200).body("outcome", equalTo("UNAVAILABLE")).body("reason", containsString("frozen reference"));
+    post(token, body).statusCode(200).body("outcome", is(oneOf("ESTABLISHED","BEST_FOUND")))
+        .body("selection",notNullValue()).body("currentStats",nullValue());
+    body.put("priorities",List.of("BOOST","SPEED","ACCELERATION","HANDLING","POWER"));
+    body.put("balanced",Map.of("maximumLossPercent",Map.of(),"ignored",List.of("BOOST","SPEED","ACCELERATION","HANDLING","POWER")));
+    post(token,body).statusCode(200).body("outcome",equalTo("ESTABLISHED"))
+        .body("balanced.proven",equalTo(true)).body("balanced.stages",hasSize(0));
+    body.put("balanced",Map.of("maximumLossPercent",Map.of("BOOST",100,"SPEED",100,"ACCELERATION",100,"HANDLING",100,"POWER",100),"secondary",List.of()));
+    post(token,body).statusCode(200).body("outcome",equalTo("ESTABLISHED"))
+        .body("balanced.proven",equalTo(true)).body("balanced.stages",hasSize(0));
   }
 
   @Test void balancedRejectsMalformedPartitionsPercentagesAndNames() {

@@ -92,7 +92,7 @@ it("waits for the patch catalog before opening recommendations for a loaded buil
   expect(button.disabled).toBe(false);
   fireEvent.click(button);
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  await screen.findByLabelText("Boost current: 60");
+  await screen.findByLabelText("Boost maximum sacrifice (%)");
   expect(screen.getByRole("dialog").textContent).toContain("Selected patch: Ver. 1.4.1");
   expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
   expectNoWrite();
