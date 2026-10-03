@@ -9,11 +9,53 @@ Strict remains the default. [Balanced mode](balanced-auto-builder.md) adds hard
 per-stat loss floors and a weighted trade-off objective, using the same popup,
 endpoint, locks, detached catalog, budgets and Apply-to-draft flow.
 
+## Backend optimization basis
+
+The API supports two independent bases for either Strict or Balanced:
+
+- `PASSIVE` (default): complete base + supported passive adjustments.
+- `CURRENT_SCENARIO`: complete base + supported passive adjustments + supported
+  scenario adjustments for one supplied `ScenarioContext`.
+
+The existing frontend still uses PASSIVE; scenario controls in the recommendation
+dialog are future work. No scenario selection is persisted to a build.
+
+Scenario candidates require CALCULATED passive and scenario coverage and a complete
+total. Unknown numerical conditions, Evolutions, Hyper Ring Engine and unresolved
+stacks are excluded, never replaced by zero or a known subtotal. Known false
+conditions contribute zero. Utility effects remain diagnostic only. The exact
+Quick Starter + Sea Dog additive exception remains eligible with the structural
+`QUICK_STARTER_SEA_DOG_ASSUMED_ADDITIVE` marker, never a VERIFIED label. Super
+variants, third active modifiers and nonzero passive/scenario stacks gain no permission.
+
+All four evaluation boundaries use the basis: current reference, optional gadgets,
+locked/subset eligibility and the adjustment passed to component search. The fixed
+context preserves component-ID independence, so Strict reduction stays exact.
+Balanced uses the scenario reference for normalization/floors and keeps its positive
+coefficient optimistic bound and strict-worse pruning. A partial reference makes
+Balanced unavailable; there is no passive fallback. Adjustments are calculated per
+type/subset and reused across Balanced component combinations. Budgets remain
+100,000 work steps, two seconds and two simultaneous calculations.
+
+Add `"basis": "CURRENT_SCENARIO", "scenario": {"lap": 1, "vehicleForm": "WATER"}`
+to the existing request. Missing/null basis means PASSIVE. PASSIVE rejects a non-null
+scenario; CURRENT_SCENARIO requires an object, including a valid empty `{}`. Missing
+fields mean unknown. Shared `ScenarioContextRequest` validates integral lap 1–3,
+rings 0–999, distance 0–50000, the existing form enum and nullable landing Boolean.
+
+PASSIVE response fields/serialization stay unchanged. Scenario responses additionally
+contain `basis` and `scenario: {context, ruleset, current, recommended}`. Each available
+evaluation contains `passive`, `coverage`, `effects` and `assumptions`.
+`currentStats`/`recommendedStats` are the actual objective totals; a partial current
+scenario has null `currentStats`. There is no scenario `knownSubtotal` optimization
+score in the response. Passive diagnostics retain their own coverage. This optimizes
+modeled stat points, not race performance.
+
 ## Strict objective and ties
 
 The priority list must contain Acceleration, Speed, Handling, Boost and Power
 exactly once. The default order is that sequence. The domain compares the
-`PassiveStatsCalculator`'s five **passive-adjusted** `BigDecimal` values
+selected basis's five complete `BigDecimal` values (passive-adjusted by default)
 lexicographically, using `compareTo`. One point in an earlier stat wins against
 any improvement in later stats. Decimal scale and UI bar widths do not affect
 the comparison. Strict uses no weights or numerical rounding in selection.
@@ -63,7 +105,8 @@ three slots. Total cost alone is insufficient: three two-slot gadgets do not fit
 snapshot and result records, exact stat comparison and `BuildRecommendationSolver`.
 The solver is the facade for validation, reference preparation, mode dispatch and
 result wording. Package-private `RecommendationCandidates` owns selection/lock/
-availability validation, legal catalog pools and passive evaluation.
+availability validation and legal catalog pools. `RecommendationStatsEvaluator`
+composes the existing passive/scenario calculators using detached facts and values.
 `StrictRecommendationSearch` owns the independent component maxima;
 `BalancedRecommendationSearch` owns joint choices, optimistic bounds and pruning.
 Both reuse `RecommendationGadgetSearch` for the existing ordered subset traversal,
@@ -92,7 +135,7 @@ The preserved **Strict** search uses the following reduction for each fixed mach
    by their own racing type (unknown type is a separate group), then select the
    best fully known racer in each group.
 3. For each group, enumerate gadget subsets that extend the locks. Evaluate
-   combinations with the existing passive calculator and complete plate validator.
+   combinations with the basis-aware evaluator and complete plate validator.
 4. Compare supported candidates and the incumbent with the exact objective and
    tie-breaks. Preserve retained display order in the final selection.
 
@@ -128,7 +171,7 @@ dependency is added.
 
 ## Supported data and honest outcomes
 
-Only the explicit `crossworlds-1.4.1-passive-2026-09-28.5` ruleset is supported.
+The following describes PASSIVE. Its explicit ruleset is `crossworlds-1.4.1-passive-2026-09-28.5`.
 Other selected patches return unavailable without fallback. Only fully known
 base vectors and `CALCULATED` passive results compete. Missing values are never
 zero; unresolved stacking and unreviewed gadgets cannot be optimized as base-only.
@@ -154,7 +197,7 @@ The response distinguishes:
 | `UNAVAILABLE` | Required patch, base contributions or locked effects cannot be fully evaluated. |
 | `LIMIT_WITHOUT_CANDIDATE` | Budget ended before finding a supported candidate; not proof of infeasibility. |
 
-Current stats use the same selected patch and passive basis as the proposal. If
+Current stats use the same selected patch and optimization basis as the proposal. If
 the current setup is incomplete, illegal or partially supported, all current
 comparison values display unavailable rather than fabricated improvements.
 Explanations identify the first actual differing priority relative to the current

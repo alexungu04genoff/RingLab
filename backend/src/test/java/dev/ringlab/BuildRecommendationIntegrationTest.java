@@ -16,6 +16,53 @@ class BuildRecommendationIntegrationTest {
   @Inject GameDataRepository game;
   @Inject EntityManager em;
 
+  @Test void scenarioObjectiveDiagnosticsAndLegacyPassiveSerializationAreExplicit() {
+    var token = VerifiedUserFixture.createToken(em); var before = communityCounts();
+    var current = selection(); current.put("gadgetIds",List.of(PassiveGadgetRules.id(45),PassiveGadgetRules.id(15)));
+    var body = request(current,current);
+    var legacy = post(token,body).statusCode(200).extract().jsonPath().getMap("$");
+    assertFalse(legacy.containsKey("basis")); assertFalse(legacy.containsKey("scenario"));
+    body.put("basis","PASSIVE");
+    var explicit = post(token,body).statusCode(200).extract().jsonPath().getMap("$");
+    legacy.remove("elapsedMillis"); explicit.remove("elapsedMillis"); assertEquals(legacy,explicit);
+    body.put("basis","CURRENT_SCENARIO"); body.put("scenario",Map.of("lap",1,"vehicleForm","WATER"));
+    var result = post(token,body).statusCode(200).body("basis",equalTo("CURRENT_SCENARIO"))
+        .body("scenario.context.lap",equalTo(1)).body("scenario.context.ringsHeld",nullValue())
+        .body("scenario.recommended.coverage",equalTo("CALCULATED"))
+        .body("scenario.recommended.assumptions",contains("QUICK_STARTER_SEA_DOG_ASSUMED_ADDITIVE"))
+        .body("scenario.current.knownSubtotal",nullValue()).body("scenario.recommended.knownSubtotal",nullValue())
+        .extract().jsonPath();
+    assertEquals(40d,result.getDouble("recommendedStats.speed") - result.getDouble("scenario.recommended.passive.adjusted.speed"));
+    body.put("scenario",Map.of());
+    post(token,body).statusCode(200).body("outcome",equalTo("UNAVAILABLE"))
+        .body("currentStats",nullValue()).body("recommendedStats",nullValue())
+        .body("scenario.current.coverage",equalTo("PARTIAL"));
+    body.put("mode","BALANCED"); body.put("priorities",List.of("SPEED"));
+    body.put("balanced",Map.of("maximumLossPercent",Map.of("SPEED",0),"secondary",List.of("ACCELERATION","HANDLING","POWER","BOOST")));
+    post(token,body).statusCode(200).body("outcome",equalTo("UNAVAILABLE"))
+        .body("reason",containsString("scenario-adjusted")).body("currentStats",nullValue());
+    assertEquals(before,communityCounts());
+  }
+
+  @Test void scenarioContextValidationIsSharedWithPreviewAndDoesNotCoerceUnknowns() {
+    for (var invalid : List.of(Map.of("lap",0),Map.of("lap",4),Map.of("lap",1.5),Map.of("ringsHeld",-1),
+        Map.of("ringsHeld",1000),Map.of("ringsHeld",2.5),Map.of("distanceToFinish",-1),Map.of("distanceToFinish",50001),
+        Map.of("distanceToFinish",3.5),Map.of("vehicleForm","SPACE"),Map.of("landingBoostActive","not-a-boolean"))) {
+      var token = VerifiedUserFixture.createToken(em);
+      var body = request(selection(),empty()); body.put("basis","CURRENT_SCENARIO"); body.put("scenario",invalid);
+      post(token,body).statusCode(400);
+    }
+    var token = VerifiedUserFixture.createToken(em); var current = selection(); var body = request(current,current);
+    body.put("scenario",Map.of()); post(token,body).statusCode(400).body("message",containsString("PASSIVE"));
+    body.put("basis","CURRENT_SCENARIO"); body.remove("scenario");
+    post(token,body).statusCode(400).body("message",containsString("requires a scenario"));
+    body.put("scenario",null); post(token,body).statusCode(400);
+    body.put("scenario",Map.of()); post(token,body).statusCode(200).body("scenario.current.coverage",equalTo("CALCULATED"));
+    body.put("basis",null); body.remove("scenario");
+    post(token,body).statusCode(200).body("basis",nullValue()).body("scenario",nullValue());
+    body.put("basis","RACE_SIMULATION"); post(token,body).statusCode(400);
+  }
+
   private Map<String, Object> selection() {
     var machine = game.listMachines().stream().filter(m -> m.name().equals("Speedster Lightning")).findFirst().orElseThrow();
     var racer = game.listRacers().stream().filter(r -> r.name().equals("Sonic the Hedgehog")).findFirst().orElseThrow();

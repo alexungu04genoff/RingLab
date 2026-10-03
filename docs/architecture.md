@@ -45,7 +45,7 @@ bootstrapping existing 1.4.1 facts so upgrades preserve results. Normal runtime
 loads `GadgetRuleSnapshot` through `GadgetRuleRepository`/`GadgetRuleDbAdapter`;
 `ReviewedGadgetRules` owns the current application version selection. Passive,
 scenario, community and recommendation callers pass detached facts into pure
-calculators. `RecommendationCatalog` includes the same passive snapshot. JDBC
+calculators. `RecommendationCatalog` includes the same passive/scenario snapshot. JDBC
 mapping is shared inside the outbound adapter by `GameDataRuleStorage`; calculators
 never reach that storage or CSV. Reviewed-version permissions, exact stacking
 pairs and the scenario assumption remain Java policy. Source URLs and numeric facts
@@ -221,9 +221,13 @@ unmounts it. Serialized calculation keys and AbortControllers invalidate results
 selection/patch/context changes and unmount, including the render before effect
 cleanup. Maps and titles are not inputs, and no scenario fields enter saving/remixing.
 
-Strict/Balanced, passive rule values and stacking, ownership and database schema are
-unchanged. Architecture guards also prohibit adapters/recommendation code from
-calling the scenario calculator.
+The backend recommendation API also accepts an optional `CURRENT_SCENARIO` basis;
+the existing frontend still requests PASSIVE. `RecommendationStatsEvaluator` is
+the only recommendation-domain collaborator permitted to call the scenario calculator.
+Adapters remain prohibited from executing it. `ScenarioStatsService` remains independent
+from recommendations. Passive rules, interaction permissions, ownership and schema are unchanged.
+`ScenarioStatsResult.assumptions()` identifies the exact Quick Starter + Sea Dog
+modeling assumption after interaction checks; CALCULATED coverage is not a VERIFIED label.
 
 ## HTTP rate limiting
 
@@ -629,18 +633,27 @@ for evidence, partial coverage and unresolved stacking. Maps never affect these 
 
 `domain/build/recommendation` owns immutable request/catalog/result types, strict
 lexicographic stat comparison, the exact `BalancedObjective`, and a bounded deterministic solver. It reuses
-`PassiveStatsCalculator`, `GadgetPlate` and the now-pure
+`PassiveStatsCalculator`, `ScenarioStatsCalculator`, `GadgetPlate` and the now-pure
 `domain/gamedata/MachineCompatibility`; the existing application compatibility
 facade translates validation failures without changing existing build behavior.
 `BuildRecommendationSolver` orchestrates validation, frozen-reference preparation,
-mode selection and result explanations. Six package-private domain collaborators
-own candidate validation/evaluation (`RecommendationCandidates`), ordering and
+mode selection and result explanations. Package-private domain collaborators
+own candidate validation/pools (`RecommendationCandidates`), basis-aware calculator
+composition (`RecommendationStatsEvaluator`), ordering and
 incumbent tracking (`RecommendationCandidateOrder`), budget checks
 (`RecommendationSearchBudget`), shared gadget traversal (`RecommendationGadgetSearch`),
 and the separate Strict and Balanced algorithms (`StrictRecommendationSearch`,
 `BalancedRecommendationSearch`). They consume detached values only; none is a
 port, application service or persistence boundary. `BalancedObjective` still owns
 the exact floors and weighted comparison.
+`RecommendationBasis.PASSIVE` is base + supported passive adjustments and remains
+the transport default. `CURRENT_SCENARIO` adds supported scenario adjustments for
+one supplied immutable `ScenarioContext`. Only complete base/passive/scenario totals
+compete; partial subtotals never become objective scores. Strict keeps its component
+reduction because adjustments remain ID-independent within fixed types/context.
+Balanced keeps its optimistic bound, but reference normalization and floors use
+the same scenario total. The evaluator runs per gadget subset, not per component leaf.
+This is modeled stat optimization, not race simulation. Context is never persisted.
 `RecommendationCatalogLoader` resolves catalog and versioned contributions once
 through the existing outbound ports in a short transaction.
 `BuildRecommendationService` then searches detached facts outside a transaction,

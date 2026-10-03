@@ -1,6 +1,6 @@
 flowchart TB
   h["POST /api/stats/scenario-build<br/>selected IDs + scenario"]:::outside
-  r["ScenarioStatsRestResource<br/>ScenarioStatsRequest.Context.toDomain"]:::rest
+  r["ScenarioStatsRestResource<br/>shared ScenarioContextRequest.toDomain"]:::rest
   s["ScenarioStatsService.preview"]:::app
   game["GameDataRepository<br/>one gadget catalog read; parts, machines, version, racer"]:::port
   plate["GadgetPlate.canFit"]:::domain

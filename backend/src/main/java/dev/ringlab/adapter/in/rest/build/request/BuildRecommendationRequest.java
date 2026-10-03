@@ -2,6 +2,7 @@ package dev.ringlab.adapter.in.rest.build.request;
 
 import dev.ringlab.domain.build.recommendation.*;
 import dev.ringlab.domain.gamedata.RacingType;
+import dev.ringlab.adapter.in.rest.gamedata.request.ScenarioContextRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import java.util.*;
@@ -10,7 +11,7 @@ import java.math.BigDecimal;
 public record BuildRecommendationRequest(@NotNull UUID gameVersionId, @NotNull RacingType machineType,
     @NotNull @Size(min = 1, max = 5) List<@NotNull StatPriority> priorities,
     @NotNull @Valid Selection current, @NotNull @Valid Selection locked,
-    RecommendationMode mode, @Valid Balanced balanced) {
+    RecommendationMode mode, @Valid Balanced balanced, RecommendationBasis basis, @Valid ScenarioContextRequest scenario) {
   public record Balanced(@NotNull Map<StatPriority, @NotNull BigDecimal> maximumLossPercent,
       @NotNull List<@NotNull StatPriority> secondary) {
     BalancedConfiguration toDomain() { return new BalancedConfiguration(maximumLossPercent, secondary); }
@@ -23,6 +24,7 @@ public record BuildRecommendationRequest(@NotNull UUID gameVersionId, @NotNull R
   public RecommendationRequest toDomain() {
     return new RecommendationRequest(gameVersionId, machineType, priorities,
         current == null ? null : current.toDomain(), locked == null ? null : locked.toDomain(),
-        mode, balanced == null ? null : balanced.toDomain());
+        mode, balanced == null ? null : balanced.toDomain(), basis == null ? RecommendationBasis.PASSIVE : basis,
+        scenario == null ? null : scenario.toDomain());
   }
 }

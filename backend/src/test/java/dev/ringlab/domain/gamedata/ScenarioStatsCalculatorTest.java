@@ -9,6 +9,18 @@ import java.util.*;
 import org.junit.jupiter.api.Test;
 
 class ScenarioStatsCalculatorTest {
+  @Test void netZeroPassiveAdjustmentsDoNotHideUnderlyingActiveModifiers() {
+    var p = passive(id(45));
+    var effects = new ArrayList<>(p.effects());
+    effects.add(new PassiveStatsResult.Effect(id(52),"Positive fixture","plus","Plus",PassiveStatsResult.Status.APPLIED,
+        points(1,0,0,0,0),"Fixture",List.of()));
+    effects.add(new PassiveStatsResult.Effect(id(53),"Negative fixture","minus","Minus",PassiveStatsResult.Status.APPLIED,
+        points(-1,0,0,0,0),"Fixture",List.of()));
+    var cancelled = new PassiveStatsResult(p.base(),BaseStats.ZERO,p.adjusted(),p.coverage(),p.ruleset(),p.supportedVersion(),p.note(),effects);
+    var result = ScenarioStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(),cancelled,lap(1));
+    assertEquals(ScenarioStatsResult.Coverage.PARTIAL,result.coverage()); assertNull(result.total());
+    assertEquals(UNSUPPORTED,result.effects().getFirst().status()); assertTrue(result.assumptions().isEmpty());
+  }
   private static final BaseStats BASE = points(58,65,29,54,34);
   private PassiveStatsResult passive(UUID... ids) {
     return PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), new BaseStatsBreakdown(BASE, BASE, BaseStats.ZERO), "1.4.1",
@@ -124,6 +136,8 @@ class ScenarioStatsCalculatorTest {
       assertEquals(ScenarioStatsResult.Coverage.CALCULATED, both.coverage());
       assertEquals(points(40,40,40,40,40), both.adjustments());
       assertEquals(points(98,105,69,94,74), both.total());
+      assertEquals(List.of(ScenarioAssumption.QUICK_STARTER_SEA_DOG_ASSUMED_ADDITIVE), both.assumptions());
+      assertTrue(lapOnly.assumptions().isEmpty()); assertTrue(waterOnly.assumptions().isEmpty());
       assertEquals(both.total(), both.knownSubtotal());
       assertTrue(both.effects().stream().allMatch(e -> e.status() == ACTIVE_AND_APPLIED
           && e.adjustment().equals(points(20,20,20,20,20))
@@ -144,6 +158,7 @@ class ScenarioStatsCalculatorTest {
       assertEquals(ScenarioStatsResult.Coverage.PARTIAL, result.coverage());
       assertNull(result.total());
       assertEquals(baseline.adjusted(), result.knownSubtotal());
+      assertTrue(result.assumptions().isEmpty());
       assertTrue(result.effects().stream().allMatch(e -> e.status() == UNSUPPORTED && e.adjustment() == null));
     }
     var otherPair = ScenarioStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), passive(id(45),id(17)),

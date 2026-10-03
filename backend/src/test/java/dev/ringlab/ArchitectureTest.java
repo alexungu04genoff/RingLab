@@ -33,7 +33,11 @@ class ArchitectureTest {
         inbound_adapters_use_input_ports.check(classes);
         outbound_adapters_do_not_depend_on_input_ports.check(classes);
         adapters_do_not_execute_recommendations.check(classes);
-        noClasses().that().resideInAnyPackage("..adapter..", "..domain.build.recommendation..", "..application.build.recommendation..")
+        noClasses().that().resideInAnyPackage("..adapter..", "..application.build.recommendation..")
+                .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
+                .check(classes);
+        noClasses().that().resideInAPackage("..domain.build.recommendation..")
+                .and().doNotHaveSimpleName("RecommendationStatsEvaluator")
                 .should().dependOnClassesThat().haveFullyQualifiedName("dev.ringlab.domain.gamedata.ScenarioStatsCalculator")
                 .check(classes);
         noClasses().that().haveSimpleName("ScenarioStatsService").should().dependOnClassesThat()

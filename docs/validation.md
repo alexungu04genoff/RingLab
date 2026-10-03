@@ -1,5 +1,37 @@
 # Verification
 
+## Scenario-aware recommendation API
+
+`POST /api/build-recommendations` defaults missing/null `basis` to PASSIVE. A non-null
+scenario with PASSIVE is rejected; CURRENT_SCENARIO requires a scenario object.
+An empty object and individually null fields mean unknown. Both recommendation and
+preview requests use `ScenarioContextRequest`: lap 1–3, rings 0–999, distance
+0–50000, NORMAL/WATER/FLIGHT and nullable landing Boolean. Decimal numeric transport
+values are validated before exact integer conversion; fractional integers are rejected.
+Existing ID, lock, ownership, patch, plate and authentication checks still apply.
+
+Focused command:
+`mvn -f backend/pom.xml "-Dtest=BuildRecommendationSolverTest,ScenarioRecommendationTest,ScenarioStatsCalculatorTest,RuleFactsParityTest,ArchitectureTest" test`.
+`RecommendationExhaustiveOracle` independently enumerates legal owned component
+products and gadget subsets, calls public calculators and implements the comparator
+without production search/pruning. Trials vary context, racer/machine types, locks,
+ownership, priorities, Balanced floors and catalog iteration order.
+`BuildRecommendationIntegrationTest` checks API defaults, parity, diagnostics and
+validation. `ApiContract.scenarioRecommendationContractSurvivesPackaging` also runs
+through `PackagedApiIT`. Full verification: `mvn -f backend/pom.xml verify`;
+coverage remains at `backend/target/site/jacoco/index.html`. No frontend verification
+is needed for this backend-only change.
+
+Verification on 2026-10-02: the final full `mvn -f backend/pom.xml verify` passed
+527 unit/integration tests and 19 packaged API tests, with no failures or skips.
+A subsequent focused run of `ScenarioRecommendationTest` passed all 10 tests,
+including the final explicit equal-total retention/cost/UUID tie case; it also
+regenerated JaCoCo and passed the unchanged coverage gates. Coverage: instructions
+97.25%, branches 89.97%, lines 97.52%. `git diff --check` passed. Earlier attempts
+exposed a stale compiled nested context DTO (removed from generated output) and a
+new Balanced test fixture missing secondary stats (corrected); neither remains a blocker.
+Ignored logs: `.tools/scenario-verify-complete.log` and `.tools/scenario-final-ties.log`.
+
 ## Post-refactor hardening — 2026-10-02
 
 Reviewed main `3a8030a` with the rule-fact import and solver decomposition together.

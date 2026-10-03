@@ -34,8 +34,8 @@ final class RecommendationGadgetSearch {
       if (!availability.gadgetAvailable(gadget.id())) continue;
       budget.step();
       if (request.locked().gadgetIds().contains(gadget.id()) || !GadgetPlate.canFit(Collections.singletonList(gadget.slotCost()))) continue;
-      var alone = candidates.passive(type, List.of(gadget.id()));
-      if (alone.coverage() != PassiveStatsResult.Coverage.CALCULATED) continue;
+      var alone = candidates.effects(type, List.of(gadget.id()));
+      if (!alone.eligible()) continue;
       // Include secondary gains too. Only an all-five-zero new gadget can be omitted.
       if (request.current().gadgetIds().contains(gadget.id())
           || StatPriority.compare(alone.adjustments(), PassiveGadgetRules.ZERO, List.of(StatPriority.values())) != 0)
@@ -48,10 +48,10 @@ final class RecommendationGadgetSearch {
       BiConsumer<List<UUID>, BaseStats> visit) {
     budget.step();
     if (!GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) return;
-    var effects = candidates.passive(racerType, selected);
+    var effects = candidates.effects(racerType, selected);
     // For fixed types, adding gadgets cannot cure unknown effects or an unresolved applied-modifier stack.
-    // Verified pairs are context-independent: adding a third gadget cannot legalize a rejected pair.
-    if (effects.coverage() != PassiveStatsResult.Coverage.CALCULATED) return;
+    // Context is fixed too: additions cannot resolve an unknown condition or legalize a rejected pair.
+    if (!effects.eligible()) return;
     visit.accept(ordered(selected), effects.adjustments());
     for (int index = start; index < optional.size(); index++) {
       selected.add(optional.get(index));

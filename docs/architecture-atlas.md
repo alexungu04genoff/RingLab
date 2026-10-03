@@ -609,35 +609,37 @@ flowchart TB
 **How to read this:** catalog I/O finishes before CPU search. Collection loading is a
 separate service transaction; these are not one atomic snapshot of catalog plus ownership.
 The two-second solver budget starts when the solver is constructed, after those reads.
-Neither title, description, map preferences, vote counts nor scenario context enters the
-solver. Applying a proposal changes the client's draft; publishing later follows section 5.
+Title, description, map preferences and vote counts do not enter the solver. Optional
+CURRENT_SCENARIO requests supply a fixed ScenarioContext as a domain value, without I/O.
+Applying a proposal changes the client's draft; publishing later follows section 5.
 [Diagram source](architecture/recommendation-flow.mmd).
 
 ### 6.2 Strict and Balanced inside the solver
 
 How does the solver choose a candidate? Both modes preserve hard constraints and reuse the
-same passive calculator. Strict can choose component maxima independently within fixed type
+same basis-aware evaluator composing the passive and scenario calculators. Strict can choose component maxima independently within fixed type/context
 groups. Balanced searches combinations because its loss floors concern the complete loadout.
 `BuildRecommendationSolver` retains validation/reference orchestration, mode dispatch and result
-wording. Its six package-private collaborators are internal domain implementation, with no
+wording. Its package-private collaborators are internal domain implementation, with no
 new ports, services or repositories. `RecommendationCandidates` keeps legal/evaluable candidate
-preparation together; `RecommendationCandidateOrder` owns comparison, incumbent tracking and
+preparation together; `RecommendationStatsEvaluator` owns full-selection and subset basis evaluation;
+`RecommendationCandidateOrder` owns comparison, incumbent tracking and
 observed secondary ties. Strict and Balanced retain separate component loops and their existing
 work checkpoints. Only gadget-subset traversal is shared; no generic search framework is used.
 
 <!-- diagram: recommendation-solver -->
 ```mermaid
 flowchart TB
-  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
+  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode<br/>basis + optional ScenarioContext"]:::domain
   validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
-  baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>PassiveStatsCalculator"]:::domain
+  baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>RecommendationStatsEvaluator"]:::domain
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
   strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
   subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
-  calc["PassiveStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
+  calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator + optional ScenarioStatsCalculator<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
   components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
   compare["RecommendationCandidateOrder<br/>consider / compare<br/>objective → mode-specific ties → fewer changes<br/>fewer additions → lower cost → stable UUID key"]:::domain
   result["RecommendationResult<br/>ESTABLISHED / BEST_FOUND / UNAVAILABLE<br/>NO_LEGAL_COMPLETION / NO_FEASIBLE_CANDIDATE<br/>LIMIT_WITHOUT_CANDIDATE"]:::domain
@@ -679,8 +681,12 @@ Optimistic per-stat maxima allow pruning without discarding a possible better co
 
 The supported patch is `1.4.1`; the current imported passive ruleset label is
 `crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unsupported modifier stacks
-do not compete as zero or base-only values. Conditional/utility effects may be retained,
-but their race-time benefit is outside the objective. The new proposal is a selection,
+do not compete as zero or base-only values. PASSIVE excludes conditional benefits from its
+objective. CURRENT_SCENARIO requires complete passive/scenario coverage for its fixed
+context; utility benefits never score. Balanced derives floors and normalization from
+that same scenario reference. The exact Quick Starter + Sea Dog exception is structurally
+ASSUMED, not VERIFIED. Context is not saved and the frontend still defaults to PASSIVE.
+The new proposal is a selection,
 not a persistent `Build`, and has no author or publication identity.
 
 Source trail: [orchestration](../backend/src/main/java/dev/ringlab/application/build/BuildRecommendationService.java),
@@ -845,7 +851,7 @@ scenario calculator. It does not load or update a build by ID.
 ```mermaid
 flowchart TB
   h["POST /api/stats/scenario-build<br/>selected IDs + scenario"]:::outside
-  r["ScenarioStatsRestResource<br/>ScenarioStatsRequest.Context.toDomain"]:::rest
+  r["ScenarioStatsRestResource<br/>shared ScenarioContextRequest.toDomain"]:::rest
   s["ScenarioStatsService.preview"]:::app
   game["GameDataRepository<br/>one gadget catalog read; parts, machines, version, racer"]:::port
   plate["GadgetPlate.canFit"]:::domain

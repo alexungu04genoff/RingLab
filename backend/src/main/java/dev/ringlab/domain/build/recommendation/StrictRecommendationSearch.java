@@ -44,10 +44,15 @@ final class StrictRecommendationSearch {
           catalog.racerStats(), request.current().racerId());
       if (racer == null) continue;
       var base = new BuildSelection(racer, front, rear, tire, request.locked().gadgetIds());
-      var lockedEffects = candidates.passive(type, request.locked().gadgetIds());
-      if (lockedEffects.coverage() != PassiveStatsResult.Coverage.CALCULATED) {
-        lockedEffects.effects().stream().filter(e -> e.status() == PassiveStatsResult.Status.UNSUPPORTED
+      var lockedEffects = candidates.effects(type, request.locked().gadgetIds());
+      if (!lockedEffects.eligible()) {
+        lockedEffects.passive().effects().stream().filter(e -> e.status() == PassiveStatsResult.Status.UNSUPPORTED
             || e.status() == PassiveStatsResult.Status.REQUIRES_SELECTION)
+            .forEach(e -> restrictions.add("Excluded racer type " + (type == null ? "unknown" : type)
+                + " with locked " + e.gadgetName() + ": " + e.explanation()));
+        if (lockedEffects.scenario() != null) lockedEffects.scenario().effects().stream()
+            .filter(e -> e.statEffect() && (e.status() == ScenarioStatsResult.Status.UNSUPPORTED
+                || e.status() == ScenarioStatsResult.Status.CONDITION_UNKNOWN))
             .forEach(e -> restrictions.add("Excluded racer type " + (type == null ? "unknown" : type)
                 + " with locked " + e.gadgetName() + ": " + e.explanation()));
         continue;

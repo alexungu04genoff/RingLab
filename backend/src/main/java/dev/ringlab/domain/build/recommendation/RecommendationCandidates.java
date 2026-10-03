@@ -6,10 +6,9 @@ import dev.ringlab.domain.gamedata.*;
 import java.util.*;
 import static dev.ringlab.domain.build.recommendation.RecommendationCandidateOrder.IDS;
 
-/** Validates selections and prepares legal catalog choices and passive evaluations. */
+/** Validates selections and prepares legal catalog choices and objective evaluations. */
 final class RecommendationCandidates {
-  private static final BaseStatsBreakdown ZERO = new BaseStatsBreakdown(
-      PassiveGadgetRules.ZERO, PassiveGadgetRules.ZERO, PassiveGadgetRules.ZERO);
+  private final RecommendationStatsEvaluator evaluator;
   private final RecommendationCatalog catalog;
   private final RecommendationRequest request;
   private final CollectionExclusions availability;
@@ -18,6 +17,7 @@ final class RecommendationCandidates {
     this.catalog = catalog;
     this.request = request;
     this.availability = availability;
+    this.evaluator = new RecommendationStatsEvaluator(catalog, request);
   }
 
   List<Racer> racers() {
@@ -35,15 +35,12 @@ final class RecommendationCandidates {
         .sorted(Comparator.comparing(MachinePart::id, IDS)).toList();
   }
 
-  PassiveStatsResult passive(RacingType racerType, List<UUID> ids) {
-    return PassiveStatsCalculator.calculate(catalog.rules(), ZERO, catalog.version().version(), racerType,
-        request.machineType(), ids.stream().map(catalog.gadgets()::get).toList(), true);
+  RecommendationStatsEvaluator.Evaluation effects(RacingType racerType, List<UUID> ids) {
+    return evaluator.gadgets(racerType, ids);
   }
 
-  PassiveStatsResult evaluate(BuildSelection selection, RacingType type) {
-    return PassiveStatsCalculator.calculate(catalog.rules(), baseStats(selection), catalog.version().version(),
-        catalog.racers().get(selection.racerId()).racingType(), type,
-        selection.gadgetIds().stream().map(catalog.gadgets()::get).toList(), true);
+  RecommendationStatsEvaluator.Evaluation evaluate(BuildSelection selection, RacingType type) {
+    return evaluator.selection(selection, type);
   }
 
   BaseStatsBreakdown baseStats(BuildSelection selection) {

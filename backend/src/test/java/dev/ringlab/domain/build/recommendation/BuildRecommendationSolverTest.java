@@ -12,6 +12,31 @@ import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outco
 import static dev.ringlab.domain.gamedata.PassiveGadgetRules.points;
 
 class BuildRecommendationSolverTest {
+  @Test void explicitPassivePreservesLegacyResultsAtEveryWorkBoundaryAndClockTick() {
+    var f = new Fixture();
+    f.addGadget(45, 1); // New conditional gadgets must still be omitted in PASSIVE.
+    f.racerStats.put(OTHER, f.racerStats.get(RACER)); // Retain the current racer on equal stats.
+    for (var mode : RecommendationMode.values()) for (var current : List.of(EMPTY, selection(List.of()))) {
+      var configuration = mode == RecommendationMode.BALANCED
+          ? BalancedObjectiveTest.config(ORDER, "100", "100", "100", "100", "100") : null;
+      var legacy = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration);
+      var explicit = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode, configuration,
+          RecommendationBasis.PASSIVE, null);
+      for (int limit = 1; limit <= 25; limit++) {
+        var budget = new BuildRecommendationSolver.Budget(limit, Duration.ofMillis(20));
+        var firstClock = new AtomicLong(); var secondClock = new AtomicLong();
+        var expected = new BuildRecommendationSolver(f.snapshot(), legacy, budget,
+            () -> firstClock.getAndAdd(1_000_000)).solve();
+        var actual = new BuildRecommendationSolver(f.snapshot(), explicit, budget,
+            () -> secondClock.getAndAdd(1_000_000)).solve();
+        assertEquals(expected, actual);
+        assertEquals(firstClock.get(), secondClock.get());
+        assertEquals(List.of(
+            "Only fully known base contributions and reviewed passive combinations compete; unreviewed effects and unresolved stacking are excluded.",
+            "Race-time, conditional and utility effects are not the objective. Current gadget costs and the complete two-row plate are used."), actual.restrictions());
+      }
+    }
+  }
   @Test void verifiedTunerKitPairIsRetainedAndDiscoveredInStrictAndBalancedSearch() {
     var f = new Fixture(); f.addGadget(55,1); f.addGadget(34,3);
     f.machines.put(id(5),new Machine(id(5),"Acceleration source",RacingType.ACCELERATION,null));
