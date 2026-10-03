@@ -16,6 +16,61 @@ class BuildRecommendationIntegrationTest {
   @Inject GameDataRepository game;
   @Inject EntityManager em;
 
+  @Test void bothModesCompleteEmptyAndPartiallyLockedDraftsAndKeepGadgetIdentities() {
+    for (var mode : List.of("STRICT", "BALANCED")) {
+      for (var type : List.of("BOOST", "SPEED")) {
+        var token = VerifiedUserFixture.createToken(em);
+        var body = configured(mode, type, empty(), empty());
+        Map<String,Object> selected = post(token, body).statusCode(200).body("outcome", equalTo("ESTABLISHED"))
+            .body("currentStats", nullValue()).body("selection.gadgetIds", hasSize(0))
+            .body("selection.racerId", notNullValue()).body("selection.frontPartId", notNullValue())
+            .body("selection.rearPartId", notNullValue()).extract().jsonPath().getMap("selection");
+        assertEquals(type.equals("BOOST"), selected.get("tirePartId") == null);
+        for (var slot : List.of("racerId", "frontPartId")) {
+          var partial = empty(); partial.put(slot, selected.get(slot));
+          body = configured(mode, type, partial, partial);
+          post(token, body).statusCode(200).body("outcome", equalTo("ESTABLISHED"))
+              .body("currentStats", nullValue()).body("selection." + slot, equalTo(selected.get(slot)))
+              .body("selection.rearPartId", notNullValue());
+        }
+        body = configured(mode, type, new HashMap<>(selected), new HashMap<>(selected));
+        post(token, body).statusCode(200).body("alreadyBest", equalTo(true)).body("currentStats", notNullValue());
+      }
+      var token = VerifiedUserFixture.createToken(em);
+      var plate = List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(22)); // passive + utility
+      var current = empty(); current.put("gadgetIds", plate);
+      var body = configured(mode, "SPEED", current, empty());
+      Map<String,Object> found = post(token, body).statusCode(200).body("outcome", equalTo("ESTABLISHED"))
+          .body("selection.gadgetIds", equalTo(plate.stream().map(UUID::toString).toList())).extract().jsonPath().getMap("selection");
+      var locks = new HashMap<String,Object>(found); locks.put("gadgetIds", List.of(PassiveGadgetRules.id(22)));
+      body = configured(mode, "SPEED", new HashMap<>(found), locks);
+      body.put("gadgetScope", "OPTIMIZE_UNLOCKED");
+      post(token, body).statusCode(200).body("outcome", is(oneOf("ESTABLISHED", "BEST_FOUND")))
+          .body("selection.gadgetIds", hasItem(PassiveGadgetRules.id(22).toString()));
+    }
+  }
+
+  @Test void ownershipExcludesTheNominalWinnerInBothModes() {
+    for (var mode : List.of("STRICT", "BALANCED")) {
+      var token = VerifiedUserFixture.createToken(em);
+      var body = configured(mode, "BOOST", empty(), empty());
+      var winner = post(token, body).statusCode(200).body("outcome", equalTo("ESTABLISHED"))
+          .extract().jsonPath().getString("selection.racerId");
+      given().auth().oauth2(token).contentType("application/json").body(Map.of("owned", false))
+          .put("/api/collection/RACER/" + winner).then().statusCode(204);
+      post(token, body).statusCode(200).body("outcome", equalTo("ESTABLISHED"))
+          .body("selection.racerId", not(equalTo(winner)));
+    }
+  }
+
+  private Map<String,Object> configured(String mode, String type, Map<String,Object> current, Map<String,Object> locks) {
+    var body = request(current, locks); body.put("machineType", type); body.put("mode", mode);
+    body.put("gadgetScope", "KEEP_CURRENT");
+    if (mode.equals("BALANCED")) body.put("balanced", Map.of("maximumLossPercent",
+        Map.of("ACCELERATION", 0, "SPEED", 0, "HANDLING", 0, "BOOST", 0, "POWER", 0), "ignored", List.of()));
+    return body;
+  }
+
   @Test void recommendationsExcludeScenarioBonusesAndDiagnostics() {
     var token = VerifiedUserFixture.createToken(em); var before = communityCounts();
     var current = selection(); current.put("gadgetIds",List.of(PassiveGadgetRules.id(45),PassiveGadgetRules.id(15)));
@@ -39,6 +94,16 @@ class BuildRecommendationIntegrationTest {
           .body("passive.coverage",equalTo("CALCULATED")).extract().jsonPath();
       assertEquals(passive.getMap("passive.adjusted"),result.getMap("recommendedStats"));
       assertFalse(result.getMap("$").containsKey("basis")); assertFalse(result.getMap("$").containsKey("scenario"));
+      var scenario = new HashMap<String,Object>(current); scenario.put("gameVersionId", body.get("gameVersionId"));
+      scenario.put("scenario", Map.of("lap", 1, "vehicleForm", "NORMAL"));
+      given().contentType("application/json").body(scenario).post("/api/stats/scenario-build").then().statusCode(200)
+          .body("adjustments.speed", equalTo(20)).body("total.speed", equalTo(100));
+      scenario.put("scenario", Map.of("lap", 2, "vehicleForm", "NORMAL"));
+      given().contentType("application/json").body(scenario).post("/api/stats/scenario-build").then().statusCode(200)
+          .body("adjustments.speed", equalTo(0)).body("total.speed", equalTo(80));
+      var repeated = post(token, body).statusCode(200).extract().jsonPath();
+      assertEquals(result.getMap("recommendedStats"), repeated.getMap("recommendedStats"));
+      assertEquals(result.getMap("selection"), repeated.getMap("selection"));
     }
     assertEquals(before,communityCounts());
   }

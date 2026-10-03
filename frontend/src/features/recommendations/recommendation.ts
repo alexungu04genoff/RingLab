@@ -1,7 +1,6 @@
 import type { BaseStats, BuildDraft, Gadget, MachinePart, Racer, RacingType } from "../../shared/types";
 import { gadgetPlateStatus, machineSetupError } from "../builds/buildForm";
 
-export const desktopRecommendationQuery = "(min-width: 1001px)";
 export const defaultPriorities: RacingType[] = ["ACCELERATION", "SPEED", "HANDLING", "BOOST", "POWER"];
 export const componentKeys = ["racerId", "frontPartId", "rearPartId", "tirePartId"] as const;
 export type ComponentKey = typeof componentKeys[number];

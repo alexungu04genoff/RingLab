@@ -45,6 +45,7 @@ export function ScenarioPreview({ selections }: { selections: Selection[] }) {
       <button type="button" className="small" aria-expanded={enabled} onClick={() => setEnabled(!enabled)}>
         {enabled ? "Reset to Passive only" : "Try a scenario"}
       </button></div>
+    <p className="muted">Race conditions are a separate preview. Recommendations use base and always-active passive stats only.</p>
     {!enabled ? <p className="muted">Passive only. Try supported race conditions without changing this build.</p>
       : <CustomScenario selections={selections} />}
   </section>;

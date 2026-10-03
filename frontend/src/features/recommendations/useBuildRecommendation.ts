@@ -14,22 +14,43 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
   const live = useRef({ draft, locks, context, catalog, onApply, configuration });
   live.current = { draft, locks, context, catalog, onApply, configuration };
   const active = useRef<AbortController | null>(null);
+  const applying = useRef(false);
   const proposal = useRef<{ request: RecommendationRequest; identity: string; context: string; session: number; configuration: string; revision: number; collectionIdentity: string } | null>(null);
 
   const cancel = useCallback(() => {
-    active.current?.abort(); active.current = null; proposal.current = null;
+    active.current?.abort(); active.current = null; proposal.current = null; applying.current = false;
     setState({ busy: false, error: "", result: null });
   }, []);
-  useEffect(() => { cancel(); return () => { active.current?.abort(); active.current = null; proposal.current = null; }; }, [context, configuration, cancel]);
+  useEffect(() => { cancel(); return () => { active.current?.abort(); active.current = null; proposal.current = null; applying.current = false; }; }, [context, configuration, cancel]);
+
+  function staleReason(snapshot: NonNullable<typeof proposal.current>): string {
+    if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration()
+        || snapshot.collectionIdentity !== collectionLive.current.identity)
+      return "This proposal belongs to an earlier editor session. Calculate again.";
+    if (snapshot.configuration !== live.current.configuration)
+      return "Recommendation settings changed. Calculate again.";
+    if (snapshot.identity !== recommendationIdentity(live.current.draft,live.current.locks))
+      return "The draft or locks changed; this proposal is stale. Close and reopen recommendations.";
+    if (snapshot.revision !== collectionLive.current.revision)
+      return "Collection settings changed. Calculate again with the items you own now.";
+    return "";
+  }
+
+  function collectionBlocker(): string {
+    if (collectionLive.current.busy) return "Your collection update is still being saved. Wait before applying.";
+    if (!["ready","loading"].includes(collectionLive.current.status))
+      return "Your collection could not be checked. Retry loading it before applying.";
+    return "";
+  }
 
   async function calculate(request: RecommendationRequest) {
-    if (active.current) return;
+    if (active.current || applying.current) return;
     if (collection.status !== "ready" || collection.busy) {
       setState({ busy: false, error: "Load your collection successfully before calculating a recommendation.", result: null });
       return;
     }
     if (referenceIdentity && referenceIdentity !== recommendationIdentity(live.current.draft, live.current.locks)) {
-      setState({ busy: false, error: "The draft or locks changed. Close and reopen recommendations to freeze a new reference.", result: null });
+      setState({ busy: false, error: "The draft or locks changed. Close and reopen recommendations to use your current setup.", result: null });
       return;
     }
     const controller = new AbortController(); active.current = controller;
@@ -43,33 +64,33 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
     setState({ busy: true, error: "", result: null });
     try {
       const result = await api<RecommendationResult>("/build-recommendations", { ...json("POST", request), signal: controller.signal });
-      if (!current()) return;
+      if (!current()) {
+        if (active.current === controller) setState({ busy: false, error: "Your editor session changed. Calculate again.", result: null });
+        return;
+      }
       proposal.current = snapshot;
       setState({ busy: false, error: "", result });
     } catch (error) {
       if (current()) setState({ busy: false, error: (error as Error).message, result: null });
+      else if (active.current === controller) setState({ busy: false, error: "Your editor session changed. Calculate again.", result: null });
     } finally { if (active.current === controller) active.current = null; }
   }
 
   async function apply(): Promise<boolean> {
     const snapshot = proposal.current;
-    if (!snapshot || !state.result || state.busy) return false;
+    if (!snapshot || !state.result || state.busy || applying.current) return false;
+    applying.current = true;
     try {
-      if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration())
-        throw new Error("This proposal belongs to an earlier editor session. Calculate again.");
-      if (collectionLive.current.busy || !["ready", "loading"].includes(collectionLive.current.status)
-          || snapshot.revision !== collectionLive.current.revision || snapshot.collectionIdentity !== collectionLive.current.identity)
-        throw new Error("Collection settings changed or are unavailable. Calculate again.");
+      const blocker = staleReason(snapshot) || collectionBlocker();
+      if (blocker) throw new Error(blocker);
       setState(current => ({ ...current, busy: true }));
       const refreshed = await collectionLive.current.refresh();
-      if (proposal.current !== snapshot || collectionLive.current.busy || snapshot.revision !== collectionLive.current.revision
-          || snapshot.revision !== refreshed.revision || snapshot.collectionIdentity !== refreshed.identity
-          || snapshot.collectionIdentity !== collectionLive.current.identity)
+      // A canceled or replaced Apply must never change the newer dialog's state.
+      if (proposal.current !== snapshot) return false;
+      const changed = staleReason(snapshot) || collectionBlocker();
+      if (changed) throw new Error(changed);
+      if (snapshot.revision !== refreshed.revision || snapshot.collectionIdentity !== refreshed.identity)
         throw new Error("Collection settings changed. Calculate again.");
-      if (snapshot.context !== live.current.context || snapshot.session !== currentSessionGeneration())
-        throw new Error("This proposal belongs to an earlier editor session. Calculate again.");
-      if (snapshot.configuration !== live.current.configuration)
-        throw new Error("This proposal belongs to an earlier configuration. Calculate again.");
       const selection = state.result.selection;
       if (!selection) throw new Error("No recommendation to apply.");
       const exclusions = refreshed.data;
@@ -84,7 +105,11 @@ export function useBuildRecommendation(draft: BuildDraft, locks: RecommendationS
         snapshot.request, state.result, live.current.catalog));
       cancel();
       return true;
-    } catch (error) { setState(current => ({ ...current, busy: false, error: (error as Error).message })); return false; }
+    } catch (error) {
+      if (proposal.current === snapshot) setState(current => ({ ...current, busy: false, error: (error as Error).message }));
+      return false;
+    } finally { if (proposal.current === snapshot) applying.current = false; }
   }
-  return { ...state, calculate, cancel, apply };
+  const applyBlocker = proposal.current ? staleReason(proposal.current) || collectionBlocker() : "";
+  return { ...state, applyBlocker, calculate, cancel, apply };
 }

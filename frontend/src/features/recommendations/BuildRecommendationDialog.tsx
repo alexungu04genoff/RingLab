@@ -6,6 +6,7 @@ import { useBuildRecommendation } from "./useBuildRecommendation";
 import { useRecommendationConfiguration } from "./useRecommendationConfiguration";
 import { RecommendationModeControls, RecommendationPriorityControls } from "./RecommendationControls";
 import { RecommendationComparison } from "./RecommendationComparison";
+import { recommendationOutcomes } from "./RecommendationExplanation";
 import { RecommendationReference, SelectionItem } from "./RecommendationSelections";
 import { draftSelection, recommendationSlots as slots } from "./recommendation";
 import "../../styles/recommendation.css";
@@ -41,12 +42,20 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
   }, [result]);
   const lockedSlots = slots.filter(slot => locks[slot.key]);
   const selected = result?.selection;
+  const canApply = selected && (result.outcome === "ESTABLISHED" || result.outcome === "BEST_FOUND");
   const close = () => { recommendation.cancel(); onClose(); };
-  return createPortal(<dialog className={`build-recommendation-dialog${mode === "BALANCED" && result ? " balanced-result" : ""}`} ref={dialog} aria-labelledby={headingId}
+  return createPortal(<dialog className="build-recommendation-dialog" ref={dialog} aria-labelledby={headingId}
     onKeyDown={event => {
       if (event.key !== "Tab" || event.altKey || event.ctrlKey || event.metaKey) return;
       const controls = [...event.currentTarget.querySelectorAll<HTMLElement>("button, a[href], input, select, textarea, summary, [tabindex]")]
-        .filter(control => control.tabIndex >= 0 && !control.matches(":disabled") && !control.closest("[hidden]"));
+        .filter(control => {
+          if (control.tabIndex < 0 || control.matches(":disabled") || control.closest("[hidden]")) return false;
+          // Closed details expose only their summary to keyboard navigation.
+          for (let parent = control.parentElement; parent; parent = parent.parentElement) {
+            if (parent.matches("details:not([open])") && !parent.querySelector(":scope > summary")?.contains(control)) return false;
+          }
+          return true;
+        });
       const first = controls[0], last = controls.at(-1);
       if (!first || !last) return;
       const current = controls.indexOf(document.activeElement as HTMLElement);
@@ -57,7 +66,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
     }}
     onCancel={event => { event.preventDefault(); close(); }}>
     <div className="recommendation-heading"><h2 id={headingId} ref={heading} tabIndex={-1}>
-      {result ? selected ? "Recommended setup" : "Recommendation unavailable" : "Recommend a build"}</h2>
+      {result ? recommendationOutcomes[result.outcome].title : "Recommend a build"}</h2>
       <button type="button" aria-label="Close recommendation" onClick={close}>
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
           <path d="m5 5 10 10M15 5 5 15" />
@@ -86,10 +95,10 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
           : "May add, remove or replace unlocked gadgets to improve modeled passive stats. Utility, scenario effects and race strategy are not valued."}</p>
       </fieldset>
       <RecommendationReference reference={reference} catalog={catalog} passiveReference={passiveReference} hasResult={!!result} />
-      {recommendation.busy && <p className="recommendation-activity" role="status">Calculating recommendation…</p>}
+      {recommendation.busy && <p className="recommendation-activity" role="status">{result ? "Checking your collection before applying…" : "Calculating recommendation…"}</p>}
       {!result ? <RecommendationPriorityControls configuration={configuration} headingId={headingId} />
         : <RecommendationComparison result={result} reference={reference} locks={locks} catalog={catalog}
-          machineType={machineType} mode={mode} priorities={priorities} ignored={ignored} />}
+          machineType={machineType} mode={mode} priorities={priorities} ignored={ignored} losses={losses} gadgetScope={configuration.gadgetScope} />}
     </div>
     <div className="recommendation-actions">
       {!result && !recommendation.busy && calculationBlocker && <p id={blockerId} className="recommendation-blocker" role="status">{calculationBlocker}</p>}
@@ -98,7 +107,9 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       onClick={() => recommendation.calculate({ gameVersionId: reference.gameVersionId!, machineType: machineType!, priorities,
         current: draftSelection(reference), locked: locks, gadgetScope: configuration.gadgetScope, ...(mode === "BALANCED" ? { mode, balanced: {
           maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), ignored } } : {}) })}>Calculate recommendation</button>}
-      {selected && <button type="button" className="primary" disabled={recommendation.busy} onClick={async () => { if (await recommendation.apply()) onClose(); }}>Apply to draft</button>}
+      {canApply && recommendation.applyBlocker && <p id={blockerId} className="recommendation-blocker" role="status">{recommendation.applyBlocker}</p>}
+      {canApply && <button type="button" className="primary" disabled={recommendation.busy || !!recommendation.applyBlocker}
+        aria-describedby={recommendation.applyBlocker ? blockerId : undefined} onClick={async () => { if (await recommendation.apply()) onClose(); }}>Apply to draft</button>}
       {result && <button type="button" onClick={recommendation.cancel}>Back to priorities</button>}
       <button type="button" onClick={close}>Cancel</button></div>
     {selected && <p className="recommendation-draft-note">Apply changes only your unsaved draft. Publish or save separately.</p>}

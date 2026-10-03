@@ -10,10 +10,10 @@ import { machineTypes, machineTypeLabel, requiredMachineSlots, visibleMachinePar
 import type { BuildDraft, MachinePart, Racer, RacingType } from "../../../shared/types";
 
 export function MachineSetupSection({ draft, setDraft, racers, parts, partsLoading, stockSourceId,
-  setStockSourceId, setupError, desktop, locks, setLocks, ownershipLabel, onChange }: {
+  setStockSourceId, setupError, locks, setLocks, ownershipLabel, onChange }: {
   draft: BuildDraft; setDraft: Dispatch<SetStateAction<BuildDraft>>; racers?: Racer[];
   parts?: MachinePart[]; partsLoading: boolean; stockSourceId: string; setStockSourceId: (id: string) => void;
-  setupError: string; desktop: boolean; locks: RecommendationSelection; setLocks: (locks: RecommendationSelection) => void;
+  setupError: string; locks: RecommendationSelection; setLocks: (locks: RecommendationSelection) => void;
   ownershipLabel: (category: "machines", id: string) => string;
   onChange: <K extends ComponentKey>(key: K, value: BuildDraft[K]) => void;
 }) {
@@ -31,8 +31,8 @@ export function MachineSetupSection({ draft, setDraft, racers, parts, partsLoadi
       <div className="machine-setup-controls">
         <div className="stock-machine-control">
           <div className="selection-field-heading">
-            {desktop && <SelectionLock label="machine setup" locked={groupLockState(draft, locks, parts ?? [])}
-              disabled={!!setupError} onClick={() => setLocks(toggleMachineLocks(draft, locks, parts ?? []))} />}
+            <SelectionLock label="machine setup" locked={groupLockState(draft, locks, parts ?? [])}
+              disabled={!!setupError} onClick={() => setLocks(toggleMachineLocks(draft, locks, parts ?? []))} />
             <label htmlFor={`${editorId}-stock`}>Use stock machine</label>
           </div>
           <select id={`${editorId}-stock`} value={stockSourceId} disabled={partsLoading || !!locks.frontPartId || !!locks.rearPartId || !!locks.tirePartId} onChange={(e) => {
@@ -67,7 +67,7 @@ export function MachineSetupSection({ draft, setDraft, racers, parts, partsLoadi
             items={racers || []}
             value={draft.racerId}
             disabled={!!locks.racerId}
-            labelAction={desktop && <SelectionLock label="Racer" locked={!!locks.racerId} disabled={!selectedRacer} onClick={() => toggleLock("racerId")} />}
+            labelAction={<SelectionLock label="Racer" locked={!!locks.racerId} disabled={!selectedRacer} onClick={() => toggleLock("racerId")} />}
             onChange={(v) => onChange("racerId", v)}
           />
           {selectedRacer && (
@@ -88,8 +88,8 @@ export function MachineSetupSection({ draft, setDraft, racers, parts, partsLoadi
           const incompatible = !!draft[slot.key] && !options.some((part) => part.id === draft[slot.key]);
           return <div key={slot.key} className="part-select">
             <div className="selection-field-heading">
-              {desktop && <SelectionLock label={slot.label} locked={!!locks[slot.key]} disabled={!selectedPart}
-                onClick={() => toggleLock(slot.key)} />}
+              <SelectionLock label={slot.label} locked={!!locks[slot.key]} disabled={!selectedPart}
+                onClick={() => toggleLock(slot.key)} />
               <label htmlFor={`${editorId}-${slot.key}`}>{slot.label}</label>
             </div>
             <select id={`${editorId}-${slot.key}`} required value={draft[slot.key] ?? ""} disabled={partsLoading || !!locks[slot.key]} aria-invalid={incompatible}

@@ -141,7 +141,7 @@ it("gadget lock click never toggles its checkbox or submits and locks reset for 
   expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
 });
 
-it("resizing to mobile aborts the popup, removes invisible locks and preserves the manual editor", async () => {
+it("recommendations and locks remain usable while resizing from desktop to mobile", async () => {
   const viewport = desktopViewport(); await openA(); selectLatestPatch();
   fireEvent.click(screen.getByRole("button", { name: "Lock Racer" }));
   fireEvent.click(screen.getByRole("button", { name: "Recommend a build" }));
@@ -150,15 +150,18 @@ it("resizing to mobile aborts the popup, removes invisible locks and preserves t
   vi.mocked(api).mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
   fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" }));
   const pending = vi.mocked(api).mock.calls.find(([path]) => path === "/build-recommendations")![1]!.signal!;
-  viewport.resize(false); expect(pending.aborted).toBe(true);
-  expect(screen.queryByRole("dialog")).toBeNull(); expect(screen.queryByRole("button", { name: "Recommend a build" })).toBeNull();
-  expect((screen.getByLabelText("Racer") as HTMLSelectElement).disabled).toBe(false);
+  viewport.resize(false); expect(pending.aborted).toBe(false);
+  expect(screen.getByRole("dialog")).toBeTruthy();
+  expect((screen.getByLabelText("Racer") as HTMLSelectElement).disabled).toBe(true);
   expect((screen.getByLabelText("Build title") as HTMLInputElement).value).toBe("Build A draft");
-  fireEvent.change(screen.getByLabelText("Machine type"), { target: { value: "" } });
-  expect((screen.getByLabelText("Machine type") as HTMLSelectElement).value).toBe("");
+  fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  expect(pending.aborted).toBe(true);
   await act(async () => finish({ selection: null, outcome: "UNAVAILABLE" }));
   viewport.resize(true); expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
+  expect(screen.getByRole("button", { name: "Unlock Racer" }).getAttribute("aria-pressed")).toBe("true");
+  viewport.resize(false);
+  fireEvent.click(screen.getByRole("button", { name: "Recommend a build" }));
+  expect(screen.getByRole("dialog")).toBeTruthy();
 });
 
 it("same-user session replacement clears locks and closes the proposal", async () => {

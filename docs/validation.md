@@ -1,5 +1,92 @@
 # Verification
 
+## Phase 4: recommendation integration and presentation — 2026-10-03
+
+Baseline: clean `d854034` on main (Phases 1–3, including the exhaustive oracle).
+The isolated `codex/recommendation-final-polish` checkout leaves the running development
+checkout and deployment untouched. No backend production code, game data, search limits,
+passive policy or recommendation mathematics changed.
+
+### Acceptance coverage and API review
+
+- `BuildRecommendationIntegrationTest` exercises both modes with empty BOOST and SPEED
+  drafts, required tire composition, racer-only and front-only locks, complete applied
+  selections, KEEP_CURRENT empty/nonempty passive-and-utility plates, and OPTIMIZE_UNLOCKED
+  with a gadget lock. Excluding the nominal winning racer forces a different owned result.
+- The scenario test calculates lap 1 and lap 2 independently, explicitly using NORMAL
+  form, then repeats the same recommendation and checks unchanged selections/totals.
+  Unspecified vehicle form correctly produces a partial scenario result; the first test
+  run exposed this omitted fixture condition, which was corrected without changing rules.
+- `BuildRecommendationContractTest` sends synthetic decimals through JSON request parsing,
+  REST resource → application → domain → response JSON. At a 95 floor, 95.00 survives and
+  94.99 does not; survivor counts and the next stage's maximum are checked. A deterministic
+  work cutoff also verifies BEST_FOUND with `proven:false` and no stage claims through REST.
+- Existing independent oracle, Strict equivalence, additive passive, ownership revision,
+  application capacity and packaged API tests remain part of full verification.
+- No endpoint or transport field was removed. `secondary` as an Ignore alias and legacy
+  100% normalization are deliberate tested Phase 3 compatibility, not dead scoring logic.
+  Current totals remain optional presentation fields. Scenario/basis request fields remain
+  rejected. All six outcome contracts remain distinct.
+
+### Frontend behavior and interaction
+
+Both modes now share selection comparisons with Added/Changed/Kept labels, visible kept
+items and per-gadget additions/removals/locks. Complete totals enable Current/Recommended;
+incomplete drafts show Recommended alone. Strict explains first differing priority;
+Balanced lists active losses, ignored stats, proven stage details and final comparison.
+Outcome headings distinguish proof, search limit, structural impossibility and missing data.
+UNAVAILABLE no longer displays best-found/search-limit wording for unproven stages.
+
+Apply shows specific draft/lock, collection-change, pending-write and collection-load
+blockers. Identical refreshes remain applicable. Canceled Apply checks cannot overwrite
+newer state with late errors, duplicate Apply is suppressed, and a session replacement
+cannot leave a settled calculation permanently busy. Scenario Preview explicitly states
+that its race conditions do not affect recommendations.
+
+Recommendations are enabled at all widths. Resize tests verify preserved locks/dialog/
+requests and mobile reopening. CSS provides narrow priority rows, labeled loss/Ignore,
+flexible comparisons, 44px mobile controls, wrapping actions and a separately scrolling
+modal body. Keyboard tests cover order controls, focus wrapping, Escape/cancel and focus
+return. Closed-details descendants are excluded from the focus guard. Desktop-only
+gating, resize-reset state, duplicated selection rendering and obsolete comparison CSS
+were removed; two focused result components keep responsibilities explicit.
+
+Automated checks cover these interactions in jsdom, not a visual browser renderer.
+Starting an isolated browser-test stack was rejected by automatic approval review with
+only “blocked by policy”; no browser visual pass is claimed. Manual follow-up: inspect
+configuration, result, long names, scroll/focus and Apply at 1280px, 768px and 390px on an
+authorized local preview. No new browser framework was introduced.
+
+### Verification record
+
+Frontend: 393 tests in 42 files passed. Coverage is 95.24% statements/lines, 91.99%
+branches and 89.67% functions; existing gates passed. Production build passed.
+Backend verification uses `mvn -f backend/pom.xml verify` with the disposable database
+`ringlab_recommendation_phase4_20261003`, disabled dev services and test port 8087.
+The normal development database is not used. Final backend results are recorded below
+for the completed run. Reports remain `backend/target/site/jacoco/index.html` and
+`frontend/coverage/index.html`.
+
+- `mvn -f backend/pom.xml verify`: passed, 527 Surefire tests and 20 packaged API tests,
+  including all four ArchitectureTest checks and the independent Balanced oracle and
+  Strict equivalence fixtures. The first full run had only the scenario fixture failure
+  described above; the corrected full rerun has no failures or skipped tests.
+- JaCoCo: 98.03% instructions, 90.50% branches, 97.99% lines. Recommendation domain:
+  99.52% instructions, 95.25% branches, 99.80% lines. Existing gates passed unchanged.
+- `npm run test:coverage -- --maxWorkers=2`: passed, 393 tests / 42 files. Focused dialog,
+  collection and editor checks also passed; old heading assertions were updated for the
+  explicit BEST_FOUND title and numbered priorities.
+- `npm run build`: passed after final responsive/markup cleanup. `git diff --check`: passed.
+- Read-only final review checked UI/backend wording, Ignore, ownership/locks, gadget scope,
+  proof claims and scenario separation. Backend production sources have no diff. The
+  recommendation atlas diagram matches its standalone source; unrelated atlas sections
+  were not regenerated. No deployment or change to the live local checkout occurred.
+
+The existing limitation remains: an unrestricted optimized gadget search can return
+BEST_FOUND at 100,000 work steps instead of proving the complete population. Two seconds
+and two simultaneous calculations remain unchanged. Dragon Brave, Jaws Rocket, Sakura
+Board, TYPE-W Windy, Triple Fan and Substitute Item cost discrepancies remain untouched.
+
 ## Phase 3: sequential-survivor Balanced — 2026-10-03
 
 Started from clean main `7b4e0e4`, after verifying Phase 1 passive-only recommendations

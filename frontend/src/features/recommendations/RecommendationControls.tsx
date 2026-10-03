@@ -50,7 +50,7 @@ export function RecommendationPriorityControls({ configuration, headingId }: {
     };
   }
   return <>
-    <h3>Stat priorities</h3>{mode === "STRICT" ? <p>Maximizes your first stat. Lower priorities break ties.</p>
+    <h3>Stat priorities</h3>{mode === "STRICT" ? <p>Prioritize stats in order. Earlier stats always take priority.</p>
       : <><p>Balanced considers your priorities in order. For each stat, it keeps builds within the loss you allow, then evaluates the next priority.</p>
         <p className="muted">0% keeps only the best value at that stage. Ignore removes a stat from the decision entirely. Your current setup is for comparison only.</p></>}
     <p className="muted">Drag the stats to reorder, or use the arrow buttons.</p>
@@ -74,17 +74,17 @@ export function RecommendationPriorityControls({ configuration, headingId }: {
         return <tr key={priority} draggable className={draggedPriority === priority ? "dragging" : undefined}
           {...priorityDragEvents(priority)}>
           <td><span className="priority-drag-handle" aria-hidden="true">⠿</span></td>
-          <th scope="row"><span className={`type-badge racing-type ${racingTypeClass(priority)}`}>{racingTypeLabel(priority)}</span></th>
+          <th scope="row"><span className="priority-rank">{index + 1}. </span><span className={`type-badge racing-type ${racingTypeClass(priority)}`}>{racingTypeLabel(priority)}</span></th>
           <td><div className="priority-reorder"><button type="button" aria-label={`Move ${racingTypeLabel(priority)} up`} disabled={index === 0}
             onClick={() => setPriorities(movePriority(priorities,index,-1))}>↑</button>
             <button type="button" aria-label={`Move ${racingTypeLabel(priority)} down`} disabled={index === priorities.length - 1}
               onClick={() => setPriorities(movePriority(priorities,index,1))}>↓</button></div></td>
-          <td><label className="sr-only" htmlFor={`${headingId}-${priority}-loss`}>{racingTypeLabel(priority)} maximum sacrifice (%)</label>
+          <td><span className="priority-mobile-label" aria-hidden="true">Maximum sacrifice</span><label className="sr-only" htmlFor={`${headingId}-${priority}-loss`}>{racingTypeLabel(priority)} maximum sacrifice (%)</label>
             <div className="balanced-loss-input"><input id={`${headingId}-${priority}-loss`} type="number" min="0" max="100" step="any"
               disabled={ignored.includes(priority)}
               value={losses[priority]} onChange={event => setLosses({ ...losses, [priority]: event.target.value })} /><span aria-hidden="true">%</span></div></td>
-          <td><input type="checkbox" aria-label={`Ignore ${racingTypeLabel(priority)}`} checked={ignored.includes(priority)}
-            onChange={event => setIgnored(event.target.checked ? [...ignored,priority] : ignored.filter(stat => stat !== priority))} /></td>
+          <td><label className="priority-ignore"><input type="checkbox" aria-label={`Ignore ${racingTypeLabel(priority)}`} checked={ignored.includes(priority)}
+            onChange={event => setIgnored(event.target.checked ? [...ignored,priority] : ignored.filter(stat => stat !== priority))} /><span className="priority-mobile-label" aria-hidden="true">Ignore</span></label></td>
         </tr>;
       })}</tbody>
     </table></div>}

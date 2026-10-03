@@ -1,4 +1,6 @@
 flowchart TB
+  ui["Editor at all screen widths<br/>locks + ordered priorities + gadget scope"]:::outside
+  view["Outcome + selection comparison + proof details<br/>Apply rechecks collection/session/draft<br/>updates unsaved draft only"]:::outside
   h["POST /api/build-recommendations<br/>BuildRecommendationRequest"]:::outside
   r["BuildRecommendationRestResource<br/>user role, @Blocking, toDomain()"]:::rest
   actor["CurrentUser.id<br/>AuthUseCase → AuthService → UserRepository"]:::rest
@@ -17,7 +19,7 @@ flowchart TB
   solver["BuildRecommendationSolver.solve<br/>internal Strict / Balanced search collaborators<br/>100,000 work steps / two seconds"]:::domain
   result["RecommendationResult<br/>selection + stats + honest outcome"]:::domain
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
-  h --> r
+  ui --> h --> r
   r --> actor
   r -->|"actor UUID + RecommendationRequest"| input["BuildRecommendationUseCase"]:::port
   input -.-> s
@@ -39,6 +41,7 @@ flowchart TB
   exc -.->|"constructor input"| solver
   solver --> result
   result -.->|"REST conversion after return"| response
+  response --> view
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24

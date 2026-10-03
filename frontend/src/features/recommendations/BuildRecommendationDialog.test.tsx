@@ -92,6 +92,84 @@ function Harness({ patch = "1.4.1", locked = false, initial = draft, versionLoad
 function open() { fireEvent.click(screen.getByRole("button", { name: "Recommend" })); }
 function calculate() { fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" })); }
 
+it.each([
+  ["ESTABLISHED", "Recommended setup", "proved this choice", true],
+  ["BEST_FOUND", "Best setup found so far", "better match may exist", true],
+  ["LIMIT_WITHOUT_CANDIDATE", "Search limit reached", "does not mean no legal build exists", false],
+  ["NO_LEGAL_COMPLETION", "No legal setup", "No complete build fits", false],
+  ["NO_FEASIBLE_CANDIDATE", "No setup meets these limits", "Legal builds exist", false],
+  ["UNAVAILABLE", "Recommendation unavailable", "missing or unsupported", false],
+] as const)("explains %s honestly and only enables Apply for a usable result", async (outcome, title, copy, usable) => {
+  vi.mocked(api).mockResolvedValue({ ...result, outcome, selection: usable ? result.selection : null,
+    balanced: { proven: outcome === "ESTABLISHED", stages: [] } });
+  render(<Harness referenceStats={loadedStats} />); open();
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" })); calculate();
+  await screen.findByRole("heading", { name: title });
+  expect(screen.getByText(new RegExp(copy))).toBeTruthy();
+  expect(!!screen.queryByRole("button", { name: "Apply to draft" })).toBe(usable);
+  fireEvent.click(screen.getByText("Balanced filtering stages"));
+  if (outcome === "UNAVAILABLE") {
+    expect(screen.getByText(/could not establish them/)).toBeTruthy();
+    expect(screen.queryByText(/search limit prevented proof/i)).toBeNull();
+  }
+});
+
+it.each(["Strict", "Balanced"])("shows only Recommended selections for an incomplete %s draft", async mode => {
+  vi.mocked(api).mockResolvedValue({ ...result, currentStats: null });
+  render(<Harness initial={{ ...draft, racerId: "", frontPartId: "", rearPartId: "", tirePartId: null, gadgetIds: [] }} />); open();
+  fireEvent.click(screen.getByRole("button", { name: mode })); calculate();
+  await screen.findByRole("heading", { name: "Recommended setup" });
+  expect(screen.queryByLabelText("Current Racer")).toBeNull();
+  expect(screen.getByLabelText("Recommended Racer").textContent).toContain("Added");
+  expect(screen.getByLabelText("Recommended Front").textContent).toContain("Added");
+  expect(screen.getByLabelText("Recommended gadgets").textContent).toContain("Added");
+  expect(screen.queryByText(/Current → Recommended/)).toBeNull();
+});
+
+it("disables Apply with a specific collection blocker and permits an identical refresh", async () => {
+  const mounted = render(<Harness />); open(); calculate();
+  const apply = await screen.findByRole("button", { name: "Apply to draft" }) as HTMLButtonElement;
+  collection.status = "error"; mounted.rerender(<Harness />);
+  expect(apply.disabled).toBe(true);
+  expect(screen.getByText(/collection could not be checked/)).toBeTruthy();
+  expect(screen.queryByText(/Collection settings changed/)).toBeNull();
+  collection.status = "ready"; collection.busy = true; mounted.rerender(<Harness />);
+  expect(screen.getByText(/update is still being saved/)).toBeTruthy();
+  collection.busy = false; mounted.rerender(<Harness />);
+  expect(apply.disabled).toBe(false);
+  collection.revision++; mounted.rerender(<Harness />);
+  expect(apply.disabled).toBe(true);
+  expect(screen.getByText(/Collection settings changed/)).toBeTruthy();
+});
+
+it("canceled Apply errors cannot overwrite a newer calculation and duplicate Apply is ignored", async () => {
+  let reject!: (reason: Error) => void;
+  collection.refresh.mockReturnValueOnce(new Promise((_, failed) => { reject = failed; }));
+  const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
+  await act(async () => { await hook.result.current.calculate(request); });
+  let pending!: Promise<boolean>;
+  act(() => { pending = hook.result.current.apply(); void hook.result.current.apply(); });
+  expect(collection.refresh).toHaveBeenCalledTimes(1);
+  act(() => hook.result.current.cancel());
+  await act(async () => { await hook.result.current.calculate(request); });
+  await act(async () => { reject(new Error("Old refresh failed")); expect(await pending).toBe(false); });
+  expect(hook.result.current.result).toEqual(result);
+  expect(hook.result.current.error).toBe("");
+  expect(hook.result.current.busy).toBe(false);
+});
+
+it.each([false, true])("clears busy state when the session changes during a pending response (reject=%s)", async fails => {
+  let resolve!: (value: RecommendationResult) => void, reject!: (reason: Error) => void;
+  vi.mocked(api).mockReturnValue(new Promise((done, failed) => { resolve = done; reject = failed; }));
+  const hook = renderHook(() => useBuildRecommendation(draft, emptyLocks(), "A", catalog, applied));
+  act(() => { void hook.result.current.calculate(request); });
+  setToken(`changed-${fails}`);
+  await act(async () => { if (fails) reject(new Error("Late failure")); else resolve(result); });
+  expect(hook.result.current.busy).toBe(false);
+  expect(hook.result.current.error).toContain("session changed");
+  expect(hook.result.current.result).toBeNull();
+});
+
 it.each(["Strict", "Balanced"])("defaults to keeping gadgets and cancels a proposal when scope changes in %s", async mode => {
   render(<Harness referenceStats={loadedStats} />); open();
   if (mode === "Balanced") fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
@@ -221,7 +299,7 @@ it("explains stat gains and losses on hover, keyboard focus and tap without appl
 it("shows unavailable current stats and result outcome without claiming improvement", async () => {
   vi.mocked(api).mockResolvedValue({ ...result, currentStats: null, recommendedStats: null, outcome: "BEST_FOUND" });
   render(<Harness initial={{ ...draft, machineType: "BOOST", tirePartId: null }} />); open(); calculate();
-  await screen.findByRole("heading", { name: "Recommended setup" });
+  await screen.findByRole("heading", { name: "Best setup found so far" });
   expect(screen.getByRole("region", { name: "Stat comparison" }).textContent).toContain("Recommended values");
   expect(screen.getByText(/Boost uses Front and Rear only/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
@@ -300,7 +378,7 @@ it("sends the complete order, preserves Ignore settings and displays proven stag
   fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Boost" }));
   expect(boost.disabled).toBe(false);
   expect(within(prioritiesTable).getAllByRole("rowheader").map(row => row.textContent))
-    .toEqual(["Acceleration", "Speed", "Handling", "Boost", "Power"]);
+    .toEqual(["1. Acceleration", "2. Speed", "3. Handling", "4. Boost", "5. Power"]);
   fireEvent.click(screen.getByRole("checkbox", { name: "Ignore Power" }));
   calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
   const calls = vi.mocked(api).mock.calls.filter(([path]) => path === "/build-recommendations");
@@ -321,7 +399,7 @@ it("sends the complete order, preserves Ignore settings and displays proven stag
   expect(applied).toHaveBeenCalledWith({ ...draft, frontPartId: "f2" });
 });
 
-it("allows zero-loss Balanced calculation when the frozen patch's catalog details finish loading", async () => {
+it("allows zero-loss Balanced calculation when the selected patch's catalog details finish loading", async () => {
   vi.mocked(api).mockImplementation(async path => path.startsWith("/stats/")
     ? { passive: { coverage: "CALCULATED", adjusted: stats } } : result);
   const mounted = render(<Harness versionLoaded={false} />); open();
@@ -354,12 +432,12 @@ it("compares Balanced selections with type badges and explicit unchanged rows, i
   await waitFor(() => expect(body.scrollTop).toBe(0));
   expect(screen.getByLabelText("Starting setup").querySelector("details")!.open).toBe(false);
   const comparison = screen.getByRole("region", { name: "Setup comparison" });
-  expect(within(comparison).getByRole("img", { name: "Racer type: Speed" })).toBeTruthy();
+  expect(within(comparison).getAllByRole("img", { name: "Racer type: Speed" })).toHaveLength(2);
   expect(within(screen.getByLabelText("Recommended Front")).getByRole("img", { name: "Machine type: Speed" })).toBeTruthy();
   expect(screen.getByLabelText("Current Front").textContent).toContain("Machine f");
   expect(screen.getByLabelText("Recommended Front").textContent).toContain("Machine f2");
-  expect(screen.getByLabelText("Recommended Racer").textContent).toBe("No change");
-  expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("No change");
+  expect(screen.getByLabelText("Recommended Racer").textContent).toContain("Kept");
+  expect(screen.getByLabelText("Recommended gadgets").textContent).toContain("Kept · Locked");
   expect(screen.getByLabelText("Current Racer").parentElement?.textContent).toContain("Locked");
   expect(applied).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole("button", { name: "Back to priorities" }));
@@ -379,14 +457,14 @@ it("shows a changed gadget list and correctly labels an unchanged empty list", a
   await screen.findByLabelText("Boost maximum sacrifice (%)"); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(within(screen.getByLabelText("Current gadgets")).getByText("Gadget A", { exact: true })).toBeTruthy();
-  expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("None");
+  expect(screen.getByLabelText("Recommended gadgets").textContent).toContain("NoneRemoved");
   fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
   mounted.rerender(<Harness initial={{ ...draft, gadgetIds: [] }} />); open();
   fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
   await screen.findByLabelText("Boost maximum sacrifice (%)"); calculate();
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(screen.getByLabelText("Current gadgets").textContent).toBe("None");
-  expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("No change");
+  expect(screen.getByLabelText("Recommended gadgets").textContent).toBe("None · Kept");
 });
 
 it("does not use unsupported presentation stats to block the server's candidate search", () => {
@@ -490,7 +568,7 @@ it.each([false,true])("calculates an incomplete draft without fetching current s
     balanced: { proven: !provisional, stages: [] } });
   render(<Harness initial={{ ...draft, racerId: "", frontPartId: "", rearPartId: "", tirePartId: null, gadgetIds: [] }} />);
   open(); fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
-  expect(api).not.toHaveBeenCalled(); calculate(); await screen.findByRole("heading", { name: "Recommended setup" });
+  expect(api).not.toHaveBeenCalled(); calculate(); await screen.findByRole("heading", { name: provisional ? "Best setup found so far" : "Recommended setup" });
   const comparison=screen.getByRole("region", { name: "Stat comparison" });
   expect(comparison.textContent).toContain("Recommended values"); expect(comparison.textContent).not.toContain("Unavailable");
   expect(comparison.querySelector(".recommendation-stat-before")).toBeNull();
@@ -510,14 +588,14 @@ it("configuration changes abort calculations and discard late responses and prop
   act(() => { void hook.result.current.calculate(request); });
   await act(async () => responses[0](result)); expect(hook.result.current.result).toBeNull();
   await act(async () => responses[1](result)); expect(hook.result.current.result).toEqual(result);
-  for (const configuration of ["balanced-reordered", "balanced-loss10", "balanced-secondary", "balanced-boost"]) {
+  for (const configuration of ["balanced-reordered", "balanced-loss10", "balanced-ignored", "balanced-boost"]) {
     hook.rerender({ configuration }); expect(hook.result.current.result).toBeNull();
     await act(async () => { expect(await hook.result.current.apply()).toBe(false); });
   }
   expect(applied).not.toHaveBeenCalled();
 });
 
-it("rejects a changed draft before calculation against an earlier frozen reference", () => {
+it("rejects a changed draft before calculation against an earlier captured setup", () => {
   const hook = renderHook(() => useBuildRecommendation({ ...draft, frontPartId: "f2" }, emptyLocks(), "A", catalog, applied,
     "balanced", recommendationIdentity(draft, emptyLocks())));
   act(() => { void hook.result.current.calculate(request); });

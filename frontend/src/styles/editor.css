@@ -333,17 +333,8 @@ hr {
 .recommendation-priorities button { padding: 5px 12px; }
 .recommendation-actions { position: sticky; bottom: 0; display: flex; gap: 10px; padding: 16px 26px; background: #1b2430; border-top: 1px solid var(--border); }
 .recommendation-draft-note { font-size: 12px; color: var(--muted); padding: 0 26px; }
-.recommendation-changes > div { display: grid; grid-template-columns: 95px 1fr; gap: 12px; border-bottom: 1px solid var(--border); padding: 10px 0; }
-.recommendation-changes dt { font-weight: 700; font-size: 13px; }
-.recommendation-changes dd { margin: 0; display: flex; gap: 16px; align-items: center; }
-.recommendation-changes dd > span { display: flex; flex-wrap: wrap; gap: 6px; }
-.recommendation-changes dd small { color: var(--muted); }
-.recommendation-stats { width: 100%; border-collapse: collapse; margin: 24px 0; }
-.recommendation-stats caption { text-align: left; padding-bottom: 12px; font-weight: 700; }
-.recommendation-stats th, .recommendation-stats td { text-align: right; padding: 10px; border-bottom: 1px solid var(--border); }
-.recommendation-stats th:first-child { text-align: left; }
 .recommendation-activity { padding: 40px 0; font-weight: 700; }
-@media (max-width: 1000px) { .selection-lock, .recommendation-entry, .build-recommendation-dialog { display: none; } }
+
 .selected {
   border-color: var(--accent) !important;
   background: var(--accent-selected) !important;

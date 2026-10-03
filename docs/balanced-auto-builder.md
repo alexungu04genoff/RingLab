@@ -169,6 +169,14 @@ that thresholds are withheld. Apply still only updates the unsaved draft. Config
 account, patch, locks and collection changes invalidate stale proposals using the
 unchanged Phase 1 collection revision checks.
 
+Configuration is available on desktop, tablet and mobile; resizing does not reset
+locks or calculations. Result copy lists active priorities with their sacrifices and
+names ignored stats separately. Proven stage details retain exact numeric thresholds;
+the final explanation describes active-priority comparison followed by convenience
+ordering. BEST_FOUND withholds thresholds and says a better match may exist;
+UNAVAILABLE explains missing support without incorrectly calling it a search limit.
+Added/Changed/Kept selections and gadget preservation use the same presentation as Strict.
+
 ## Independent oracle and verification
 
 `RecommendationExhaustiveOracle` enumerates complete Cartesian products and gadget

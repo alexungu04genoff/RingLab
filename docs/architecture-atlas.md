@@ -558,6 +558,8 @@ facts. **NO BUILD IS PERSISTED.** There is no `BuildRepository` dependency in th
 <!-- diagram: recommendation-flow -->
 ```mermaid
 flowchart TB
+  ui["Editor at all screen widths<br/>locks + ordered priorities + gadget scope"]:::outside
+  view["Outcome + selection comparison + proof details<br/>Apply rechecks collection/session/draft<br/>updates unsaved draft only"]:::outside
   h["POST /api/build-recommendations<br/>BuildRecommendationRequest"]:::outside
   r["BuildRecommendationRestResource<br/>user role, @Blocking, toDomain()"]:::rest
   actor["CurrentUser.id<br/>AuthUseCase → AuthService → UserRepository"]:::rest
@@ -576,7 +578,7 @@ flowchart TB
   solver["BuildRecommendationSolver.solve<br/>internal Strict / Balanced search collaborators<br/>100,000 work steps / two seconds"]:::domain
   result["RecommendationResult<br/>selection + stats + honest outcome"]:::domain
   response["BuildRecommendationResponse.from<br/>private, no-store; Vary: Authorization<br/>NO BUILD IS PERSISTED"]:::rest
-  h --> r
+  ui --> h --> r
   r --> actor
   r -->|"actor UUID + RecommendationRequest"| input["BuildRecommendationUseCase"]:::port
   input -.-> s
@@ -598,6 +600,7 @@ flowchart TB
   exc -.->|"constructor input"| solver
   solver --> result
   result -.->|"REST conversion after return"| response
+  response --> view
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727
   classDef domain fill:#e4f5e8,stroke:#37834c,color:#183d24
@@ -612,6 +615,15 @@ The two-second solver budget starts when the solver is constructed, after those 
 Title, description, map preferences, vote counts and ScenarioContext do not enter the solver.
 Applying a proposal changes the client's draft; publishing later follows section 5.
 [Diagram source](architecture/recommendation-flow.mmd).
+
+The editor exposes recommendations at every viewport width. `useEditorRecommendationLocks`
+preserves locks across resizing; `useBuildRecommendation` owns cancellation, account/draft/
+configuration checks and collection revision validation. Canceled Apply refreshes cannot
+write a draft or replace newer errors. `RecommendationSelectionComparison` presents the
+same Added/Changed/Kept rows in both modes, omitting Current for incomplete totals.
+`RecommendationExplanation` separates all six outcomes, active priority order, proven
+Balanced stages and collapsed technical details. It never runs the optimizer in React.
+Scenario Preview continues through its own endpoint and calculator.
 
 ### 6.2 Strict and Balanced inside the solver
 

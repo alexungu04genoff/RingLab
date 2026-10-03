@@ -243,21 +243,21 @@ default (`RATE_LIMIT_BUILD_RECOMMENDATION`); rejection uses existing 429 and
 `Retry-After`. There is no queue, automatic retry, job persistence or polling.
 
 The frontend sends one asynchronous request after Calculate, with an honest
-activity message. Cancel, unmount, user/session change and mobile resize abort
+activity message. Cancel, unmount and user/session change abort
 fetch and invalidate its request identity. An old response cannot reopen or
 replace a newer result. Browser cancellation does not promise to stop server CPU;
 the server's independent budgets remain the cancellation bound.
 
 ## Editor and professor demonstration
 
-The existing desktop breakpoint is **1001 CSS pixels** (`max-width: 1000px` is
-the existing narrower layout). Controls and dialog use viewport media queries,
-never user-agent detection. Below it, recommendation UI disappears, an active
-request/dialog closes, locks reset and the draft remains intact for manual editing.
-The desktop action stays in the preview's sticky area. One native modal dialog
+Recommendations and locks are available at every screen width. Resizing preserves
+locks, the dialog and an in-flight calculation. At narrow widths the priority controls
+stack into labeled rows and comparisons use flexible columns. The modal body scrolls
+independently of its heading and actions. The desktop action stays in the preview's
+sticky area. One native modal dialog
 provides background inertness, Escape and focus return. An explicit Tab/Shift+Tab
 guard wraps between enabled controls, including entry from the initially focused
-heading; this also prevents native browser focus from leaving the modal at either end.
+heading; controls hidden inside closed details are excluded from this guard.
 Colored stat badges can be dragged to reorder priorities. Compact Move up/down
 buttons also support the entire workflow from the keyboard without dragging.
 Lock icons sit beside their field-label text, with separate accessible buttons.
@@ -275,6 +275,21 @@ duplicates and no-op updates do not stale the proposal. Apply joins an in-flight
 background read and compares its returned revision and identity before changing
 the draft. Failed reads and pending mutations still block Apply; a real ownership
 change invalidates the proposal even if the proposed items themselves remain owned.
+The disabled Apply action explains whether the draft/locks changed, ownership changed,
+a collection write is pending, or collection loading failed. An identical refresh does
+not invalidate it. Canceling an Apply check suppresses both its late success and error;
+duplicate Apply clicks share no additional mutation. Session replacement also clears
+the calculating state when an old response settles.
+
+Both modes show Added/Changed/Kept selections and individual gadget changes. Complete
+current totals enable a side-by-side Current/Recommended comparison; incomplete drafts
+show Recommended only. KEEP_CURRENT explicitly labels preserved gadgets, including an
+empty plate. BOOST omits the tire row. Strict displays the priority order and first
+differing-stat rule. Balanced shows configured active losses/Ignore and proven stage
+diagnostics, followed by active-priority survivor comparison and convenience ties.
+Search details remain collapsed. Each outcome has distinct copy: BEST_FOUND never
+claims proof, LIMIT_WITHOUT_CANDIDATE never claims impossibility, and UNAVAILABLE does
+not claim a search limit. Scenario Preview remains separate from this objective.
 
 Safe demonstration on an isolated database and local preview:
 

@@ -635,7 +635,7 @@ Signed vectors are added even when they overlap. Calculation notes identify the
 community-backed policy separately from the immutable imported fact ruleset.
 Maps never affect these calculations.
 
-## Desktop build recommendations
+## Build recommendations
 
 `domain/build/recommendation` owns immutable request/catalog/result types, strict
 lexicographic stat comparison, exact `BalancedStage` thresholds, and a bounded deterministic solver. It reuses
@@ -677,14 +677,17 @@ normalized exclusion sets within the current account/session. Focus and Apply sh
 an in-flight read. Refresh returns data, revision and account/session identity together,
 so Apply detects changes without waiting for a React render. Failed reads block Apply
 without advancing revision; pending mutations and all other stale-result guards remain.
-`useEditorRecommendationLocks` owns desktop lock and popup lifetimes.
-`useRecommendationConfiguration` owns the frozen starting setup, mode, priorities,
+`useEditorRecommendationLocks` owns lock and popup lifetimes at every viewport width.
+`useRecommendationConfiguration` owns the captured starting setup, mode, priorities,
 loss settings and calculation eligibility. The dialog keeps modal focus and execution
 actions, composing configuration controls, reference selections and result comparisons.
-The desktop editor hosts ephemeral locks and one native modal with configuration,
+`RecommendationSelectionComparison` presents shared Added/Changed/Kept selections;
+`RecommendationExplanation` owns outcome copy, priority summaries and stage diagnostics.
+The editor hosts ephemeral locks and one native modal with configuration,
 activity and result states. Explicit Apply changes only permitted unsaved draft
-fields. At the existing 1001px desktop boundary, resizing smaller cancels and
-clears invisible locks while preserving the draft. No optimizer policy is copied
+fields. Resizing preserves locks and requests; responsive controls and a scrolling
+modal body keep actions available. Apply exposes specific stale/load blockers and
+ignores canceled refresh completions, including errors. No optimizer policy is copied
 into React or persistence. See [Auto-builder v1](auto-builder.md) for the exact
 objective, separability proof, data limits, endpoint and demonstration.
 

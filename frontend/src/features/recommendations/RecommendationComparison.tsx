@@ -1,8 +1,9 @@
 import { useId, useState } from "react";
 import { racingTypeLabel } from "../../shared/ui/RacingTypeBadge";
-import { draftSelection, signedStatChange, recommendationSlots as slots, recommendationStatValue as stat } from "./recommendation";
-import { SelectionItem } from "./RecommendationSelections";
-import type { RecommendationCatalog, RecommendationResult, RecommendationSelection } from "./recommendation";
+import { signedStatChange, recommendationStatValue as stat } from "./recommendation";
+import { RecommendationSelectionComparison } from "./RecommendationSelectionComparison";
+import { RecommendationExplanation } from "./RecommendationExplanation";
+import type { RecommendationCatalog, RecommendationResult, RecommendationSelection, RecommendationRequest } from "./recommendation";
 import type { BuildDraft, RacingType } from "../../shared/types";
 
 function RecommendationStatBar({ label, before, after, difference, scale }: {
@@ -35,56 +36,21 @@ function RecommendationStatBar({ label, before, after, difference, scale }: {
   </div>;
 }
 
-function BalancedSelectionChanges({ reference, selected, locks, catalog, machineType }: {
-  reference: BuildDraft; selected: RecommendationSelection; locks: RecommendationSelection;
-  catalog: RecommendationCatalog; machineType: RacingType | null;
-}) {
-  const current = draftSelection(reference);
-  const sameGadgets = reference.gadgetIds.length === selected.gadgetIds.length
-    && reference.gadgetIds.every((id, index) => id === selected.gadgetIds[index]);
-  return <section className="balanced-selection-changes" aria-label="Setup comparison">
-    <h3>Setup comparison</h3>
-    <div className="balanced-comparison-head" aria-hidden="true"><span>Selection</span><span>Current</span><span>Recommended</span></div>
-    <dl>{slots.filter(slot => !(slot.key === "tirePartId" && machineType === "BOOST")).map(slot =>
-      <div key={slot.key}>
-        <dt>{slot.label}{locks[slot.key] && <small>Locked</small>}</dt>
-        <dd aria-label={`Current ${slot.label}`}><SelectionItem id={current[slot.key]} slot={slot.key} catalog={catalog} showType /></dd>
-        <dd aria-label={`Recommended ${slot.label}`}>{current[slot.key] === selected[slot.key]
-          ? <span className="recommendation-unchanged">No change</span>
-          : <SelectionItem id={selected[slot.key]} slot={slot.key} catalog={catalog} showType />}</dd>
-      </div>)}
-      <div><dt>Gadgets</dt>
-        <dd aria-label="Current gadgets">{reference.gadgetIds.length
-          ? reference.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</dd>
-        <dd aria-label="Recommended gadgets">{sameGadgets ? <span className="recommendation-unchanged">No change</span>
-          : selected.gadgetIds.length ? selected.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</dd>
-      </div>
-    </dl>
-  </section>;
-}
-
 export function RecommendationComparison({ result, reference, locks, catalog, machineType, mode,
-  priorities, ignored }: {
+  priorities, ignored, losses, gadgetScope }: {
   result: RecommendationResult; reference: BuildDraft; locks: RecommendationSelection; catalog: RecommendationCatalog;
   machineType: RacingType | null; mode: "STRICT" | "BALANCED";
-  priorities: RacingType[]; ignored: RacingType[];
+  priorities: RacingType[]; ignored: RacingType[]; losses: Record<RacingType, string>; gadgetScope: NonNullable<RecommendationRequest["gadgetScope"]>;
 }) {
   const selected = result.selection;
   const comparisonScale = Math.max(100, ...Object.values(result.currentStats ?? {}), ...Object.values(result.recommendedStats ?? {}));
-  const ExplanationContainer = mode === "BALANCED" ? "details" : "section";
+
   return <>
     {selected && <><h3>{result.alreadyBest ? "Current setup retained" : "Proposed changes"}</h3>
-      {mode === "STRICT" && <dl className="recommendation-changes">{slots.filter(slot => !(slot.key === "tirePartId" && machineType === "BOOST")).map(slot =>
-        <div key={slot.key}><dt>{slot.label}{locks[slot.key] ? " · locked" : ""}</dt><dd>
-          {draftSelection(reference)[slot.key] === selected[slot.key] ? <><SelectionItem id={selected[slot.key]} slot={slot.key} catalog={catalog} /><small>Kept</small></>
-            : <><SelectionItem id={draftSelection(reference)[slot.key]} slot={slot.key} catalog={catalog} /><span aria-label="changes to">→</span><SelectionItem id={selected[slot.key]} slot={slot.key} catalog={catalog} /></>}
-        </dd></div>)}
-        <div><dt>Gadgets</dt><dd><span>{reference.gadgetIds.length ? reference.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</span>
-          <span aria-label="changes to">→</span><span>{selected.gadgetIds.length ? selected.gadgetIds.map(id => <SelectionItem key={id} id={id} catalog={catalog} />) : "None"}</span></dd></div>
-      </dl>}{machineType === "BOOST" && <p className="recommendation-setup-note">Boost uses Front and Rear only. The proposed setup has no tire.</p>}
+      <RecommendationSelectionComparison reference={reference} selected={selected} locks={locks} catalog={catalog} machineType={machineType} showCurrent={!!result.currentStats} gadgetScope={gadgetScope} />{machineType === "BOOST" && <p className="recommendation-setup-note">Boost uses Front and Rear only. The proposed setup has no tire.</p>}
       <section className="recommendation-stat-comparison" aria-label="Stat comparison">
         <h3>Passive-adjusted stats · same selected patch</h3>
-        {result.currentStats ? <p className="recommendation-stat-legend">Starting → recommended · Outlined: gain · Hatched: loss. Hover, focus or tap a bar for details.</p>
+        {result.currentStats ? <p className="recommendation-stat-legend">Current → Recommended · Outlined: gain · Hatched: loss. Hover, focus or tap a bar for details.</p>
           : <p>Recommended values</p>}
         <dl className="card-stats recommendation-stat-list">{priorities.map(priority => {
           const before = stat(result.currentStats, priority), after = stat(result.recommendedStats, priority);
@@ -101,20 +67,7 @@ export function RecommendationComparison({ result, reference, locks, catalog, ma
             {mode === "BALANCED" && ignored.includes(priority) && <small className="recommendation-stat-limit">Ignored in the recommendation</small>}
           </div>;
         })}</dl></section>
-      {mode === "BALANCED" && <BalancedSelectionChanges reference={reference} selected={selected} locks={locks} catalog={catalog} machineType={machineType} />}</>}
-    {mode === "BALANCED" && result.balanced && <details className="balanced-explanation"><summary>Balanced filtering stages</summary>
-      {!result.balanced.proven ? <p>The search limit prevented proof. Stage thresholds are withheld for this best-found result.</p>
-        : result.balanced.stages.length === 0 ? <p>All stats were ignored. Convenience ordering selected this setup.</p>
-        : <div className="balanced-priorities-scroll"><table className="balanced-stage-table" aria-label="Balanced filtering stages">
-          <thead><tr><th>Stat</th><th>Allowed loss</th><th>Best among survivors</th><th>Minimum</th><th>Builds remaining</th></tr></thead>
-          <tbody>{result.balanced.stages.map(stage => <tr key={stage.stat}><th>{racingTypeLabel(stage.stat)}</th>
-            <td>{stage.lossPercent}%</td><td>{stage.best}</td><td>{stage.threshold}</td><td>{stage.candidatesBefore} → {stage.candidatesAfter}</td></tr>)}</tbody>
-        </table></div>}
-    </details>}
-    <ExplanationContainer aria-label="Recommendation explanation" className={mode === "BALANCED" ? "balanced-explanation" : undefined}>
-      {mode === "BALANCED" ? <summary>Why this setup</summary> : <h3>Reason</h3>}<p>{result.reason}</p>
-      <p>Machine type: {racingTypeLabel(machineType)}. All locked selections are hard constraints.</p>
-      <ul>{result.restrictions.map(restriction => <li key={restriction}>{restriction}</li>)}</ul>
-      <p>{result.note}</p><small>Ruleset: {result.ruleset} · {result.work} search steps · {result.elapsedMillis} ms</small></ExplanationContainer>
+      </>}
+    <RecommendationExplanation result={result} machineType={machineType} mode={mode} priorities={priorities} ignored={ignored} losses={losses} />
   </>;
 }

@@ -7,11 +7,11 @@ import { filterGadgets, toggleGadget } from "../buildForm";
 import type { BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, RacingType } from "../../../shared/types";
 
 export function GadgetSelectionSection({ draft, gadgets, gadgetRules, passiveStats, gadgetTypeSelection,
-  desktop, locks, setLocks, ownershipLabel, onChange, draftContext }: {
+  locks, setLocks, ownershipLabel, onChange, draftContext }: {
   draft: BuildDraft; gadgets?: Gadget[]; gadgetRules?: GadgetRulesCatalog;
   passiveStats?: BuildStatsResult["passive"];
   gadgetTypeSelection: { racerType: RacingType | null; machineType: RacingType | null };
-  desktop: boolean; locks: RecommendationSelection; setLocks: (locks: RecommendationSelection) => void;
+  locks: RecommendationSelection; setLocks: (locks: RecommendationSelection) => void;
   ownershipLabel: (category: "gadgets", id: string) => string;
   onChange: (ids: string[]) => void; draftContext: string;
 }) {
@@ -31,8 +31,8 @@ export function GadgetSelectionSection({ draft, gadgets, gadgetRules, passiveSta
       </label>
       <div className="gadget-options">
         {filterGadgets(gadgets ?? [], gadgetSearch, draft.gadgetIds).map((g) => (
-          <div className={`gadget-choice ${desktop && draft.gadgetIds.includes(g.id) ? "has-lock" : ""}`} key={g.id}>
-          {desktop && draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
+          <div className={`gadget-choice ${draft.gadgetIds.includes(g.id) ? "has-lock" : ""}`} key={g.id}>
+          {draft.gadgetIds.includes(g.id) && <SelectionLock label={g.name} locked={locks.gadgetIds.includes(g.id)}
             onClick={() => setLocks({ ...locks, gadgetIds: toggleGadget(locks.gadgetIds, g.id) })} />}
           <label
             className={`gadget-option ${draft.gadgetIds.includes(g.id) ? "selected" : ""}`}

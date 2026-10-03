@@ -35,7 +35,7 @@ export function BuildEditor() {
   const [stockSourceId, setStockSourceId] = useState("");
   const draftContext = JSON.stringify([id, remixSourceId, user?.id]);
   const editorContext = JSON.stringify([id, remixSourceId, user?.id, currentSessionGeneration()]);
-  const { desktop, locks, setLocks, recommendationContext, setRecommendationContext, recommendButton } =
+  const { locks, setLocks, recommendationContext, setRecommendationContext, recommendButton } =
     useEditorRecommendationLocks(editorContext);
   const { racers, parts, gadgets, gadgetRules, versions, maps } = useBuildEditorCatalog();
   const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
@@ -127,11 +127,11 @@ export function BuildEditor() {
                 fieldErrors={fieldErrors} onChange={field} />
               <MachineSetupSection draft={draft} setDraft={setDraft} racers={racers.data} parts={parts.data}
                 partsLoading={parts.loading} stockSourceId={stockSourceId} setStockSourceId={setStockSourceId}
-                setupError={setupError} desktop={desktop} locks={locks} setLocks={setLocks}
+                setupError={setupError} locks={locks} setLocks={setLocks}
                 ownershipLabel={ownershipLabel} onChange={field} />
               <GadgetSelectionSection draft={draft} gadgets={gadgets.data} gadgetRules={gadgetRules.data}
                 passiveStats={draftStats.data?.passive} gadgetTypeSelection={gadgetTypeSelection}
-                desktop={desktop} locks={locks} setLocks={setLocks} ownershipLabel={ownershipLabel}
+                locks={locks} setLocks={setLocks} ownershipLabel={ownershipLabel}
                 onChange={ids => field("gadgetIds", ids)} draftContext={draftContext} />
               <MapRecommendationPicker maps={maps.data ?? []} loading={maps.loading} error={maps.error}
                 mode={draft.mapRecommendationMode} selectedIds={draft.recommendedMapIds}
@@ -142,7 +142,7 @@ export function BuildEditor() {
               version={versions.data?.find(version => version.id === draft.gameVersionId) ?? null}
               draftStats={draftStats} draftContext={draftContext} onGadgetsChange={ids => field("gadgetIds", ids)}
               recommendationAction={
-                desktop && <div className="recommendation-entry"><button ref={recommendButton} type="button" className="recommend-action"
+                <div className="recommendation-entry"><button ref={recommendButton} type="button" className="recommend-action"
                   aria-haspopup="dialog" aria-expanded={recommendationContext === editorContext}
                   disabled={busy || !racers.data || !parts.data || !gadgets.data || versions.loading || !versions.data}
                   onClick={() => setRecommendationContext(editorContext)}>Recommend a build</button>
@@ -161,7 +161,7 @@ export function BuildEditor() {
           </form>
         )
       )}
-      {desktop && recommendationContext === editorContext && !loading && canSubmit &&
+      {recommendationContext === editorContext && !loading && canSubmit &&
         <BuildRecommendationDialog draft={draft} locks={locks} context={editorContext}
           catalog={{ racers: racers.data ?? [], parts: parts.data ?? [], gadgets: gadgets.data ?? [] }}
           version={versions.data?.find(version => version.id === draft.gameVersionId) ?? null}
