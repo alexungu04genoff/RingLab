@@ -22,9 +22,9 @@ class GameDataRepositoryIntegrationTest {
     Machine machine = gameData.listMachines().stream().filter(m -> m.name().equals("Dark Reaper")).findFirst().orElseThrow();
     Gadget gadget = gameData.listGadgets().getFirst();
 
-    assertEquals(52, gameData.listRacers().size());
-    assertEquals(62, gameData.listMachines().size());
-    assertEquals(174, gameData.listMachineParts().size());
+    assertEquals(53, gameData.listRacers().size());
+    assertEquals(63, gameData.listMachines().size());
+    assertEquals(177, gameData.listMachineParts().size());
     for (var source : gameData.listMachines()) {
       var parts = gameData.listMachineParts().stream()
           .filter(p -> p.sourceMachineId().equals(source.id())).toList();

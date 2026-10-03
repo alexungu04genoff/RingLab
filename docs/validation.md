@@ -1,5 +1,38 @@
 # Verification
 
+## Phase 5B: safe catalog corrections — 2026-10-03
+
+Baseline: clean main `a3bf329`; Phase 5A was audit-only and its `.tools` evidence
+remains untracked. See [the complete change/evidence ledger](game-data-phase5b.md).
+
+- `mvn -f backend/pom.xml verify`: **534 tests + 20 packaged API tests**, zero
+  failures/errors/skips on the final run, including ArchitectureTest, migration
+  rehearsal, recommendation oracle and the closed additive passive checks.
+- Fresh JaCoCo: **97.27% instructions, 89.84% branches, 97.47% lines**. Existing
+  gates passed; reports remain in `backend/target/site/jacoco/`.
+- `npm run test:coverage -- --maxWorkers=2 --minWorkers=1`: **396 tests in 42 files**,
+  all passing; **95.24% statements/lines, 91.99% branches, 89.67% functions**.
+- Frontend `npm run build` passed; `git diff --check` passed.
+- Packaged importer VALIDATE → PLAN → APPLY → PLAN against the disposable
+  `ringlab_phase5b_test` database: **zero inserts, updates or deletes**, stable token.
+  The upgrade test independently migrates V34 → V35 around a stored legacy plate
+  and proves that its gadget identities/order survive the cost correction.
+- SHA-256 checks against the Phase 5A baseline preserved nine historical/part/
+  scenario/map CSVs byte-for-byte, including every existing machine-part stat row.
+  All 99 original effect rows remain unchanged.
+
+The initial concurrent full runs hit frontend timing limits and two backend
+connection-acquisition timeouts under memory pressure. They were rerun sequentially
+with fewer frontend workers; no timeouts, coverage thresholds or search budgets
+were increased. One old release-date API expectation was corrected to December 18.
+Existing deprecated/unchecked test-compilation notices remain non-fatal. No
+production database or deployment workflow was used.
+
+To reproduce, use the disposable database/JWT environment described below, then
+the commands above. The new pure unit class is `Phase5bCatalogTest`; additional
+legacy-save coverage is in `BuildServiceTest`. Production recovery implications
+are documented alongside V35 before any future deployment.
+
 ## Phase 4: recommendation integration and presentation — 2026-10-03
 
 Baseline: clean `d854034` on main (Phases 1–3, including the exhaustive oracle).

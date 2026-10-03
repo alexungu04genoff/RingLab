@@ -19,7 +19,7 @@ class GameVersionIntegrationTest {
   void catalogReturnsExactlyTheOfficialVersionsNewestFirst() {
     given().get("/api/game-versions").then().statusCode(200)
         .body("version", contains("1.4.1", "1.3.1", "1.2.2", "1.2.0"))
-        .body("releasedAt", contains("2026-06-23", "2026-03-18", "2025-12-22", "2025-12-03"))
+        .body("releasedAt", contains("2026-06-23", "2026-03-18", "2025-12-18", "2025-12-03"))
         .body("id", contains("50000000-0000-0000-0000-000000000001", "50000000-0000-0000-0000-000000000002",
             "50000000-0000-0000-0000-000000000003", "50000000-0000-0000-0000-000000000004"));
     for (var version : game.listGameVersions()) {

@@ -41,7 +41,7 @@ class BaseStatsIntegrationTest {
         .body("speed", equalTo(65)).body("acceleration", equalTo(30))
         .body("handling", equalTo(59)).body("power", equalTo(52)).body("boost", equalTo(34))
         .body("character.speed", notNullValue()).body("machine.speed", notNullValue());
-    assertEquals(52, stats.racerStats(LATEST).size());
+    assertEquals(53, stats.racerStats(LATEST).size());
     assertEquals(174, stats.machinePartStats(LATEST).size());
 
     var whisper = game.listRacers().stream().filter(r -> r.name().equals("Whisper")).findFirst().orElseThrow();
@@ -66,7 +66,7 @@ class BaseStatsIntegrationTest {
     var parts = game.listMachineParts().stream()
         .filter(p -> p.sourceMachineId().equals(speedster.id())).toList();
     for (var version : game.listGameVersions()) {
-      assertEquals(52, stats.racerStats(version.id()).size());
+      assertEquals(version.id().equals(LATEST) ? 53 : 52, stats.racerStats(version.id()).size());
       assertEquals(174, stats.machinePartStats(version.id()).size());
       given().queryParam("gameVersionId", version.id()).queryParam("racerId", amy.id())
           .queryParam("frontPartId", parts.stream().filter(p -> p.type().name().equals("FRONT")).findFirst().orElseThrow().id())

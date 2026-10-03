@@ -50,7 +50,7 @@ class PassiveStatsIntegrationTest {
         .get("/api/stats/passive-build").then().statusCode(200)
         .body("speed",equalTo(65)).body("passive.coverage",equalTo("UNSUPPORTED_VERSION"));
     given().get("/api/stats/gadget-rules").then().statusCode(200)
-        .body("supportedVersion",equalTo("1.4.1")).body("gadgets.size()",equalTo(79));
+        .body("supportedVersion",equalTo("1.4.1")).body("gadgets.size()",equalTo(117));
   }
 
   @Test void persistedPagePrivateSavedAndMapEditsShareTheSameResult() {

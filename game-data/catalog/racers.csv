@@ -48,6 +48,7 @@ id,name,racing_type,image_path
 60000000-0000-4000-8000-000000000045,Knuckles the Dread,POWER,/assets/racers/knuckles-the-dread.png
 60000000-0000-4000-8000-000000000046,Rusty Rose,HANDLING,/assets/racers/rusty-rose.png
 60000000-0000-4000-8000-000000000047,Werehog,POWER,/assets/racers/werehog.png
+81000000-0000-4000-8000-000000000001,Amigo,HANDLING,
 8422764a-dba4-5b63-b072-7eaa544e3587,"Miles ""Tails"" Prower",ACCELERATION,/assets/racers/tails.png
 e1871d41-6751-5230-b831-b98e65a64b41,Big the Cat,POWER,/assets/racers/big.png
 e3c98730-beba-5b2e-8b2b-01de087c8bd1,Shadow the Hedgehog,SPEED,/assets/racers/shadow.png

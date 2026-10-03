@@ -40,6 +40,10 @@ canonical files, conservative update policy, approval token and operation comman
 are documented in [game-data/README.md](../game-data/README.md).
 
 Rule facts use the same importer and transaction through `GameDataRuleSet` rows.
+The bounded [V35 correction](game-data-phase5b.md) mirrors approved canonical
+changes without widening ordinary import permissions. Catalog identities may
+exist without stat rows; calculations and recommendations preserve that unknown
+state. V35 changes data only, not schema or optimizer policy.
 V34 creates the versioned passive/scenario tables and their ordered source tables,
 bootstrapping existing 1.4.1 facts so upgrades preserve results. Normal runtime
 loads `GadgetRuleSnapshot` through `GadgetRuleRepository`/`GadgetRuleDbAdapter`;

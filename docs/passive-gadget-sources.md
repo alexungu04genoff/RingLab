@@ -1,5 +1,10 @@
 # Reviewed passive gadget rules
 
+Current fact revision: `crossworlds-1.4.1-passive-2026-10-03.1`.
+[Phase 5B](game-data-phase5b.md) adds 38 classified catalog identities and corrects
+Substitute Item's cost to 2. It does not add numerical passives or alter the
+closed 23-effect additive policy. Earlier dated sections retain their audit history.
+
 Reviewed 2026-09-27 for **CrossWorlds 1.4.1 only**. The official
 [update index](https://asia.sega.com/SonicRacingCrossWorlds/en/update/) still listed
 1.4.1 as its latest published game update when checked. Future patches are not assumed
@@ -21,8 +26,10 @@ existing base-stat ledger.
   [Character Kits](https://w.atwiki.jp/sonicracingcw/pages/56.html),
   [Drift Charge Kit](https://w.atwiki.jp/sonicracingcw/pages/49.html), and
   [Panel Combo Kit](https://w.atwiki.jp/sonicracingcw/pages/88.html).
-  Double Down's numeric penalty is supported by the original table/builder; this review
-  does not claim an independent second numeric confirmation for it.
+  Double Down's numeric penalty is supported by the original table/builder. Phase 5A
+  additionally found explicit −10-to-all corroboration on the
+  [Japanese item-control page](https://w.atwiki.jp/sonicracingcw/pages/47.html).
+  This remains community numerical evidence, not official stacking proof.
 - [SRCW Stats](https://srcwstats.com/) returned an application shell. Public JavaScript
   was inspected as an alternative; it loads numeric rows from a remote database rather
   than embedding them. Those rows were not inspected, so it is **not** counted as numeric
@@ -78,7 +85,7 @@ without copying numerical values. New identities/effect IDs remain unsupported e
 if a CSV labels them PASSIVE or machine-tuners. The old tuner-group and exact-pair
 calculation permissions are removed. The historical CSV group label is validated
 only as imported metadata. The immutable fact snapshot ID remains
-`crossworlds-1.4.1-passive-2026-09-28.5`; API calculation notes identify the separate
+`crossworlds-1.4.1-passive-2026-10-03.1`; API calculation notes identify the separate
 Java policy and evidence level. Scenario interaction policy is unchanged.
 
 On BOOST, Boost Tuners 1 + 2 + Boost Machine Kit add `(-6,0,0,-2,60)`.
@@ -206,7 +213,7 @@ draft request. No services were stopped and no saved data was changed. Integrati
 and full-suite tests were not run.
 
 The current facts are authored in the versioned CSV bundle and loaded from PostgreSQL
-as a detached `GadgetRuleSnapshot`, ruleset `crossworlds-1.4.1-passive-2026-09-28.5`.
+as a detached `GadgetRuleSnapshot`, ruleset `crossworlds-1.4.1-passive-2026-10-03.1`.
 `PassiveGadgetRules` retains reviewed-version and exact stacking policy; it no longer
 contains the authored fact table. `PassiveStatsCalculator` is pure domain arithmetic;
 `PassiveStatsService` validates drafts, resolves actual racer/machine types separately, and

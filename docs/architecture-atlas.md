@@ -700,7 +700,7 @@ subtrees and selecting their best representative. Otherwise the search recurses.
 publishes proven stage counts and thresholds; BEST_FOUND withholds all stage claims.
 
 The supported patch is `1.4.1`; the current imported passive ruleset label is
-`crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unreviewed numerical effects
+`crossworlds-1.4.1-passive-2026-10-03.1`. Unknown base values and unreviewed numerical effects
 do not compete as zero or base-only values. Recommendations optimize base stats plus
 reviewed always-active passive stat adjustments. Race-state and triggered effects are
 intentionally excluded and remain available in Scenario Preview. Utility benefits never

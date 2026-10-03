@@ -168,7 +168,7 @@ dependency is added.
 
 ## Supported data and honest outcomes
 
-The explicit passive ruleset is `crossworlds-1.4.1-passive-2026-09-28.5`.
+The explicit passive ruleset is `crossworlds-1.4.1-passive-2026-10-03.1`.
 Other selected patches return unavailable without fallback. Only fully known
 base vectors and `CALCULATED` passive results compete. Missing values are never
 zero; unreviewed numerical effects cannot be optimized as base-only.

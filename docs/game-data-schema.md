@@ -5,7 +5,10 @@ build references that consume it; user, vote and comment details are intentional
 Later V30–V33 map/collection additions are described in their feature docs. The
 [Git-managed importer](../game-data/README.md) maintains future content through
 explicit validate/plan/apply commands. V34 adds the rule tables described below;
-the original catalog/build foreign keys remain intact.
+the original catalog/build foreign keys remain intact. V35 makes the bounded
+[Phase 5B data corrections](game-data-phase5b.md) without changing this schema.
+Catalog identity does not require a stat snapshot row: Locomotive de Amigo uses
+that existing distinction to preserve unavailable facts.
 
 V28's private `saved_builds` relation cascades on both user and source-build deletion.
 Its composite primary key preserves one bookmark per user/build; database-generated

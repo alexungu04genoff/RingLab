@@ -8,7 +8,7 @@ id,name,description,slot_cost,image_path
 5a000a58-7d7a-581c-80e3-6ae8661215b7,Ring Engine,Top-speed boost while holding Rings; drains Rings over time. Physical speed is not a Speed-point bonus.,1,/assets/gadgets/ring-engine.png
 70000000-0000-4000-8000-000000000001,Ultimate Air Trick,Do more than 3 Air Tricks to become invincible for a short time.,2,/assets/gadgets/ultimate-air-trick.png
 70000000-0000-4000-8000-000000000002,Perfect Landing,Press accelerate as soon as you land to get a speed boost.,1,/assets/gadgets/perfect-landing.png
-70000000-0000-4000-8000-000000000003,Substitute Item,Taking a homing-item hit loses held items but grants invincibility.,1,/assets/gadgets/substitute-item.png
+70000000-0000-4000-8000-000000000003,Substitute Item,Taking a homing-item hit loses held items but grants invincibility.,2,/assets/gadgets/substitute-item.png
 70000000-0000-4000-8000-000000000004,Invincible Finish,Become invincible when close to the finish line.,3,/assets/gadgets/invincible-finish.png
 70000000-0000-4000-8000-000000000005,Collision Evolution,Bump into other Machines to change all stats by +1.,1,/assets/gadgets/collision-evolution.png
 70000000-0000-4000-8000-000000000006,Ring Evolution,Get 10 Rings to change all stats by +1.,1,/assets/gadgets/ring-evolution.png
@@ -67,6 +67,44 @@ id,name,description,slot_cost,image_path
 70000000-0000-4000-8000-000000000062,Boost Machine Kit,Matching Boost machines gain Boost stat points; drift boosts can grant rings.,3,
 82005d0f-575b-5350-934f-fb108d306a21,Attack Item Chance UP,Attack items appear more often.,1,/assets/gadgets/attack-item-chance-up.png
 83284989-3174-5cf8-a5ef-3d443b559b55,Defense Item Chance UP,Defense items appear more often.,2,/assets/gadgets/defense-item-chance-up.png
+"84000000-0000-4000-8000-000000000001","Air Trick Bounty","Awards rings when performing air tricks.","1",
+"84000000-0000-4000-8000-000000000002","Item Attack Bounty","Awards rings after an item hits an opponent.","1",
+"84000000-0000-4000-8000-000000000003","Runoff Bounty","Awards rings while crossing runoff areas with a speed item.","1",
+"84000000-0000-4000-8000-000000000004","Slipstream Bounty","Awards rings during slipstreams.","1",
+"84000000-0000-4000-8000-000000000005","Travel Ring Bounty","Awards rings when passing through a Travel Ring.","1",
+"84000000-0000-4000-8000-000000000006","Morph Action Bounty","Awards rings for charge actions in water or flight.","1",
+"84000000-0000-4000-8000-000000000007","Perfect Charge Bounty","Awards rings for releasing a drift as its charge level fills.","2",
+"84000000-0000-4000-8000-000000000008","Dash Panel Bounty","Awards rings when using dash panels or gates.","2",
+"84000000-0000-4000-8000-000000000009","Dash Panel Mini Bounty","Awards a smaller ring reward when using dash panels or gates.","1",
+"84000000-0000-4000-8000-000000000010","Dash Panel Combo Bounty","Awards rings for consecutive dash panels.","2",
+"84000000-0000-4000-8000-000000000011","200 Ring Limit","Raises ring capacity to 200.","2",
+"84000000-0000-4000-8000-000000000012","Ring Gain Mini Boost","Briefly increases physical speed when collecting rings.","1",
+"84000000-0000-4000-8000-000000000013","Ring Gain Boost","Grants a larger brief physical speed increase when collecting rings.","2",
+"84000000-0000-4000-8000-000000000014","Ring Range UP","Extends the ring pickup range.","1",
+"84000000-0000-4000-8000-000000000015","Air Drift Mobility UP","Changes air drift movement and release behavior in flight form.","1",
+"84000000-0000-4000-8000-000000000016","Charge Jump Mobility UP","Increases lateral air trick movement after a charge jump in water form.","1",
+"84000000-0000-4000-8000-000000000017","Air Trick Adept","Increases air trick animation speed.","1",
+"84000000-0000-4000-8000-000000000018","Air Trick Expert","Increases air trick animation speed more than Air Trick Adept.","2",
+"84000000-0000-4000-8000-000000000019","Lv1 Quick Charge","Shortens level 1 drift charge time.","2",
+"84000000-0000-4000-8000-000000000020","Lv2 Quick Charge","Shortens level 2 drift charge time.","1",
+"84000000-0000-4000-8000-000000000021","Lv3 Quick Charge","Shortens level 3 drift charge time.","1",
+"84000000-0000-4000-8000-000000000022","Technical Drift","Trades drift traction for faster charge in land form.","2",
+"84000000-0000-4000-8000-000000000023","Counter Quick Charge","Accelerates charging when changing drift direction in land form.","3",
+"84000000-0000-4000-8000-000000000024","Maximum Traction","Reduces slipping on sand and ice.","1",
+"84000000-0000-4000-8000-000000000025","Second Wind","Grants a Boost item after falling off the course.","1",
+"84000000-0000-4000-8000-000000000026","Bumper Guard","Prevents ring loss from wall contact.","1",
+"84000000-0000-4000-8000-000000000027","Boost Starter","Grants a Boost item at race start.","1",
+"84000000-0000-4000-8000-000000000028","Double Boost Specialist","Adds Double Boost to item boxes and grants one at race start.","2",
+"84000000-0000-4000-8000-000000000029","Dark Chao Starter","Grants a Dark Chao item at race start.","1",
+"84000000-0000-4000-8000-000000000030","Giant Spiked Iron Ball","Increases Spiked Iron Ball size and item availability.","1",
+"84000000-0000-4000-8000-000000000031","Short Fuse","Speeds up Bomb charging and increases its item availability.","1",
+"84000000-0000-4000-8000-000000000032","Monster Truck Starter","Grants a Monster Truck item at race start.","3",
+"84000000-0000-4000-8000-000000000033","Item Hoarder Kit","Combines extra item capacity with item rewards at the start of later laps.","3",
+"84000000-0000-4000-8000-000000000034","Damage Support Kit","Combines starting invincibility with a Boost item after falling off the course.","3",
+"84000000-0000-4000-8000-000000000035","Perfect Charge Kit","Released festival kit. Complete effect support is not yet reviewed.","3",
+"84000000-0000-4000-8000-000000000036","Speedy Shortcut Kit","Released festival kit. Complete effect support is not yet reviewed.","3",
+"84000000-0000-4000-8000-000000000037","Air Trick Action Kit","Released festival kit. Complete effect support is not yet reviewed.","3",
+"84000000-0000-4000-8000-000000000038","4th Stage Charge Kit","Released festival kit. Complete effect support is not yet reviewed.","3",
 84c606c3-0540-5a3e-bb92-27185533a89b,Lucky Pair,Occasionally get double items.,2,/assets/gadgets/lucky-pair.png
 966f8792-a6af-576f-885c-697a33064497,Boost Item Chance UP,Boost items appear more often.,3,/assets/gadgets/boost-item-chance-up.png
 97147799-cf1d-5f50-b133-3ff6091574d3,Damage Mercy,Become temporarily invincible after taking damage.,2,/assets/gadgets/damage-mercy.png

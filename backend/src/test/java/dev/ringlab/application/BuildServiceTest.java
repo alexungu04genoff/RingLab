@@ -674,6 +674,22 @@ class BuildServiceTest {
         "Build", "", racerId, frontPartId, rearPartId, tirePartId, gameVersionId, null, gadgetIds);
   }
 
+  @Test void correctedSubstituteCostPreservesLegacyBuildButRejectsInvalidResave() {
+    UUID substitute = addGadget("Substitute Item", 1);
+    UUID second = addGadget("Two slots", 2);
+    UUID third = addGadget("Another two slots", 2);
+    var draft = draftWithGadgets(List.of(substitute, second, third));
+    var saved = service.create(authorId, draft);
+    gameData.gadgets.put(substitute, new Gadget(substitute, "Substitute Item", null, 2, null));
+    assertEquals(draft.gadgetIds(), service.get(saved.id()).gadgetIds());
+    var error = assertThrows(ValidationException.class, () -> service.edit(saved.id(), authorId, draft));
+    assertEquals("Selected gadgets do not fit the 2x3 Gadget Plate", error.getMessage());
+    assertEquals(saved, service.get(saved.id()));
+    assertThrows(ValidationException.class, () -> service.create(authorId, draft));
+    var repaired = draftWithGadgets(List.of(substitute, second));
+    assertEquals(repaired.gadgetIds(), service.edit(saved.id(), authorId, repaired).gadgetIds());
+  }
+
   private UUID addGadget(String name, Integer slotCost) {
     UUID id = UUID.randomUUID();
     gameData.gadgets.put(id, new Gadget(id, name, null, slotCost, null));

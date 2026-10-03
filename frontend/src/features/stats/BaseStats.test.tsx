@@ -28,6 +28,14 @@ it("renders known values including true zero and decimals", () => {
   expect(screen.getAllByRole("progressbar")).toHaveLength(5);
 });
 
+it("keeps all unresolved Locomotive stats unknown rather than displaying zero", () => {
+  const unknown = { speed: null, acceleration: null, handling: null, power: null, boost: null };
+  render(<StatsBlock stats={unknown} version="1.4.1" />);
+  expect(screen.getAllByText("—")).toHaveLength(5);
+  expect(screen.queryByText("0")).toBeNull();
+  for (const bar of screen.getAllByRole("progressbar")) expect(bar.getAttribute("aria-valuenow")).toBeNull();
+});
+
 it("renders a partial stat as a dash without losing known values", () => {
   render(<StatsBlock stats={{ ...complete, handling: null }} version="1.3.1" />);
   expect(screen.getByText("—")).toBeTruthy();

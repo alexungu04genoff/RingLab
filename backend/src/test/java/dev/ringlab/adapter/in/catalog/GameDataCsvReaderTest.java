@@ -32,12 +32,12 @@ class GameDataCsvReaderTest {
 
   @Test void currentFilesPreserveCountsIdentitiesDecimalsAndNullArtwork() {
     var d = new GameDataCsvReader().read(Path.of("../game-data"));
-    assertEquals(52, d.racers().size()); assertEquals(62, d.machines().size());
-    assertEquals(174, d.parts().size()); assertEquals(79, d.gadgets().size());
+    assertEquals(53, d.racers().size()); assertEquals(63, d.machines().size());
+    assertEquals(177, d.parts().size()); assertEquals(117, d.gadgets().size());
     assertEquals(44, d.maps().size()); assertEquals(4, d.versions().size());
-    assertEquals(208, d.snapshots().stream().mapToInt(s -> s.racers().size()).sum());
+    assertEquals(209, d.snapshots().stream().mapToInt(s -> s.racers().size()).sum());
     assertEquals(696, d.snapshots().stream().mapToInt(s -> s.parts().size()).sum());
-    assertEquals(11, d.gadgets().stream().filter(r -> r.value().imagePath() == null).count());
+    assertEquals(49, d.gadgets().stream().filter(r -> r.value().imagePath() == null).count());
     assertTrue(d.snapshots().stream().flatMap(s -> s.parts().stream()).anyMatch(r -> r.value().stats().acceleration().scale() > 0));
   }
 

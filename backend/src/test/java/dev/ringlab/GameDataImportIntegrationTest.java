@@ -40,10 +40,12 @@ class GameDataImportIntegrationTest {
   private GameDataImportService importer;
   private GameDataSet canonical;
 
-  @BeforeEach void database() throws Exception {
+  @BeforeEach void database(TestInfo test) throws Exception {
     schema = "import_test_" + UUID.randomUUID().toString().replace("-", "");
-    Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
-        .locations("classpath:db/migration").load().migrate();
+    var migration = Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
+        .locations("classpath:db/migration");
+    if (test.getTestMethod().orElseThrow().getName().equals("phase5bMigrationPreservesAnInvalidatedLegacyPlate")) migration.target("34");
+    migration.load().migrate();
     isolated = new PGSimpleDataSource();
     try (var c = dataSource.getConnection()) { isolated.setURL(c.getMetaData().getURL()); }
     var config = ConfigProvider.getConfig();
@@ -59,6 +61,35 @@ class GameDataImportIntegrationTest {
     if (schema != null) try (var c = dataSource.getConnection(); var s = c.createStatement()) {
       s.execute("DROP SCHEMA IF EXISTS " + schema + " CASCADE");
     }
+  }
+
+  @Test void phase5bMigrationPreservesAnInvalidatedLegacyPlate() throws Exception {
+    var twoSlot = canonical.gadgets().stream().map(CatalogRow::value)
+        .filter(g -> Integer.valueOf(2).equals(g.slotCost()) && !g.id().toString().startsWith("84000000-")
+            && !g.id().equals(PassiveGadgetRules.id(3))).limit(2).map(Gadget::id).toList();
+    var ids = List.of(PassiveGadgetRules.id(3),twoSlot.get(0),twoSlot.get(1));
+    try (var c = isolated.getConnection(); var s = c.createStatement()) {
+      s.executeUpdate("INSERT INTO users(id,username,email,password_hash,created_at) VALUES ('" + id(501) + "','legacy-plate','legacy@example.test','unused',now())");
+      s.executeUpdate("INSERT INTO builds(id,title,description,author_id,racer_id,front_part_id,rear_part_id,tire_part_id,game_version_id,created_at,updated_at) VALUES ('"
+          + id(500) + "','Legacy plate','Preserve selections','" + id(501)
+          + "','013ecae2-55b9-58bb-b1c5-b054578058ff','10000000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','30000000-0000-4000-8000-000000000001','50000000-0000-0000-0000-000000000001',now(),now())");
+      try (var insert = c.prepareStatement("INSERT INTO build_gadgets(build_id,gadget_id,position) VALUES (?,?,?)")) {
+        for (int i = 0; i < ids.size(); i++) { insert.setObject(1,id(500)); insert.setObject(2,ids.get(i)); insert.setInt(3,i); insert.executeUpdate(); }
+      }
+    }
+    assertTrue(dev.ringlab.domain.build.GadgetPlate.canFit(List.of(1,2,2)));
+    Flyway.configure().dataSource(dataSource).schemas(schema).defaultSchema(schema)
+        .locations("classpath:db/migration").load().migrate();
+    try (var c = isolated.getConnection(); var query = c.prepareStatement(
+        "SELECT bg.gadget_id,g.slot_cost FROM build_gadgets bg JOIN gadgets g ON g.id=bg.gadget_id WHERE bg.build_id=? ORDER BY bg.position")) {
+      query.setObject(1,id(500));
+      var retained = new ArrayList<UUID>(); var costs = new ArrayList<Integer>();
+      try (var rows = query.executeQuery()) { while (rows.next()) { retained.add(rows.getObject(1,UUID.class)); costs.add(rows.getInt(2)); } }
+      assertEquals(ids,retained); assertEquals(List.of(2,2,2),costs);
+      assertFalse(dev.ringlab.domain.build.GadgetPlate.canFit(costs));
+    }
+    var plan = importer.plan(canonical);
+    assertTrue(plan.safe(),plan.unsafeChanges().toString()); assertEquals(0,plan.inserts()); assertEquals(0,plan.updateCount());
   }
 
   @Test void canonicalFilesExactlyMatchFinalMigrationsAndReimportWritesNothing() {
@@ -78,8 +109,8 @@ class GameDataImportIntegrationTest {
     var edit = new Edit(canonical);
     var next = new GameVersion(id(950), "test-rules-next", LocalDate.of(2026, 12, 1));
     edit.versions.add(row(next));
-    var oldStats = canonical.snapshots().getFirst();
-    edit.snapshots.add(new VersionStats(next.id(), oldStats.racers(), oldStats.parts()));
+    var oldStats = latestStats();
+    edit.snapshots.add(new VersionStats(next.id(), oldStats.racers(), completeParts(oldStats.parts())));
     var original = canonical.ruleSets().getFirst();
     edit.ruleSets.add(new GameDataRuleSet(row(new Metadata(next.id(), "test-passive-next", "test-scenario-next")),
         original.passive(), original.scenario(), original.sources()));
@@ -89,7 +120,7 @@ class GameDataImportIntegrationTest {
     var selected = canonical.gadgets().stream().map(CatalogRow::value)
         .filter(g -> List.of(PassiveGadgetRules.id(55), PassiveGadgetRules.id(34)).contains(g.id())).toList();
     var before = PassiveStatsCalculator.calculate(oldRules, base, "1.4.1", RacingType.ACCELERATION, RacingType.ACCELERATION, selected, true);
-    var plan = importer.plan(edit.build()); assertTrue(plan.safe()); assertEquals(611, plan.inserts());
+    var plan = importer.plan(edit.build()); assertTrue(plan.safe(), plan.unsafeChanges().toString()); assertEquals(767, plan.inserts());
     importer.apply(edit.build(), plan.approvalToken());
     var imported = runtime.findByVersion(next.version()).orElseThrow();
     assertEquals("test-passive-next", imported.passiveRuleset()); assertEquals(oldRules.passive(), imported.passive());
@@ -133,16 +164,16 @@ class GameDataImportIntegrationTest {
     edit.parts.addAll(newData.parts()); edit.gadgets.addAll(newData.gadgets());
     edit.maps.add(row(new RaceMap(id(7), "Test map", RaceMap.Category.CROSSWORLD, "Test pack", null, 1000)));
     edit.versions.addAll(newData.versions());
-    var racerStats = new ArrayList<>(canonical.snapshots().getFirst().racers());
-    var partStats = new ArrayList<>(canonical.snapshots().getFirst().parts());
+    var racerStats = new ArrayList<>(latestStats().racers());
+    var partStats = new ArrayList<>(completeParts(latestStats().parts()));
     racerStats.addAll(newData.snapshots().getFirst().racers());
     partStats.addAll(newData.snapshots().getFirst().parts());
     edit.snapshots.add(new VersionStats(id(8), racerStats, partStats));
     var plan = importer.plan(edit.build()); assertTrue(plan.safe(), plan.unsafeChanges().toString());
-    assertEquals(238, plan.inserts());
+    assertEquals(242, plan.inserts());
     importer.apply(edit.build(), plan.approvalToken());
-    assertEquals(53, repository.read().racers().size());
-    assertEquals(177, repository.read().parts().size());
+    assertEquals(54, repository.read().racers().size());
+    assertEquals(180, repository.read().parts().size());
     var noOp = importer.plan(edit.build()); assertEquals(0, noOp.inserts()); assertEquals(0, noOp.updateCount());
     importer.apply(edit.build(), noOp.approvalToken());
     assertTrue(importer.plan(edit.build()).changes().isEmpty());
@@ -201,13 +232,26 @@ class GameDataImportIntegrationTest {
     var old = canonical.snapshots().stream().filter(s -> s.versionId().equals(version)).findFirst().orElseThrow();
     var changedStats = old.racers().stream().map(r -> r.value().itemId().equals(racer)
         ? row(new StatRow(racer, BaseStats.ZERO)) : r).toList();
-    edit.snapshots.add(new VersionStats(id(900), changedStats, old.parts()));
+    edit.snapshots.add(new VersionStats(id(900), changedStats, completeParts(old.parts())));
     var plan = importer.plan(edit.build()); importer.apply(edit.build(), plan.approvalToken());
     assertEquals(before, oldBuildStats(buildId, version));
     var persisted = repository.read().snapshots().stream().filter(s -> s.versionId().equals(version)).findFirst().orElseThrow();
     assertEquals(old.racers().stream().map(CatalogRow::value).toList(), persisted.racers().stream().map(CatalogRow::value).toList());
     var changed = repository.read().snapshots().stream().filter(s -> s.versionId().equals(id(900))).findFirst().orElseThrow();
     assertEquals(BigDecimal.ZERO, changed.racers().stream().filter(r -> r.value().itemId().equals(racer)).findFirst().orElseThrow().value().stats().speed());
+  }
+
+  private VersionStats latestStats() {
+    return canonical.snapshots().stream().filter(s -> s.versionId().equals(
+        UUID.fromString("50000000-0000-0000-0000-000000000001"))).findFirst().orElseThrow();
+  }
+
+  // A future complete snapshot must explicitly carry unknowns, not copy fabricated values.
+  private List<CatalogRow<StatRow>> completeParts(List<CatalogRow<StatRow>> rows) {
+    var result = new ArrayList<>(rows);
+    for (var part : canonical.parts()) if (rows.stream().noneMatch(r -> r.value().itemId().equals(part.value().id())))
+      result.add(row(new StatRow(part.value().id(), BaseStats.UNKNOWN)));
+    return result;
   }
 
   private BaseStats oldBuildStats(UUID id, UUID version) {

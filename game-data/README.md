@@ -2,8 +2,24 @@
 
 These UTF-8 CSV files are the maintenance source for RingLab's catalog and base
 stats. PostgreSQL remains the runtime source. Editing, pushing, deploying, and
-restarting the backend do not import CSV content. Only the explicit `apply`
-command writes catalog content.
+restarting the backend do not import CSV content. The explicit `apply` command
+writes ordinary catalog content; reviewed forward Flyway corrections are the
+documented exception for otherwise immutable published facts.
+
+## Current Phase 5B catalog
+
+V35 and the canonical files contain **53 racers, 63 machines, 177 parts, 117 gadgets
+and 44 maps**. Amigo has one 1.4.1 stat row; Locomotive de Amigo has three part
+identities and no stat rows because the evidence conflicts. Historical numerical
+snapshots are unchanged. The current rule bundle has 137 passive fact rows (all
+kinds), 10 scenario rows, 388 source rows and one metadata row; total canonical
+records: 1,899. The closed 23-effect additive policy remains unchanged.
+
+See [Phase 5B evidence and migration safety](../docs/game-data-phase5b.md) for all
+38 gadget classifications, the Substitute Item cost correction and the exact
+forward migration. Against V34, PLAN rejects these published corrections; after
+V35, PLAN/APPLY is an exact no-op. Importer permissions have not been weakened.
+The initial-export counts below describe the historical baseline, not current data.
 
 ## Baseline and evidence
 
@@ -30,9 +46,10 @@ evidence that the values were unchanged in those patches. This extraction
 preserves the current runtime result. See [the historical audit](../docs/stats-1.3.1-audit.md),
 [catalog sources](../docs/game-data-sources.md) and [map sources](../docs/map-catalog-sources.md).
 
-Eleven gadget `image_path` cells intentionally remain blank: the frontend's
-existing `gadgetArtwork.ts` fallback supplies their artwork. CSV extraction does
-not silently change the API's null values.
+Forty-nine gadget `image_path` cells intentionally remain blank: eleven existing
+IDs use `gadgetArtwork.ts`; the 38 additions use the existing initials fallback.
+Amigo and Locomotive also use initials. No new artwork was downloaded, and the
+API retains explicit null image paths.
 
 ## Editing in Excel
 
@@ -174,7 +191,7 @@ rejects need a focused implementation first.
 
 ## Versioned gadget rule facts
 
-The reviewed 1.4.1 bundle adds **99 passive rows, 10 scenario rows, 274 ordered
+The original V34 reviewed 1.4.1 bundle added **99 passive rows, 10 scenario rows, 274 ordered
 source references and one ruleset row** (384 additional database rows; 1,703 total
 canonical records). These are the resolved facts from main `5655220`, including
 the exact existing `other-N` IDs. IDs are authored explicitly and never derived
@@ -249,9 +266,9 @@ and restart. A cold successful load makes six SELECTs; later snapshot calls make
    snapshots, and review its version permissions, interactions and API rule-catalog
    selection with parity tests. No CSV field can grant those permissions.
 
-`PassiveGadgetRules` retains the reviewed tuner identities and the exact
-Acceleration Tuner 2 + Acceleration Machine Kit permission. An arbitrary group
-label cannot grant stacking. `ScenarioGadgetRules` retains only the exact
+`PassiveGadgetRules` retains the closed 23-effect additive-v1 policy. An arbitrary
+group label or new numerical CSV row cannot grant stacking permission.
+`ScenarioGadgetRules` retains only the exact
 Quick Starter + Sea Dog **user-approved additive assumption**; it remains ASSUMED,
 not verified game behavior. Matching, arithmetic, unknown propagation, condition
 interpretation, interaction rejection, coverage, synthetic terrain/speed-drain

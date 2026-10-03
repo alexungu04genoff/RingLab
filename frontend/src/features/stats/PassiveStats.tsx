@@ -23,11 +23,12 @@ export function GadgetAdjustmentBadges({ gadgetId, value, catalog, selection }: 
     points: effects.reduce((total, effect) => total + (effect.adjustment[name] ?? 0), 0),
   })).filter(({points}) => points !== 0);
   if (!adjustments.length) {
-    const inactiveEffect = value.effects.find(effect => effect.gadgetId === gadgetId && effect.effectId === "stats");
+    const inactiveEffect = value.effects.find(effect => effect.gadgetId === gadgetId && effect.status === "UNSUPPORTED")
+      ?? value.effects.find(effect => effect.gadgetId === gadgetId && effect.effectId === "stats");
     const status = inactiveEffect?.status;
     const message = value.coverage === "UNSUPPORTED_VERSION" ? "Unavailable for this patch"
       : value.coverage === "INVALID_LOADOUT" ? "Not calculated · invalid loadout"
-      : status === "UNSUPPORTED" ? "Not added · stacking unresolved"
+      : status === "UNSUPPORTED" ? "Not added · effect unsupported"
       : status === "REQUIRES_SELECTION" ? "Choose the required racer or machine"
       : status === "NOT_MATCHED" ? "Stat adjustment inactive · type does not match" : null;
     return message ? <span className="gadget-adjustments gadget-selection-feedback" aria-label="Gadget adjustment not included">

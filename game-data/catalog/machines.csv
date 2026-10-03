@@ -35,6 +35,7 @@ id,name,racing_type,image_path
 7807812c-9616-c605-69b5-2ea3c5b18305,Fang Loader,POWER,/assets/machines/fang-loader.webp
 781a94e5-915b-90cb-9e1f-61a1c7cf9250,Royal Chariot,SPEED,/assets/machines/royal-chariot.webp
 79c17050-2f02-46e5-7329-7d07f364c48a,Pop Float,BOOST,/assets/machines/pop-float.webp
+82000000-0000-4000-8000-000000000001,Locomotive de Amigo,POWER,
 86ddf10a-940e-c7f3-a431-adfe209120e1,Buster M,SPEED,/assets/machines/buster-m.webp
 909ded8a-6628-fa67-d5b8-5acb427e66e1,Retro Future,SPEED,/assets/machines/retro-future.webp
 92dabaee-5db6-4550-84c7-be3181f9f3ff,Hyper Scorpion,ACCELERATION,/assets/machines/hyper-scorpion.webp

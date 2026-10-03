@@ -17,7 +17,7 @@ class GameDataImportCommandTest {
   private int run(String... args) { return new GameDataImportCommand(imports).run(args, new PrintStream(bytes), new PrintStream(bytes)); }
 
   @Test void validateReportsCountsWithoutPlanning() {
-    assertEquals(0, run("validate", "../game-data")); assertTrue(bytes.toString().contains("52 racers")); assertFalse(imports.planned);
+    assertEquals(0, run("validate", "../game-data")); assertTrue(bytes.toString().contains("53 racers")); assertFalse(imports.planned);
   }
   @Test void planAndApplyReportNoOpAndApprovalToken() {
     assertEquals(0, run("plan", "../game-data")); assertTrue(bytes.toString().contains("Approval token: token"));

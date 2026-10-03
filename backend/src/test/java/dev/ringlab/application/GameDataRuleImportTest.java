@@ -21,8 +21,8 @@ class GameDataRuleImportTest {
   @Test void firstRuleSnapshotOnAnUnreviewedVersionIsAnExplicitAddition() {
     var edit = new ImportFixture.Edit(canonical); edit.ruleSets.clear(); repository.current = edit.build();
     var plan = service.plan(canonical);
-    assertTrue(plan.safe()); assertEquals(384, plan.inserts());
-    assertTrue(plan.changes().getFirst().contains("99 passive, 10 scenario, 274 sources"));
+    assertTrue(plan.safe()); assertEquals(536, plan.inserts());
+    assertTrue(plan.changes().getFirst().contains("137 passive, 10 scenario, 388 sources"));
     assertFalse(repository.wrote);
     assertEquals(plan, service.apply(canonical, plan.approvalToken())); assertTrue(repository.wrote);
   }

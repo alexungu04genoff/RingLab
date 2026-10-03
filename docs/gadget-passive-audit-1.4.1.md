@@ -1,9 +1,12 @@
 # Gadget passive-stat audit — 1.4.1
 
-Reviewed 2026-09-28 against all **79 gadgets currently in RingLab's catalog**.
+Reviewed 2026-09-28 against the **79 gadgets then in RingLab's catalog**.
+The [Phase 5B supplement](game-data-phase5b.md) expands the current catalog to 117:
+24 more conditional, 10 utility-only and four unsupported gadgets. It preserves
+the 23 numerical effects and records the new identities/costs separately.
 This checks the passive baseline used by Strict and Balanced, not race simulation.
 There are **23 passive modifiers**, **30 conditional-only gadgets**, and **26 utilities**.
-Every current catalog identity has a rule. No gadget is classified by parsing its name
+Every identity in that review has a rule. No gadget is classified by parsing its name
 or description at runtime; unknown future identities remain explicitly unreviewed.
 
 ## Sources and interpretation
@@ -127,16 +130,17 @@ of 23 numerical passive effects; every plate-legal subset and all 25 known type 
 are checked against independent canonical-vector sums. This establishes implementation
 consistency with the community model, not official verification of in-game stacking.
 
-Separate catalog discrepancy: Substitute Item costs **1** in RingLab but **2** in the
-reviewed Gadget List. No slot costs, migrations or saved-build legality are changed
-by this passive-stat correction; resolving that discrepancy needs a separate catalog
-change. This audit covers RingLab's 79 entries, not every gadget listed in the game.
+The separate Substitute Item discrepancy (**1** in the old catalog, **2** in the
+reviewed Gadget List) is now corrected by Phase 5B/V35. Saved gadget identities are
+preserved even if their plate becomes invalid. This original audit covered 79
+entries; the Phase 5B ledger covers all 38 newly added released identities.
 
 ## Verification
 
 `mvn -o "-Dtest=PassiveStatsCalculatorTest,BalancedSolverTest" test` passed from
 `backend`: 22 pure unit tests, zero failures/errors. The normal Maven cache resolved
 the earlier alternate-cache blocker without downloads. Comparing this audit's names
-against the public catalog found 79 unique entries and no missing/extra names.
+against RingLab's then-current catalog found 79 unique entries. Phase 5A subsequently
+identified 38 missing released identities in the wider public game catalog.
 Existing test-compilation warnings concern deprecated and unchecked APIs in unrelated
 test classes. No integration/full-suite tests or coverage analysis were run.

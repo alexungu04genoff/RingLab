@@ -1,6 +1,9 @@
 # Sonic Racing: CrossWorlds catalog ledger
 
-Cutoff and date checked for **every row below: 2026-09-12** (Europe/Bucharest).
+Original ledger cutoff: **2026-09-12** (Europe/Bucharest). The approved
+[Phase 5B supplement](game-data-phase5b.md), checked **2026-10-03**, adds Amigo,
+Locomotive de Amigo and 38 released gadgets, with claim-specific evidence labels.
+Original rows below retain their original evidence dates.
 This ledger accompanies `V6__released_racer_and_machine_catalog.sql` and
 `V7__verified_gadget_catalog.sql`, `V8__community_artwork_for_catalog_gaps.sql`, and
 `V9__wiki_artwork_for_catalog_presentation.sql`, and
@@ -10,8 +13,10 @@ changing valid machine or FRONT/REAR identities. Earlier migrations are unchange
 
 ## Coverage and limits
 
-The resulting catalog contains **52 racers, 62 machines and 186 machine parts**. Racers comprise
-23 MAIN, 12 FREE_UPDATE, 16 DLC (13 collaboration racers plus 3 Sonic Prime racers), and 1 BONUS.
+The current catalog contains **53 racers, 63 machines, 177 machine parts and 117 gadgets**.
+The original 186-part count preceded removal of BOOST tires; V26 left 174, and
+Locomotive adds three. Racers comprise 23 MAIN, 13 FREE_UPDATE, 16 DLC
+(13 collaboration racers plus 3 Sonic Prime racers), and 1 BONUS.
 No skin or announced future racer is inserted. The verified Extreme Gear catalog is `BOARD`:
 Blue Star, Diva Macchina, Dream Sleeper, Jaws Rocket, Pop Float, Quad Copter, Sakura Board,
 Triple Fan, TYPE-J Iota, TYPE-S Stream, TYPE-W Windy, and Wispon Booster. These machines have
@@ -21,8 +26,9 @@ assert that every crossover vehicle can be mixed freely in the actual game.
 
 **Racer release coverage remains based on the official roster and release notices.** V10 uses the
 owner-approved Sonic Wiki catalogs to fill the current model's missing type facts and 36 released
-machine identities. The resulting 62-machine count includes the released base, bonus, free-update
-and DLC machines known at the cutoff. Super Sonic is also excluded from the general racer picker because the Wiki marks
+machine identities. That original 62-machine count is now 63 with Locomotive de Amigo.
+Its identity and POWER type are available, but its conflicting numerical part
+stats remain unavailable. Super Sonic is excluded from the general racer picker because the Wiki marks
 him as Grand-Prix-only and RingLab does not yet model race mode.
 
 Research checked the Asian and western official sites, both official news feeds, SEGA's publisher

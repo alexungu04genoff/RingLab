@@ -54,10 +54,20 @@ it("makes unresolved stacking visible instead of presenting the catalog bonus as
       adjustment:{speed:0,acceleration:0,handling:0,power:0,boost:0},
       explanation:"Individual modifier is verified, but stacking is unresolved."}]};
   render(<><GadgetAdjustmentBadges gadgetId="g1" value={unresolved} /><PassiveStatsPanel value={unresolved} /></>);
-  expect(screen.getByLabelText("Gadget adjustment not included").textContent).toContain("stacking unresolved");
+  expect(screen.getByLabelText("Gadget adjustment not included").textContent).toContain("effect unsupported");
   expect(screen.getByText("Base stats shown — this gadget combination is not fully calculated.")).toBeTruthy();
   expect(screen.getByLabelText("Gadget acceleration adjustment").textContent).toBe("Not calculated");
   expect(screen.getByText(/Individual modifier is verified/).closest("details")).toBeTruthy();
+});
+
+it("shows an unreviewed festival kit as unsupported even without a stats effect",()=>{
+  const unknown = {...result, coverage: "PARTIAL" as const, effects: [{...result.effects[0],
+    gadgetName: "Air Trick Action Kit", effectId: "other-0", status: "UNSUPPORTED" as const,
+    adjustment: {speed:0,acceleration:0,handling:0,power:0,boost:0},
+    explanation: "Identity and cost are reviewed; full kit effects remain unsupported."}]};
+  render(<GadgetAdjustmentBadges gadgetId="g1" value={unknown} />);
+  expect(screen.getByText("Not added · effect unsupported").title).toContain("full kit effects remain unsupported");
+  expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
 });
 
 it("labels a partial result with surviving adjustments as a known subtotal",()=>{
@@ -241,7 +251,7 @@ it("shows nonmatching tuner values instead of matching bonuses and penalties in 
   const unresolved={...result,effects:[{...result.effects[0],status:"UNSUPPORTED" as const}]};
   rerender(<GadgetAdjustmentBadges gadgetId="g1" catalog={catalog} selection={selection} value={unresolved} />);
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toBe("Acceleration +8");
-  expect(screen.getByText("Not added · stacking unresolved")).toBeTruthy();
+    expect(screen.getByText("Not added · effect unsupported")).toBeTruthy();
   expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
   rerender(<GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} selection={{...selection,machineType:"ACCELERATION"}} />);
   expect(screen.getByText("Acceleration +20")).toBeTruthy();

@@ -6,6 +6,12 @@ Test fixtures containing numbers are synthetic, isolated test snapshots, not gam
 
 ## Current RingLab policy
 
+Phase 5B retains every historical numerical row as **REPOSITORY_LEGACY**. The old
+186-part figures below describe the original audit, before BOOST tires were removed;
+the current catalog has 177 identities and 174 supported stat rows per snapshot.
+Amigo's community-supported vector is added only to 1.4.1, and Locomotive de Amigo
+has no numerical rows. See the [current evidence ledger](game-data-phase5b.md).
+
 V22 later copies the complete 1.4.1 snapshot into the three older selectable versions at the
 owner's direction. This makes current calculations available for those choices; it is not new
 historical evidence and does not change the audit below. Each version keeps independent rows so
