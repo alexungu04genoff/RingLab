@@ -625,18 +625,23 @@ preparation together; `RecommendationStatsEvaluator` owns full-selection and sub
 `RecommendationCandidateOrder` owns comparison, incumbent tracking and
 observed secondary ties. Strict and Balanced retain separate component loops and their existing
 work checkpoints. Only gadget-subset traversal is shared; no generic search framework is used.
+The shared traversal now accepts `GadgetRecommendationScope`: `KEEP_CURRENT`
+(default) evaluates only the exact current ordered gadget plate per type;
+`OPTIMIZE_UNLOCKED` enumerates subsets extending explicit gadget locks.
+The REST field is `gadgetScope`; the UI includes it in configuration identity.
+Neither scope changes Strict's comparison or Balanced's reference-based objective.
 
 <!-- diagram: recommendation-solver -->
 ```mermaid
 flowchart TB
-  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode"]:::domain
+  req["RecommendationRequest<br/>machineType, patch, priorities, current, locked, mode, gadgetScope"]:::domain
   validate["RecommendationCandidates.validate<br/>known IDs, correct slots, locks present in current<br/>owned locks, compatible machine type, locked plate"]:::domain
   baseline["RecommendationCandidates<br/>legalType + evaluate current<br/>MachineCompatibility + BaseStatsBreakdown<br/>RecommendationStatsEvaluator"]:::domain
   pools["RecommendationCandidates / RecommendationGadgetSearch<br/>owned racers / source-machine parts / gadgets<br/>locked IDs constrain pools; fixed machine type"]:::domain
   branch{"RecommendationMode"}:::domain
   strict["StrictRecommendationSearch<br/>bestComponent for each part slot<br/>best racer per racer-type group<br/>StatPriority.compare: lexicographic"]:::domain
   balanced["BALANCED<br/>complete supported nonnegative reference<br/>BalancedConfiguration → BalancedObjective"]:::domain
-  subsets["RecommendationGadgetSearch<br/>search / optionalGadgets<br/>enumerate subsets extending gadget locks"]:::domain
+  subsets["RecommendationGadgetSearch<br/>KEEP_CURRENT: evaluate current ordered gadgets<br/>OPTIMIZE_UNLOCKED: subsets extending gadget locks"]:::domain
   plate["GadgetPlate.canFit<br/>prune unplaceable selections"]:::domain
   calc["RecommendationStatsEvaluator<br/>PassiveStatsCalculator only<br/>detached GadgetRuleSnapshot + Java stacking policy"]:::domain
   components["BalancedRecommendationSearch.searchComponents<br/>joint component choices; optimistic remaining maxima<br/>prune failed floors or strictly worse active bound"]:::domain
@@ -679,7 +684,7 @@ then the sum of secondary values. `RecommendationCandidateOrder` then uses the s
 Optimistic per-stat maxima allow pruning without discarding a possible better completion.
 
 The supported patch is `1.4.1`; the current imported passive ruleset label is
-`crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unsupported modifier stacks
+`crossworlds-1.4.1-passive-2026-09-28.5`. Unknown base values and unreviewed numerical effects
 do not compete as zero or base-only values. Recommendations optimize base stats plus
 reviewed always-active passive stat adjustments. Race-state and triggered effects are
 intentionally excluded and remain available in Scenario Preview. Utility benefits never
@@ -830,8 +835,11 @@ runtime fallback or independently verified historical differences.
 
 Passive coverage is `CALCULATED`, `PARTIAL`, `UNSUPPORTED_VERSION` or `INVALID_LOADOUT`.
 An effect can be `APPLIED`, `NOT_MATCHED`, `REQUIRES_SELECTION`, `CONDITIONAL`, `NON_STAT`
-or `UNSUPPORTED`. Overlapping applied modifiers need a shared reviewed stacking group or
-the explicit reviewed tuner/kit pair. Disjoint adjustments do not need that permission.
+or `UNSUPPORTED`. The closed additive-v1 policy admits 23 reviewed numerical
+effect identities and sums their independently resolved signed vectors, including
+overlaps. Evidence is SUPPORTED_BY_COMMUNITY_CALCULATOR, not official verification.
+Unknown effects remain unsupported. The imported fact snapshot is unchanged;
+calculation notes name the separate Java policy.
 Raw stat arithmetic has no invented 100-point clamp or conversion from physical speed.
 
 Source trail: [BaseStatsService](../backend/src/main/java/dev/ringlab/application/gamedata/BaseStatsService.java),
@@ -2262,7 +2270,7 @@ listed separately: one is a pure domain rule, the other an application error tra
 | [BaseStats] | Stats | Five nullable decimal contributions with explicit unknown-preserving arithmetic. |
 | [BaseStatsBreakdown] | Stats | Separates total, character and machine contributions and calculates the canonical base result. |
 | [GadgetEffectRule] | Stats | Typed reviewed passive/conditional/non-stat/unsupported effect metadata with subject and stacking information. |
-| [PassiveGadgetRules] | Stats | Retains reviewed-version permission, tuner identity restrictions and the exact tuner/kit stacking permission; no authored fact table. |
+| [PassiveGadgetRules] | Stats | Versioned closed 23-effect community-backed additive policy; no authored fact table. |
 | [PassiveStatsCalculator] | Stats | Resolves applicable passive effects and produces conservative totals and coverage without I/O. |
 | [PassiveStatsResult] | Stats | Carries base/passive totals, effect audit entries and calculation coverage. |
 | [ScenarioContext] | Stats | Validates nullable transient lap, form, ring, landing and travel-distance inputs. |

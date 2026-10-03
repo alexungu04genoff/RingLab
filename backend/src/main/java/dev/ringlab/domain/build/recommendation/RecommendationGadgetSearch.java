@@ -25,6 +25,12 @@ final class RecommendationGadgetSearch {
   }
 
   void search(RacingType racerType, BiConsumer<List<UUID>, BaseStats> visit) {
+    if (request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT) {
+      budget.step();
+      var effects = candidates.effects(racerType, request.current().gadgetIds());
+      if (effects.eligible()) visit.accept(request.current().gadgetIds(), effects.adjustments());
+      return;
+    }
     search(racerType, optionalGadgets(racerType), 0, new ArrayList<>(request.locked().gadgetIds()), visit);
   }
 
@@ -49,7 +55,7 @@ final class RecommendationGadgetSearch {
     budget.step();
     if (!GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) return;
     var effects = candidates.effects(racerType, selected);
-    // For fixed types, adding gadgets cannot cure unknown effects or an unresolved applied-modifier stack.
+    // For fixed types, adding gadgets cannot cure an effect outside the reviewed passive model.
     if (!effects.eligible()) return;
     visit.accept(ordered(selected), effects.adjustments());
     for (int index = start; index < optional.size(); index++) {

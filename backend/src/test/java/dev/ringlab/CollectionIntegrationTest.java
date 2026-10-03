@@ -64,6 +64,7 @@ class CollectionIntegrationTest {
       given().auth().oauth2(demo).contentType("application/json").body(request).post("/api/build-recommendations")
           .then().statusCode(400).body("message", containsString(racer.name())).body("message", containsString(machine.name()));
       request.put("locked", Map.of("gadgetIds", List.of()));
+      request.put("gadgetScope", "OPTIMIZE_UNLOCKED");
       var response = given().auth().oauth2(demo).contentType("application/json").body(request).post("/api/build-recommendations")
           .then().statusCode(200).body("currentStats", notNullValue()).extract().jsonPath();
       // A bounded Balanced search may legitimately exhaust its budget; any returned candidate must be owned.

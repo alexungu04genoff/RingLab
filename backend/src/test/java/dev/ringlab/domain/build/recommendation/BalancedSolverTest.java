@@ -31,7 +31,7 @@ class BalancedSolverTest {
     BuildSelection reference() { return new BuildSelection(id(2), id(10), id(11), id(12), List.of()); }
     RecommendationCatalog catalog() { return new RecommendationCatalog(version, racers, machines, parts, gadgets, racerStats, partStats, dev.ringlab.importing.RuleFixtures.snapshot()); }
     RecommendationRequest request(BuildSelection current, List<StatPriority> active, String... losses) {
-      return new RecommendationRequest(id(1), RacingType.SPEED, active, current, EMPTY, RecommendationMode.BALANCED, config(active, losses));
+      return new RecommendationRequest(id(1), RacingType.SPEED, active, current, EMPTY, RecommendationMode.BALANCED, config(active, losses), GadgetRecommendationScope.OPTIMIZE_UNLOCKED);
     }
     RecommendationResult solve(RecommendationRequest request) { return new BuildRecommendationSolver(catalog(), request, BUDGET).solve(); }
   }
@@ -136,7 +136,7 @@ class BalancedSolverTest {
       var current = new BuildSelection(id(2), id(10), id(11), id(12), List.of(PassiveGadgetRules.id(45)));
       var active = trial % 2 == 0 ? List.of(BOOST, SPEED, ACCELERATION) : List.of(SPEED, BOOST, HANDLING);
       var locks = trial % 3 == 0 ? new BuildSelection(id(2), id(10), null, null, current.gadgetIds()) : EMPTY;
-      var request = new RecommendationRequest(id(1), RacingType.SPEED, active, current, locks, RecommendationMode.BALANCED, config(active, "5", "10", "25"));
+      var request = new RecommendationRequest(id(1), RacingType.SPEED, active, current, locks, RecommendationMode.BALANCED, config(active, "5", "10", "25"), GadgetRecommendationScope.OPTIMIZE_UNLOCKED);
       var result = f.solve(request);
       assertEquals(ESTABLISHED, result.outcome(), "trial " + trial);
       assertEquals(exhaustive(f, request), result.selection(), "trial " + trial);

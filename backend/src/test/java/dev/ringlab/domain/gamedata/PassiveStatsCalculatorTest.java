@@ -172,11 +172,11 @@ class PassiveStatsCalculatorTest {
     assertEquals(points(16,40,-6,16,-2),acceleration.adjustments());
   }
 
-  @Test void unresolvedStackingIsExplicitAndDoesNotPickAnOrderDependentWinner() {
+  @Test void reviewedOverlappingKitVectorsAreAddedInEitherOrder() {
     var result=calculate(BOOST,POWER,38,11);
-    assertEquals(PARTIAL,result.coverage());
-    assertEquals(TOTAL,result.adjusted());
-    assertTrue(result.effects().stream().filter(e -> e.effectId().equals("stats")).allMatch(e -> e.status()==UNSUPPORTED));
+    assertEquals(CALCULATED,result.coverage());
+    assertEquals(points(0,0,0,15,7),result.adjustments());
+    assertTrue(result.effects().stream().filter(e -> e.effectId().equals("stats")).allMatch(e -> e.status()==APPLIED));
     assertEquals(result.adjusted(),calculate(BOOST,POWER,11,38).adjusted());
   }
 
@@ -191,10 +191,9 @@ class PassiveStatsCalculatorTest {
       assertEquals(machine == ACCELERATION ? points(58,105,27,54,32) : points(58,73,29,54,34),result.adjusted());
       assertEquals(CONDITIONAL,result.effects().stream().filter(e -> e.gadgetId().equals(id(34)) && !e.effectId().equals("stats")).findFirst().orElseThrow().status());
     }
-    // Pair evidence is not transitive and does not authorize other tuner/kit pairs.
-    assertEquals(PARTIAL,calculate(POWER,ACCELERATION,54,34).coverage());
-    assertEquals(PARTIAL,calculate(POWER,ACCELERATION,55,34,54).coverage());
-    assertEquals(PARTIAL,calculate(POWER,SPEED,52,49).coverage());
+    assertEquals(points(0,40,-4,0,0),calculate(POWER,ACCELERATION,54,34).adjustments());
+    assertEquals(points(0,60,-6,0,-2),calculate(POWER,ACCELERATION,55,34,54).adjustments());
+    assertEquals(points(40,-4,0,0,0),calculate(POWER,SPEED,52,49).adjustments());
     assertEquals(points(0,40,-2,8,-2),calculate(POWER,ACCELERATION,55,34,58).adjustments());
   }
 
@@ -227,10 +226,10 @@ class PassiveStatsCalculatorTest {
     assertEquals(result.adjusted(),calculate(POWER,HANDLING,61,50,55).adjusted());
   }
 
-  @Test void unrelatedKnownEffectsSurviveAnUnresolvedOverlappingPair() {
+  @Test void reviewedOverlappingAndIndependentEffectsAllContribute() {
     var result = calculate(BOOST,POWER,38,11,50);
-    assertEquals(PARTIAL,result.coverage());
-    assertEquals(points(0,0,3,0,0),result.adjustments());
+    assertEquals(CALCULATED,result.coverage());
+    assertEquals(points(0,0,3,15,7),result.adjustments());
     assertEquals(APPLIED,result.effects().stream().filter(e -> e.gadgetId().equals(id(50))
         && e.effectId().equals("stats")).findFirst().orElseThrow().status());
   }

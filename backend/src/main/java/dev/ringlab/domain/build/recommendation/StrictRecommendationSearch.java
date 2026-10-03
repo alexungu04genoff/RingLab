@@ -44,12 +44,12 @@ final class StrictRecommendationSearch {
           catalog.racerStats(), request.current().racerId());
       if (racer == null) continue;
       var base = new BuildSelection(racer, front, rear, tire, request.locked().gadgetIds());
-      var lockedEffects = candidates.effects(type, request.locked().gadgetIds());
+      var lockedEffects = candidates.effects(type, request.fixedGadgets());
       if (!lockedEffects.eligible()) {
         lockedEffects.passive().effects().stream().filter(e -> e.status() == PassiveStatsResult.Status.UNSUPPORTED
             || e.status() == PassiveStatsResult.Status.REQUIRES_SELECTION)
             .forEach(e -> restrictions.add("Excluded racer type " + (type == null ? "unknown" : type)
-                + " with locked " + e.gadgetName() + ": " + e.explanation()));
+                + " with kept/locked " + e.gadgetName() + ": " + e.explanation()));
         continue;
       }
       gadgets.search(type, (selected, adjustments) -> {

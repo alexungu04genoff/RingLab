@@ -24,7 +24,9 @@ it("provides the public guide sections in player-facing language", () => {
   expect(html).toContain("Explore builds. Make them your own.");
   expect(html).toContain("Recommendations: build around your preferences");
   expect(html).toContain("You can combine these locks");
-  expect(html).toContain("Selecting an item alone does not lock it");
+  expect(html).toContain("Selecting a racer or part alone does not lock it");
+  expect(html).toContain("Keep current");
+  expect(html).toContain("Optimize unlocked gadgets");
   expect(html).toContain("it does not lock your racer or gadgets");
   expect(html).toContain("a front part, and two favourite gadgets");
   expect(html).toContain("Your locked items stay in place");

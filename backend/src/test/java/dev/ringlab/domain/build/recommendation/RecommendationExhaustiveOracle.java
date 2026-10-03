@@ -24,6 +24,8 @@ final class RecommendationExhaustiveOracle {
         for (int mask = 0; mask < (1 << gadgets.size()); mask++) {
           var selected = new ArrayList<UUID>();
           for (int i = 0; i < gadgets.size(); i++) if ((mask & (1 << i)) != 0) selected.add(gadgets.get(i).id());
+          if (request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT
+              && !new HashSet<>(selected).equals(new HashSet<>(request.current().gadgetIds()))) continue;
           if (!selected.containsAll(request.locked().gadgetIds()) || selected.size() > 6
               || !GadgetPlate.canFit(selected.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList())) continue;
           var ordered = new ArrayList<UUID>();

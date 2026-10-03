@@ -47,8 +47,8 @@ loads `GadgetRuleSnapshot` through `GadgetRuleRepository`/`GadgetRuleDbAdapter`;
 scenario, community and recommendation callers pass detached facts into pure
 calculators. `RecommendationCatalog` includes the same passive/scenario snapshot. JDBC
 mapping is shared inside the outbound adapter by `GameDataRuleStorage`; calculators
-never reach that storage or CSV. Reviewed-version permissions, exact stacking
-pairs and the scenario assumption remain Java policy. Source URLs and numeric facts
+never reach that storage or CSV. Reviewed-version permissions, the closed passive
+additive policy and separate scenario interactions remain Java policy. Source URLs and numeric facts
 are relational data; importing a new snapshot does not grant runtime permission.
 
 `ReviewedGadgetRules` synchronizes the first successful load and shares that immutable
@@ -629,7 +629,11 @@ the domain. `PassiveStatsService` resolves racer and machine types separately, v
 draft gadget IDs and the existing plate, and reuses batched base contributions for lists.
 Community snapshots calculate with already resolved catalog metadata. REST adds passive
 results without replacing base fields. See [passive-gadget-sources.md](passive-gadget-sources.md)
-for evidence, partial coverage and unresolved stacking. Maps never affect these calculations.
+for evidence and partial coverage. The versioned Java additive policy admits only
+23 reviewed numerical effect identities; unknown additions remain unsupported.
+Signed vectors are added even when they overlap. Calculation notes identify the
+community-backed policy separately from the immutable imported fact ruleset.
+Maps never affect these calculations.
 
 ## Desktop build recommendations
 
@@ -648,6 +652,11 @@ and the separate Strict and Balanced algorithms (`StrictRecommendationSearch`,
 `BalancedRecommendationSearch`). They consume detached values only; none is a
 port, application service or persistence boundary. `BalancedObjective` still owns
 the exact floors and weighted comparison.
+The request's `GadgetRecommendationScope` defaults to `KEEP_CURRENT`: the shared
+gadget traversal evaluates the current ordered plate for each candidate type.
+`OPTIMIZE_UNLOCKED` enables existing subset enumeration around gadget locks.
+Both modes retain their existing objective and budgets. Scope is part of the
+frontend configuration identity; Phase 1 collection snapshot checks remain intact.
 Only complete base/passive totals compete; unknown passive values never become zero
 or partial objective scores. Strict retains its component reduction because passive
 adjustments are ID-independent within fixed racer/machine types. Balanced retains

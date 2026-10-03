@@ -9,7 +9,9 @@ import java.util.List;
 /** Pure arithmetic over reviewed rules. No ranking, map, race-state or persistence inputs. */
 public final class PassiveStatsCalculator {
   private PassiveStatsCalculator() {}
-  public static final String ARITHMETIC_NOTE = "Known passive stat-point arithmetic; effective in-game caps are not established. Race-time effects are excluded.";
+  public static final String ARITHMETIC_NOTE = "Passive policy " + PassiveGadgetRules.POLICY + " ("
+      + PassiveGadgetRules.EVIDENCE + "): reviewed vectors are added with signed penalties. "
+      + "Stacking is community-backed, not independently verified official behavior. Effective in-game caps are not established. Race-time effects are excluded.";
 
   public static PassiveStatsResult calculate(GadgetRuleSnapshot snapshot, BaseStatsBreakdown base, String version,
       RacingType racerType, RacingType machineType, List<Gadget> gadgets, boolean validLoadout) {
@@ -34,6 +36,9 @@ public final class PassiveStatsCalculator {
           status = UNSUPPORTED;
           explanation = !supported ? "Gadget rules are available only for Ver. " + PassiveGadgetRules.VERSION + "."
               : "Invalid saved loadout: base stats remain available, but gadget adjustments are not calculated.";
+        } else if (rule.kind() == GadgetEffectRule.Kind.PASSIVE && !PassiveGadgetRules.reviewedNumeric(rule)) {
+          status = UNSUPPORTED;
+          explanation = "This numerical effect is outside the closed reviewed passive policy; unknown effects are not zero.";
         } else if (rule.kind() == GadgetEffectRule.Kind.PASSIVE) {
           var actual = rule.subject() == GadgetEffectRule.Subject.RACER ? racerType : machineType;
           if (rule.subject() != GadgetEffectRule.Subject.ANY && actual == null) {
@@ -51,20 +56,6 @@ public final class PassiveStatsCalculator {
       }
     }
 
-    // Independent stat adjustments do not stack with one another. Only overlapping
-    // modifiers need a supported stacking group or an explicitly reviewed pair. All machine tuners use additive
-    // stat points, including penalties that offset another tuner's bonus.
-    var applied = effects.stream().filter(e -> e.status() == APPLIED).toList();
-    if (applied.size() > 1) {
-      for (int i = 0; i < effects.size(); i++) {
-        var effect = effects.get(i);
-        boolean unresolved = effect.status() == APPLIED && applied.stream().anyMatch(other -> other != effect
-            && overlaps(effect.adjustment(), other.adjustment()) && !verifiedStack(snapshot, List.of(effect, other)));
-        if (unresolved) effects.set(i,new PassiveStatsResult.Effect(effect.gadgetId(),effect.gadgetName(),
-            effect.effectId(),effect.label(),UNSUPPORTED,PassiveGadgetRules.ZERO,
-            "Individual modifier is verified, but stacking with the other selected passive modifiers is unresolved. This combination is not added.",effect.sources()));
-      }
-    }
     var values = new ArrayList<BaseStats>();
     values.add(PassiveGadgetRules.ZERO);
     effects.stream().filter(e -> e.status() == APPLIED).forEach(e -> values.add(e.adjustment()));
@@ -78,22 +69,4 @@ public final class PassiveStatsCalculator {
         PassiveGadgetRules.VERSION,ARITHMETIC_NOTE,effects);
   }
 
-  private static boolean verifiedStack(GadgetRuleSnapshot snapshot, List<PassiveStatsResult.Effect> effects) {
-    if (effects.size() != 2 || effects.get(0).gadgetId().equals(effects.get(1).gadgetId())) return false;
-    var first = snapshot.forGadget(effects.get(0).gadgetId()).stream()
-        .filter(r -> r.effectId().equals(effects.get(0).effectId())).findFirst().orElseThrow();
-    var second = snapshot.forGadget(effects.get(1).gadgetId()).stream()
-        .filter(r -> r.effectId().equals(effects.get(1).effectId())).findFirst().orElseThrow();
-    return PassiveGadgetRules.verifiedStack(first, second);
-  }
-
-  private static boolean overlaps(BaseStats first, BaseStats second) {
-    return nonzero(first.speed(), second.speed()) || nonzero(first.acceleration(), second.acceleration())
-        || nonzero(first.handling(), second.handling()) || nonzero(first.power(), second.power())
-        || nonzero(first.boost(), second.boost());
-  }
-
-  private static boolean nonzero(java.math.BigDecimal first, java.math.BigDecimal second) {
-    return first != null && second != null && first.signum() != 0 && second.signum() != 0;
-  }
 }

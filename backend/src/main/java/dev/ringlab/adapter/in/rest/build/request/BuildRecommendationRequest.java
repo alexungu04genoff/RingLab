@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 public record BuildRecommendationRequest(@NotNull UUID gameVersionId, @NotNull RacingType machineType,
     @NotNull @Size(min = 1, max = 5) List<@NotNull StatPriority> priorities,
     @NotNull @Valid Selection current, @NotNull @Valid Selection locked,
-    RecommendationMode mode, @Valid Balanced balanced) {
+    RecommendationMode mode, @Valid Balanced balanced, GadgetRecommendationScope gadgetScope) {
   /** Removed objective fields must not silently change a client's requested calculation. */
   @JsonAnySetter
   public void rejectUnknownField(String name, Object value) {
@@ -30,6 +30,6 @@ public record BuildRecommendationRequest(@NotNull UUID gameVersionId, @NotNull R
   public RecommendationRequest toDomain() {
     return new RecommendationRequest(gameVersionId, machineType, priorities,
         current == null ? null : current.toDomain(), locked == null ? null : locked.toDomain(),
-        mode, balanced == null ? null : balanced.toDomain());
+        mode, balanced == null ? null : balanced.toDomain(), gadgetScope);
   }
 }

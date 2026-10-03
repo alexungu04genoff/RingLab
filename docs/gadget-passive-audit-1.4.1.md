@@ -122,8 +122,10 @@ now explicitly acknowledge conditional stat effects as well as physical speed.
 type pairs (1,975 cases within the unit tests). It also combines each of the 56 zero
 contributors with Boost Tuner 1 to protect both matching penalties and non-matching
 bonuses. The original Charmy Bee / Ancient Throne regression remains in the calculator,
-Balanced solver and dialog tests. These checks do not establish every multi-modifier
-stack: unsupported overlapping passive families retain their existing restriction.
+Balanced solver and dialog tests. The additive-v1 policy now covers the closed set
+of 23 numerical passive effects; every plate-legal subset and all 25 known type pairs
+are checked against independent canonical-vector sums. This establishes implementation
+consistency with the community model, not official verification of in-game stacking.
 
 Separate catalog discrepancy: Substitute Item costs **1** in RingLab but **2** in the
 reviewed Gadget List. No slot costs, migrations or saved-build legality are changed

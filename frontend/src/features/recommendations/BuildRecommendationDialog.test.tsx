@@ -92,6 +92,23 @@ function Harness({ patch = "1.4.1", locked = false, initial = draft, versionLoad
 function open() { fireEvent.click(screen.getByRole("button", { name: "Recommend" })); }
 function calculate() { fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" })); }
 
+it.each(["Strict", "Balanced"])("defaults to keeping gadgets and cancels a proposal when scope changes in %s", async mode => {
+  render(<Harness referenceStats={loadedStats} />); open();
+  if (mode === "Balanced") fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect((screen.getByRole("radio", { name: "Keep current" }) as HTMLInputElement).checked).toBe(true);
+  calculate();
+  await screen.findByRole("button", { name: "Apply to draft" });
+  expect(JSON.parse(vi.mocked(api).mock.calls.at(-1)![1]!.body as string).gadgetScope).toBe("KEEP_CURRENT");
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect(screen.queryByRole("button", { name: "Apply to draft" })).toBeNull();
+  calculate();
+  await screen.findByRole("button", { name: "Apply to draft" });
+  expect(JSON.parse(vi.mocked(api).mock.calls.at(-1)![1]!.body as string).gadgetScope).toBe("OPTIMIZE_UNLOCKED");
+  fireEvent.click(screen.getByRole("radio", { name: "Keep current" }));
+  expect(screen.queryByRole("button", { name: "Apply to draft" })).toBeNull();
+  expect(applied).not.toHaveBeenCalled();
+});
+
 it("opens configuration with current stats without requesting, exposes priorities/type and cancels without mutation", () => {
   render(<Harness referenceStats={loadedStats} />); open();
   expect(api).not.toHaveBeenCalled(); expect(screen.getByRole("heading", { name: "Recommend a build" })).toBe(document.activeElement);
@@ -106,7 +123,7 @@ it("opens configuration with current stats without requesting, exposes prioritie
   expect((screen.getByLabelText("Recommendation machine type") as HTMLSelectElement).value).toBe("SPEED");
   expect(screen.getByLabelText("Acceleration current: 20").textContent).toContain("20");
   expect(screen.getByLabelText("Boost current: 60").textContent).toContain("60");
-  expect(screen.getByText("Nothing is locked. All selections may change.")).toBeTruthy();
+  expect(screen.getByText("Nothing is locked. Gadget scope controls whether gadgets may change.")).toBeTruthy();
   expect(within(screen.getByRole("list")).getAllByRole("listitem").map(row => row.querySelector(".type-badge")?.textContent))
     .toEqual(["Boost", "Power", "Handling", "Speed", "Acceleration"]);
   fireEvent.click(screen.getByRole("button", { name: "Move Power up" }));
@@ -168,7 +185,7 @@ it("sends one async request, displays honest deltas/explanation and explicitly a
   expect(screen.getByRole("status").textContent).toBe("Calculating recommendation…");
   await screen.findByRole("heading", { name: "Recommended setup" });
   expect(vi.mocked(api).mock.calls).toHaveLength(1);
-  expect(JSON.parse(vi.mocked(api).mock.calls[0][1]!.body as string)).toEqual(request);
+  expect(JSON.parse(vi.mocked(api).mock.calls[0][1]!.body as string)).toEqual({ ...request, gadgetScope: "KEEP_CURRENT" });
   const comparison = screen.getByRole("region", { name: "Stat comparison" });
   expect(comparison.textContent).toContain("+1"); expect(comparison.textContent).toContain("-1");
   expect(within(comparison).getByRole("img", { name: "Acceleration: 20 to 21" })).toBeTruthy();

@@ -67,7 +67,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       <p className="recommendation-patch">Selected patch: {referenceVersion ? `Ver. ${referenceVersion.version}` : "Not selected"} · Reviewed rules: Ver. 1.4.1</p>
       <a className="contextual-help recommendation-guide-link" href="/guide#recommendations" target="_blank" rel="noreferrer">How recommendations work ↗</a>
       {(!result || mode === "STRICT" || lockedSlots.length > 0 || locks.gadgetIds.length > 0) && <section aria-label="Locked selections"><h3>{result ? "Kept · locked selections" : "Locked selections"}</h3>
-        {!lockedSlots.length && !locks.gadgetIds.length ? <p className="muted">Nothing is locked. All selections may change.</p>
+        {!lockedSlots.length && !locks.gadgetIds.length ? <p className="muted">Nothing is locked. Gadget scope controls whether gadgets may change.</p>
           : <ul className="recommendation-locks">{lockedSlots.map(slot => <li key={slot.key}><strong>{slot.label}</strong>
             <SelectionItem id={locks[slot.key]} slot={slot.key} catalog={catalog} /><span>Locked</span></li>)}
             {locks.gadgetIds.map(id => <li key={id}><SelectionItem id={id} catalog={catalog} /><span>Locked gadget</span></li>)}</ul>}
@@ -76,6 +76,15 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       <CollectionStatus />
       <RecommendationModeControls configuration={configuration} hasResult={!!result}
         onModeChange={value => { recommendation.cancel(); setMode(value); }} />
+      <fieldset className="recommendation-gadget-scope"><legend>Gadgets</legend>
+        <label><input type="radio" name="gadgetScope" checked={configuration.gadgetScope === "KEEP_CURRENT"}
+          onChange={() => { recommendation.cancel(); configuration.setGadgetScope("KEEP_CURRENT"); }} /> Keep current</label>
+        <label><input type="radio" name="gadgetScope" checked={configuration.gadgetScope === "OPTIMIZE_UNLOCKED"}
+          onChange={() => { recommendation.cancel(); configuration.setGadgetScope("OPTIMIZE_UNLOCKED"); }} /> Optimize unlocked gadgets</label>
+        <p className="muted">{configuration.gadgetScope === "KEEP_CURRENT"
+          ? "Recommend the racer and machine around the gadgets already selected."
+          : "May add, remove or replace unlocked gadgets to improve modeled passive stats. Utility, scenario effects and race strategy are not valued."}</p>
+      </fieldset>
       <RecommendationReference reference={reference} catalog={catalog} passiveReference={passiveReference} hasResult={!!result} />
       {recommendation.busy && <p className="recommendation-activity" role="status">Calculating recommendation…</p>}
       {!result ? <RecommendationPriorityControls configuration={configuration} headingId={headingId} />
@@ -87,7 +96,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
       {!result && !recommendation.busy && <button type="button" className="primary"
       disabled={!!calculationBlocker} aria-describedby={calculationBlocker ? blockerId : undefined}
       onClick={() => recommendation.calculate({ gameVersionId: reference.gameVersionId!, machineType: machineType!, priorities: activePriorities,
-        current: draftSelection(reference), locked: locks, ...(mode === "BALANCED" ? { mode, balanced: {
+        current: draftSelection(reference), locked: locks, gadgetScope: configuration.gadgetScope, ...(mode === "BALANCED" ? { mode, balanced: {
           maximumLossPercent: Object.fromEntries(activePriorities.map(stat => [stat, Number(losses[stat])])), secondary } } : {}) })}>Calculate recommendation</button>}
       {selected && <button type="button" className="primary" disabled={recommendation.busy} onClick={async () => { if (await recommendation.apply()) onClose(); }}>Apply to draft</button>}
       {result && <button type="button" onClick={recommendation.cancel}>Back to priorities</button>}

@@ -12,6 +12,68 @@ import static dev.ringlab.domain.build.recommendation.RecommendationResult.Outco
 import static dev.ringlab.domain.gamedata.PassiveGadgetRules.points;
 
 class BuildRecommendationSolverTest {
+  @Test void bothScopesPreserveTheirGadgetContractInBothModes() {
+    var f = new Fixture();
+    f.addGadget(45,3); f.addGadget(54,3); f.addGadget(55,3); f.addGadget(22,1); f.addGadget(52,1);
+    for (var mode : RecommendationMode.values()) {
+      var config = mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(ORDER,"100","100","100","100","100") : null;
+      for (var ids : List.of(List.<UUID>of(),List.of(PassiveGadgetRules.id(52),PassiveGadgetRules.id(22),PassiveGadgetRules.id(45)))) {
+        var current = selection(ids);
+        var kept = solve(f,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY,mode,config));
+        assertEquals(ESTABLISHED,kept.outcome()); assertEquals(ids,kept.selection().gadgetIds());
+        assertEquals(GadgetRecommendationScope.KEEP_CURRENT,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY,mode,config).gadgetScope());
+      }
+      var current = selection(List.of(PassiveGadgetRules.id(45)));
+      var optimize = new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY,mode,config,GadgetRecommendationScope.OPTIMIZE_UNLOCKED);
+      var result = solve(f,optimize);
+      assertFalse(result.selection().gadgetIds().contains(PassiveGadgetRules.id(45)));
+      assertFalse(result.selection().gadgetIds().isEmpty());
+      if (mode == RecommendationMode.STRICT)
+        assertEquals(Set.of(PassiveGadgetRules.id(54),PassiveGadgetRules.id(55)),new HashSet<>(result.selection().gadgetIds()));
+      var locked = solve(f,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,current,mode,config,GadgetRecommendationScope.OPTIMIZE_UNLOCKED));
+      assertTrue(locked.selection().gadgetIds().contains(PassiveGadgetRules.id(45)));
+      for (var scope : GadgetRecommendationScope.values()) {
+        var request = new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY,mode,config,scope);
+        var expected = RecommendationExhaustiveOracle.solve(f.snapshot(),request,dev.ringlab.domain.collection.CollectionExclusions.NONE);
+        assertEquals(expected.selection(),solve(f,request).selection());
+      }
+    }
+  }
+
+  @Test void keptGadgetsAreReevaluatedForNewMachineAndRacerTypes() {
+    var f = new Fixture(); f.addBoard();
+    for (int n : new int[]{11,60,62}) f.addGadget(n,1);
+    f.racers.put(OTHER,new Racer(OTHER,"Boost racer",RacingType.BOOST,null));
+    var current = selection(List.of(PassiveGadgetRules.id(62),PassiveGadgetRules.id(60),PassiveGadgetRules.id(11)));
+    var order = List.of(StatPriority.BOOST,StatPriority.SPEED,StatPriority.ACCELERATION,StatPriority.HANDLING,StatPriority.POWER);
+    for (var mode : RecommendationMode.values()) {
+      var active = mode == RecommendationMode.STRICT ? order : List.of(StatPriority.BOOST);
+      var config = mode == RecommendationMode.BALANCED ? BalancedObjectiveTest.config(active,"100") : null;
+      var result = solve(f,new RecommendationRequest(VERSION,RacingType.BOOST,active,current,EMPTY,mode,config));
+      assertEquals(ESTABLISHED,result.outcome());
+      assertEquals(OTHER,result.selection().racerId()); assertNull(result.selection().tirePartId());
+      assertEquals(current.gadgetIds(),result.selection().gadgetIds());
+      assertEquals(new BigDecimal("49"),result.recommendedStats().boost());
+    }
+    var empty = solve(f,new RecommendationRequest(VERSION,RacingType.BOOST,order,EMPTY,EMPTY));
+    assertNotNull(empty.selection().racerId()); assertNotNull(empty.selection().frontPartId());
+    assertNotNull(empty.selection().rearPartId()); assertNull(empty.selection().tirePartId());
+    assertEquals(List.of(),empty.selection().gadgetIds());
+  }
+
+  @Test void keepCurrentNeverSilentlyRepairsInvalidUnownedOrUnsupportedGadgets() {
+    var f = new Fixture(); f.addGadget(45,3); f.addGadget(46,3); f.addGadget(47,1);
+    var invalid = selection(List.of(PassiveGadgetRules.id(45),PassiveGadgetRules.id(46),PassiveGadgetRules.id(47)));
+    assertInvalid(f,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,invalid,EMPTY),"Current gadgets");
+    var current = selection(List.of(PassiveGadgetRules.id(45)));
+    var request = new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,current,EMPTY);
+    var excluded = new dev.ringlab.domain.collection.CollectionExclusions(Set.of(),Set.of(),Set.of(PassiveGadgetRules.id(45)));
+    assertTrue(assertThrows(IllegalArgumentException.class,() -> new BuildRecommendationSolver(f.snapshot(),request,BUDGET,excluded).solve()).getMessage().contains("unowned"));
+    f.addGadget(999,1);
+    var unknown = selection(List.of(PassiveGadgetRules.id(999)));
+    assertEquals(UNAVAILABLE,solve(f,new RecommendationRequest(VERSION,RacingType.SPEED,ORDER,unknown,EMPTY)).outcome());
+  }
+
   @Test void scenarioFactsDoNotAffectPassiveResultsAtAnyWorkBoundaryOrClockTick() {
     var f = new Fixture();
     f.addGadget(45, 1); // New conditional gadgets must still be omitted in PASSIVE.
@@ -35,7 +97,8 @@ class BuildRecommendationSolverTest {
         assertEquals(expected, actual);
         assertEquals(firstClock.get(), secondClock.get());
         assertEquals(List.of(
-            "Only fully known base contributions and reviewed passive combinations compete; unreviewed effects and unresolved stacking are excluded.",
+            "Only fully known base contributions and the closed reviewed additive passive model compete; unreviewed effects are excluded.",
+            "Current gadgets were kept. Their passive effects are recalculated for each proposed type.",
             "Race-time, conditional and utility effects are not the objective. Current gadget costs and the complete two-row plate are used."), actual.restrictions());
       }
     }
@@ -58,7 +121,7 @@ class BuildRecommendationSolverTest {
       assertEquals(retained.currentStats(),retained.recommendedStats());
       // Starting from no gadgets exercises search-prefix pruning, not just the existing baseline.
       var discovered = solve(f,new RecommendationRequest(VERSION,RacingType.ACCELERATION,ORDER,
-          selection(List.of()),selection(List.of()),mode,config));
+          selection(List.of()),selection(List.of()),mode,config,GadgetRecommendationScope.OPTIMIZE_UNLOCKED));
       assertEquals(ESTABLISHED,discovered.outcome());
       assertEquals(new HashSet<>(pair),new HashSet<>(discovered.selection().gadgetIds()));
       assertEquals(points(58,105,27,54,32),discovered.recommendedStats());
@@ -68,8 +131,9 @@ class BuildRecommendationSolverTest {
     for (var mode : RecommendationMode.values()) {
       var result = solve(f,new RecommendationRequest(VERSION,RacingType.ACCELERATION,ORDER,unresolved,unresolved,mode,
           mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses,List.of()) : null));
-      assertEquals(UNAVAILABLE,result.outcome());
-      assertNull(result.selection());
+      assertEquals(ESTABLISHED,result.outcome());
+      assertEquals(unresolved,result.selection());
+      assertEquals(points(58,105,25,54,34),result.recommendedStats());
     }
   }
   @Test void exclusionsFilterEveryPoolInBothModesWithoutChangingReferenceStats() {
@@ -85,7 +149,7 @@ class BuildRecommendationSolverTest {
     ORDER.forEach(stat -> losses.put(stat, BigDecimal.valueOf(100)));
     for (var mode : RecommendationMode.values()) {
       var request = new RecommendationRequest(VERSION, RacingType.SPEED, ORDER, current, EMPTY, mode,
-          mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses, List.of()) : null);
+          mode == RecommendationMode.BALANCED ? new BalancedConfiguration(losses, List.of()) : null, GadgetRecommendationScope.OPTIMIZE_UNLOCKED);
       var allOwned = new BuildRecommendationSolver(f.snapshot(), request, BUDGET).solve();
       for (var excluded : List.of(
           new dev.ringlab.domain.collection.CollectionExclusions(Set.of(RACER), Set.of(), Set.of()),
@@ -135,7 +199,7 @@ class BuildRecommendationSolverTest {
   private static UUID id(int id) { return new UUID(0, id); }
   private static BuildSelection selection(List<UUID> gadgets) { return new BuildSelection(RACER, FRONT, REAR, TIRE, gadgets); }
   private static RecommendationRequest request(BuildSelection current, BuildSelection locks, RacingType type) {
-    return new RecommendationRequest(VERSION, type, ORDER, current, locks);
+    return new RecommendationRequest(VERSION, type, ORDER, current, locks, RecommendationMode.STRICT, null, GadgetRecommendationScope.OPTIMIZE_UNLOCKED);
   }
   private static RecommendationResult solve(Fixture fixture, RecommendationRequest request) {
     return new BuildRecommendationSolver(fixture.snapshot(), request, BUDGET).solve();
@@ -226,7 +290,7 @@ class BuildRecommendationSolverTest {
     assertInvalid(f, request(selection(List.of(ids.getFirst())), selection(List.of(ids.getFirst())), RacingType.SPEED), "unknown/invalid costs");
   }
 
-  @Test void lockedUnknownEffectsAndUnresolvedStacksAreUnavailableNeverBaseOnly() {
+  @Test void lockedUnknownEffectsAreUnavailableAndReviewedStacksAreAdditive() {
     var f = new Fixture(); f.gadgets.put(id(99), new Gadget(id(99), "Unreviewed", null, 1, null));
     var current = selection(List.of(id(99)));
     var result = solve(f, request(current, current, RacingType.SPEED));
@@ -235,12 +299,12 @@ class BuildRecommendationSolverTest {
     f.addGadget(52, 1); f.addGadget(49, 1);
     current = selection(List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(49)));
     result = solve(f, request(current, current, RacingType.SPEED));
-    assertEquals(UNAVAILABLE, result.outcome()); assertTrue(result.restrictions().stream().anyMatch(s -> s.contains("stacking")));
+    assertEquals(ESTABLISHED, result.outcome()); assertEquals(points(44,0,4,4,4),result.recommendedStats());
     f.addGadget(50, 1);
     current = selection(List.of(PassiveGadgetRules.id(52), PassiveGadgetRules.id(50)));
     result = solve(f, request(current, current, RacingType.SPEED));
     assertEquals(ESTABLISHED, result.outcome());
-    assertEquals(points(24, 0, 7, 4, 4), result.recommendedStats());
+    assertEquals(points(44, 0, 7, 4, 4), result.recommendedStats());
     f.version = new GameVersion(VERSION, "1.3.1", LocalDate.EPOCH);
     assertEquals(UNAVAILABLE, solve(f, request(EMPTY, EMPTY, RacingType.SPEED)).outcome());
   }
@@ -321,7 +385,7 @@ class BuildRecommendationSolverTest {
         assertEquals(result.currentStats(), result.recommendedStats());
         assertEquals(limit >= completeWork, result.alreadyBest());
         assertEquals(0, result.elapsedMillis());
-        assertEquals(2, result.restrictions().size());
+        assertEquals(3, result.restrictions().size());
         assertEquals(limit >= completeWork, result.reason().startsWith("Best supported result established"));
         if (limit < completeWork) assertTrue(result.reason().startsWith("Best found before the search limit; optimality is not established."));
       }

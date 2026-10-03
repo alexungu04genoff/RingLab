@@ -1,5 +1,52 @@
 # Verification
 
+## Phase 2: closed passive addition and gadget scope — 2026-10-03
+
+Started from clean main `6551bee`, after Phase 1 was committed and fast-forwarded.
+The shared passive calculator replaces the old overlap whitelist (tuners plus one
+exact tuner/kit pair) with a closed 23-effect signed-addition policy. Import facts
+and CSV history are unchanged. Calculation notes expose the separate Java policy
+`crossworlds-1.4.1-passive-additive-v1` and `SUPPORTED_BY_COMMUNITY_CALCULATOR`.
+Official evidence is not claimed for the broader stacking model.
+
+Domain/API/UI `gadgetScope` defaults to `KEEP_CURRENT`; `OPTIMIZE_UNLOCKED` enables
+gadget subset search. Tests cover preserved empty/numeric/utility/conditional plates,
+order, type-dependent recalculation, invalid/unowned/unknown kept plates, gadget
+removal/replacement, locks, ownership, plate layout, independent exhaustive oracle
+comparison and deterministic ties. Both Strict and Balanced honor the scope; changing
+the UI scope cancels the old proposal. Phase 1 collection checks remain covered.
+
+`ClosedPassiveAdditiveTest` enumerates **3,214 legal subsets × 25 type pairs** and
+checks both forward and reversed gadget orders: **160,700 calculator evaluations**.
+Expected values are independently resolved from repository canonical vectors.
+Future gadget/effect identities cannot gain permission from a CSV label.
+The frozen legacy fact tables remain untouched: single-effect and metadata parity
+stay covered, obsolete overlap-pair assertions are replaced by exhaustive additive
+coverage, and scenario policy parity uses the same new passive input on both sides.
+
+Focused backend command:
+`mvn -f backend/pom.xml -Dtest=PassiveStatsCalculatorTest,ClosedPassiveAdditiveTest,BuildRecommendationSolverTest,BalancedSolverTest,BalancedObjectiveTest,RuleFactsParityTest,ScenarioStatsCalculatorTest,ArchitectureTest,GameDataRuleImportTest test`.
+All 85 focused cases passed across the initial run and the 24-case solver correction.
+Full `mvn -f backend/pom.xml verify` then passed **523 Surefire tests and 19 packaged
+API tests**, with no failures or skips, including ArchitectureTest and both scope
+contracts. It used disposable PostgreSQL database `ringlab_recommendation_phase2_20261003`,
+test port 8087, disabled dev services and ephemeral test keys. JaCoCo measured
+**98.02% instructions, 90.33% branches, 97.98% lines**; gates stayed 90%/80%/90%.
+Reports remain at `backend/target/site/jacoco/index.html` and `jacoco.xml`.
+
+Frontend `npm run test:coverage -- --maxWorkers=2` passed **379 tests in 42 files**:
+95.21% statements/lines, 91.88% branches, 89.43% functions, with gates unchanged.
+`npm run build` and `git diff --check` passed. Initial failures were corrected
+test expectations for the new default, scope explanation and intentionally expanded
+stacking, plus an unsupported Testing Library option in a new test. Existing
+deprecated/unchecked compiler notices and the packaged runner's ignored logging
+configuration warning remain non-fatal.
+
+No scenario calculator, Balanced objective, search budget, canonical machine-part
+values, Substitute Item cost, migration or dependency changed. Updated docs include
+auto-builder, Balanced scope, passive evidence/audit, Guide, architecture and the
+atlas's existing recommendation diagram.
+
 ## Passive-only recommendation API and collection revisions
 
 `POST /api/build-recommendations` optimizes base stats plus reviewed always-active

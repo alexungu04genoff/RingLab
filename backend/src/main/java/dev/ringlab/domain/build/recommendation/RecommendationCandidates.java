@@ -72,6 +72,12 @@ final class RecommendationCandidates {
     requireKept("Rear", locks.rearPartId(), current.rearPartId());
     requireKept("Tire", locks.tirePartId(), current.tirePartId());
     if (!current.gadgetIds().containsAll(locks.gadgetIds())) throw new IllegalArgumentException("Locked gadgets must be currently selected");
+    if (request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT) {
+      if (!GadgetPlate.canFit(current.gadgetIds().stream().map(id -> catalog.gadgets().get(id).slotCost()).toList()))
+        throw new IllegalArgumentException("Current gadgets have unknown/invalid costs or do not fit the two-row Gadget Plate. Edit the plate or choose Optimize unlocked.");
+      if (current.gadgetIds().stream().anyMatch(id -> !availability.gadgetAvailable(id)))
+        throw new IllegalArgumentException("Current gadgets include an unowned item. Edit the plate or choose Optimize unlocked.");
+    }
     for (var id : Arrays.asList(locks.frontPartId(), locks.rearPartId(), locks.tirePartId())) {
       if (id == null) continue;
       var part = catalog.parts().get(id);

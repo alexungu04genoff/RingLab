@@ -15,6 +15,7 @@ export interface RecommendationSelection {
 }
 export const emptyLocks = (): RecommendationSelection => ({ racerId: null, frontPartId: null, rearPartId: null, tirePartId: null, gadgetIds: [] });
 export interface RecommendationRequest {
+  gadgetScope?: "KEEP_CURRENT" | "OPTIMIZE_UNLOCKED";
   gameVersionId: string; machineType: RacingType; priorities: RacingType[];
   current: RecommendationSelection; locked: RecommendationSelection;
   mode?: "STRICT" | "BALANCED";

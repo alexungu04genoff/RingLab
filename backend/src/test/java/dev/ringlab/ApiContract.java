@@ -21,9 +21,16 @@ public abstract class ApiContract {
     body.put("current",Map.of("gadgetIds",List.of())); body.put("locked",Map.of("gadgetIds",List.of()));
     var result = request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(200)
         .body("outcome",is(oneOf("ESTABLISHED","BEST_FOUND")))
+        .body("selection.gadgetIds",empty())
         .body("currentStats",nullValue()).body("recommendedStats",notNullValue())
         .extract().jsonPath().getMap("$");
     assertThat(result, not(hasKey("basis"))); assertThat(result, not(hasKey("scenario")));
+    body.put("gadgetScope","OPTIMIZE_UNLOCKED");
+    request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(200)
+        .body("selection.gadgetIds",not(empty())).body("note",containsString("SUPPORTED_BY_COMMUNITY_CALCULATOR"));
+    body.put("gadgetScope","INVALID");
+    request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(400);
+    body.remove("gadgetScope");
     body.put("basis","CURRENT_SCENARIO");
     request(account.token()).body(body).post("/api/build-recommendations").then().statusCode(400);
     body.remove("basis"); body.put("scenario",Map.of("lap",1,"vehicleForm","WATER"));

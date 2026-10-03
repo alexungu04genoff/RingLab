@@ -65,6 +65,39 @@ is edited and no derived total is stored.
 
 ## Stacking, caps and exclusions
 
+Current policy (2026-10-03): `crossworlds-1.4.1-passive-additive-v1` models the closed
+23 reviewed numerical passive identities additively. Each matching/nonmatching
+vector is resolved independently, then added with every signed penalty intact.
+Overlaps do not exclude these effects. Evidence level is
+`SUPPORTED_BY_COMMUNITY_CALCULATOR`, based on the captured SRCW Gadget Builder
+arithmetic and the completed audit; this is not independent official in-game
+verification. SEGA's evidence supports the individual changes it actually states.
+
+`PassiveGadgetRules` contains the version and closed gadget/effect identity set,
+without copying numerical values. New identities/effect IDs remain unsupported even
+if a CSV labels them PASSIVE or machine-tuners. The old tuner-group and exact-pair
+calculation permissions are removed. The historical CSV group label is validated
+only as imported metadata. The immutable fact snapshot ID remains
+`crossworlds-1.4.1-passive-2026-09-28.5`; API calculation notes identify the separate
+Java policy and evidence level. Scenario interaction policy is unchanged.
+
+On BOOST, Boost Tuners 1 + 2 + Boost Machine Kit add `(-6,0,0,-2,60)`.
+Vectors below are ordered Speed, Acceleration, Handling, Power, Boost:
+
+| Reviewed selection | Matching context | Adjustment |
+| --- | --- | --- |
+| Acceleration Tuner 1 + Acceleration Machine Kit | ACCELERATION machine | `(0,40,-4,0,0)` |
+| Boost Character Kit + Boost Tuner 1 | BOOST racer and machine | `(-4,0,0,-5,27)` |
+| Drift Charge Kit + Handling Tuner 1 | HANDLING machine | `(0,0,23,-4,0)` |
+| Panel Combo Kit + Handling Tuner 1 | HANDLING machine | `(0,0,28,4,0)` |
+| Double Down + Speed Tuner 1 | SPEED machine | `(10,-14,-10,-10,-10)` |
+
+`ClosedPassiveAdditiveTest` checks every plate-legal subset of the 23 canonical
+gadgets across all 25 known racer/machine type pairs in both input orders, using
+independently resolved canonical vectors. No external data is downloaded by tests.
+
+### Historical overlap policy (superseded by additive-v1)
+
 Independent tuner documentation explicitly supports a same-type Tuner 1 + Tuner 2 pair.
 The 2026-09-28 review also inspected the public [SRCW Gadget Builder](https://www.srcgadgetbuilder.com/build)
 calculation module (`/_next/static/immutable/chunks/3fo_6rojgq9h9.js`): it chooses each

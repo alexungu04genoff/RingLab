@@ -36,8 +36,11 @@ final class GameDataRuleValidator {
         if (r.kind() != GadgetEffectRule.Kind.PASSIVE && (!zero(r.matching()) || !zero(r.nonMatching())
             || r.subject() != GadgetEffectRule.Subject.ANY || r.stackingGroup() != null))
           errors.add(row.problem("kind", r.kind(), "Non-passive effects require zero vectors, ANY subject and no stacking group"));
-        if (r.stackingGroup() != null && !PassiveGadgetRules.reviewedStackingGroup(r))
-          errors.add(row.problem("stacking_group", r.stackingGroup(), "No Java stacking permission for this effect/group"));
+        // Preserve the historical CSV label contract; this metadata no longer grants arithmetic permission.
+        if (r.stackingGroup() != null && !("machine-tuners".equals(r.stackingGroup())
+            && PassiveGadgetRules.reviewedNumeric(r) && r.subject() == GadgetEffectRule.Subject.MACHINE
+            && java.util.stream.IntStream.rangeClosed(52,61).anyMatch(n -> PassiveGadgetRules.id(n).equals(r.gadgetId()))))
+          errors.add(row.problem("stacking_group", r.stackingGroup(), "Unrecognized historical tuner group identity"));
       }
       var scenario = new HashSet<String>();
       for (var row : rules.scenario()) {

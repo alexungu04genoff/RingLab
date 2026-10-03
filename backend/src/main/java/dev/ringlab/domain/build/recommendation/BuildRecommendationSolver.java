@@ -55,7 +55,10 @@ public final class BuildRecommendationSolver {
     if (!PassiveGadgetRules.VERSION.equals(catalog.version().version()))
       return result(UNAVAILABLE, "Recommendation requires the reviewed Ver. " + PassiveGadgetRules.VERSION
           + " ruleset. The selected patch has not been changed.");
-    restrictions.add("Only fully known base contributions and reviewed passive combinations compete; unreviewed effects and unresolved stacking are excluded.");
+    restrictions.add("Only fully known base contributions and the closed reviewed additive passive model compete; unreviewed effects are excluded.");
+    restrictions.add(request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT
+        ? "Current gadgets were kept. Their passive effects are recalculated for each proposed type."
+        : "Unlocked gadgets were optimized for reviewed passive stat effects. They may be added, removed or replaced; utility, scenario effects and race strategy are not valued.");
     restrictions.add("Race-time, conditional and utility effects are not the objective. Current gadget costs and the complete two-row plate are used.");
     try {
       budget.step();

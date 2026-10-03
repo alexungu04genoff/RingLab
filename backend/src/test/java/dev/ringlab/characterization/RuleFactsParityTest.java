@@ -39,14 +39,8 @@ class RuleFactsParityTest {
     passive(KNOWN, "1.4.1", null, null, List.of(), true);
   }
 
-  @Test void every_passive_pair_preserves_stacking_and_saved_order() {
-    var numeric = GADGETS.stream().filter(g -> PassiveGadgetRules.forGadget(g.id()).stream()
-        .anyMatch(r -> r.kind() == GadgetEffectRule.Kind.PASSIVE)).toList();
-    for (var first : numeric) for (var second : numeric) for (var type : TYPES)
-      passive(KNOWN, "1.4.1", type, type, List.of(first, second), true);
-    for (var first : numeric) for (var second : numeric)
-      passive(KNOWN, "1.4.1", RacingType.ACCELERATION, RacingType.BOOST, List.of(first, second), true);
-  }
+  // Overlapping passive pairs deliberately changed in additive-v1. ClosedPassiveAdditiveTest
+  // checks every legal subset against independent canonical-vector sums; frozen tables stay intact.
 
   @Test void every_scenario_condition_and_utility_classification_matches_for_true_false_and_unknown() {
     for (var gadget : GADGETS) for (var context : contexts())
@@ -71,17 +65,19 @@ class RuleFactsParityTest {
   private static void passive(BaseStats total, String version, RacingType racer, RacingType machine,
       List<Gadget> gadgets, boolean valid) {
     var base = new BaseStatsBreakdown(total, BaseStats.ZERO, BaseStats.ZERO);
-    assertEquals(PassiveStatsCalculator.calculate(base, version, racer, machine, gadgets, valid),
-        dev.ringlab.domain.gamedata.PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base, version, racer, machine, gadgets, valid),
+    var expected = PassiveStatsCalculator.calculate(base, version, racer, machine, gadgets, valid);
+    var actual = dev.ringlab.domain.gamedata.PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base, version, racer, machine, gadgets, valid);
+    assertEquals(new PassiveStatsResult(expected.base(),expected.adjustments(),expected.adjusted(),expected.coverage(),
+            expected.ruleset(),expected.supportedVersion(),actual.note(),expected.effects()), actual,
         () -> gadgets.stream().map(Gadget::name).toList() + " " + version + " " + racer + "/" + machine);
   }
 
   private static void scenario(BaseStats total, String version, List<Gadget> gadgets, boolean valid, ScenarioContext context) {
     var base = new BaseStatsBreakdown(total, BaseStats.ZERO, BaseStats.ZERO);
-    var oldPassive = PassiveStatsCalculator.calculate(base, version, RacingType.ACCELERATION, RacingType.ACCELERATION, gadgets, valid);
     var newPassive = dev.ringlab.domain.gamedata.PassiveStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), base, version,
         RacingType.ACCELERATION, RacingType.ACCELERATION, gadgets, valid);
-    assertEquals(ScenarioStatsCalculator.calculate(oldPassive, context),
+    // Feed both scenario policies the same passive result: only the passive model changed.
+    assertEquals(ScenarioStatsCalculator.calculate(newPassive, context),
         dev.ringlab.domain.gamedata.ScenarioStatsCalculator.calculate(dev.ringlab.importing.RuleFixtures.snapshot(), newPassive, context),
         () -> gadgets.stream().map(Gadget::name).toList() + " " + context);
   }

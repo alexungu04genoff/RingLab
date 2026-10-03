@@ -41,7 +41,9 @@ export function GuidePage() {
       <p>On desktop, open the <Link to="/builds/new">build editor</Link> and choose a patch and machine type. Select the items you like, then click their lock icons to keep them.</p>
       <p>You can lock your racer, individual machine parts, any of your selected gadgets, or your entire machine setup. You can combine these locks—you’re not limited to keeping just one thing.</p>
       <p>For example, lock your racer, a front part, and two favourite gadgets. RingLab will keep those selections while exploring the remaining choices. Unlocked items may be kept or replaced.</p>
-      <p>Selecting an item alone does not lock it. Locking the entire machine setup keeps its currently selected parts; it does not lock your racer or gadgets.</p>
+      <p>Selecting a racer or part alone does not lock it. Locking the entire machine setup keeps its currently selected parts; it does not lock your racer or gadgets.</p>
+      <p><strong>Keep current</strong> is the default gadget scope: recommend the racer and machine around your selected gadgets, including an empty plate. Their passive effects are recalculated for the proposed types.</p>
+      <p>Choose <strong>Optimize unlocked gadgets</strong> to allow additions, removals and replacements. Locked gadgets remain. This optimizes reviewed passive stat points; utility, scenario effects and race strategy are not valued.</p>
       <p><strong>Strict</strong> puts your first stat above everything else. Choose it when you want as much of that stat as possible.</p>
       <p><strong>Balanced</strong> lets you trade a little of one stat for improvements elsewhere. You decide how much each stat may drop.</p>
       <p className="guide-callout">For example, <strong>5% maximum loss on 80 Boost means it cannot fall below 76</strong>. Set a limit to <strong>0%</strong> to allow improvements without accepting any decrease.</p>
@@ -63,7 +65,8 @@ export function GuidePage() {
       <h2>Understanding stats: numbers aren’t the whole race</h2>
       <p>Stats help you compare setups, but they don’t capture every useful gadget effect. A gadget can help with items, recovery, or landing boosts without adding points to the displayed totals.</p>
       <p>Some gadgets depend on what is happening during a race. Scenario Preview lets you try supported conditions without changing the saved build.</p>
-      <p><strong>Lock gadgets you enjoy using.</strong> Otherwise, recommendations may replace them with gadgets that improve the numbers instead.</p>
+      <p><strong>Keep current</strong> preserves your gadgets. When optimizing unlocked gadgets, lock the ones you enjoy using.</p>
+      <p>The 23 reviewed numerical passive effects are modeled with signed addition, supported by the community calculator. This stacking model is not independently verified official in-game behavior. Unknown effects remain unsupported.</p>
       <p>Recommended maps are the author’s suggestions. <strong>All maps</strong> simply means they haven’t picked particular tracks.</p>
       <p>Use a recommendation as a starting point, take it racing, and see how it feels. Higher numbers alone don’t guarantee a better lap.</p>
     </section>

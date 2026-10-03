@@ -5,7 +5,11 @@ import java.util.*;
 
 public record RecommendationRequest(UUID gameVersionId, RacingType machineType,
     List<StatPriority> priorities, BuildSelection current, BuildSelection locked,
-    RecommendationMode mode, BalancedConfiguration balanced) {
+    RecommendationMode mode, BalancedConfiguration balanced, GadgetRecommendationScope gadgetScope) {
+  public RecommendationRequest(UUID gameVersionId, RacingType machineType, List<StatPriority> priorities,
+      BuildSelection current, BuildSelection locked, RecommendationMode mode, BalancedConfiguration balanced) {
+    this(gameVersionId, machineType, priorities, current, locked, mode, balanced, GadgetRecommendationScope.KEEP_CURRENT);
+  }
   public RecommendationRequest(UUID gameVersionId, RacingType machineType, List<StatPriority> priorities,
       BuildSelection current, BuildSelection locked) {
     this(gameVersionId, machineType, priorities, current, locked, RecommendationMode.STRICT, null);
@@ -15,6 +19,7 @@ public record RecommendationRequest(UUID gameVersionId, RacingType machineType,
     if (gameVersionId == null) throw new IllegalArgumentException("Select a game version / patch");
     if (machineType == null) throw new IllegalArgumentException("Choose a machine type");
     mode = mode == null ? RecommendationMode.STRICT : mode;
+    gadgetScope = gadgetScope == null ? GadgetRecommendationScope.KEEP_CURRENT : gadgetScope;
     if (priorities == null || priorities.stream().anyMatch(Objects::isNull))
       throw new IllegalArgumentException("Priorities must contain every stat exactly once");
     if (mode == RecommendationMode.STRICT) {
@@ -26,5 +31,9 @@ public record RecommendationRequest(UUID gameVersionId, RacingType machineType,
     }
     priorities = List.copyOf(priorities);
     if (current == null || locked == null) throw new IllegalArgumentException("Current selections and locks are required");
+  }
+
+  public List<UUID> fixedGadgets() {
+    return gadgetScope == GadgetRecommendationScope.KEEP_CURRENT ? current.gadgetIds() : locked.gadgetIds();
   }
 }

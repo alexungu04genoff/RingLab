@@ -21,6 +21,7 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     });
   });
   const [mode, setMode] = useState<"STRICT" | "BALANCED">("STRICT");
+  const [gadgetScope, setGadgetScope] = useState<"KEEP_CURRENT" | "OPTIMIZE_UNLOCKED">("KEEP_CURRENT");
   const [secondary, setSecondary] = useState<RacingType[]>([]);
   const [losses, setLosses] = useState<Record<RacingType, string>>({ SPEED: "0", ACCELERATION: "0", HANDLING: "0", BOOST: "0", POWER: "0" });
   const [reference] = useState(() => ({ ...draft, gadgetIds: [...draft.gadgetIds] }));
@@ -35,7 +36,7 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     return value != null && Number.isFinite(value) && value >= 0;
   });
   const activePriorities = mode === "BALANCED" ? priorities.filter(priority => !secondary.includes(priority)) : priorities;
-  const identity = JSON.stringify([mode, machineType, priorities, secondary, losses]);
+  const identity = JSON.stringify([mode, machineType, priorities, secondary, losses, gadgetScope]);
   const conflict = lockTypeConflict(machineType, locks, catalog.parts);
   let calculationBlocker = "";
   if (referenceIdentity !== recommendationIdentity(draft, locks))
@@ -74,7 +75,7 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     else if (!validBalanced(activePriorities, secondary, losses))
       calculationBlocker = "Enter a maximum loss from 0 to 100 for each prioritized stat. Leave 0 to allow no decrease.";
   }
-  return { machineType, setMachineType, priorities, setPriorities, mode, setMode, secondary, setSecondary,
+  return { machineType, setMachineType, priorities, setPriorities, mode, setMode, gadgetScope, setGadgetScope, secondary, setSecondary,
     losses, setLosses, reference, referenceVersion, referenceIdentity, passiveReference, referenceValues,
     referenceAvailable, activePriorities, identity, calculationBlocker };
 }

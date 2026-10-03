@@ -11,6 +11,26 @@ endpoint, locks, detached catalog, budgets and Apply-to-draft flow.
 
 ## Passive-only objective
 
+### Gadget scope
+
+`gadgetScope` defaults to `KEEP_CURRENT` in the domain, API and dialog. It preserves
+the exact current gadget IDs and order (including an empty plate), recalculating
+their effects for each candidate racer/machine type. Invalid or unowned kept plates
+are rejected; unknown passive effects remain unavailable, never silently removed.
+Conditional/utility gadgets can stay but contribute no vanilla stat points.
+
+`OPTIMIZE_UNLOCKED` opts into the existing gadget subset search: unlocked gadgets
+may be kept, removed, added or replaced. Explicit locks, ownership and the two-row
+plate remain constraints. Result restrictions state the scope and explain that
+utility, scenario effects and race strategy are not valued. Scope is part of the
+frontend configuration identity, so changing it cancels the old proposal.
+
+The closed 23-effect passive model uses signed addition, supported by the community
+calculator. `PassiveGadgetRules.POLICY` identifies `crossworlds-1.4.1-passive-additive-v1`;
+this is not independent official verification. Imported fact ruleset IDs and CSVs
+are unchanged. Strict remains lexicographic; Balanced retains its current reference
+floors, weighted objective and complete-reference requirement. Search budgets are unchanged.
+
 Recommendations optimize base stats plus reviewed always-active passive stat
 adjustments. Race-state and triggered effects are intentionally excluded and remain
 available in Scenario Preview.
@@ -18,8 +38,8 @@ available in Scenario Preview.
 Current reference evaluation, optional gadget filtering, locked/subset eligibility
 and component-search adjustments all use the same passive calculator. Known
 conditional/utility gadgets may remain selected but their race-time benefits receive
-no points. Unknown passive effects and unresolved passive stacks remain unsupported.
-Strict reduction, Balanced reference floors/weights, gadget selection and the
+no points. Numerical effects outside the closed reviewed set remain unsupported.
+Strict reduction, Balanced reference floors/weights and the
 100,000-step/two-second/two-calculation limits are unchanged.
 
 The request and response no longer contain `basis` or `scenario`. Unknown top-level
@@ -132,11 +152,8 @@ New gadgets with an all-zero evaluated vector are omitted: they cannot improve
 the objective and lose the addition/slot tie-breaks. Current utility gadgets
 remain candidates because avoiding a removal is an earlier tie-break. Branches
 with an invalid plate or unsupported combination are pruned. For fixed types,
-adding an item cannot repair an unknown effect or an unresolved applied-modifier
-stack. Disjoint stat adjustments, all machine-tuner pairs, and the explicitly
-reviewed Acceleration Tuner 2 / Acceleration Machine Kit passive pair are supported.
-Pair permissions use fixed effect identities and are not transitive: adding a third
-cannot restore support for a rejected pair. No pruning assumes
+adding an item cannot repair an unknown effect. The 23 reviewed numerical effects
+combine additively, with independently resolved signed vectors. No pruning assumes
 that an individually strongest gadget is globally best.
 
 No full component Cartesian product is allocated. With R racers, P parts, G
@@ -152,7 +169,7 @@ dependency is added.
 The explicit passive ruleset is `crossworlds-1.4.1-passive-2026-09-28.5`.
 Other selected patches return unavailable without fallback. Only fully known
 base vectors and `CALCULATED` passive results compete. Missing values are never
-zero; unresolved stacking and unreviewed gadgets cannot be optimized as base-only.
+zero; unreviewed numerical effects cannot be optimized as base-only.
 Locked unsupported effects include a named reason in the result. A group-specific
 restriction identifies the excluded racer type rather than falsely claiming the
 winning group's locks were unsupported.

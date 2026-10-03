@@ -11,6 +11,10 @@ Race-state and triggered effects belong only in Scenario Preview. Removed
 recommendation `basis`/`scenario` request fields are rejected with HTTP 400.
 This cleanup does not change Balanced's complete-reference requirement, weighted
 score, floors, secondary total or pruning. See [the passive-only contract](auto-builder.md#passive-only-objective).
+Gadget scope defaults to `KEEP_CURRENT`, preserving the exact current ordered plate
+and recalculating its passive vectors for candidate types. `OPTIMIZE_UNLOCKED`
+enables gadget search subject to locks and ownership. Both use the closed 23-effect
+community-backed additive-v1 policy; neither changes Balanced's objective.
 
 ## Reference, inputs and arithmetic
 

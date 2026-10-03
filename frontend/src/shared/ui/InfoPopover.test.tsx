@@ -57,7 +57,7 @@ it("removes shared prose from card bodies while retaining each effect and showin
   await userEvent.click(screen.getAllByRole("button", { name: "Calculation notes" })[0]);
   const panel = screen.getByRole("dialog");
   expect(within(panel).getByText(/RingLab shows reviewed passive stat effects/)).toBeTruthy();
-  expect(within(panel).getByText(/Acceleration Tuner 2 \+ Acceleration Machine Kit is verified/)).toBeTruthy();
+  expect(within(panel).getByText(/23 reviewed numerical passive effects combine through signed addition/)).toBeTruthy();
 });
 
 it.each([320, 375])("keeps the popover placement inside a %ipx mobile viewport, including after resize", async width => {

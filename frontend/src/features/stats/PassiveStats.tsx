@@ -183,8 +183,8 @@ export function GadgetRuleDetails({ id, catalog }: { id: string; catalog?: Gadge
 
 function CalculationNotes() {
   return <InfoPopover label="Calculation notes" hint="About stat calculations">
-    <p>RingLab shows reviewed passive stat effects when they can be calculated reliably. Race-dependent effects are handled separately by Scenario Preview. Verified compatible modifiers are combined; combinations that have not been confirmed are shown as incomplete instead of being guessed.</p>
-    <p className="calculation-notes-technical">Machine tuners combine. Acceleration Tuner 2 + Acceleration Machine Kit is verified. Independent stat modifiers combine. Other overlapping effects may remain unresolved.</p>
+    <p>RingLab shows reviewed passive stat effects using its documented calculation model. Race-dependent effects are handled separately by Scenario Preview. Reviewed numerical modifiers are combined; unknown effects are shown as incomplete instead of being guessed.</p>
+    <p className="calculation-notes-technical">The 23 reviewed numerical passive effects combine through signed addition, including penalties. This stacking model is supported by the community calculator, not independently verified official in-game behavior. Unknown effects remain unsupported.</p>
   </InfoPopover>;
 }
 

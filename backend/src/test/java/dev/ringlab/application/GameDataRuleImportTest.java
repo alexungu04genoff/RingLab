@@ -73,10 +73,10 @@ class GameDataRuleImportTest {
   }
   @Test void arbitraryCsvStackingLabelsCannotGrantPermissions() {
     var original = RuleFixtures.snapshot().forGadget(PassiveGadgetRules.id(52)).getFirst();
-    var forged = new GadgetEffectRule(PassiveGadgetRules.id(49), "stats", original.label(), original.kind(), original.subject(),
+    var forged = new GadgetEffectRule(PassiveGadgetRules.id(999), "stats", original.label(), original.kind(), original.subject(),
         original.requiredType(), original.matching(), original.nonMatching(), original.explanation(), original.sources(), "machine-tuners");
-    assertFalse(PassiveGadgetRules.verifiedStack(original, forged));
-    assertFalse(PassiveGadgetRules.reviewedStackingGroup(new GadgetEffectRule(original.gadgetId(), "other-0", original.label(),
+    assertFalse(PassiveGadgetRules.reviewedNumeric(forged));
+    assertFalse(PassiveGadgetRules.reviewedNumeric(new GadgetEffectRule(original.gadgetId(), "other-0", original.label(),
         original.kind(), original.subject(), original.requiredType(), original.matching(), original.nonMatching(), original.explanation(), List.of(), "machine-tuners")));
   }
   @Test void reviewedRuntimeSnapshotMustExist() {
