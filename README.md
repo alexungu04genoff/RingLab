@@ -126,7 +126,7 @@ If dev reports a DNS error, compare the configured resolver with
 from the local resolver does not require recreating the tunnel. The dev hostname
 requires the local frontend, backend, database, and tunnel to remain running.
 
-The first start migrates the schema and seeds 52 racers, 62 source machines, 174 machine parts, 79 gadgets, 44 maps, and four game versions. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. Later migrations remove unknown-cost gadgets and BOOST tire rows, expand the reviewed catalog, and initialize versioned stats and rule facts. See the [catalog source ledger](docs/game-data-sources.md) and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
+The first start migrates through V35 and seeds 53 racers, 63 source machines, 177 machine parts, 117 gadgets, 44 maps, and four game versions. V6 and V7 establish the release-audited identities; V9 and V12 use user-approved Sonic Wiki artwork consistently for every released catalog machine; V10 fills Wiki-backed racer/machine types, the missing released machine inventory, and current descriptions and costs. V11 removes unreleased catalog entries and their associated Festival gadget. Later migrations remove unknown-cost gadgets and BOOST tire rows, expand the reviewed catalog, and initialize versioned stats and rule facts. See the [catalog source ledger](docs/game-data-sources.md), [Phase 5B corrections and limitations](docs/game-data-phase5b.md), and [game-data schema](docs/game-data-schema.md) for sources, known limits, and proposed normalization. There are deliberately **no automatically seeded users or community builds**. Local username/password registration sends a verification link and does not sign the new account in. Verify the address, then log in normally. Google Sign-In accounts use Google's already-verified email identity and are ready immediately.
 
 ### Email verification and SMTP
 
@@ -283,13 +283,18 @@ mvn "-Dtest=DemoAccountBootstrapIntegrationTest" test
 `GET /api/game-versions` lists the persistent patch catalog newest first. Build create/edit requests
 require a known `gameVersionId` UUID; legacy responses may still contain `gameVersion: null`.
 Explore's Patch filter sends `gameVersionId` and filters in PostgreSQL before pagination.
-V5 seeds 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2 (2025-12-22), and 1.2.0 (2025-12-03).
+The current version catalog contains 1.4.1 (2026-06-23), 1.3.1 (2026-03-18), 1.2.2
+(2025-12-18), and 1.2.0 (2025-12-03). V5 introduced these identities; V35 corrects
+the 1.2.2 date to the official notice date.
 Legacy builds can remain versionless until edited; the optional demo seeder assigns a repeatable mix to demo builds.
 For a fresh demo plan, 90% use the newest patch and 10% are distributed randomly across the older
-patches. The four known versions currently have independent rows containing the same base stats;
-new patches receive independent CSV snapshots through the explicit game-data importer.
-The existing older snapshots contain current-data placeholders; ordinary imports reject
-changes to already published stat rows.
+patches. The four known versions have independent stat snapshots. The older 1.2/1.3
+snapshots remain repository legacy placeholders, not independently verified historical
+measurements. Only 1.4.1 includes Amigo's community-supported stat vector (53 racer
+rows versus 52 in each older snapshot). All four snapshots retain 174 part-stat rows;
+Locomotive de Amigo's three part identities have no supported stat rows, and unknown
+stats are never treated as zero. New patches receive independent CSV snapshots through
+the explicit game-data importer; ordinary imports reject changes to published stat rows.
 
 Flyway is authoritative. `V1__initial_schema.sql` creates the initial tables and constraints; `V2__game_data.sql` inserts the supplied names and racing types with stable UUIDs; `V4__composable_machine_parts.sql` adds machine parts and migrates old single-machine builds to three matching source-machine parts. V25 adds the transitional Standard/Board machine family and makes the tire reference nullable for Board builds. V26 classifies the verified Extreme Gear catalog and removes the obsolete generated tire rows for those Boards. V27 removes the family column; current composition uses `RacingType`, with no tire for BOOST. Hibernate validates the migrated schema; it never creates or drops it.
 

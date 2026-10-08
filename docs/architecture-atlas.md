@@ -1,6 +1,6 @@
 # RingLab Backend Architecture Atlas
 
-**A source-based study guide · updated 2 October 2026 · Flyway V1–V34**
+**A source-based study guide · updated 8 October 2026 · Flyway V1–V35**
 
 This atlas describes main `3a8030a`, including the input-port refactor,
 the explicit CSV importer, versioned gadget rule facts and internal recommendation
@@ -1544,7 +1544,7 @@ Source trail: [Steam adapter/client](../backend/src/main/java/dev/ringlab/adapte
 
 ## 14. Current-state database
 
-This is the schema after **all migrations V1–V34**, reconciled with the current entities
+This is the schema after **all migrations V1–V35** (V35 changes data only), reconciled with the current entities
 and native SQL. There are **26 application tables**. Flyway's own schema-history table is
 infrastructure metadata and is excluded from that count. The four ER panels form one
 current-state model; repeated anchor tables are the same tables across panels.
@@ -1892,6 +1892,7 @@ implementations are build output, not additional handwritten architecture layers
 | V30–V32 | Map catalog/associations and reviewed passive gadget identities. |
 | V33 | Three typed collection exclusion tables. |
 | V34 | Versioned passive/scenario fact tables and two ordered source tables; one-time bootstrap of the already-published 1.4.1 facts. Future content uses explicit CSV imports. |
+| V35 | [Reviewed Phase 5B catalog corrections](game-data-phase5b.md): Amigo, Locomotive identities, 38 gadgets, Substitute Item cost 2, the 1.2.2 date and passive fact revision. No schema change, deletion or user-build rewrite; Locomotive part stats remain unavailable. |
 
 SQL foreign keys guarantee referenced rows, but do not express all publishability rules.
 For example, the database permits a legacy build with unspecified patch and does not check

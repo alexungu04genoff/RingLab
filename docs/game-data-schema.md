@@ -121,7 +121,8 @@ The [catalog/rules diagram](architecture/database-catalog-stats.mmd) shows the n
 V34 bootstraps only the existing published 1.4.1 rules so an application upgrade
 preserves behavior before any administrative import. New content uses the same
 atomic importer as catalog/base stats. Published rule snapshots cannot be mutated
-or removed by APPLY; a successful canonical import after V34 is a no-op. Runtime
+or removed by APPLY. The current canonical PLAN is a no-op after V35; against V34,
+it rejects the published corrections without writes. Runtime
 calculations use detached database snapshots and retain their current Java review
 permissions, including the explicitly assumed Quick Starter + Sea Dog interaction.
 
