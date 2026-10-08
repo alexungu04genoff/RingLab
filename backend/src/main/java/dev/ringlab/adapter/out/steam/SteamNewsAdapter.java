@@ -9,6 +9,7 @@ import jakarta.ws.rs.ProcessingException;
 import jakarta.ws.rs.WebApplicationException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.jbosslog.JBossLog;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -33,10 +34,25 @@ public class SteamNewsAdapter implements GameNewsRepository {
       var response = client.latest(appId, count, 200);
       if (response == null || response.appnews() == null || response.appnews().newsitems() == null)
         throw new IllegalArgumentException("Missing news list");
-      return response.appnews().newsitems().stream().limit(count).map(this::newsItem).toList();
-    } catch (ProcessingException | WebApplicationException | IllegalArgumentException
-        | java.time.DateTimeException e) {
-      log.warn("Steam news unavailable");
+      var items = response.appnews().newsitems().stream().limit(count).toList();
+      var news = new ArrayList<GameNewsItem>();
+      for (int index = 0; index < items.size(); index++) {
+        try {
+          news.add(newsItem(items.get(index)));
+        } catch (IllegalArgumentException | java.time.DateTimeException invalid) {
+          // Upstream exception messages can contain URLs or response content.
+          log.warnf("Skipped malformed Steam news item at position %d (%s)",
+              index + 1, invalid.getClass().getSimpleName());
+        }
+      }
+      if (!items.isEmpty() && news.isEmpty())
+        throw new IllegalArgumentException("No usable news items");
+      return List.copyOf(news);
+    } catch (ProcessingException | WebApplicationException | IllegalArgumentException e) {
+      log.warnf("Steam news unavailable (%s, upstream status %s)",
+          e.getClass().getSimpleName(),
+          e instanceof WebApplicationException http && http.getResponse() != null
+              ? http.getResponse().getStatus() : "unavailable");
       throw new ExternalServiceUnavailableException("News unavailable");
     }
   }

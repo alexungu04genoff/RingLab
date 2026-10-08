@@ -61,18 +61,43 @@ class SteamNewsAdapterTest {
   }
 
   @Test
-  void limitsBeforeConvertingItemsAndKeepsMalformedItemsWithinTheFailureBoundary() {
+  void preservesValidItemsAroundMalformedItemsAndKeepsTheRequestedLimit() {
     var valid = new SteamNewsResponse.NewsItem("1", "Title", "https://example.test/news", 1700000000L);
+    var later = new SteamNewsResponse.NewsItem("3", "Later", "https://example.test/later", 1700000001L);
     for (var invalid : java.util.Arrays.asList(
         (SteamNewsResponse.NewsItem) null,
         new SteamNewsResponse.NewsItem(null, "Title", "https://example.test/news", 1700000000L),
+        new SteamNewsResponse.NewsItem("2", null, "https://example.test/news", 1700000000L),
+        new SteamNewsResponse.NewsItem("2", "Title", "https://example.test/news", null),
         new SteamNewsResponse.NewsItem("2", "Title", null, 1700000000L),
+        new SteamNewsResponse.NewsItem("2", "Title", "javascript:alert(1)", 1700000000L),
         new SteamNewsResponse.NewsItem("2", "Title", "https://example.test/news", Long.MAX_VALUE))) {
       var adapter = new SteamNewsAdapter((appId, count, maxLength) ->
-          new SteamNewsResponse(new SteamNewsResponse.AppNews(java.util.Arrays.asList(valid, invalid))), 2486820);
+          new SteamNewsResponse(new SteamNewsResponse.AppNews(java.util.Arrays.asList(valid, invalid, later))), 2486820);
       assertEquals(List.of("1"), adapter.latest(1).stream().map(item -> item.id()).toList());
-      var error = assertThrows(ExternalServiceUnavailableException.class, () -> adapter.latest(2));
+      assertEquals(List.of("1"), adapter.latest(2).stream().map(item -> item.id()).toList());
+      assertEquals(List.of("1", "3"), adapter.latest(3).stream().map(item -> item.id()).toList());
+      var allInvalid = new SteamNewsAdapter((appId, count, maxLength) ->
+          new SteamNewsResponse(new SteamNewsResponse.AppNews(java.util.Arrays.asList(invalid))), 2486820);
+      var error = assertThrows(ExternalServiceUnavailableException.class, () -> allInvalid.latest(5));
       assertEquals("News unavailable", error.getMessage());
     }
+  }
+
+  @Test
+  void skipsTheProductionUrlWithSpacesWithoutDiscardingTheFollowingAnnouncement() throws Exception {
+    var response = new ObjectMapper().readValue("""
+        {"appnews":{"newsitems":[
+          {"gid":"1846018067928800","title":"External article",
+           "url":"https://steamstore-a.akamaihd.net/news/externalpost/PlayGround.ru - официальная группа/1846018067928800",
+           "date":1791447681},
+          {"gid":"1843481262687681","title":"Amigo is now available!",
+           "url":"https://steamstore-a.akamaihd.net/news/externalpost/steam_community_announcements/1843481262687681",
+           "date":1788914378}
+        ]}}
+        """, SteamNewsResponse.class);
+    var adapter = new SteamNewsAdapter((appId, count, maxLength) -> response, 2486820);
+
+    assertEquals(List.of("1843481262687681"), adapter.latest(5).stream().map(item -> item.id()).toList());
   }
 }
