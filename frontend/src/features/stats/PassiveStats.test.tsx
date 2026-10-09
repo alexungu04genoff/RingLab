@@ -106,6 +106,32 @@ it("keeps reviewed values visible when a selected gadget is not active for the c
   expect(screen.getByText("Acceleration machine").classList.contains("gadget-condition-unmet")).toBe(false);
 });
 
+it.each(["SPEED", "ACCELERATION", "HANDLING", "POWER", "BOOST"] as const)(
+  "uses the existing %s palette class for racer and machine conditions while preserving inactive treatment", type => {
+    const catalog = { ruleset: "test", supportedVersion: "1.4.1", note: "", gadgets: [{ gadgetId: "typed", effects:
+      (["RACER", "MACHINE"] as const).map(subject => ({
+        effectId: subject, label: "Type condition", kind: "PASSIVE" as const, subject, requiredType: type,
+        matching: result.adjustments, nonMatching: result.adjustments, explanation: "", sources: [], stackingGroup: null,
+      })) }] };
+    const title = type[0] + type.slice(1).toLowerCase();
+    const { rerender } = render(<GadgetCatalogTypeLabels gadgetId="typed" catalog={catalog}
+      selection={{ racerType: type, machineType: type }} />);
+    for (const subject of ["racer", "machine"]) {
+      const badge = screen.getByText(`${title} ${subject}`);
+      expect(badge.classList.contains(`racing-type-${type.toLowerCase()}`)).toBe(true);
+      expect(badge.classList.contains("gadget-type-badge")).toBe(true);
+      expect(badge.classList.contains("gadget-condition-unmet")).toBe(false);
+    }
+    rerender(<GadgetCatalogTypeLabels gadgetId="typed" catalog={catalog}
+      selection={{ racerType: null, machineType: null }} />);
+    for (const subject of ["racer", "machine"]) {
+      const badge = screen.getByText(`${title} ${subject}`);
+      expect(badge.classList.contains(`racing-type-${type.toLowerCase()}`)).toBe(true);
+      expect(badge.classList.contains("gadget-condition-unmet")).toBe(true);
+    }
+  },
+);
+
 it("uses page enrichment without issuing a per-card request and stops control bubbling",async()=>{
   const fetch=vi.fn();vi.stubGlobal("fetch",fetch);const outer=vi.fn();
   render(<div onClick={outer}><CardStats build={build} pageStats={{status:"ready",value:{...base,passive:result}}} /></div>);
