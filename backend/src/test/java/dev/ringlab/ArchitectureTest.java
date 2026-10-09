@@ -20,6 +20,18 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 class ArchitectureTest {
 
     @Test
+    void publicationRulesAreApplicationPolicyAndInboundCodeCannotBypassPorts() {
+        var imported = new ClassFileImporter().withImportOption(new ImportOption.DoNotIncludeTests())
+                .importPackages("dev.ringlab");
+        classes().that().haveSimpleName("BuildAccessPolicy").should()
+                .resideInAPackage("dev.ringlab.application.build").check(imported);
+        classes().that().haveSimpleName("BuildService").or().haveSimpleName("SavedBuildService")
+                .or().haveSimpleName("CommunitySnapshotAssembler").should().dependOnClassesThat()
+                .haveFullyQualifiedName("dev.ringlab.application.build.BuildAccessPolicy").check(imported);
+        inbound_adapters_use_input_ports.check(imported);
+    }
+
+    @Test
     void layer_dependencies_follow_the_architecture() {
         JavaClasses classes = new ClassFileImporter()
                 .withImportOption(new ImportOption.DoNotIncludeTests())

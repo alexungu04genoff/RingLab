@@ -1,6 +1,7 @@
 package dev.ringlab.adapter.out.db.build;
 
 import jakarta.persistence.*;
+import dev.ringlab.domain.build.BuildVisibility;
 import java.time.Instant;
 import java.util.*;
 
@@ -53,4 +54,11 @@ public class BuildDbEntity {
 
   @Column(name = "updated_at", nullable = false)
   public Instant updatedAt;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false, length = 7)
+  public BuildVisibility visibility;
+
+  @Column(name = "first_published_at")
+  public Instant firstPublishedAt;
 }

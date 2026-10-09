@@ -11,6 +11,19 @@ import type { Build } from "../../shared/types";
 
 afterEach(() => { cleanup(); vi.useRealTimers(); });
 
+it("labels private cards and retains explicit owner actions without an active community score", () => {
+  const part = { id: "p", sourceMachineId: "m", sourceMachineName: "Machine", sourceMachineImagePath: null, racingType: "SPEED" as const };
+  const build: Build = { id: "private", visibility: "PRIVATE", title: "Future setup", description: "", author: { id: "owner", username: "owner" },
+    racer: { id: "r", name: "Racer", racingType: "SPEED", imagePath: null }, frontPart: { ...part, type: "FRONT" },
+    rearPart: { ...part, type: "REAR" }, tirePart: { ...part, type: "TIRE" }, gameVersion: null,
+    mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: null, gadgets: [], score: 7, upvotes: 7, downvotes: 0,
+    createdAt: "2026-01-01", updatedAt: "2026-01-01" };
+  render(<MemoryRouter><BuildCard build={build} pageStats={{ status: "failed" }} /></MemoryRouter>);
+  expect(screen.getByText("🔒 Private")).toBeTruthy();
+  for (const name of ["View", "Edit", "Publish", "Delete"]) expect(screen.getByRole("link", { name })).toBeTruthy();
+  expect(screen.queryByLabelText(/Community score/)).toBeNull();
+});
+
 it("reuses the racer and steering-wheel icons with full names, visible types and no static tab stops", () => {
   const { container } = render(<><RacingTypeBadge kind="racer" type="SPEED" />
     <RacingTypeBadge kind="machine" type="POWER" /><RacingTypeBadge kind="machine" type={null} /></>);

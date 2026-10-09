@@ -8,6 +8,8 @@ import dev.ringlab.port.in.PassiveStatsUseCase;
 import dev.ringlab.adapter.in.rest.gamedata.response.BuildStatsResponse;
 import dev.ringlab.port.in.CommunityUseCase;
 import dev.ringlab.domain.build.ranking.BuildSort;
+import dev.ringlab.domain.build.BuildVisibility;
+import dev.ringlab.application.ValidationException;
 import dev.ringlab.adapter.in.rest.build.request.BuildRequest;
 import dev.ringlab.adapter.in.rest.build.response.BuildPageResponse;
 import dev.ringlab.adapter.in.rest.build.response.BuildResponse;
@@ -46,7 +48,14 @@ public class BuildRestResource {
       @QueryParam("sort") @DefaultValue("rated") @Pattern(regexp = "newest|score|rated") String sort,
       @QueryParam("page") @DefaultValue("0") @Min(0) @Max(100000) int page,
       @QueryParam("size") @DefaultValue("12") @Min(1) @Max(50) int size,
-      @QueryParam("includeStats") @DefaultValue("false") boolean includeStats) {
+      @QueryParam("includeStats") @DefaultValue("false") boolean includeStats,
+      @QueryParam("mine") @DefaultValue("false") @Pattern(regexp = "true|false") String mine,
+      @QueryParam("visibility") @DefaultValue("ALL") @Pattern(regexp = "ALL|PUBLIC|PRIVATE") String visibility) {
+    boolean ownerScope = Boolean.parseBoolean(mine);
+    if (ownerScope && author != null) throw new ValidationException("My Builds cannot be combined with authorId");
+    if (!ownerScope && !"ALL".equals(visibility))
+      throw new ValidationException("Visibility filtering requires My Builds");
+    UUID owner = ownerScope ? actor.id() : null;
     BuildSort buildSort = switch (sort) {
       case "score" -> BuildSort.SCORE;
       case "rated" -> BuildSort.BEST_RATED;
@@ -61,10 +70,13 @@ public class BuildRestResource {
             .map(item -> item.build().id())
             .collect(java.util.stream.Collectors.toSet());
     }
-    var result = builds.list(new BuildUseCase.Query(
+    var query = new BuildUseCase.Query(
         new BuildUseCase.Filter(search, racer, machine, author, gameVersion, excludedIds,
             mapId, Boolean.parseBoolean(includeAllMaps)),
-        buildSort, page, size));
+        buildSort, page, size);
+    var result = ownerScope
+        ? builds.listMine(owner, query, "ALL".equals(visibility) ? null : BuildVisibility.valueOf(visibility))
+        : builds.list(query);
     var items = result.items().isEmpty() ? List.<BuildResponse>of() : responses.assembleAll(result.items(), result.summaries());
     Map<UUID, BuildStatsResponse> pageStats = null;
     String statsError = null;
@@ -87,7 +99,7 @@ public class BuildRestResource {
   @GET
   @Path("{id}")
   public BuildResponse get(@PathParam("id") UUID id) {
-    return responses.assemble(builds.get(id));
+    return responses.assemble(builds.get(id, actor.optionalId()));
   }
 
   @POST

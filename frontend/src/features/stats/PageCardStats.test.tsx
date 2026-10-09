@@ -45,7 +45,7 @@ it.each([false, true])("consumes a 12-card page in Explore/My Builds (mine=%s) w
   expect(statsRequests()).toHaveLength(0);
   const queries = vi.mocked(api).mock.calls.filter(([path]) => path.startsWith("/builds?")).map(([path]) => new URLSearchParams(path.split("?")[1]));
   expect(queries.every((query) => query.get("includeStats") === "true")).toBe(true);
-  if (mine) expect(queries.every((query) => query.get("authorId") === "mine")).toBe(true);
+  if (mine) expect(queries.every((query) => query.get("mine") === "true" && !query.has("authorId"))).toBe(true);
 });
 
 it("accepts all-null/versionless results as unavailable without falling back to another request", async () => {

@@ -10,13 +10,25 @@ import java.util.UUID;
 public final class BuildRanking {
   private BuildRanking() {}
 
-  public record Candidate(UUID id, Instant createdAt, UUID gameVersionId) {
+  public record Candidate(UUID id, Instant createdAt, UUID gameVersionId, Instant firstPublishedAt) {
+    public Candidate(UUID id, Instant createdAt, UUID gameVersionId) {
+      this(id, createdAt, gameVersionId, createdAt);
+    }
     public Candidate(UUID id, Instant createdAt) { this(id, createdAt, null); }
   }
 
   public static Comparator<Candidate> comparator(
       BuildSort sort, Map<UUID, VoteSummary> summaries, Map<UUID, LocalDate> releaseDates) {
-    Comparator<Candidate> newest = Comparator.comparing(Candidate::createdAt).reversed()
+    return comparator(sort, summaries, releaseDates, true);
+  }
+
+  /** Community chronology uses first publication; the owner's garage uses creation. */
+  public static Comparator<Candidate> comparator(
+      BuildSort sort, Map<UUID, VoteSummary> summaries, Map<UUID, LocalDate> releaseDates,
+      boolean publicationChronology) {
+    Comparator<Candidate> newest = Comparator.comparing(
+        (Candidate candidate) -> publicationChronology ? candidate.firstPublishedAt() : candidate.createdAt(),
+        Comparator.nullsLast(Comparator.<Instant>reverseOrder()))
         .thenComparing(candidate -> candidate.id().toString());
     if (sort == BuildSort.NEWEST) return newest;
 

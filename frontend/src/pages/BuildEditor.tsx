@@ -6,6 +6,7 @@ import { MissingItems, useCollection } from "../features/collection/Collection";
 import { ErrorNotice } from "../shared/ui/ErrorNotice";
 import { gadgetPlateStatus, machineSetupError } from "../features/builds/buildForm";
 import { useBuildDraft } from "../features/builds/useBuildDraft";
+import { VisibilityConfirmation } from "../features/builds/VisibilityConfirmation";
 import { BuildEssentialsSection, type BuildEssentialsErrors } from "../features/builds/editor/BuildEssentialsSection";
 import { MachineSetupSection } from "../features/builds/editor/MachineSetupSection";
 import { GadgetSelectionSection } from "../features/builds/editor/GadgetSelectionSection";
@@ -32,25 +33,28 @@ export function BuildEditor() {
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<BuildEssentialsErrors>({});
   const [busy, setBusy] = useState(false);
+  const [confirmVisibility, setConfirmVisibility] = useState(false);
   const [stockSourceId, setStockSourceId] = useState("");
   const draftContext = JSON.stringify([id, remixSourceId, user?.id]);
   const editorContext = JSON.stringify([id, remixSourceId, user?.id, currentSessionGeneration()]);
   const { locks, setLocks, recommendationContext, setRecommendationContext, recommendButton } =
     useEditorRecommendationLocks(editorContext);
   const { racers, parts, gadgets, gadgetRules, scenarioRules, versions, maps } = useBuildEditorCatalog();
-  const { draft, setDraft, loading, loadError, canSubmit } = useBuildDraft({
+  const { draft, setDraft, loading, loadError, canSubmit, originalVisibility } = useBuildDraft({
     id, remixSourceId, userId: user?.id,
   });
   const draftStats = useLoad<BuildStatsResult>(!loading && canSubmit ? passiveStatsPath(draft) : "");
   useEffect(() => {
     saveContext.current = {};
     setBusy(false);
+    setConfirmVisibility(false);
     setError("");
     setFieldErrors({});
     setStockSourceId("");
     return () => { saveContext.current = null; };
   }, [id, remixSourceId, user?.id]);
   function field<K extends keyof BuildDraft>(key: K, value: BuildDraft[K]) {
+    setConfirmVisibility(false);
     setDraft((d) => ({ ...d, [key]: value }));
     if (key === "title" || key === "description" || key === "gameVersionId") {
       setFieldErrors((current) => ({ ...current, [key]: undefined }));
@@ -63,11 +67,15 @@ export function BuildEditor() {
   const setupError = machineSetupError(draft, parts.data ?? []);
   const gadgetTypeSelection = { racerType: selectedRacer?.racingType ?? null, machineType: setupError ? null : draft.machineType };
   const mapSelectionMissing = draft.mapRecommendationMode === "SELECTED" && draft.recommendedMapIds.length === 0;
-  async function saveBuild(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function saveBuild(event?: FormEvent<HTMLFormElement>, confirmed = false) {
+    event?.preventDefault();
     if (busy || !canSubmit || loading || !plateStatus.valid || setupError) return;
     if (!draft.gameVersionId) {
       setFieldErrors({ gameVersionId: "Select a game version / patch." });
+      return;
+    }
+    if (id && draft.visibility !== originalVisibility && !confirmed) {
+      setConfirmVisibility(true);
       return;
     }
     setBusy(true);
@@ -125,6 +133,8 @@ export function BuildEditor() {
             <div className="editor-main">
               <BuildEssentialsSection draft={draft} versions={versions.data} versionsLoading={versions.loading}
                 fieldErrors={fieldErrors} onChange={field} />
+              {confirmVisibility && <VisibilityConfirmation visibility={draft.visibility} busy={busy}
+                onConfirm={() => void saveBuild(undefined, true)} onCancel={() => setConfirmVisibility(false)} />}
               <MachineSetupSection draft={draft} setDraft={setDraft} racers={racers.data} parts={parts.data}
                 partsLoading={parts.loading} stockSourceId={stockSourceId} setStockSourceId={setStockSourceId}
                 setupError={setupError} locks={locks} setLocks={setLocks}
@@ -156,7 +166,7 @@ export function BuildEditor() {
                     busy || !racers.data || !parts.data || !gadgets.data || !plateStatus.valid || !!setupError || mapSelectionMissing
                   }
                 >
-                  {busy ? "Saving…" : id ? "Save changes" : "Publish build"}
+                  {busy ? "Saving…" : id ? "Save changes" : draft.visibility === "PRIVATE" ? "Save private build" : "Publish build"}
                 </button>
               } />
           </form>

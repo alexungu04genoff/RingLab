@@ -58,7 +58,7 @@ export function updateExploreParams(
 
 export function clearExploreFilters(current: URLSearchParams) {
   const next = new URLSearchParams(current);
-  ["search", "racerId", "machineId", "gameVersionId", "mapId", "includeAllMaps", "page"].forEach((key) => next.delete(key));
+  ["search", "racerId", "machineId", "gameVersionId", "mapId", "includeAllMaps", "visibility", "page"].forEach((key) => next.delete(key));
   return next;
 }
 

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { SaveBuildButton } from "../features/saved-builds/SavedBuilds";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
-import { api, json } from "../shared/api/api";
+import { api, ApiError, currentSessionGeneration, json } from "../shared/api/api";
 import { useAuth } from "../features/auth/auth";
 import { COMMENT_PAGE_SIZE } from "../features/comments/commentPagination";
 import { BuildCommentsSection } from "../features/comments/BuildCommentsSection";
@@ -25,7 +25,8 @@ import type { Build, BuildStatsResult, CommentPage, GadgetRulesCatalog, Scenario
 
 export function BuildDetails() {
   const { id } = useParams();
-  return <BuildDetailsContent key={id} />;
+  const { user } = useAuth();
+  return <BuildDetailsContent key={`${id}:${user?.id ?? "anonymous"}:${currentSessionGeneration()}`} />;
 }
 
 // A new build gets fresh local state. Pending mutations can only update their old instance.
@@ -48,38 +49,44 @@ function BuildDetailsContent() {
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
   const comments = useLoad<CommentPage>(
-    `/builds/${id}/comments?page=${page}&size=${COMMENT_PAGE_SIZE}`,
+    build.data && build.data.visibility !== "PRIVATE" ? `/builds/${id}/comments?page=${page}&size=${COMMENT_PAGE_SIZE}` : "",
     revision,
   );
   const [vote, setVote] = useState<Vote>();
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(!!location.state?.confirmDelete);
+  const [unavailable, setUnavailable] = useState(false);
   const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "error">("idle");
   useEffect(() => {
     setVote(undefined);
-    if (!user) return;
+    if (!user || !build.data || build.data.visibility === "PRIVATE") return;
     const controller = new AbortController();
     api<Vote>(`/builds/${id}/vote`, { signal: controller.signal })
       .then(setVote)
       .catch((e) => {
-        if (!controller.signal.aborted) setError(e.message);
+        if (!controller.signal.aborted) {
+          if (e instanceof ApiError && e.status === 404) setUnavailable(true);
+          else setError(e.message);
+        }
       });
     return () => controller.abort();
-  }, [id, user]);
+  }, [id, user, build.data]);
   async function act(task: () => Promise<void>, reportError: (message: string) => void = setError) {
     setBusy(true);
     reportError("");
     try {
       await task();
     } catch (e) {
-      reportError((e as Error).message);
+      if (e instanceof ApiError && e.status === 404) setUnavailable(true);
+      else reportError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
   const b = build.data;
   const summary = vote ?? b;
+  if (unavailable) return <ErrorNotice message="This build is no longer available." />;
   if (!b)
     return (
       <>
@@ -88,6 +95,7 @@ function BuildDetailsContent() {
       </>
     );
   const plateStatus = gadgetPlateStatus(b.gadgets);
+  const privateBuild = b.visibility === "PRIVATE";
   const setupIssues = savedBuildSetupIssues(b);
   const versionAge = patchAge(b.gameVersion, versions.data || []);
   const shareBuild = b;
@@ -115,16 +123,17 @@ function BuildDetailsContent() {
         <div className="detail-heading">
         <div>
           <div className="detail-context">
-            <div className="eyebrow accent">COMMUNITY BUILD</div>
+            <div className="eyebrow accent">{privateBuild ? "PRIVATE BUILD" : "COMMUNITY BUILD"}</div>
             <Link className="detail-back" to={origin}>
               ← {origin.startsWith("/saved-builds") ? "Saved Builds" : origin.startsWith("/my-builds") ? "My builds" : "Explore builds"}
             </Link>
           </div>
           <h1>{b.title}</h1>
+          {privateBuild && <p><span className="visibility-badge">🔒 Private</span> Only you can see this build.</p>}
           <MissingItems build={b} />
           <p>
             by <strong>@{b.author.username}</strong>{" "}
-            <span className="muted">· {date(b.createdAt)}</span>
+            <span className="muted">· {privateBuild ? "Created" : "Published"} {date(privateBuild ? b.createdAt : b.firstPublishedAt ?? b.createdAt)}</span>
           </p>
           {b.remixedFrom && (
             <p className="muted">
@@ -137,7 +146,7 @@ function BuildDetailsContent() {
           </div>}
         </div>
         <div className="actions">
-          <SaveBuildButton build={b} />
+          {!privateBuild && <SaveBuildButton build={b} />}
           {user ? (
             <Link className="button" to={`/builds/new?remixFrom=${encodeURIComponent(b.id)}`}>
               Remix this build
@@ -150,13 +159,16 @@ function BuildDetailsContent() {
           <Link className="button" to={`/compare?left=${encodeURIComponent(b.id)}`}>
             Compare
           </Link>
-          <button onClick={copySetup}>
+          {!privateBuild && <button onClick={copySetup}>
             {copyStatus === "copied" ? "✓ Copied" : copyStatus === "error" ? "Could not copy setup" : "Copy setup"}
-          </button>
+          </button>}
           {user?.id === b.author.id && (
             <>
             <Link className="button" to={`/builds/${id}/edit`}>
               Edit build
+            </Link>
+            <Link className="button" to={`/builds/${id}/edit#visibility`}>
+              {privateBuild ? "Publish build" : "Make private"}
             </Link>
             <button className="danger" onClick={() => setConfirmDelete(true)}>
               Delete
@@ -202,7 +214,9 @@ function BuildDetailsContent() {
               </div>
               <div className="racer-build-summary">
                 <div className="hero-details">
-                  <section className="vote-panel" aria-label="Community score and voting">
+                  {privateBuild ? <section className="vote-panel">
+                    <p>Community activity is hidden while this build is private.</p>
+                  </section> : <section className="vote-panel" aria-label="Community score and voting">
                     <div className="eyebrow score-heading">
                       COMMUNITY SCORE
                       <span className="score-help" tabIndex={0} aria-label="How Best rated works">
@@ -263,7 +277,7 @@ function BuildDetailsContent() {
                       <p>{b.description || "No description provided."}</p>
                       {b.description && <a href="#build-setup">Read full setup</a>}
                     </div>
-                  </section>
+                  </section>}
                   <div className="hero-stats">
                     <BuildStats build={b} loadedResult={stats} />
                     <ScenarioPreview selections={[{ label: b.title, selection: scenarioSelection(b) }]} />
@@ -355,8 +369,9 @@ function BuildDetailsContent() {
               <h2>Recommended maps</h2>
               <RecommendedMapList recommendations={b.mapRecommendations} />
             </section>
-            <BuildCommentsSection buildId={b.id} comments={comments} page={page} onPageChange={setPage}
-              onRefresh={() => setRevision(r => r + 1)} busy={busy} act={act} />
+            {privateBuild ? <p className="panel">Comments are unavailable while this build is private.</p>
+              : <BuildCommentsSection buildId={b.id} comments={comments} page={page} onPageChange={setPage}
+                onRefresh={() => setRevision(r => r + 1)} busy={busy} act={act} />}
         </div>
         </div>
       </div>

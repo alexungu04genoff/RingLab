@@ -1,6 +1,7 @@
 flowchart TB
   h["GET /api/builds/{id}"]:::outside --> r["BuildRestResource.get"]:::rest
-  r --> input["BuildUseCase"]:::port -.-> s["BuildService.get"]:::app
+  r --> actor["CurrentUser.optionalId<br/>verified session only"]:::rest
+  r --> input["BuildUseCase"]:::port -.-> s["BuildService.get<br/>BuildAccessPolicy.requireReadable"]:::app
   s --> p["BuildRepository.find"]:::port
   p -.-> a["BuildDbAdapter<br/>EntityManager.find + BuildDbMapper.toDomain"]:::adapter
   a --> t[("builds + gadget/map associations")]:::outside
@@ -9,7 +10,7 @@ flowchart TB
   x --> auth["AuthUseCase"]:::port -.-> u["AuthService.current → UserRepository"]:::app
   x --> catalog["GameDataQueryUseCase"]:::port -.-> query["GameDataQueryService"]:::app --> g["GameDataRepository<br/>racer / part sources / gadgets / version / maps"]:::port
   x --> votes["VoteUseCase"]:::port -.-> v["VoteService.summary → VoteRepository"]:::app
-  x --> remixes["BuildUseCase"]:::port -.-> remix["BuildService.remixSource → BuildRepository"]:::app
+  x --> remixes["BuildUseCase"]:::port -.-> remix["BuildService.remixSource → BuildRepository<br/>PUBLIC sources only"]:::app
   x --> dto["BuildResponse<br/>AuthorResponse, RacerResponse, MachinePartResponse<br/>GadgetResponse, GameVersionResponse<br/>RemixSourceResponse, MapRecommendationsResponse"]:::rest
   classDef rest fill:#e4efff,stroke:#356db4,color:#142b49
   classDef app fill:#fff0ce,stroke:#a96b00,color:#272727

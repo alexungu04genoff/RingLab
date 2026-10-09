@@ -78,6 +78,8 @@ class BuildResponseAssembler {
         MapRecommendationsResponse.from(build.recommendedMapIds(), maps),
         build.createdAt(),
         build.updatedAt(),
+        build.visibility(),
+        build.firstPublishedAt(),
         summary.score(), summary.upvotes(), summary.downvotes());
   }
 }

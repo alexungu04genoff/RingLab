@@ -1,6 +1,7 @@
 package dev.ringlab.port.out;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.BuildVisibility;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import java.util.*;
 
@@ -19,7 +20,14 @@ public interface BuildRepository {
       UUID gameVersionId,
       Set<UUID> excludedIds,
       UUID mapId,
-      boolean includeAllMaps) {
+      boolean includeAllMaps,
+      UUID ownerId,
+      BuildVisibility visibility) {
+    public Filter(String search, UUID racerId, UUID machineId, UUID authorId, UUID gameVersionId,
+        Set<UUID> excludedIds, UUID mapId, boolean includeAllMaps) {
+      this(search, racerId, machineId, authorId, gameVersionId, excludedIds, mapId, includeAllMaps,
+          null, BuildVisibility.PUBLIC);
+    }
     public Filter(String search, UUID racerId, UUID machineId, UUID authorId, UUID gameVersionId) {
       this(search, racerId, machineId, authorId, gameVersionId, Set.of(), null, true);
     }
@@ -31,10 +39,15 @@ public interface BuildRepository {
 
     public Filter {
       excludedIds = excludedIds == null ? Set.of() : Set.copyOf(excludedIds);
+      // Only an explicit owner scope can include private candidates.
+      if (ownerId == null) visibility = BuildVisibility.PUBLIC;
     }
   }
 
   Optional<Build> find(UUID id);
+
+  /** Lock the parent row until the calling mutation transaction completes; read fresh state. */
+  Optional<Build> findForUpdate(UUID id);
 
   /**
    * Returns every matching candidate with lightweight ranking facts only. It provides no ranking

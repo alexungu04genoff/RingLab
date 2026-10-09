@@ -1,4 +1,7 @@
 .detail-heading .save-build-control { align-self: stretch; }
+.detail-heading { flex-wrap: wrap; }
+.detail-heading > div:first-child { min-width: 0; max-width: 100%; }
+.detail-heading .actions { max-width: 100%; flex-wrap: wrap; }
 .detail-heading .save-build {
   width: 52px;
   height: 100%;

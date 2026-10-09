@@ -18,10 +18,11 @@ import lombok.RequiredArgsConstructor;
 public class PassiveStatsRestResource {
   private final PassiveStatsUseCase stats;
   private final BuildUseCase builds;
+  private final dev.ringlab.adapter.in.rest.auth.CurrentUser actor;
 
   @GET @Path("persisted/{id}")
   public BuildStatsResponse persisted(@PathParam("id") UUID id) {
-    return BuildStatsResponse.withPassive(stats.buildPage(List.of(builds.get(id))).get(id));
+    return BuildStatsResponse.withPassive(stats.buildPage(List.of(builds.get(id, actor.optionalId()))).get(id));
   }
 
   @GET @Path("passive-build")

@@ -28,7 +28,7 @@ class VoteServiceTest {
     builds = new InMemoryBuildRepository();
     builds.builds.put(buildId, build(buildId));
     votes = new VoteRepositoryStub();
-    service = new VoteService(votes, new BuildService(builds, null, votes, null));
+    service = new VoteService(votes, new BuildService(builds, null, votes, null, new dev.ringlab.PublicationEvents().event()));
   }
 
   @Test
@@ -90,6 +90,7 @@ class VoteServiceTest {
   }
 
   private static final class InMemoryBuildRepository implements BuildRepository {
+    public Optional<Build> findForUpdate(UUID id) { return find(id); }
     private final Map<UUID, Build> builds = new HashMap<>();
 
     @Override

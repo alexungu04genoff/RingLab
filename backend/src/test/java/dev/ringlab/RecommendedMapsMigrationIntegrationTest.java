@@ -69,7 +69,7 @@ class RecommendedMapsMigrationIntegrationTest {
   private Map<String, String> snapshot(Statement sql) throws SQLException {
     var result = new HashMap<String, String>();
     for (var table : List.of("users", "builds", "build_gadgets", "votes", "comments", "saved_builds")) {
-      try (var rows = sql.executeQuery("SELECT coalesce(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]')::text FROM " + table + " t")) {
+      try (var rows = sql.executeQuery("SELECT coalesce(jsonb_agg(to_jsonb(t)-'visibility'-'first_published_at' ORDER BY to_jsonb(t)::text),'[]')::text FROM " + table + " t")) {
         rows.next(); result.put(table, rows.getString(1));
       }
     }

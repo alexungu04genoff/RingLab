@@ -18,7 +18,7 @@ const gadgets: Gadget[] = [
   { id: "b", name: "Beta", slotCost: 2, imagePath: null, description: null, acquisitionKind: "FESTIVAL_REWARD", acquisitionLabel: "Test Festival" },
   { id: "c", name: "Gamma", slotCost: 3, imagePath: null, description: null, acquisitionKind: "UNKNOWN" },
 ];
-const draft: BuildDraft = { title: "Keep draft", description: "Keep note", racerId: "r", machineType: "SPEED",
+const draft: BuildDraft = { visibility: "PUBLIC", title: "Keep draft", description: "Keep note", racerId: "r", machineType: "SPEED",
   frontPartId: "front", rearPartId: "rear", tirePartId: "tire", gameVersionId: "v", remixedFromBuildId: null,
   gadgetIds: ["c", "a"], recommendedMapIds: [], mapRecommendationMode: "ALL" };
 

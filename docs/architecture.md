@@ -283,7 +283,25 @@ React -> RingLab REST -> GameNewsService -> GameNewsRepository
 
 `GET /api/news` returns an array of `{id, title, url, publishedAt}` response DTOs. The typed Quarkus REST Client uses the public Steam News v2 endpoint, with configurable `STEAM_BASE_URL` and `STEAM_APP_ID` (default 2486820), 2-second connection and 3-second read timeouts. Network, HTTP, and malformed-response failures become a semantic external-service-unavailable error, which the REST mapper exposes as the safe 503 `News unavailable` response; logs omit external bodies. No retries, caching, persistence, or synchronization are used. Explore loads news independently and shows a secondary panel with titles, dates, and original links, stacking below builds on smaller screens. It omits article contents entirely, so HTML/BBCode is never rendered; empty and unavailable news leave build browsing usable.
 
-`vote` and `comment` call BuildService to verify that their target build exists. BuildResponseAssembler in the REST adapter uses auth and game-data queries to assemble public author/loadout details. BuildRestResource retains routes, transport validation, actor lookup and service calls. Build detail responses obtain their vote summary through VoteService; list responses reuse page vote summaries supplied by BuildService after ranking. These are in-process calls. The build response currently reuses the game-data response DTO; this deliberate coupling keeps the same public shape without a parallel mapper hierarchy.
+`BuildAccessPolicy` centralizes PUBLIC reads, owner-private reads and owner mutation checks.
+`vote` and `comment` require a PUBLIC parent through BuildService; mutations lock the
+parent row, sharing the publication-edit concurrency boundary. Saved-build queries
+filter PUBLIC before pagination/counts and status. Public candidate queries exclude
+PRIVATE before ranking and vote summaries; authenticated `mine=true` uses an explicit
+actor scope. `BuildResponseAssembler` enriches authorized builds with author/catalog
+details and public-only remix attribution. Detail summaries may include retained
+historical votes for a private owner; UI controls remain inactive. List responses
+reuse page summaries supplied after ranking. Game-data response DTOs remain reused
+without an extra mapper hierarchy.
+
+V37 persists `BuildVisibility` and immutable first-publication chronology. Content
+and publication save atomically; omitted edit visibility preserves current state.
+The editor's optional `expectedUpdatedAt` protects against stale explicit publication.
+`BuildPublicationChanged` invalidates `CommunitySnapshotCache` after successful
+transaction completion, covering Top Community, Discord and `excludeTop` plus remix
+attribution. Persisted-build responses use private/no-store and Vary Authorization.
+See [build visibility](build-visibility.md) for compatibility, transaction ordering,
+external-copy limitations and the local acceptance checklist.
 
 ## Mapping and flow
 

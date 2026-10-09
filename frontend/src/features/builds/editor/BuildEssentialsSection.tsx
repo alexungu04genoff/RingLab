@@ -5,13 +5,23 @@ export type BuildEssentialsErrors = { title?: string; description?: string; game
 
 export function BuildEssentialsSection({ draft, versions, versionsLoading, fieldErrors, onChange }: {
   draft: BuildDraft; versions?: GameVersion[]; versionsLoading: boolean; fieldErrors: BuildEssentialsErrors;
-  onChange: <K extends "title" | "description" | "gameVersionId">(key: K, value: BuildDraft[K]) => void;
+  onChange: <K extends "title" | "description" | "gameVersionId" | "visibility">(key: K, value: BuildDraft[K]) => void;
 }) {
   return (
     <section className="panel">
       <h2>
         <span className="step">01</span> The essentials
       </h2>
+      <label>
+        Visibility
+        <select id="visibility" value={draft.visibility} onChange={e => onChange("visibility", e.target.value as BuildDraft["visibility"])}>
+          <option value="PUBLIC">Public</option>
+          <option value="PRIVATE">Private</option>
+        </select>
+      </label>
+      <p className="muted">{draft.visibility === "PRIVATE"
+        ? "🔒 Private · Only you can see this build."
+        : "Shared with the RingLab community."}</p>
       <label>
         Game version / Patch
         <select value={draft.gameVersionId ?? ""}

@@ -29,4 +29,9 @@ public class CurrentUser {
     accounts.validateSession(id, version);
     return id;
   }
+
+  /** The JWT extension rejects invalid bearer tokens; anonymous public reads have no subject. */
+  public UUID optionalId() {
+    return jwt.getSubject() == null ? null : id();
+  }
 }

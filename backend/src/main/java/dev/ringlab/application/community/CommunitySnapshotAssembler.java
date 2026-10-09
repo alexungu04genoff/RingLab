@@ -3,6 +3,7 @@ package dev.ringlab.application.community;
 import dev.ringlab.port.in.CommunitySnapshot;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.application.build.BuildAccessPolicy;
 import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.vote.VoteSummary;
 import dev.ringlab.port.out.BaseStatsRepository;
@@ -45,7 +46,7 @@ final class CommunitySnapshotAssembler {
   }
 
   boolean eligible(Build build) {
-    return build != null && !CommunityEligibility.controlledDemo(build.title())
+    return build != null && BuildAccessPolicy.publiclyReadable(build) && !CommunityEligibility.controlledDemo(build.title())
         && racers.containsKey(build.racerId())
         && (build.gameVersionId() == null || versions.containsKey(build.gameVersionId()))
         && CommunityEligibility.valid(build, parts, machines, gadgets);
@@ -63,7 +64,8 @@ final class CommunitySnapshotAssembler {
         build.gadgetIds().stream().map(gadgets::get).toList(), summary,
         BaseStatsBreakdown.calculate(build.racerId(), build.frontPartId(), build.rearPartId(),
             build.tirePartId(), versionRacers, versionParts),
-        build.remixedFromBuildId() == null ? null : builds.find(build.remixedFromBuildId()).orElse(null),
+        build.remixedFromBuildId() == null ? null : builds.find(build.remixedFromBuildId())
+            .filter(BuildAccessPolicy::publiclyReadable).orElse(null),
         maps.stream().filter(map -> build.recommendedMapIds().contains(map.id())).toList());
   }
 

@@ -36,6 +36,13 @@ public class BuildDbAdapter implements BuildRepository {
     return Optional.ofNullable(mapper.toDomain(em.find(BuildDbEntity.class, id)));
   }
 
+  public Optional<Build> findForUpdate(UUID id) {
+    var entity = em.find(BuildDbEntity.class, id, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    // Refresh an entity that may already have been read earlier in this transaction.
+    if (entity != null) em.refresh(entity, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    return Optional.ofNullable(mapper.toDomain(entity));
+  }
+
   public List<BuildRanking.Candidate> searchCandidates(Filter filter) {
     CriteriaBuilder criteriaBuilder = em.getCriteriaBuilder();
 
@@ -43,7 +50,7 @@ public class BuildDbAdapter implements BuildRepository {
     Root<BuildDbEntity> itemRoot = itemQuery.from(BuildDbEntity.class);
     itemQuery.select(criteriaBuilder.construct(
         BuildRanking.Candidate.class, itemRoot.get("id"), itemRoot.get("createdAt"),
-        itemRoot.get("gameVersionId")));
+        itemRoot.get("gameVersionId"), itemRoot.get("firstPublishedAt")));
     itemQuery.where(filters(criteriaBuilder, itemQuery, itemRoot, filter).toArray(Predicate[]::new));
     return em.createQuery(itemQuery).getResultList();
   }
@@ -60,6 +67,10 @@ public class BuildDbAdapter implements BuildRepository {
   static List<Predicate> filters(
       CriteriaBuilder criteriaBuilder, CriteriaQuery<?> query, Root<BuildDbEntity> build, Filter filter) {
     List<Predicate> predicates = new ArrayList<>();
+    if (filter.ownerId() != null)
+      predicates.add(criteriaBuilder.equal(build.get("authorId"), filter.ownerId()));
+    if (filter.visibility() != null)
+      predicates.add(criteriaBuilder.equal(build.get("visibility"), filter.visibility()));
     if (filter.mapId() != null) {
       // Set-based predicates never multiply candidate rows, counts or pagination.
       var selected = criteriaBuilder.isMember(filter.mapId(), build.<java.util.Set<UUID>>get("recommendedMapIds"));

@@ -69,6 +69,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
   const racer = urlParams.get("racerId") ?? "";
   const machine = urlParams.get("machineId") ?? "";
   const mapId = urlParams.get("mapId") ?? "";
+  const visibility = ["PUBLIC", "PRIVATE"].includes(urlParams.get("visibility") ?? "")
+    ? urlParams.get("visibility")! : "ALL";
   const includeAllMaps = urlParams.get("includeAllMaps") !== "false";
   const requestedGameVersion = urlParams.get("gameVersionId") ?? "";
   const sort = resolveSort(urlParams.get("sort"), readPreference(PUBLIC_SORT_PREFERENCE), mine);
@@ -107,10 +109,13 @@ export function Explore({ mine = false }: { mine?: boolean }) {
     params.set("includeAllMaps", urlParams.get("includeAllMaps") ?? "true");
   }
   if (gameVersion) params.set("gameVersionId", gameVersion);
-  if (mine && user) params.set("authorId", user.id);
+  if (mine && user) {
+    params.set("mine", "true");
+    params.set("visibility", visibility);
+  }
   if (!mine) spotlight?.items.forEach(({ build }) => params.append("excludeId", build.id));
   const builds = useLoad<BuildPage>(`/builds?${params}`, statsRefresh);
-  const hasActiveFilters = Boolean(query || racer || machine || gameVersion || mapId);
+  const hasActiveFilters = Boolean(query || racer || machine || gameVersion || mapId || (mine && visibility !== "ALL"));
   const activeChips = activeExploreFilterChips(
     urlParams, racers.data || [], machines.data || [], versions.data || [], mine, maps.data || [],
   );
@@ -190,6 +195,13 @@ export function Explore({ mine = false }: { mine?: boolean }) {
         )}
       </div>
       {!mine && <TopCommunityBuilds versions={versions.data || []} onSnapshot={setSpotlight} />}
+      {mine && <div className="visibility-filters" role="group" aria-label="Build visibility">
+        {(["ALL", "PUBLIC", "PRIVATE"] as const).map(value => <button key={value} type="button"
+          aria-pressed={visibility === value} onClick={() => updateUrl({ visibility: value })}>
+          {value === "ALL" ? "All" : value === "PUBLIC" ? "Public" : "Private"}
+        </button>)}
+        <span className="muted">Newest in My Builds uses creation time.</span>
+      </div>}
       <ExploreFiltersSection search={search} onSearchChange={setSearch}
         selection={{ racer, machine, gameVersion, mapId, includeAllMaps, sort }}
         racers={racers.data || []} machines={machines.data || []} versions={versions.data || []} maps={maps.data ?? []}
@@ -228,8 +240,8 @@ export function Explore({ mine = false }: { mine?: boolean }) {
             <div className="explore-state loading-state" role="status">
               <span className="loading-ring" aria-hidden="true" />
               <div>
-                <h2>Loading community builds</h2>
-                <p>Getting the latest shared setups ready for you.</p>
+                <h2>{mine ? "Loading your builds" : "Loading community builds"}</h2>
+                <p>{mine ? "Getting your garage ready for you." : "Getting the latest shared setups ready for you."}</p>
               </div>
             </div>
           )}

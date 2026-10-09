@@ -32,6 +32,39 @@ class RepositoryContractIntegrationTest {
   @Inject VoteRepository votes;
   @Inject UserRepository users;
   @Inject GameDataRepository game;
+  @Inject dev.ringlab.port.in.VoteUseCase voteService;
+
+  @Test void voteWaitsForPublicationLockAndRejectsTheCommittedPrivateState() throws Exception {
+    Build target = QuarkusTransaction.requiringNew().call(() -> build(user().id(), "Publication race", null));
+    var locked = new java.util.concurrent.CountDownLatch(1);
+    var release = new java.util.concurrent.CountDownLatch(1);
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var hide = executor.submit(() -> QuarkusTransaction.requiringNew().run(() -> {
+        Build current = builds.findForUpdate(target.id()).orElseThrow();
+        locked.countDown();
+        try { assertTrue(release.await(10, TimeUnit.SECONDS)); }
+        catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new AssertionError(interrupted); }
+        builds.save(new Build(current.id(), current.title(), current.description(), current.authorId(), current.racerId(),
+            current.frontPartId(), current.rearPartId(), current.tirePartId(), current.gameVersionId(), current.remixedFromBuildId(),
+            current.gadgetIds(), current.recommendedMapIds(), current.createdAt(), Instant.now(),
+            dev.ringlab.domain.build.BuildVisibility.PRIVATE, current.firstPublishedAt()));
+      }));
+      assertTrue(locked.await(10, TimeUnit.SECONDS));
+      var started = new java.util.concurrent.CountDownLatch(1);
+      var vote = executor.submit(() -> {
+        started.countDown();
+        assertThrows(dev.ringlab.application.NotFoundException.class, () -> voteService.put(target.authorId(), target.id(), 1));
+      });
+      assertTrue(started.await(10, TimeUnit.SECONDS));
+      try { assertThrows(java.util.concurrent.TimeoutException.class, () -> vote.get(200, TimeUnit.MILLISECONDS)); }
+      finally { release.countDown(); }
+      hide.get(10, TimeUnit.SECONDS); vote.get(10, TimeUnit.SECONDS);
+      assertEquals(new VoteSummary(0, 0), votes.summary(target.id()));
+    } finally {
+      release.countDown();
+      QuarkusTransaction.requiringNew().run(() -> builds.delete(target.id()));
+    }
+  }
 
   @Test
   @TestTransaction

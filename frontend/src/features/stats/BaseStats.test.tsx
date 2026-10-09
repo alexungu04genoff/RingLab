@@ -10,7 +10,7 @@ import type { BaseStats, Build, BuildDraft, BuildStatsResult, MachinePart } from
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 const complete: BaseStats = { speed: 17.5, acceleration: 0, handling: 12, power: 9, boost: 8 };
 const calculated: BaseStats = { ...complete, acceleration: 5 };
-const draft: BuildDraft = { recommendedMapIds: [], mapRecommendationMode: "ALL", title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
+const draft: BuildDraft = { visibility: "PUBLIC", recommendedMapIds: [], mapRecommendationMode: "ALL", title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b",
   tirePartId: "t", machineType: "SPEED", gameVersionId: "v", remixedFromBuildId: null, gadgetIds: [] };
 const version = { id: "v", version: "1.3.1", releasedAt: "2026-03-18" };
 const breakdown: BuildStatsResult = {

@@ -5,11 +5,11 @@ import dev.ringlab.port.in.BuildUseCase;
 import lombok.RequiredArgsConstructor;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.BuildVisibility;
 import dev.ringlab.domain.build.ranking.BuildRanking;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.gamedata.GameVersion;
 import dev.ringlab.domain.vote.VoteSummary;
-import dev.ringlab.application.ForbiddenException;
 import dev.ringlab.application.NotFoundException;
 import dev.ringlab.application.ValidationException;
 import dev.ringlab.port.out.BuildRepository;
@@ -33,36 +33,65 @@ public class BuildService implements BuildUseCase {
   private final GameDataRepository game;
   private final VoteRepository votes;
   private final BuildDraftValidator drafts;
+  private final jakarta.enterprise.event.Event<BuildPublicationChanged> publicationChanges;
 
   public Build get(UUID id) {
+    return get(id, null);
+  }
+
+  public Build get(UUID id, UUID viewer) {
     if (id == null) throw new ValidationException("Missing build ID");
-    return builds.find(id).orElseThrow(() -> NotFoundException.missing("Build"));
+    return BuildAccessPolicy.requireReadable(
+        builds.find(id).orElseThrow(() -> NotFoundException.missing("Build")), viewer);
+  }
+
+  /** Community mutations and publication edits serialize on the same parent row. */
+  public Build lockPublic(UUID id) {
+    return BuildAccessPolicy.requirePublic(locked(id));
+  }
+
+  private Build locked(UUID id) {
+    if (id == null) throw new ValidationException("Missing build ID");
+    return builds.findForUpdate(id).orElseThrow(() -> NotFoundException.missing("Build"));
   }
 
   public Optional<Build> remixSource(Build build) {
     return build.remixedFromBuildId() == null
-        ? Optional.empty() : builds.find(build.remixedFromBuildId());
+        ? Optional.empty() : builds.find(build.remixedFromBuildId()).filter(BuildAccessPolicy::publiclyReadable);
   }
 
   public Page list(Query query) {
+    return list(query, null, BuildVisibility.PUBLIC);
+  }
+
+  public Page listMine(UUID actor, Query query, BuildVisibility visibility) {
+    if (actor == null) throw new dev.ringlab.application.AuthenticationException("Account unavailable");
+    validateQuery(query);
+    if (query.filter().authorId() != null)
+      throw new ValidationException("My Builds cannot be combined with authorId");
+    return list(query, actor, visibility);
+  }
+
+  private Page list(Query query, UUID owner, BuildVisibility visibility) {
     validateQuery(query);
     var filter = query.filter();
     List<BuildRanking.Candidate> candidates = builds.searchCandidates(new BuildRepository.Filter(
         filter.search(), filter.racerId(), filter.machineId(), filter.authorId(), filter.gameVersionId(),
-        filter.excludedIds(), filter.mapId(), filter.includeAllMaps()));
+        filter.excludedIds(), filter.mapId(), filter.includeAllMaps(), owner, visibility));
     var summaries = query.sort() == BuildSort.NEWEST
         ? Map.<UUID, VoteSummary>of()
         : votes.summaries(candidates.stream().map(BuildRanking.Candidate::id).toList());
     Map<UUID, LocalDate> releaseDates = releaseDates(query.sort());
     List<BuildRanking.Candidate> ranked = candidates.stream()
-        .sorted(BuildRanking.comparator(query.sort(), summaries, releaseDates))
+        .sorted(BuildRanking.comparator(query.sort(), summaries, releaseDates, owner == null))
         .toList();
     long offset = (long) query.page() * query.size();
     if (offset >= ranked.size()) return new Page(List.of(), ranked.size(), Map.of());
     int from = (int) offset;
     int to = (int) Math.min(offset + query.size(), ranked.size());
     List<UUID> pageIds = ranked.subList(from, to).stream().map(BuildRanking.Candidate::id).toList();
-    List<Build> items = hydrateInRankedOrder(pageIds);
+    List<Build> items = hydrateInRankedOrder(pageIds).stream()
+        .filter(build -> BuildAccessPolicy.publiclyReadable(build) || build.authorId().equals(owner)).toList();
     return new Page(items, ranked.size(), pageSummaries(query.sort(), items, summaries));
   }
 
@@ -101,10 +130,10 @@ public class BuildService implements BuildUseCase {
   public Build create(UUID author, Draft draft) {
     if (author == null) throw new ValidationException("Missing author ID");
     drafts.validate(draft);
-    if (draft.remixedFromBuildId() != null && builds.find(draft.remixedFromBuildId()).isEmpty()) {
-      throw new ValidationException("Unknown remix source build ID");
-    }
-    var now = Instant.now();
+    if (draft.remixedFromBuildId() != null)
+      BuildAccessPolicy.requireReadable(locked(draft.remixedFromBuildId()), author);
+    var now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+    var visibility = draft.visibility() == null ? BuildVisibility.PUBLIC : draft.visibility();
     var build =
         new Build(
             UUID.randomUUID(),
@@ -120,16 +149,24 @@ public class BuildService implements BuildUseCase {
             draft.gadgetIds(),
             draft.recommendedMapIds() == null ? java.util.Set.of() : java.util.Set.copyOf(draft.recommendedMapIds()),
             now,
-            now);
+            now,
+            visibility,
+            visibility == BuildVisibility.PUBLIC ? now : null);
     builds.save(build);
     return build;
   }
 
   @Transactional
   public Build edit(UUID id, UUID actor, Draft draft) {
-    var existing = get(id);
-    ForbiddenException.requireOwner(existing.authorId(), actor);
+    var existing = BuildAccessPolicy.requireOwner(locked(id), actor);
+    if (draft.expectedUpdatedAt() != null && !draft.expectedUpdatedAt().equals(existing.updatedAt()))
+      throw new ValidationException("This build changed. Reload it before saving.", "expectedUpdatedAt");
     drafts.validate(draft);
+    var now = Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MICROS);
+    if (!now.isAfter(existing.updatedAt())) now = existing.updatedAt().plusNanos(1000);
+    var visibility = draft.visibility() == null ? existing.visibility() : draft.visibility();
+    var firstPublishedAt = existing.firstPublishedAt() == null && visibility == BuildVisibility.PUBLIC
+        ? now : existing.firstPublishedAt();
     var build =
         new Build(
             id,
@@ -145,14 +182,18 @@ public class BuildService implements BuildUseCase {
             draft.gadgetIds(),
             draft.recommendedMapIds() == null ? existing.recommendedMapIds() : java.util.Set.copyOf(draft.recommendedMapIds()),
             existing.createdAt(),
-            Instant.now());
+            now,
+            visibility,
+            firstPublishedAt);
     builds.save(build);
+    if (visibility != existing.visibility()) publicationChanges.fire(new BuildPublicationChanged());
     return build;
   }
 
   @Transactional
   public void delete(UUID id, UUID actor) {
-    ForbiddenException.requireOwner(get(id).authorId(), actor);
+    BuildAccessPolicy.requireOwner(locked(id), actor);
     builds.delete(id);
+    publicationChanges.fire(new BuildPublicationChanged());
   }
 }

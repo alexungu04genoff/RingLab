@@ -10,6 +10,8 @@ import { isStockSetup, MachineSetup } from "../features/builds/MachineSetup";
 import { MissingItems } from "../features/collection/Collection";
 import { RacingTypeBadge } from "../shared/ui/RacingTypeBadge";
 import { useLoad } from "../shared/hooks/useLoad";
+import { useAuth } from "../features/auth/auth";
+import { currentSessionGeneration } from "../shared/api/api";
 import { BuildStats } from "../features/stats/BaseStats";
 import { ScenarioPreview, scenarioSelection } from "../features/stats/ScenarioPreview";
 import { RecommendedMapList } from "../features/maps/MapRecommendations";
@@ -39,6 +41,8 @@ export function buildDiff(left: Build, right: Build) {
 }
 
 function BuildSelector({ leftId }: { leftId: string }) {
+  const user = useAuth()?.user;
+  const [mine, setMine] = useState(false);
   const navigate = useNavigate();
   const listboxId = useId();
   const root = useRef<HTMLDivElement>(null);
@@ -52,6 +56,7 @@ function BuildSelector({ leftId }: { leftId: string }) {
   }, [query]);
   const params = new URLSearchParams({ page: "0", size: String(SELECTOR_PAGE_SIZE), sort: "newest" });
   if (search) params.set("search", search);
+  if (mine) params.set("mine", "true");
   const builds = useLoad<BuildPage>(`/builds?${params}`);
   const choices = (builds.data?.items ?? []).filter(({ id }) => id !== leftId);
   const choose = (build: Build) => navigate(compareUrl(leftId, build.id));
@@ -59,8 +64,9 @@ function BuildSelector({ leftId }: { leftId: string }) {
     <section className="panel compare-selector" aria-labelledby="compare-selector-heading">
       <div className="eyebrow">SECOND BUILD</div>
       <h2 id="compare-selector-heading">Choose a build to compare</h2>
+      {user && <label><input type="checkbox" checked={mine} onChange={e => setMine(e.target.checked)} />Search My Builds, including private builds</label>}
       <label>
-        Search community builds
+        {mine ? "Search My Builds" : "Search community builds"}
         <div className="compare-combobox" ref={root} onBlur={(event) => {
           if (!root.current?.contains(event.relatedTarget)) setOpen(false);
         }}>
@@ -163,9 +169,9 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
         <GadgetList build={build} other={other} side={side} />
       </section>
       <section className="panel compare-meta"><h2>Community & metadata</h2>
-        <p aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
+        {build.visibility === "PRIVATE" ? <p>🔒 Private · Community activity is hidden.</p> : <p aria-label={`${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
           <span className="upvote-count">↑ {build.upvotes}</span> · <span className="downvote-count">↓ {build.downvotes}</span>
-          <strong> · Net {build.score}</strong></p>
+          <strong> · Net {build.score}</strong></p>}
         <p className="muted">Created {date(build.createdAt)}{build.updatedAt !== build.createdAt
           ? ` · Updated ${date(build.updatedAt)}` : ""}</p>
       </section>
@@ -181,6 +187,11 @@ function BuildColumn({ build, other, side }: { build: Build; other: Build; side:
 }
 
 export function CompareBuilds() {
+  const user = useAuth()?.user;
+  return <CompareBuildsContent key={`${user?.id ?? "anonymous"}:${currentSessionGeneration()}`} />;
+}
+
+function CompareBuildsContent() {
   const location = useLocation();
   const origin = buildDetailsOrigin(location.state?.from);
   const backToBrowse = <Link className="back" to={origin}>← Back to {origin.startsWith("/saved-builds") ? "Saved Builds" : "Explore"}</Link>;

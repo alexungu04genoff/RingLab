@@ -2,6 +2,13 @@
 
 **A source-based study guide · updated 8 October 2026 · Flyway V1–V35**
 
+Publication-boundary update (9 October 2026): V37 adds persisted PRIVATE/PUBLIC
+builds. `BuildAccessPolicy`, owner-scoped listing, parent-row mutation locks and
+after-commit community cache invalidation now govern build access. Public ranking
+chronology uses first publication. The affected build diagrams below are updated;
+[build visibility](build-visibility.md) is the complete current access, API and
+concurrency reference, including saved builds, comments, votes and private provenance.
+
 This atlas describes main `3a8030a`, including the input-port refactor,
 the explicit CSV importer, versioned gadget rule facts and internal recommendation
 search decomposition, plus the local post-refactor hardening changes.
@@ -347,7 +354,7 @@ flowchart TB
   rest["BuildRestResource<br/>Bean Validation + BuildRequest.draft()"]:::rest
   actor["CurrentUser.id()"]:::rest
   svc["BuildService.create / edit<br/>transaction boundary"]:::app
-  existing["edit: get + ForbiddenException.requireOwner<br/>create remix: verify source exists"]:::app
+  existing["edit: lock + BuildAccessPolicy.requireOwner + expectedUpdatedAt<br/>create remix: lock + requireReadable"]:::app
   draft["BuildDraftValidator.validate"]:::app
   profanity["ProfanityPolicy<br/>title and description"]:::app
   compat["application.gamedata.MachineCompatibility"]:::app
@@ -355,8 +362,8 @@ flowchart TB
   plate["GadgetPlate.canFit<br/>two rows of three"]:::domain
   game["GameDataRepository<br/>racer, parts, machines, patch, gadgets, maps"]:::port
   ga["GameDataDbAdapter<br/>GameDataDbMapper / catalog entities"]:::adapter
-  build["Build<br/>new ID on create; immutable selections"]:::domain
-  repo["BuildRepository.find / save"]:::port
+  build["Build + BuildVisibility<br/>firstPublishedAt retained after first publication"]:::domain
+  repo["BuildRepository.findForUpdate / save"]:::port
   db["BuildDbAdapter.save<br/>BuildDbMapper.toEntity → EntityManager.merge + flush"]:::adapter
   entity["BuildDbEntity<br/>gadgetIds list + recommendedMapIds set"]:::adapter
   tables[("builds<br/>build_gadgets<br/>build_recommended_maps")]:::outside

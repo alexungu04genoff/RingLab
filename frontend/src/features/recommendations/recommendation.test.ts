@@ -10,7 +10,7 @@ const catalog: RecommendationCatalog = { racers: [{ id: "r", name: "Racer", raci
   parts: [part("f", "FRONT"), part("f2", "FRONT", "other"), part("b", "REAR"), part("t", "TIRE"),
     part("bf", "FRONT", "board", "BOOST"), part("br", "REAR", "board", "BOOST")],
   gadgets: ["a", "b"].map(id => ({ id, name: id, description: null, slotCost: 1, imagePath: null })) };
-const draft: BuildDraft = { title: "Keep title", description: "Keep description", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
+const draft: BuildDraft = { visibility: "PUBLIC", title: "Keep title", description: "Keep description", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
   machineType: "SPEED", gameVersionId: "patch", remixedFromBuildId: "source", gadgetIds: ["a"], recommendedMapIds: ["map"], mapRecommendationMode: "SELECTED" };
 const request: RecommendationRequest = { gameVersionId: "patch", machineType: "SPEED", priorities: defaultPriorities, current: draftSelection(draft), locked: emptyLocks() };
 const result: RecommendationResult = { outcome: "ESTABLISHED", selection: { ...draftSelection(draft), frontPartId: "f2", gadgetIds: ["a", "b"] },

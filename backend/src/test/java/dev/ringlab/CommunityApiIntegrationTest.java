@@ -12,6 +12,38 @@ import static org.junit.jupiter.api.Assertions.*;
 class CommunityApiIntegrationTest {
   @jakarta.inject.Inject jakarta.persistence.EntityManager em;
   @jakarta.inject.Inject dev.ringlab.port.out.GameDataRepository game;
+  @jakarta.inject.Inject dev.ringlab.port.in.BuildUseCase builds;
+  @jakarta.inject.Inject dev.ringlab.application.community.CommunitySnapshotCache cache;
+
+  @Test void privatizingACachedWinnerRevokesJsonDiscordAndExcludeTopImmediately() {
+    addIsolatedExamples();
+    cache.publicationChanged(new dev.ringlab.application.build.BuildPublicationChanged());
+    var snapshot = cache.get();
+    var winner = snapshot.items().getFirst().build();
+    String beforeTag = given().get("/api/community/top-builds").then().statusCode(200).extract().header("ETag");
+    var privateDraft = new dev.ringlab.port.in.BuildUseCase.Draft(winner.title(), winner.description(),
+        winner.racerId(), winner.frontPartId(), winner.rearPartId(), winner.tirePartId(),
+        winner.gameVersionId(), winner.remixedFromBuildId(), winner.gadgetIds(), List.copyOf(winner.recommendedMapIds()),
+        dev.ringlab.domain.build.BuildVisibility.PRIVATE);
+    try {
+      builds.edit(winner.id(), winner.authorId(), privateDraft);
+      var after = given().header("If-None-Match", beforeTag).get("/api/community/top-builds").then().statusCode(200)
+          .body("items.build.id", not(hasItem(winner.id().toString()))).extract().header("ETag");
+      assertNotEquals(beforeTag, after);
+      given().get("/api/community/top-builds/discord").then().statusCode(200).body(not(containsString(winner.id().toString())));
+      given().queryParam("excludeTop", true).get("/api/builds").then().statusCode(200)
+          .body("items.id", not(hasItem(winner.id().toString())));
+    } finally {
+      var publicDraft = new dev.ringlab.port.in.BuildUseCase.Draft(winner.title(), winner.description(),
+          winner.racerId(), winner.frontPartId(), winner.rearPartId(), winner.tirePartId(),
+          winner.gameVersionId(), winner.remixedFromBuildId(), winner.gadgetIds(), List.copyOf(winner.recommendedMapIds()),
+          dev.ringlab.domain.build.BuildVisibility.PUBLIC);
+      builds.edit(winner.id(), winner.authorId(), publicDraft);
+    }
+    assertNotEquals(snapshot.revision(), cache.get().revision());
+    // Identical score and publication chronology restore this fixture's eligibility/ranking.
+    assertTrue(cache.get().items().stream().anyMatch(item -> item.build().id().equals(winner.id())));
+  }
 
   private void addIsolatedExamples() {
     io.quarkus.narayana.jta.QuarkusTransaction.requiringNew().run(() -> {
@@ -34,6 +66,8 @@ class CommunityApiIntegrationTest {
         b.gameVersionId = game.listGameVersions().getFirst().id();
         b.createdAt = java.time.Instant.now().plusSeconds(10 - i);
         b.updatedAt = b.createdAt;
+        b.visibility = dev.ringlab.domain.build.BuildVisibility.PUBLIC;
+        b.firstPublishedAt = b.createdAt;
         em.persist(b);
       }
     });

@@ -31,7 +31,7 @@ class CommentServiceTest {
     comments = new InMemoryCommentRepository();
     profanity = new StubProfanityPolicy();
     service = new CommentService(
-        comments, new BuildService(builds, null, new EmptyVoteRepository(), null), profanity);
+        comments, new BuildService(builds, null, new EmptyVoteRepository(), null, new dev.ringlab.PublicationEvents().event()), profanity);
   }
 
   @Test
@@ -134,6 +134,7 @@ class CommentServiceTest {
   }
 
   private static final class InMemoryBuildRepository implements BuildRepository {
+    public Optional<Build> findForUpdate(UUID id) { return find(id); }
     private final Map<UUID, Build> builds = new HashMap<>();
 
     @Override

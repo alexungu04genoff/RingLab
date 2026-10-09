@@ -17,6 +17,7 @@ class SavedBuildServiceTest {
   private final List<Build> available = new ArrayList<>();
   private int hydrationCalls;
   private final BuildRepository builds = new BuildRepository() {
+    public Optional<Build> findForUpdate(UUID id) { return find(id); }
     public Optional<Build> find(UUID id) { return available.stream().filter(b -> b.id().equals(id)).findFirst(); }
     public List<Build> findAll(Collection<UUID> ids) { hydrationCalls++; return available.stream().filter(b -> ids.contains(b.id())).toList(); }
     public List<BuildRanking.Candidate> searchCandidates(Filter filter) { throw new AssertionError("No public ranking for bookmarks"); }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import dev.ringlab.application.build.BuildService;
 import dev.ringlab.application.build.BuildDraftValidator;
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.BuildVisibility;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.Vote;
 import dev.ringlab.domain.vote.VoteSummary;
@@ -51,7 +52,98 @@ class BuildServiceTest {
         new GameVersion(gameVersionId, "1.4.1", java.time.LocalDate.of(2026, 6, 23)));
     votes = new EmptyVoteRepository();
     profanity = new StubProfanityPolicy();
-    service = new BuildService(builds, gameData, votes, new BuildDraftValidator(gameData, profanity));
+    service = new BuildService(builds, gameData, votes, new BuildDraftValidator(gameData, profanity), new dev.ringlab.PublicationEvents().event());
+  }
+
+  @Test
+  void publicationTransitionsPreserveCreationAndFirstPublicationAndOldEditsStayPrivate() {
+    var privateBuild = service.create(authorId, visibilityDraft(BuildVisibility.PRIVATE));
+    assertEquals(BuildVisibility.PRIVATE, privateBuild.visibility());
+    assertNull(privateBuild.firstPublishedAt());
+    assertEquals(privateBuild, service.get(privateBuild.id(), authorId));
+    for (UUID viewer : Arrays.asList(null, UUID.randomUUID()))
+      assertEquals("Build not found", assertThrows(NotFoundException.class,
+          () -> service.get(privateBuild.id(), viewer)).getMessage());
+    var oldEdit = service.edit(privateBuild.id(), authorId, draft("Old client edit"));
+    assertEquals(BuildVisibility.PRIVATE, oldEdit.visibility());
+    assertNull(oldEdit.firstPublishedAt());
+    var published = service.edit(privateBuild.id(), authorId, visibilityDraft(BuildVisibility.PUBLIC));
+    assertNotNull(published.firstPublishedAt());
+    assertEquals(published.updatedAt(), published.firstPublishedAt());
+    assertEquals(privateBuild.createdAt(), published.createdAt());
+    var hidden = service.edit(privateBuild.id(), authorId, visibilityDraft(BuildVisibility.PRIVATE));
+    var republished = service.edit(privateBuild.id(), authorId, visibilityDraft(BuildVisibility.PUBLIC));
+    assertEquals(published.firstPublishedAt(), hidden.firstPublishedAt());
+    assertEquals(published.firstPublishedAt(), republished.firstPublishedAt());
+    assertEquals(published.firstPublishedAt(), service.edit(privateBuild.id(), authorId, draft("Content edit")).firstPublishedAt());
+    var legacyCreate = service.create(authorId, draft("Legacy public"));
+    assertEquals(BuildVisibility.PUBLIC, legacyCreate.visibility());
+    assertEquals(legacyCreate.createdAt(), legacyCreate.firstPublishedAt());
+  }
+
+  @Test
+  void privateMutationsAndRemixAccessUseTheSameNotFoundBoundary() {
+    var source = service.create(authorId, visibilityDraft(BuildVisibility.PRIVATE));
+    UUID other = UUID.randomUUID();
+    assertThrows(NotFoundException.class, () -> service.edit(source.id(), other, visibilityDraft(BuildVisibility.PUBLIC)));
+    assertThrows(NotFoundException.class, () -> service.delete(source.id(), other));
+    assertThrows(NotFoundException.class, () -> service.lockPublic(source.id()));
+    var remixDraft = new BuildUseCase.Draft("Remix", "", racerId, frontPartId, rearPartId,
+        tirePartId, gameVersionId, source.id(), List.of(gadgetId), null, BuildVisibility.PUBLIC);
+    assertThrows(NotFoundException.class, () -> service.create(other, remixDraft));
+    var remix = service.create(authorId, remixDraft);
+    assertEquals(BuildVisibility.PUBLIC, remix.visibility());
+    assertEquals(source.id(), remix.remixedFromBuildId());
+    assertTrue(service.remixSource(remix).isEmpty());
+    service.edit(source.id(), authorId, visibilityDraft(BuildVisibility.PUBLIC));
+    assertEquals(source.id(), service.remixSource(remix).orElseThrow().id());
+    service.edit(source.id(), authorId, visibilityDraft(BuildVisibility.PRIVATE));
+    assertTrue(service.remixSource(remix).isEmpty());
+    service.delete(source.id(), authorId);
+    assertEquals(source.id(), builds.deletedId);
+  }
+
+  @Test
+  void publicCandidatesAndOwnerPagesHaveSeparateChronologyAndVisibility() {
+    Instant january = Instant.parse("2026-01-01T00:00:00Z");
+    Instant march = Instant.parse("2026-03-01T00:00:00Z");
+    var olderPrivate = new Build(UUID.randomUUID(), "Older private", "", authorId, racerId,
+        frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of(gadgetId), Set.of(),
+        january, january, BuildVisibility.PRIVATE, null);
+    var newerPublic = new Build(UUID.randomUUID(), "Newer public", "", authorId, racerId,
+        frontPartId, rearPartId, tirePartId, gameVersionId, null, List.of(gadgetId), Set.of(),
+        march, march, BuildVisibility.PUBLIC, march);
+    builds.save(olderPrivate);
+    builds.save(newerPublic);
+    var filter = new BuildUseCase.Filter(null, null, null, null, null);
+    var query = new BuildUseCase.Query(filter, BuildSort.NEWEST, 0, 1);
+    assertEquals(List.of(newerPublic), service.list(query).items());
+    assertEquals(1, service.list(query).total());
+    assertEquals(2, service.listMine(authorId, query, null).total());
+    assertEquals(List.of(olderPrivate), service.listMine(authorId, query, BuildVisibility.PRIVATE).items());
+    assertEquals(0, service.listMine(UUID.randomUUID(), query, null).total());
+    var published = service.edit(olderPrivate.id(), authorId, visibilityDraft(BuildVisibility.PUBLIC));
+    assertEquals(List.of(published), service.list(query).items());
+    assertEquals(List.of(newerPublic), service.listMine(authorId, query, null).items());
+    assertThrows(AuthenticationException.class, () -> service.listMine(null, query, null));
+    assertThrows(ValidationException.class, () -> service.listMine(authorId, new BuildUseCase.Query(
+        new BuildUseCase.Filter(null, null, null, authorId, null), BuildSort.NEWEST, 0, 1), null));
+  }
+
+  @Test
+  void staleExplicitPublicationIsRejectedWhenEditorSuppliesItsLoadedTimestamp() {
+    var original = service.create(authorId, visibilityDraft(BuildVisibility.PUBLIC));
+    service.edit(original.id(), authorId, visibilityDraft(BuildVisibility.PRIVATE));
+    var stale = new BuildUseCase.Draft("Old tab", "", racerId, frontPartId, rearPartId,
+        tirePartId, gameVersionId, null, List.of(gadgetId), null, BuildVisibility.PUBLIC, original.updatedAt());
+    assertEquals("expectedUpdatedAt", assertThrows(ValidationException.class,
+        () -> service.edit(original.id(), authorId, stale)).field());
+    assertEquals(BuildVisibility.PRIVATE, service.get(original.id(), authorId).visibility());
+  }
+
+  private BuildUseCase.Draft visibilityDraft(BuildVisibility visibility) {
+    return new BuildUseCase.Draft("Visibility example", "", racerId, frontPartId, rearPartId,
+        tirePartId, gameVersionId, null, List.of(gadgetId), null, visibility);
   }
 
   @Test
@@ -243,10 +335,10 @@ class BuildServiceTest {
     var draft = new BuildUseCase.Draft("Remix", "", racerId, frontPartId, rearPartId,
         tirePartId, gameVersionId, UUID.randomUUID(), List.of(gadgetId));
 
-    ValidationException error =
-        assertThrows(ValidationException.class, () -> service.create(authorId, draft));
+    NotFoundException error =
+        assertThrows(NotFoundException.class, () -> service.create(authorId, draft));
 
-    assertEquals("Unknown remix source build ID", error.getMessage());
+    assertEquals("Build not found", error.getMessage());
     assertNull(builds.lastSaved);
   }
 
@@ -753,6 +845,7 @@ class BuildServiceTest {
   }
 
   private static final class InMemoryBuildRepository implements BuildRepository {
+    public Optional<Build> findForUpdate(UUID id) { return find(id); }
     private final Map<UUID, Build> saved = new HashMap<>();
     private List<Build> searchResults;
     private List<Build> hydrationResults;
@@ -769,11 +862,13 @@ class BuildServiceTest {
     public List<dev.ringlab.domain.build.ranking.BuildRanking.Candidate> searchCandidates(Filter filter) {
       List<Build> results = searchResults == null ? List.copyOf(saved.values()) : searchResults;
       return results.stream()
+          .filter(build -> filter.ownerId() == null || filter.ownerId().equals(build.authorId()))
+          .filter(build -> filter.visibility() == null || filter.visibility() == build.visibility())
           .filter(build -> filter.gameVersionId() == null
               || filter.gameVersionId().equals(build.gameVersionId()))
           .map(build ->
           new dev.ringlab.domain.build.ranking.BuildRanking.Candidate(
-              build.id(), build.createdAt(), build.gameVersionId())).toList();
+              build.id(), build.createdAt(), build.gameVersionId(), build.firstPublishedAt())).toList();
     }
 
     @Override

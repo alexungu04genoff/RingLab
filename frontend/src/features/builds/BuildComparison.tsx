@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useReducer, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { api, ApiError } from "../../shared/api/api";
+import { api, ApiError, currentSessionGeneration } from "../../shared/api/api";
+import { useAuth } from "../auth/auth";
 import { CollectionArtwork as Artwork } from "../collection/CollectionArtwork";
 import { browseOrigin } from "./buildNavigation";
 import type { Build } from "../../shared/types";
@@ -25,6 +26,11 @@ function reduce(state: State, action: Action): State {
 const ComparisonContext = createContext<{ state: State; dispatch: React.Dispatch<Action> } | null>(null);
 
 export function BuildComparisonProvider({ children }: { children: ReactNode }) {
+  const user = useAuth()?.user;
+  return <SessionBuildComparison key={`${user?.id ?? "anonymous"}:${currentSessionGeneration()}`}>{children}</SessionBuildComparison>;
+}
+
+function SessionBuildComparison({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(reduce, { selected: [], announcement: "", limitReached: false });
   return <ComparisonContext.Provider value={{ state, dispatch }}>
     {children}

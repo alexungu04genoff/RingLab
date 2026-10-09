@@ -116,7 +116,7 @@ function Set-LocalFixtureTimestamp($Database,[string]$BuildId,[string]$OwnerId,[
   $created=$CreatedAt.ToUniversalTime().ToString('o')
   $updated=$UpdatedAt.ToUniversalTime().ToString('o')
   # Exact original timestamps prevent a concurrent edit from being retimestamped.
-  $sql="UPDATE builds SET created_at = '$CaseTime'::timestamptz, updated_at = '$CaseTime'::timestamptz WHERE id = '$BuildId'::uuid AND author_id = '$OwnerId'::uuid AND created_at = '$created'::timestamptz AND updated_at = '$updated'::timestamptz RETURNING id;"
+  $sql="UPDATE builds SET created_at = '$CaseTime'::timestamptz, updated_at = '$CaseTime'::timestamptz, first_published_at = '$CaseTime'::timestamptz WHERE id = '$BuildId'::uuid AND author_id = '$OwnerId'::uuid AND visibility = 'PUBLIC' AND first_published_at = created_at AND created_at = '$created'::timestamptz AND updated_at = '$updated'::timestamptz RETURNING id;"
   $changed=@(& docker compose -f $Database.compose exec -T postgres psql -X -q -U ringlab -d $Database.name -Atc $sql)
   if($LASTEXITCODE -ne 0 -or $changed.Count -ne 1 -or $changed[0] -ne $BuildId) {
     throw "Fixture-only timestamp update failed for manifest build $BuildId."
@@ -247,7 +247,7 @@ foreach($b in $plan.builds){
   $record=$stateByKey[$b.key];$actual=$null
   if($record){$actual=@($allBuilds|Where-Object id -eq $record.id)|Select-Object -First 1}
   if($record -and !$actual){
-    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture was removed; preserve that change';id=$record.id};continue
+    $actions+=[pscustomobject]@{key=$b.key;action='conflict';reason='managed fixture was removed or made private; preserve that change';id=$record.id};continue
   }
   if(!$actual){
     $matches=@($allBuilds|Where-Object {$_.title -ceq $b.legacyTitle -or $_.title -ceq $b.title})
@@ -314,7 +314,7 @@ $sql="select json_build_object('builds',(select coalesce(json_agg(b),'[]') from 
 $beforeJson=& docker compose -f $database.compose exec -T postgres psql -U ringlab -d $database.name -Atc $sql
 if($LASTEXITCODE -ne 0){throw 'Could not read the verified local database before apply.'}
 $before=$beforeJson | ConvertFrom-Json
-if(Compare-Object @($before.builds.id|Sort-Object) @($allBuilds.id|Sort-Object)){throw 'API builds do not match the verified local database. Refusing writes.'}
+if(Compare-Object @($before.builds|Where-Object visibility -eq 'PUBLIC'|ForEach-Object id|Sort-Object) @($allBuilds.id|Sort-Object)){throw 'Public API builds do not match the verified local database. Refusing writes.'}
 foreach($action in $actions|Where-Object action -eq 'update'){
   $row=@($before.builds|Where-Object id -eq $action.id)[0]
   $api=@($allBuilds|Where-Object id -eq $action.id)[0]
@@ -363,7 +363,8 @@ foreach($b in $plan.builds){
     }
     Save-State $state
   } else {$preserveEngagement=$false}
-  if($action.action -eq 'add'){$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh -and !$NormalizeControlledFixtures){continue};$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
+  # Keep publication/timestamp guards out of the existing content fingerprint contract.
+  if($action.action -eq 'add'){$request.visibility='PUBLIC';$actual=Invoke-RingLabApi POST '/builds' $request $sessions[$b.owner].token}else{if(!$Refresh -and !$NormalizeControlledFixtures){continue};$request.expectedUpdatedAt=$current.updatedAt;$actual=Invoke-RingLabApi PUT "/builds/$($action.id)" $request $sessions[$b.owner].token}
   $buildIds[$b.key]=[string]$actual.id;$fingerprint=Get-Fingerprint (Get-ActualRequest $actual)
   $storedCaseTime=if($action.action -eq 'add'){$null}else{$previous.caseTime}
   $state.builds=@($state.builds|Where-Object key -ne $b.key)+[pscustomobject]@{key=$b.key;id=[string]$actual.id;fingerprint=$fingerprint;preserveEngagement=$preserveEngagement;caseTime=$storedCaseTime}

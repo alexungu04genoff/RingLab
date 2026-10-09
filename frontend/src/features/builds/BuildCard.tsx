@@ -71,6 +71,9 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
   build: Build; versions?: GameVersion[]; stats?: BuildStatsResult; rank?: number; pageStats?: PageCardStats;
 }) {
   const location = useLocation();
+  const privateBuild = build.visibility === "PRIVATE";
+  const displayedDate = privateBuild || location.pathname === "/my-builds"
+    ? build.createdAt : build.firstPublishedAt ?? build.createdAt;
   const versionAge = patchAge(build.gameVersion, versions);
   const setupIssues = savedBuildSetupIssues(build);
   const requestedStats = useLoad<BuildStatsResult>(!pageStats && !stats ? persistedStatsPath(build) : "");
@@ -86,7 +89,7 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
         <Artwork item={build.racer} portrait />
         <div className="card-art-heading">
           <RacingTypeBadge kind="racer" type={build.racer.racingType} />
-          <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
+          {privateBuild ? <span className="visibility-badge">🔒 Private</span> : <span className="score" aria-label={`Community score ${build.score}, ${countLabel(build.upvotes, "upvote")}, ${countLabel(build.downvotes, "downvote")}`}>
             <span className="community-score">Score {build.score}</span>
             <span className="score-help" tabIndex={0} aria-label="How Best rated works">
               <span aria-hidden="true">i</span>
@@ -94,7 +97,7 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
             </span>
             <span className="upvote-count">↑ {build.upvotes}</span>
             <span className="downvote-count">↓ {build.downvotes}</span>
-          </span>
+          </span>}
         </div>
         <div className="card-equipment">
           <div className="card-machine-badges">
@@ -115,10 +118,16 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
             aria-label={`Invalid setup: ${setupIssues.join(" ")}`}>INVALID SETUP</span>}
           <div className="card-actions">
             <CompareToggle build={build} />
-            <SaveBuildButton build={build} />
+            {!privateBuild && <SaveBuildButton build={build} />}
           </div>
         </div>
         <h2><Link to={`/builds/${build.id}`} state={{ from: browseOrigin(location.pathname, location.search) }}>{build.title}</Link></h2>
+        {privateBuild && <div className="private-card-actions">
+          <Link to={`/builds/${build.id}`}>View</Link>
+          <Link to={`/builds/${build.id}/edit`}>Edit</Link>
+          <Link to={`/builds/${build.id}/edit#visibility`}>Publish</Link>
+          <Link to={`/builds/${build.id}`} state={{ from: browseOrigin(location.pathname, location.search), confirmDelete: true }}>Delete</Link>
+        </div>}
         <CardStats build={build} stats={stats} pageStats={resolvedPageStats} />
         <div className="tags">
           {build.gadgets.slice(0, CARD_GADGET_LIMIT).map((g, i) => (
@@ -136,7 +145,7 @@ export function BuildCard({ build, versions = [], stats, rank, pageStats }: {
           ) : (
             <span className="patch-badge patch-unspecified">Patch unspecified</span>
           )}
-          <time dateTime={build.createdAt}>{date(build.createdAt)}</time>
+          <time dateTime={displayedDate}>{date(displayedDate)}</time>
         </div>
       </div>
     </article>

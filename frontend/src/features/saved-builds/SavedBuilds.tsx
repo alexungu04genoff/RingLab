@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { api, currentSessionGeneration, json } from "../../shared/api/api";
+import { api, ApiError, currentSessionGeneration, json } from "../../shared/api/api";
 import { useAuth } from "../auth/auth";
 import { BookmarkIcon } from "../../shared/ui/icons";
 import type { Build } from "../../shared/types";
@@ -92,8 +92,9 @@ function SessionSavedBuilds({ children, authenticated, generation }: {
         update({ [id]: { saved: !previous.saved, pending: false } });
         setRevision(value => value + 1);
       }
-    } catch {
-      if (!controller.signal.aborted) update({ [id]: { ...previous, pending: false, error: "Could not update saved build. Try again." } });
+    } catch (error) {
+      if (!controller.signal.aborted) update({ [id]: { ...previous, pending: false,
+        error: error instanceof ApiError && error.status === 404 ? "This build is no longer available." : "Could not update saved build. Try again." } });
     } finally { requests.current.delete(controller); }
   }, [authenticated, current, update]);
   useEffect(() => {

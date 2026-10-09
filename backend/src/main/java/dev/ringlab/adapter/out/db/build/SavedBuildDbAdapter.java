@@ -37,8 +37,10 @@ public class SavedBuildDbAdapter implements SavedBuildRepository {
 
   public Set<UUID> status(UUID userId, Set<UUID> ids) {
     if (ids.isEmpty()) return Set.of();
-    return Set.copyOf(em.createQuery("select s.buildId from SavedBuildDbEntity s where s.userId = :user and s.buildId in :ids", UUID.class)
-        .setParameter("user", userId).setParameter("ids", ids).getResultList());
+    return Set.copyOf(em.createQuery("select s.buildId from SavedBuildDbEntity s, BuildDbEntity b "
+        + "where s.userId = :user and s.buildId in :ids and b.id = s.buildId and b.visibility = :visibility", UUID.class)
+        .setParameter("user", userId).setParameter("ids", ids)
+        .setParameter("visibility", dev.ringlab.domain.build.BuildVisibility.PUBLIC).getResultList());
   }
 
   public Page list(UUID userId, String search, UUID versionId, UUID mapId, boolean includeAllMaps, int page, int size) {

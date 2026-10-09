@@ -1,6 +1,7 @@
 package dev.ringlab.port.in;
 
 import dev.ringlab.domain.build.Build;
+import dev.ringlab.domain.build.BuildVisibility;
 import dev.ringlab.domain.build.ranking.BuildSort;
 import dev.ringlab.domain.vote.VoteSummary;
 import java.util.List;
@@ -32,7 +33,20 @@ public interface BuildUseCase {
 
   record Draft(String title, String description, UUID racerId, UUID frontPartId,
                UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
-               List<UUID> gadgetIds, List<UUID> recommendedMapIds) {
+               List<UUID> gadgetIds, List<UUID> recommendedMapIds, BuildVisibility visibility,
+               java.time.Instant expectedUpdatedAt) {
+    public Draft(String title, String description, UUID racerId, UUID frontPartId,
+        UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
+        List<UUID> gadgetIds, List<UUID> recommendedMapIds, BuildVisibility visibility) {
+      this(title, description, racerId, frontPartId, rearPartId, tirePartId, gameVersionId,
+          remixedFromBuildId, gadgetIds, recommendedMapIds, visibility, null);
+    }
+    public Draft(String title, String description, UUID racerId, UUID frontPartId,
+        UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
+        List<UUID> gadgetIds, List<UUID> recommendedMapIds) {
+      this(title, description, racerId, frontPartId, rearPartId, tirePartId, gameVersionId,
+          remixedFromBuildId, gadgetIds, recommendedMapIds, null);
+    }
     /** Null map selection means unspecified: default on create, preserve on edit. */
     public Draft(String title, String description, UUID racerId, UUID frontPartId,
         UUID rearPartId, UUID tirePartId, UUID gameVersionId, UUID remixedFromBuildId,
@@ -43,8 +57,10 @@ public interface BuildUseCase {
   }
 
   Build get(UUID id);
+  Build get(UUID id, UUID viewer);
   Optional<Build> remixSource(Build build);
   Page list(Query query);
+  Page listMine(UUID actor, Query query, BuildVisibility visibility);
   Build create(UUID author, Draft draft);
   Build edit(UUID id, UUID actor, Draft draft);
   void delete(UUID id, UUID actor);

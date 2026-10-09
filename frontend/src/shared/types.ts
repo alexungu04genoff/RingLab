@@ -110,6 +110,7 @@ export interface RemixSource {
   id: string;
   title: string;
 }
+export type BuildVisibility = "PRIVATE" | "PUBLIC";
 export interface Build {
   id: string;
   title: string;
@@ -125,11 +126,16 @@ export interface Build {
   mapRecommendations: MapRecommendations;
   createdAt: string;
   updatedAt: string;
+  // Older public-only API responses may omit these fields.
+  visibility?: BuildVisibility;
+  firstPublishedAt?: string | null;
   score: number;
   upvotes: number;
   downvotes: number;
 }
 export interface BuildDraft {
+  visibility: BuildVisibility;
+  expectedUpdatedAt?: string;
   title: string;
   description: string;
   racerId: string;

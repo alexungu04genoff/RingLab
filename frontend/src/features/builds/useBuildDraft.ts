@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { api } from "../../shared/api/api";
+import { api, currentSessionGeneration } from "../../shared/api/api";
 import type { Build, BuildDraft } from "../../shared/types";
 
 const emptyDraft = (): BuildDraft => ({
+  visibility: "PUBLIC",
   title: "", description: "", racerId: "", frontPartId: "", rearPartId: "", tirePartId: null,
   machineType: null, gameVersionId: null, remixedFromBuildId: null, gadgetIds: [],
   recommendedMapIds: [], mapRecommendationMode: "ALL",
@@ -10,6 +11,9 @@ const emptyDraft = (): BuildDraft => ({
 
 function draftFromBuild(build: Build): BuildDraft {
   return {
+    // An incomplete/legacy edit response must never silently publish a private build.
+    visibility: build.visibility ?? "PRIVATE",
+    expectedUpdatedAt: build.updatedAt,
     title: build.title,
     description: build.description,
     racerId: build.racer.id,
@@ -26,17 +30,19 @@ function draftFromBuild(build: Build): BuildDraft {
 }
 
 export function draftFromRemix(build: Build): BuildDraft {
-  return { ...draftFromBuild(build), title: `Remix of ${build.title}`, remixedFromBuildId: build.id };
+  return { ...draftFromBuild(build), visibility: "PUBLIC", expectedUpdatedAt: undefined,
+    title: `Remix of ${build.title}`, remixedFromBuildId: build.id };
 }
 
-/** Loads an owned edit or a public remix; route changes always start a fresh draft. */
+/** Loads an owned edit or an accessible remix; route changes always start a fresh draft. */
 export function useBuildDraft({ id, remixSourceId, userId }: {
   id?: string;
   remixSourceId: string | null;
   userId?: string;
 }) {
   const [draft, setDraft] = useState<BuildDraft>(emptyDraft);
-  const [loadedBuild, setLoadedBuild] = useState<{ id: string; authorId: string }>();
+  const generation = currentSessionGeneration();
+  const [loadedBuild, setLoadedBuild] = useState<Build>();
   const [loading, setLoading] = useState(!!(id || remixSourceId));
   const [loadError, setLoadError] = useState("");
 
@@ -56,7 +62,7 @@ export function useBuildDraft({ id, remixSourceId, userId }: {
           setLoadError("Only the author may edit this build.");
           return;
         }
-        setLoadedBuild({ id: build.id, authorId: build.author.id });
+        setLoadedBuild(build);
         setDraft(id ? draftFromBuild(build) : draftFromRemix(build));
       })
       .catch((error: Error) => {
@@ -66,9 +72,9 @@ export function useBuildDraft({ id, remixSourceId, userId }: {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [id, remixSourceId, userId]);
+  }, [id, remixSourceId, userId, generation]);
 
   const canSubmit = !loading && !loadError
-    && (!id || (loadedBuild?.id === id && loadedBuild.authorId === userId));
-  return { draft, setDraft, loading, loadError, canSubmit };
+    && (!id || (loadedBuild?.id === id && loadedBuild.author.id === userId));
+  return { draft, setDraft, loading, loadError, canSubmit, originalVisibility: loadedBuild?.visibility ?? "PRIVATE" };
 }

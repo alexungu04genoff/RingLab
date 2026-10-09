@@ -15,7 +15,7 @@ const collection = vi.hoisted(() => ({ status: "ready", busy: false, revision: 0
   refresh: vi.fn(async () => ({ data: { racers: [] as string[], machines: [] as string[], gadgets: [] as string[] },
     revision: 0, identity: "account" })) }));
 vi.mock("../collection/Collection", async original => ({ ...await original<typeof import("../collection/Collection")>(), useCollection: () => collection }));
-const draft: BuildDraft = { title: "Keep", description: "Details", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
+const draft: BuildDraft = { visibility: "PUBLIC", title: "Keep", description: "Details", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: "t",
   machineType: "SPEED", gameVersionId: "patch", gadgetIds: ["a"], recommendedMapIds: ["map"], mapRecommendationMode: "SELECTED", remixedFromBuildId: "source" };
 const catalog: RecommendationCatalog = { racers: [{ id: "r", name: "Sonic", racingType: "SPEED", imagePath: null }],
   parts: ["f", "b", "t", "f2"].map((id, index) => ({ id, type: index === 1 ? "REAR" : index === 2 ? "TIRE" : "FRONT",

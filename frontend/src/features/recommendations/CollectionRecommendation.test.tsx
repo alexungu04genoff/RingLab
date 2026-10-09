@@ -11,7 +11,7 @@ const auth = vi.hoisted(() => ({ user: { id: "a" }, loading: false, sessionError
 vi.mock("../auth/auth", () => ({ useAuth: () => auth }));
 vi.mock("../../shared/api/api", async original => ({ ...await original<typeof import("../../shared/api/api")>(), api: vi.fn() }));
 const empty: CollectionExclusions = { racers: [], machines: [], gadgets: [] };
-const draft: BuildDraft = { title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: null,
+const draft: BuildDraft = { visibility: "PUBLIC", title: "", description: "", racerId: "r", frontPartId: "f", rearPartId: "b", tirePartId: null,
   machineType: "BOOST", gameVersionId: "v", gadgetIds: [], recommendedMapIds: [], mapRecommendationMode: "SELECTED", remixedFromBuildId: null };
 const catalog: RecommendationCatalog = {
   racers: [{ id: "r", name: "Racer", racingType: "BOOST", imagePath: null }],

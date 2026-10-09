@@ -32,6 +32,12 @@
   .hero-racers { display: none; }
 }
 @media (max-width: 1000px) {
+  .hero-details {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  }
+  .hero-context {
+    grid-column: 1 / -1;
+  }
   .navbar {
     gap: 18px;
     padding-inline: 20px;
@@ -112,6 +118,7 @@
   }
   footer {
     margin: 0 28px;
+    flex-wrap: wrap;
   }
   .editor {
     grid-template-columns: minmax(0, 1fr) 260px;

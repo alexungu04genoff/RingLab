@@ -28,7 +28,7 @@ class BuildResponseAssemblerTest {
         version, source, List.of(second, first), created, updated);
     var parent = new Build(source, "Parent", "", author, racer, front, rear, tire,
         version, null, List.of(), created, created);
-    var builds = new BuildService(null, null, null, null) {
+    var builds = new BuildService(null, null, null, null, null) {
       @Override public Optional<Build> remixSource(Build requested) {
         assertSame(build, requested);
         return Optional.of(parent);

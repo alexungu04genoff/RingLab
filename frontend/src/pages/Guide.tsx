@@ -33,6 +33,10 @@ export function GuidePage() {
       <p><strong>Best rated</strong> highlights builds with strong community approval. <strong>Highest score</strong> sorts by upvotes minus downvotes. <strong>Newest first</strong> shows recently shared setups.</p>
       <p>The <strong>Top 3</strong> shows overall community favourites and stays the same when you change your filters.</p>
       <p><strong>Save</strong> a build for later, <Link to="/compare"><strong>Compare</strong></Link> two setups to see their differences, or <strong>Remix</strong> one to make your own version. The original stays untouched.</p>
+      <p><strong>Public</strong> builds are eligible for community discovery and engagement. Newest uses the first publication date; editing or republishing does not move a build to the top.</p>
+      <p><Link to="/my-builds">My Builds</Link> includes your public and private builds, with All, Public and Private filters. Its Newest order uses creation time. <strong>Private</strong> means only you can access the persisted build through RingLab. You can edit, compare and remix it.</p>
+      <p>Choose visibility in the editor. Making a build private hides its comments, votes and bookmarks while retaining them for republication. A saved public build that becomes private disappears from Saved Builds until it is public again.</p>
+      <p>Previously public copies already viewed or shared outside RingLab cannot be recalled. A public remix can remain public after its source becomes private; the private source attribution is hidden.</p>
     </section>
 
     <section id="recommendations" className="guide-section">
@@ -60,6 +64,7 @@ export function GuidePage() {
       <p><strong>You can still browse them, but recommendations won’t use them.</strong> Unchecking a machine also excludes its parts.</p>
       <p>Remixing a build with missing items keeps them visible so you can choose replacements. Mark those items as Owned before recommending an alternative that uses them.</p>
       <p>These are settings you manage yourself; RingLab doesn’t read your game account. <strong>While logged out, everything is treated as available.</strong></p>
+      <p>Unowned items never block saving or publishing a build. Ownership badges describe your own collection, independently of a build’s visibility and calculation coverage.</p>
       {!user && <p className="guide-account-note"><Link to="/login" state={{ from: "/guide#your-collection" }}>Log in to manage your collection.</Link></p>}
     </section>
 

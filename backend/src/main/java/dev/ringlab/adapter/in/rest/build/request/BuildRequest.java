@@ -21,8 +21,21 @@ public class BuildRequest {
   public UUID tirePartId;
   public UUID gameVersionId;
   public UUID remixedFromBuildId;
+  public java.time.Instant expectedUpdatedAt;
   @NotNull public List<@NotNull UUID> gadgetIds;
   private List<UUID> recommendedMapIds;
+  private dev.ringlab.domain.build.BuildVisibility visibility;
+
+  @JsonSetter("visibility")
+  public void readVisibility(JsonNode value) {
+    if (value == null || !value.isTextual())
+      throw new ValidationException("visibility must be PRIVATE or PUBLIC", "visibility");
+    try {
+      visibility = dev.ringlab.domain.build.BuildVisibility.valueOf(value.textValue());
+    } catch (IllegalArgumentException invalid) {
+      throw new ValidationException("visibility must be PRIVATE or PUBLIC", "visibility");
+    }
+  }
 
   @JsonSetter("recommendedMapIds")
   public void readRecommendedMapIds(JsonNode value) {
@@ -40,6 +53,6 @@ public class BuildRequest {
 
   public BuildUseCase.Draft draft() {
     return new BuildUseCase.Draft(title, description, racerId, frontPartId, rearPartId, tirePartId,
-        gameVersionId, remixedFromBuildId, gadgetIds, recommendedMapIds);
+        gameVersionId, remixedFromBuildId, gadgetIds, recommendedMapIds, visibility, expectedUpdatedAt);
   }
 }

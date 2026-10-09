@@ -21,7 +21,7 @@ class BuildRestResourceTest {
   @Test
   void explicitExclusionsUseDisplayedWinnersWithoutReadingTheCurrentSnapshot() {
     var winner = UUID.randomUUID();
-    var builds = new BuildService(null, null, null, null) {
+    var builds = new BuildService(null, null, null, null, null) {
       @Override public Page list(Query query) {
         assertEquals(Set.of(winner), query.filter().excludedIds());
         assertEquals(2, query.page());
@@ -30,14 +30,14 @@ class BuildRestResourceTest {
     };
     // A null cache also ensures explicit exclusions never consult a later server snapshot.
     var resource = new BuildRestResource(builds, null, null, null, null);
-    var page = resource.list(null, null, null, null, null, null, "true", true, List.of(winner), "rated", 2, 12, false);
+    var page = resource.list(null, null, null, null, null, null, "true", true, List.of(winner), "rated", 2, 12, false, "false", "ALL");
     assertEquals(24, page.total());
     assertEquals(2, page.page());
   }
   @Test
   void defaultsPublicBuildListingToBestRated() throws NoSuchMethodException {
     var list = BuildRestResource.class.getDeclaredMethod("list", String.class, UUID.class,
-        UUID.class, UUID.class, UUID.class, UUID.class, String.class, boolean.class, List.class, String.class, int.class, int.class, boolean.class);
+        UUID.class, UUID.class, UUID.class, UUID.class, String.class, boolean.class, List.class, String.class, int.class, int.class, boolean.class, String.class, String.class);
 
     assertEquals("rated", list.getParameters()[9].getAnnotation(DefaultValue.class).value());
     assertEquals("false", list.getParameters()[12].getAnnotation(DefaultValue.class).value());
@@ -45,7 +45,7 @@ class BuildRestResourceTest {
 
   @Test
   void optionalEnrichmentFailurePreservesPageAndUsesASafeMessage() {
-    var builds = new BuildService(null, null, null, null) {
+    var builds = new BuildService(null, null, null, null, null) {
       @Override public Page list(Query query) { return new Page(List.of(), 19); }
     };
     var stats = new PassiveStatsService(null, null, null) {
@@ -55,10 +55,10 @@ class BuildRestResourceTest {
       }
     };
     var resource = new BuildRestResource(builds, null, null, null, stats);
-    var defaultPage = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 2, 12, false);
+    var defaultPage = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 2, 12, false, "false", "ALL");
     assertNull(defaultPage.statsByBuildId());
     assertNull(defaultPage.statsError());
-    var page = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 2, 12, true);
+    var page = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 2, 12, true, "false", "ALL");
     assertEquals(defaultPage.items(), page.items()); assertEquals(19, page.total());
     assertEquals(2, page.page()); assertEquals(12, page.size());
     assertNull(page.statsByBuildId());
@@ -72,6 +72,7 @@ class BuildRestResourceTest {
     Build remix = new Build(id, "Remix", "", id, id, id, id, null, null, source,
         List.of(), Instant.EPOCH, Instant.EPOCH);
     BuildRepository repository = new BuildRepository() {
+      public Optional<Build> findForUpdate(UUID requested) { return find(requested); }
       public Optional<Build> find(UUID requested) {
         return requested.equals(id) ? Optional.of(remix) : Optional.empty();
       }
@@ -83,7 +84,7 @@ class BuildRestResourceTest {
       public void delete(UUID build) { throw new UnsupportedOperationException(); }
     };
     VoteSummary listSummary = new VoteSummary(4, 1);
-    var builds = new BuildService(repository, null, null, null) {
+    var builds = new BuildService(repository, null, null, null, null) {
       @Override
       public Page list(Query query) { return new Page(List.of(remix), 1, Map.of(id, listSummary)); }
     };
@@ -102,8 +103,11 @@ class BuildRestResourceTest {
     var votes = new CountingVoteService();
     var responses = new BuildResponseAssembler(builds, users,
         new dev.ringlab.application.gamedata.GameDataQueryService(new Catalog(id)), votes);
-    var resource = new BuildRestResource(builds, responses, null, null, null);
-    var page = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 0, 12, false);
+    var actor = new dev.ringlab.adapter.in.rest.auth.CurrentUser(null, null) {
+      @Override public UUID optionalId() { return null; }
+    };
+    var resource = new BuildRestResource(builds, responses, actor, null, null);
+    var page = resource.list(null, null, null, null, null, null, "true", false, List.of(), "newest", 0, 12, false, "false", "ALL");
     assertEquals(1, page.total());
     assertEquals(id, page.items().getFirst().id());
     assertEquals(3, page.items().getFirst().score());

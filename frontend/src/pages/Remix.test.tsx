@@ -7,7 +7,7 @@ import { BuildDetails } from "./BuildDetails";
 import { draftFromRemix } from "../features/builds/useBuildDraft";
 
 vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../shared/api/api", () => ({ api: vi.fn(), json: vi.fn() }));
+vi.mock("../shared/api/api", async original => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn(), json: vi.fn() }));
 let currentUser: { id: string } | null = { id: "remixer" };
 vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: currentUser }) }));
 
@@ -43,6 +43,7 @@ beforeEach(() => {
 
 it("copies only editable configuration and preserves gadget order", () => {
   expect(draftFromRemix(source)).toEqual({
+    visibility: "PUBLIC", expectedUpdatedAt: undefined,
     title: "Remix of Original route",
     description: "Keep this setup note",
     racerId: "racer", frontPartId: "front", rearPartId: "rear", tirePartId: "tire",

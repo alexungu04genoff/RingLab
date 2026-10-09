@@ -4,6 +4,12 @@ RingLab exposes a public read-only snapshot and a Discord message formatter. Nei
 publishes, schedules, or edits Discord messages. Link previews/Open Graph are a separate feature;
 returning JSON does not implement them.
 
+Only PUBLIC builds enter repository candidates, before ranking or vote summaries.
+Publication changes and deletion invalidate the cached snapshot after commit,
+including private remix-source attribution. The next JSON, Discord or `excludeTop`
+request recomputes eligibility and receives a new ETag. Existing external copies
+cannot be recalled. See [build visibility](build-visibility.md).
+
 ## Endpoints
 
 - `GET /api/community/top-builds`: schema version 1, `ranking: "best-rated"`, `scope: "overall"`,
@@ -39,7 +45,7 @@ An empty Discord result is still a valid message:
 
 Selection calls the production `BuildRanking` Best Rated comparator: descending full-precision Wilson
 lower bound; descending actual release date with unspecified versions last; at Wilson zero only,
-fewer downvotes first; descending creation timestamp; ascending textual UUID. No separate ranking formula
+fewer downvotes first; descending first-publication timestamp; ascending textual UUID. No separate ranking formula
 exists in the frontend, REST resource, database or Discord formatter.
 
 All public builds, racers, authors and patches in the current environment are candidates. Before
@@ -76,8 +82,9 @@ network request.
 One synchronized in-memory cache entry per backend process stores a fully resolved immutable
 snapshot. `COMMUNITY_SNAPSHOT_LIFETIME` defaults to `PT60S`, configurable between 1 and 300 seconds.
 The lifetime starts when computation starts. Successful simultaneous misses share one computation;
-failures are not cached. A database transaction completes before publishing a new entry. There is
-no write-triggered invalidation. Votes, edits, deletions and catalog eligibility changes become
+failures are not cached. A database transaction completes before publishing a new entry.
+Publication transitions and deletions invalidate it after commit, so the next request
+recomputes immediately. Votes, ordinary content edits and catalog eligibility changes become
 visible on the first request after expiry. Manual Refresh revalidates; it does not bypass the TTL.
 An already-open page retains its displayed snapshot until manual refresh or remount, with its
 timestamp visible. A refresh failure retains the last displayed data with a warning.

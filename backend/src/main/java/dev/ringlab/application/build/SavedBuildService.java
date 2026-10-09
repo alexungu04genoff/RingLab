@@ -23,12 +23,16 @@ public class SavedBuildService implements SavedBuildUseCase {
 
   @Transactional
   public Instant save(UUID actor, UUID buildId) {
-    builds.find(buildId).orElseThrow(() -> NotFoundException.missing("Build"));
+    BuildAccessPolicy.requirePublic(builds.findForUpdate(buildId).orElseThrow(() -> NotFoundException.missing("Build")));
     return saved.save(actor, buildId);
   }
 
   @Transactional
-  public void remove(UUID actor, UUID buildId) { saved.remove(actor, buildId); }
+  public void remove(UUID actor, UUID buildId) {
+    // Preserve idempotent removal without distinguishing hidden and unknown source IDs.
+    if (builds.findForUpdate(buildId).filter(BuildAccessPolicy::publiclyReadable).isPresent())
+      saved.remove(actor, buildId);
+  }
 
   public Set<UUID> status(UUID actor, Set<UUID> ids) { return saved.status(actor, ids); }
 
@@ -42,7 +46,7 @@ public class SavedBuildService implements SavedBuildUseCase {
     drafts.validateMapFilter(mapId);
     var bookmarks = saved.list(actor, search, version, mapId, includeAllMaps, page, size);
     var hydrated = builds.findAll(bookmarks.items().stream().map(SavedBuildRepository.Bookmark::buildId).toList())
-        .stream().collect(Collectors.toMap(Build::id, Function.identity()));
+        .stream().filter(BuildAccessPolicy::publiclyReadable).collect(Collectors.toMap(Build::id, Function.identity()));
     return new Page(bookmarks.items().stream().filter(item -> hydrated.containsKey(item.buildId()))
         .map(item -> new Item(hydrated.get(item.buildId()), item.savedAt())).toList(), bookmarks.total());
   }

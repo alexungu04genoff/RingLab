@@ -2,12 +2,13 @@ import { act, cleanup, render, screen, waitFor, within } from "@testing-library/
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { api } from "../shared/api/api";
+import { api, ApiError, setToken } from "../shared/api/api";
 import type { Build, MachinePart } from "../shared/types";
 import { BuildDetails } from "./BuildDetails";
 
 const actor = { id: "owner", username: "driver" };
-vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: actor }) }));
+let currentActor: typeof actor | null = actor;
+vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: currentActor }) }));
 vi.mock("../shared/api/api", async (original) => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn() }));
 const part = (type: MachinePart["type"]): MachinePart => ({ id: type, type,
   sourceMachineId: "machine", sourceMachineName: "Machine", sourceMachineImagePath: null,
@@ -21,7 +22,59 @@ const build = (id: string): Build => ({
   score: id === "A" ? 10 : 20, upvotes: id === "A" ? 10 : 20, downvotes: 0,
 });
 let finishMutation: (value: unknown) => void;
+
+it("shows the private owner workflow without exposing active community controls", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => path === "/builds/A"
+    ? Promise.resolve({ ...build("A"), visibility: "PRIVATE" }) : fallback(path, options));
+  render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>);
+  await screen.findByRole("heading", { name: "Build A" });
+  expect(screen.getByText("🔒 Private")).toBeTruthy();
+  expect(screen.getByText("Comments are unavailable while this build is private.")).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Publish build" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Compare" })).toBeTruthy();
+  expect(screen.getByRole("link", { name: "Remix this build" })).toBeTruthy();
+  expect(screen.queryByRole("button", { name: /Upvote|Downvote|Copy setup/ })).toBeNull();
+  expect(vi.mocked(api).mock.calls.some(([path]) => path.includes("/comments") || path.endsWith("/vote"))).toBe(false);
+});
+
+it.each(["logout", "account switch", "session replacement"])("clears private detail immediately on %s", async change => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  let allowed = true;
+  vi.mocked(api).mockImplementation((path, options) => path === "/builds/A"
+    ? allowed ? Promise.resolve({ ...build("A"), visibility: "PRIVATE" }) : Promise.reject(new ApiError(404, "Build not found"))
+    : fallback(path, options));
+  const content = () => <MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>;
+  const view = render(content());
+  await screen.findByRole("heading", { name: "Build A" });
+  allowed = false;
+  currentActor = change === "logout" ? null : change === "account switch" ? { id: "other", username: "other" } : actor;
+  act(() => { setToken("different-session"); view.rerender(content()); });
+  expect(screen.queryByRole("heading", { name: "Build A" })).toBeNull();
+  await screen.findByText("Build not found");
+  setToken(null);
+});
+
+it("removes a stale public detail after a vote discovers the build is unavailable", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => options?.method === "PUT"
+    ? Promise.reject(new ApiError(404, "Build not found")) : fallback(path, options));
+  render(<MemoryRouter initialEntries={["/builds/A"]}><Routes>
+    <Route path="/builds/:id" element={<BuildDetails />} />
+  </Routes></MemoryRouter>);
+  const user = userEvent.setup();
+  await screen.findByRole("heading", { name: "Build A" });
+  await waitFor(() => expect((screen.getByRole("button", { name: "↑ Upvote" }) as HTMLButtonElement).disabled).toBe(false));
+  await user.click(screen.getByRole("button", { name: "↑ Upvote" }));
+  await screen.findByText("This build is no longer available.");
+  expect(screen.queryByRole("heading", { name: "Build A" })).toBeNull();
+});
 beforeEach(() => {
+  currentActor = actor;
   vi.resetAllMocks();
   vi.mocked(api).mockImplementation(async (path, options) => {
     if (path === "/game-versions") return [];

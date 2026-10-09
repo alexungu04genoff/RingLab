@@ -34,10 +34,10 @@ public class CommentService implements CommentUseCase {
   @Transactional
   public Comment create(UUID build, UUID author, String text) {
     if (author == null) throw new ValidationException("Missing author ID");
+    builds.lockPublic(build);
     if (text == null || text.isBlank() || text.length() > 2000)
       throw new ValidationException("Comment must be nonblank and at most 2000 characters");
     profanity.requireClean(text);
-    builds.get(build);
     var comment = new Comment(UUID.randomUUID(), build, author, text.trim(), Instant.now());
     comments.create(comment);
     return comment;
@@ -47,6 +47,12 @@ public class CommentService implements CommentUseCase {
   public void delete(UUID id, UUID actor) {
     if (id == null) throw new ValidationException("Missing comment ID");
     var c = comments.find(id).orElseThrow(() -> NotFoundException.missing("Comment"));
+    try {
+      builds.lockPublic(c.buildId());
+    } catch (NotFoundException unavailable) {
+      // A hidden parent and an unknown comment have the same direct-delete contract.
+      throw NotFoundException.missing("Comment");
+    }
     ForbiddenException.requireOwner(c.authorId(), actor);
     comments.delete(id);
   }

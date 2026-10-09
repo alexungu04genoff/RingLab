@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import type { NavigateFunction } from "react-router-dom";
-import { api, ApiError } from "../../shared/api/api";
+import { api, ApiError, setToken } from "../../shared/api/api";
 import { BuildComparisonProvider } from "./BuildComparison";
 import { Explore } from "../../pages/Explore";
 import { CompareBuilds } from "../../pages/CompareBuilds";
@@ -46,6 +46,17 @@ function Harness() {
 function open() { render(<MemoryRouter initialEntries={["/?sort=rated"]}><BuildComparisonProvider><Harness /></BuildComparisonProvider></MemoryRouter>); }
 const toggle = (title: string) => screen.getByRole("button", { name: `Compare ${title}` });
 const tray = () => screen.getByRole("region", { name: "Build comparison selection" });
+
+it("clears remembered comparison metadata when the authenticated session changes", async () => {
+  const content = () => <MemoryRouter initialEntries={["/?sort=rated"]}><BuildComparisonProvider><Harness /></BuildComparisonProvider></MemoryRouter>;
+  const view = render(content());
+  await screen.findByRole("button", { name: "Compare Ordinary build" });
+  fireEvent.click(toggle("Ordinary build"));
+  expect(within(tray()).getByText("Ordinary build")).toBeTruthy();
+  act(() => { setToken("replacement"); view.rerender(content()); });
+  expect(screen.queryByRole("region", { name: "Build comparison selection" })).toBeNull();
+  setToken(null);
+});
 
 it("shares selections, disables other builds at the limit, toggles by ID and clears", async () => {
   open(); await screen.findByText("Top build"); await screen.findByRole("button", { name: "Compare Ordinary build" });

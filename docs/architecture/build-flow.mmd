@@ -3,7 +3,7 @@ flowchart TB
   rest["BuildRestResource<br/>Bean Validation + BuildRequest.draft()"]:::rest
   actor["CurrentUser.id()"]:::rest
   svc["BuildService.create / edit<br/>transaction boundary"]:::app
-  existing["edit: get + ForbiddenException.requireOwner<br/>create remix: verify source exists"]:::app
+  existing["edit: lock + BuildAccessPolicy.requireOwner + expectedUpdatedAt<br/>create remix: lock + requireReadable"]:::app
   draft["BuildDraftValidator.validate"]:::app
   profanity["ProfanityPolicy<br/>title and description"]:::app
   compat["application.gamedata.MachineCompatibility"]:::app
@@ -11,8 +11,8 @@ flowchart TB
   plate["GadgetPlate.canFit<br/>two rows of three"]:::domain
   game["GameDataRepository<br/>racer, parts, machines, patch, gadgets, maps"]:::port
   ga["GameDataDbAdapter<br/>GameDataDbMapper / catalog entities"]:::adapter
-  build["Build<br/>new ID on create; immutable selections"]:::domain
-  repo["BuildRepository.find / save"]:::port
+  build["Build + BuildVisibility<br/>firstPublishedAt retained after first publication"]:::domain
+  repo["BuildRepository.findForUpdate / save"]:::port
   db["BuildDbAdapter.save<br/>BuildDbMapper.toEntity → EntityManager.merge + flush"]:::adapter
   entity["BuildDbEntity<br/>gadgetIds list + recommendedMapIds set"]:::adapter
   tables[("builds<br/>build_gadgets<br/>build_recommended_maps")]:::outside
@@ -22,6 +22,7 @@ flowchart TB
   rest -->|"actor UUID + BuildUseCase.Draft"| input["BuildUseCase"]:::port
   input -.->|"implemented by"| svc
   svc --> existing
+  svc --> publication["BuildPublicationChanged<br/>AFTER_SUCCESS invalidates CommunitySnapshotCache"]:::app
   existing --> repo
   svc --> draft
   draft --> profanity

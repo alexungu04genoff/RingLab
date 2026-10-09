@@ -6,6 +6,13 @@ two-build selection. A bookmark neither copies nor modifies a build, its author,
 votes, timestamps, Wilson ranking, or Top 3 eligibility. Remix creates independent
 variations. No public bookmark counts or other users' saved lists are exposed.
 
+Build publication is separate from bookmark privacy. Only PUBLIC builds can be
+saved or actively listed, including for their owner. V37 visibility filters apply
+in the repository before pagination/counting and to batch status. A privatized
+source hides the bookmark and retains its original saved time for republication.
+Deleting a bookmark with a private or unknown source is an indistinguishable 204
+no-op. See [build visibility](build-visibility.md) for the complete access policy.
+
 ## Schema and queries
 
 V28 adds `saved_builds(user_id, build_id, saved_at)`. The composite primary key

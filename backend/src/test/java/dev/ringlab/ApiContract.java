@@ -109,6 +109,122 @@ public abstract class ApiContract {
     assertThat(snapshot,not(containsString("savedAt")));
     assertThat(snapshot,not(containsString("isSaved")));
   }
+  @Test
+  void persistedPrivateBuildsHaveUniformAccessAndRetainCommunityRelationships() {
+    var owner = register(); var other = register();
+    var body = draft(); body.put("visibility", "PRIVATE"); body.put("title", "Private " + UUID.randomUUID());
+    var created = request(owner.token()).body(body).post("/api/builds").then().statusCode(200)
+        .body("visibility", equalTo("PRIVATE")).body("firstPublishedAt", nullValue())
+        .header("Cache-Control", containsString("no-store")).extract().response();
+    String id = created.path("id"), unknown = UUID.randomUUID().toString();
+    String deleted = create(other);
+    request(other.token()).delete("/api/builds/" + deleted).then().statusCode(204);
+    for (String token : Arrays.asList(null, other.token())) {
+      for (String suffix : List.of("", "/comments")) {
+        String absent = request(token).get("/api/builds/" + unknown + suffix).then().statusCode(404).extract().asString();
+        request(token).get("/api/builds/" + id + suffix).then().statusCode(404).body(equalTo(absent));
+        request(token).get("/api/builds/" + deleted + suffix).then().statusCode(404).body(equalTo(absent));
+      }
+      String absentStats = request(token).get("/api/stats/persisted/" + unknown).then().statusCode(404).extract().asString();
+      request(token).get("/api/stats/persisted/" + id).then().statusCode(404).body(equalTo(absentStats));
+      request(token).queryParam("authorId", owner.id()).queryParam("search", body.get("title"))
+          .get("/api/builds").then().statusCode(200).body("total", equalTo(0));
+    }
+    request("invalid-token").get("/api/builds/" + id).then().statusCode(401);
+    request(owner.token()).get("/api/builds/" + id).then().statusCode(200)
+        .body("visibility", equalTo("PRIVATE")).header("Vary", containsString("Authorization"));
+    request(owner.token()).get("/api/stats/persisted/" + id).then().statusCode(200)
+        .header("Cache-Control", equalTo("private, no-store"));
+    request(null).get("/api/builds?mine=true").then().statusCode(401);
+    request(owner.token()).get("/api/builds?mine=true&authorId=" + owner.id()).then().statusCode(400);
+    request(owner.token()).get("/api/builds?visibility=PRIVATE").then().statusCode(400);
+    for (String token : List.of(owner.token(), other.token())) {
+      request(token).get("/api/builds/" + id + "/vote").then().statusCode(404);
+      request(token).body(Map.of("value", 1)).put("/api/builds/" + id + "/vote").then().statusCode(404);
+      request(token).delete("/api/builds/" + id + "/vote").then().statusCode(404);
+      request(token).body(Map.of("text", "Hidden comment")).post("/api/builds/" + id + "/comments").then().statusCode(404);
+      request(token).put("/api/saved-builds/" + id).then().statusCode(404);
+      request(token).delete("/api/saved-builds/" + id).then().statusCode(204);
+    }
+    request(other.token()).body(body).put("/api/builds/" + id).then().statusCode(404);
+    request(other.token()).delete("/api/builds/" + id).then().statusCode(404);
+    var remix = new HashMap<>(body); remix.put("visibility", "PUBLIC"); remix.put("remixedFromBuildId", id);
+    request(other.token()).body(remix).post("/api/builds").then().statusCode(404);
+    String remixId = request(owner.token()).body(remix).post("/api/builds").then().statusCode(200)
+        .body("remixedFrom", nullValue()).extract().path("id");
+    request(null).get("/api/builds/" + remixId).then().statusCode(200).body("remixedFrom", nullValue());
+    body.remove("visibility");
+    request(owner.token()).body(body).put("/api/builds/" + id).then().statusCode(200).body("visibility", equalTo("PRIVATE"));
+    body.put("visibility", "PUBLIC");
+    String firstPublished = request(owner.token()).body(body).put("/api/builds/" + id).then().statusCode(200)
+        .body("firstPublishedAt", notNullValue()).body("createdAt", equalTo(created.path("createdAt")))
+        .extract().path("firstPublishedAt");
+    request(null).get("/api/builds/" + remixId).then().statusCode(200).body("remixedFrom.id", equalTo(id));
+    vote(other, id, 1).then().statusCode(200);
+    String comment = request(other.token()).body(Map.of("text", "Retained engagement")).post("/api/builds/" + id + "/comments")
+        .then().statusCode(200).extract().path("id");
+    String savedAt = request(other.token()).put("/api/saved-builds/" + id).then().statusCode(200).extract().path("savedAt");
+    body.put("visibility", "PRIVATE");
+    request(owner.token()).body(body).put("/api/builds/" + id).then().statusCode(200).body("firstPublishedAt", equalTo(firstPublished));
+    String absentComment = request(other.token()).delete("/api/comments/" + unknown).then().statusCode(404).extract().asString();
+    request(other.token()).delete("/api/comments/" + comment).then().statusCode(404).body(equalTo(absentComment));
+    request(other.token()).get("/api/saved-builds").then().statusCode(200).body("total", equalTo(0)).body("statsByBuildId", anEmptyMap());
+    request(other.token()).queryParam("buildId", id).queryParam("buildId", unknown)
+        .get("/api/saved-builds/status").then().statusCode(200).body("savedIds", empty());
+    request(null).get("/api/builds/" + remixId).then().statusCode(200).body("remixedFrom", nullValue());
+    body.put("visibility", "PUBLIC");
+    request(owner.token()).body(body).put("/api/builds/" + id).then().statusCode(200)
+        .body("firstPublishedAt", equalTo(firstPublished)).body("score", equalTo(1));
+    request(other.token()).get("/api/saved-builds").then().statusCode(200).body("items[0].savedAt", equalTo(savedAt));
+    request(null).get("/api/builds/" + id + "/comments").then().statusCode(200).body("items[0].id", equalTo(comment));
+    request(null).get("/api/builds/" + remixId).then().statusCode(200).body("remixedFrom.id", equalTo(id));
+    body.put("visibility", "PRIVATE");
+    request(owner.token()).body(body).put("/api/builds/" + id).then().statusCode(200);
+    request(owner.token()).delete("/api/builds/" + id).then().statusCode(204);
+    request(null).get("/api/builds/" + remixId).then().statusCode(200).body("remixedFrom", nullValue());
+  }
+
+  @Test
+  void publicationFilteringPrecedesRankingPaginationTotalsAndStats() {
+    var owner = register(); var other = register(); var body = draft();
+    var publicIds = new ArrayList<String>(); var privateIds = new ArrayList<String>();
+    for (int index = 0; index < 12; index++) {
+      boolean hidden = index % 3 == 0;
+      body.put("visibility", hidden ? "PRIVATE" : "PUBLIC");
+      String id = request(owner.token()).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+      (hidden ? privateIds : publicIds).add(id);
+    }
+    for (String sort : List.of("newest", "score", "rated")) {
+      for (int page = 0; page < 2; page++) {
+        var result = request(owner.token()).queryParam("authorId", owner.id()).queryParam("sort", sort)
+            .queryParam("includeStats", true).queryParam("size", 4).queryParam("page", page)
+            .get("/api/builds").then().statusCode(200).body("total", equalTo(8)).body("items.size()", equalTo(4))
+            .body("statsByBuildId.size()", equalTo(4)).extract().jsonPath();
+        assertThat(publicIds, hasItems(result.getList("items.id", String.class).toArray(String[]::new)));
+        assertThat(result.getMap("statsByBuildId").keySet(), containsInAnyOrder(result.getList("items.id").toArray()));
+      }
+    }
+    for (var entry : Map.of("ALL", 12, "PUBLIC", 8, "PRIVATE", 4).entrySet()) {
+      request(owner.token()).get("/api/builds?mine=true&visibility=" + entry.getKey() + "&size=5&includeStats=true")
+          .then().statusCode(200).body("total", equalTo(entry.getValue()))
+          .body("items.size()", equalTo(Math.min(5, entry.getValue()))).header("Cache-Control", equalTo("private, no-store"));
+    }
+    request(other.token()).get("/api/builds?mine=true").then().statusCode(200).body("total", equalTo(0));
+    for (String id : publicIds) request(other.token()).put("/api/saved-builds/" + id).then().statusCode(200);
+    body.put("visibility", "PRIVATE");
+    request(owner.token()).body(body).put("/api/builds/" + publicIds.getFirst()).then().statusCode(200);
+    request(other.token()).get("/api/saved-builds?size=5").then().statusCode(200).body("total", equalTo(7)).body("items.size()", equalTo(5));
+    String ownPrivate = request(other.token()).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+    body.put("visibility", "PUBLIC");
+    String notSaved = request(owner.token()).body(body).post("/api/builds").then().statusCode(200).extract().path("id");
+    request(other.token()).queryParam("buildId", publicIds.get(1), notSaved, ownPrivate, privateIds.getFirst(), UUID.randomUUID())
+        .get("/api/saved-builds/status").then().statusCode(200).body("savedIds", contains(publicIds.get(1)));
+    for (Object invalid : Arrays.asList(null, "UNLISTED", "public", true, 1)) {
+      body.put("visibility", invalid);
+      request(owner.token()).body(body).post("/api/builds").then().statusCode(400);
+    }
+  }
+
   record Account(String token, String id, String username, String email) {}
 
   private RequestSpecification request(String token) {

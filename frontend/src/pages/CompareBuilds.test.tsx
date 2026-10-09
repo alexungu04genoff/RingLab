@@ -9,7 +9,7 @@ import { BuildDetails } from "./BuildDetails";
 import { buildDiff, CompareBuilds, compareUrl } from "./CompareBuilds";
 
 vi.mock("../shared/hooks/useLoad", () => ({ useLoad: vi.fn() }));
-vi.mock("../shared/api/api", () => ({ api: vi.fn(), json: vi.fn() }));
+vi.mock("../shared/api/api", async original => ({ ...await original<typeof import("../shared/api/api")>(), api: vi.fn(), json: vi.fn() }));
 vi.mock("../features/auth/auth", () => ({ useAuth: () => ({ user: null }) }));
 
 const part = (type: MachinePart["type"], source: string): MachinePart => ({
@@ -50,6 +50,16 @@ beforeEach(() => {
   });
 });
 afterEach(cleanup);
+
+it("compares an accessible private setup while labelling its community activity inactive", () => {
+  const fallback = vi.mocked(useLoad).getMockImplementation()!;
+  vi.mocked(useLoad).mockImplementation((path, refresh) => path === "/builds/left"
+    ? { data: { ...left, visibility: "PRIVATE" }, error: "", loading: false } : fallback(path, refresh));
+  route("/compare?left=left&right=right");
+  expect(screen.getByRole("article", { name: "Left build: Sonic speed line" })).toBeTruthy();
+  expect(screen.getByText("🔒 Private · Community activity is hidden.")).toBeTruthy();
+  expect(screen.getByRole("article", { name: "Right build: Shadow mixed line" })).toBeTruthy();
+});
 
 function route(entry: string) {
   return render(<MemoryRouter initialEntries={[entry]}><Routes>

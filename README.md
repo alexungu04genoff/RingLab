@@ -2,6 +2,10 @@
 
 A small community build-sharing platform for a bachelor's thesis, using **Sonic Racing: CrossWorlds** as its concrete domain. Share a racer, compatible machine parts (FRONT + REAR for BOOST, FRONT + REAR + TIRE for other racing types), and an ordered gadget combination; explore builds, vote, and comment.
 
+Persist complete builds as **Private** (owner access only through RingLab) or **Public**
+(eligible for community discovery and engagement). My Builds includes both; Saved
+Builds bookmarks public setups. See [publication, API contracts and privacy acceptance](docs/build-visibility.md).
+
 ## Stack and structure
 
 Catalog, versioned base stats and reviewed gadget rule facts live in [game-data/](game-data/README.md).

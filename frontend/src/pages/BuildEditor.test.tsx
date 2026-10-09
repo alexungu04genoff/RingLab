@@ -15,6 +15,7 @@ const part = (type: MachinePart["type"]): MachinePart => ({
   sourceMachineImagePath: null, racingType: "SPEED",
 });
 const buildA: Build = {
+  visibility: "PUBLIC",
   id: "A", title: "Build A draft", description: "A description", author: { id: "owner", username: "alex" },
   racer: { id: "racer", name: "Sonic", imagePath: null, racingType: "SPEED" },
   frontPart: part("FRONT"), rearPart: part("REAR"), tirePart: part("TIRE"), gadgets: [],
@@ -25,7 +26,60 @@ const buildB = { ...buildA, id: "B", title: "Build B draft" };
 const latestVersion = { id: "latest", version: "1.4.1", releasedAt: "2026-06-23" };
 const map = { id: "map-a", name: "E-Stadium", category: "MAIN_COURSE" as const,
   contentPack: null, imagePath: null, catalogOrder: 1 };
+
+it.each(["PRIVATE", "PUBLIC"] as const)("confirms an edit changing visibility to %s and sends it atomically", async visibility => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => path === "/builds/A" && !options?.method
+    ? Promise.resolve({ ...buildA, visibility: visibility === "PUBLIC" ? "PRIVATE" : "PUBLIC" })
+    : fallback(path, options));
+  await openA(); selectLatestPatch();
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: visibility } });
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  expectNoWrite();
+  const confirmation = screen.getByRole("alert", { name: "Confirm visibility change" });
+  expect(document.activeElement).toBe(confirmation);
+  expect(confirmation.textContent).toContain(visibility === "PUBLIC" ? "Unowned items are allowed" : "cannot be recalled");
+  fireEvent.click(within(confirmation).getByRole("button", { name: /Confirm (publish|make private)/ }));
+  await screen.findByText("Saved destination");
+  const write = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "PUT")!;
+  expect(JSON.parse(write[1]!.body as string)).toMatchObject({ visibility, title: buildA.title, expectedUpdatedAt: buildA.updatedAt });
+});
+
+it("keeps visibility after a rejected save and does not confirm an unchanged private edit", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => options?.method === "PUT"
+    ? Promise.reject(new ApiError(400, "Choose a different title", undefined, "title"))
+    : path === "/builds/A" ? Promise.resolve({ ...buildA, visibility: "PRIVATE" }) : fallback(path, options));
+  await openA(); selectLatestPatch();
+  fireEvent.submit(screen.getByLabelText("Build title").closest("form")!);
+  await screen.findByText("Choose a different title");
+  expect((screen.getByLabelText("Visibility") as HTMLSelectElement).value).toBe("PRIVATE");
+  expect(screen.queryByRole("alert", { name: "Confirm visibility change" })).toBeNull();
+});
+
+it("defaults a new remix to Public and lets its owner persist it privately", async () => {
+  const fallback = vi.mocked(api).getMockImplementation()!;
+  vi.mocked(api).mockImplementation((path, options) => options?.method === "POST" ? Promise.resolve(buildB) : fallback(path, options));
+  render(<MemoryRouter initialEntries={["/builds/new?remixFrom=A"]}><Routes>
+    <Route path="/builds/new" element={<BuildEditor />} />
+    <Route path="/builds/B" element={<p>Created destination</p>} />
+  </Routes></MemoryRouter>);
+  await screen.findByDisplayValue(`Remix of ${buildA.title}`); selectLatestPatch();
+  expect((screen.getByLabelText("Visibility") as HTMLSelectElement).value).toBe("PUBLIC");
+  expect(screen.getByRole("button", { name: "Publish build" })).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Visibility"), { target: { value: "PRIVATE" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save private build" }));
+  await screen.findByText("Created destination");
+  const write = vi.mocked(api).mock.calls.find(([, options]) => options?.method === "POST")!;
+  expect(JSON.parse(write[1]!.body as string)).toMatchObject({ visibility: "PRIVATE", remixedFromBuildId: "A" });
+});
 let loadB: () => Promise<Build>;
+
+it("defaults a blank new build to Public with publish copy", async () => {
+  render(<MemoryRouter initialEntries={["/builds/new"]}><BuildEditor /></MemoryRouter>);
+  expect((await screen.findByLabelText("Visibility") as HTMLSelectElement).value).toBe("PUBLIC");
+  expect(screen.getByRole("button", { name: "Publish build" })).toBeTruthy();
+});
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(api).mockImplementation(async (path, options) => {
@@ -172,7 +226,7 @@ it("same-user session replacement clears locks and closes the proposal", async (
   fireEvent.click(screen.getByRole("button", { name: "Recommend a build" }));
   setToken("replacement-session"); fireEvent.change(screen.getByLabelText("Build title"), { target: { value: "Updated" } });
   expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByRole("button", { name: "Lock Racer" }).getAttribute("aria-pressed")).toBe("false");
+  expect((await screen.findByRole("button", { name: "Lock Racer" })).getAttribute("aria-pressed")).toBe("false");
 });
 
 it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the picker and preview at %s", async (route) => {

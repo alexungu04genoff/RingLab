@@ -23,6 +23,8 @@ public record BuildResponse(
     MapRecommendationsResponse mapRecommendations,
     Instant createdAt,
     Instant updatedAt,
+    dev.ringlab.domain.build.BuildVisibility visibility,
+    Instant firstPublishedAt,
     long score,
     long upvotes,
     long downvotes) {}

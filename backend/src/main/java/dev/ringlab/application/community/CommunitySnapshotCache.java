@@ -49,6 +49,13 @@ public class CommunitySnapshotCache implements CommunityUseCase {
     return snapshot;
   }
 
+  public synchronized void publicationChanged(
+      @jakarta.enterprise.event.Observes(during = jakarta.enterprise.event.TransactionPhase.AFTER_SUCCESS)
+      dev.ringlab.application.build.BuildPublicationChanged change) {
+    snapshot = null;
+    expiresAt = Instant.MIN;
+  }
+
   public PassiveStatsResult passiveStats(CommunitySnapshot.Entry entry) {
     var machines = new java.util.HashMap<UUID, Machine>();
     for (var part : java.util.Arrays.asList(entry.front(), entry.rear(), entry.tire())) {
