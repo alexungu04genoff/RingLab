@@ -58,7 +58,7 @@
 .collection-explanation a, .collection-notice p a { color:var(--accent); font-weight:700; white-space:nowrap; }
 
 .guide-page { width:min(100%, 980px); margin:0 auto; }
-.guide-hero { border:0; background:transparent; padding:14px 0 10px; }
+.guide-hero { border:0; background:transparent; padding:0 0 10px; }
 .guide-hero > p { max-width:760px; font-size:18px; line-height:1.65; }
 .guide-hero .guide-tagline { margin-bottom:8px; color:var(--text); font-size:21px; }
 .guide-section-nav { display:flex; flex-wrap:wrap; gap:8px; margin:28px 0 10px; font-size:13px; }
@@ -79,7 +79,6 @@
 .guide-about { padding-top:4px; }
 @media(max-width:700px) {
   .nav-guide { display:none; }
-  .guide-hero { padding-top:0; }
   .guide-hero > p { font-size:16px; }
   .guide-section-nav { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
   .guide-section-nav a { white-space:normal; text-align:center; }

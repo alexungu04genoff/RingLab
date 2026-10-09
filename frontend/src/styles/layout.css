@@ -70,15 +70,11 @@ main {
   margin: 0 auto;
   flex: 1;
   width: 100%;
-  padding: 46px 28px 60px;
+  padding: clamp(20px, 2vw, 28px) 28px 60px;
 }
 main:has(.explore-hero) {
   isolation: isolate;
   max-width: 1704px;
-  padding-top: 30px;
-}
-main:has(.build-editor-heading) {
-  padding-top: 28px;
 }
 .page-heading {
   display: flex;

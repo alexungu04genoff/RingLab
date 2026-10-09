@@ -9,11 +9,6 @@
 .skip-link:focus {
   top: 10px;
 }
-@media (min-width: 1500px) {
-  main {
-    padding-top: 58px;
-  }
-}
 @media (min-width: 1201px) and (max-width: 1400px) {
   .explore-hero { grid-template-columns: minmax(0, 1fr) 540px; }
   .hero-racers { width: 540px; height: 133px; }
@@ -216,7 +211,8 @@
   .machine-collection-item .artwork { width: 96px; height: 88px; flex-basis: 96px; }
   .machine-collection-item h2 { overflow-wrap: normal; }
   main {
-    padding: 29px 18px 45px;
+    padding-inline: 18px;
+    padding-bottom: 45px;
   }
   .page-heading {
     align-items: start;
@@ -325,7 +321,7 @@
     grid-template-columns: 1fr;
   }
   .auth-layout {
-    margin: 10px auto;
+    margin: 0 auto 10px;
     max-width: 430px;
     gap: 24px;
   }
