@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { api, currentSessionGeneration, json } from "../../shared/api/api";
 import { useAuth } from "../auth/auth";
 import type { Build } from "../../shared/types";
+import { OwnershipStatusBadge } from "./OwnershipStatusBadge";
 
 export interface CollectionExclusions { racers: string[]; machines: string[]; gadgets: string[] }
 export interface CollectionSnapshot { data: CollectionExclusions; revision: number; identity: string }
@@ -120,7 +121,9 @@ export function CollectionStatus() {
   if (collection.status === "error") return <p role="alert">Collection availability unknown. {collection.error} <button type="button" onClick={() => void collection.refresh().catch(() => {})}>Retry collection</button></p>;
   return null;
 }
-export function OwnershipCheckbox({ category, id, name }: { category: CollectionCategory; id: string; name: string }) {
+export function OwnershipCheckbox({ category, id, name, showNotOwnedStatus = true }: {
+  category: CollectionCategory; id: string; name: string; showNotOwnedStatus?: boolean;
+}) {
   const collection = useCollection();
   if (collection.status === "anonymous") return null;
   const excluded = isExcluded(collection.data, category, id);
@@ -131,7 +134,9 @@ export function OwnershipCheckbox({ category, id, name }: { category: Collection
     ref={input => { if (input) input.indeterminate = collection.status !== "ready"; }}
     disabled={collection.status !== "ready" || collection.busy} aria-label={`Owned: ${name}`}
     onChange={event => void collection.update(category, id, event.target.checked)} />
-    <span aria-live="polite">{state}</span></label>;
+    <span aria-live="polite">{state === "Not owned"
+      ? showNotOwnedStatus ? <OwnershipStatusBadge notOwned /> : "Owned"
+      : state}</span></label>;
 }
 type AvailabilitySelection = Pick<Build, "racer" | "gadgets"> & Partial<Pick<Build, "frontPart" | "rearPart" | "tirePart">>;
 export function missingBuildItems(build: AvailabilitySelection, data: CollectionExclusions) {

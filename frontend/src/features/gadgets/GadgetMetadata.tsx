@@ -9,12 +9,14 @@ export function GadgetMetadata({ gadget, rules, scenarios }: {
   const kinds = metadata.effectKinds;
   if (kinds.length === 0 && metadata.acquisitionKind !== "FESTIVAL_REWARD") return null;
   return <span className="gadget-metadata">
-    {kinds.map(kind => <span key={kind}
+    {(["PASSIVE", "CONDITIONAL", "SCENARIO", "NON_STAT"] as const).filter(kind => kinds.includes(kind)).map(kind => <span key={kind}
       className={`gadget-effect-badge gadget-effect-${kind.toLowerCase()}`} title={effectBadges[kind].explanation}>
       {effectBadges[kind].label}
     </span>)}
     {metadata.acquisitionKind === "FESTIVAL_REWARD" && <span className="gadget-effect-badge gadget-festival-badge"
       title={acquisitionDescription(gadget)} aria-label={`Festival reward. ${acquisitionDescription(gadget)}`}>Festival reward</span>}
+    {kinds.includes("UNSUPPORTED") && <span className="gadget-effect-badge gadget-effect-unsupported"
+      title={effectBadges.UNSUPPORTED.explanation}>{effectBadges.UNSUPPORTED.label}</span>}
   </span>;
 }
 

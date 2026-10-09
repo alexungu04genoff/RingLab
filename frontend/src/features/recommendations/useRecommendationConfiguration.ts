@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { unsupportedGadgetGuidance } from "../gadgets/gadgetPresentation";
+import { useCollection } from "../collection/Collection";
+import { gadgetOwnershipGuidance } from "./gadgetOwnershipGuidance";
 import { defaultPriorities, lockTypeConflict, validPriorities, validBalanced, recommendationIdentity } from "./recommendation";
 import type { RecommendationSelection, RecommendationCatalog } from "./recommendation";
 import type { BaseStats, BuildDraft, BuildStatsResult, GameVersion, RacingType } from "../../shared/types";
@@ -7,6 +9,7 @@ import type { BaseStats, BuildDraft, BuildStatsResult, GameVersion, RacingType }
 /** Settings and eligibility for a recommendation against a captured draft (presentation and convenience only). */
 export function useRecommendationConfiguration(draft: BuildDraft, locks: RecommendationSelection,
   catalog: RecommendationCatalog, version: GameVersion | null, referenceStats?: BuildStatsResult | null) {
+  const collection = useCollection();
   const [machineType, setMachineType] = useState<RacingType | null>(draft.machineType);
   const [priorities, setPriorities] = useState(() => {
     const current = referenceStats?.passive?.coverage === "CALCULATED" ? referenceStats.passive.adjusted : null;
@@ -34,6 +37,8 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
   const conflict = lockTypeConflict(machineType, locks, catalog.parts);
   const gadgetGuidance = unsupportedGadgetGuidance(reference.gadgetIds, locks.gadgetIds, gadgetScope,
     catalog.gadgets, catalog.gadgetRules);
+  const ownershipGuidance = gadgetOwnershipGuidance(reference.gadgetIds, locks.gadgetIds, gadgetScope,
+    catalog.gadgets, collection.status === "ready" ? collection.data.gadgets : []);
   let calculationBlocker = "";
   if (referenceIdentity !== recommendationIdentity(draft, locks))
     calculationBlocker = "Your draft or locks changed after this popup opened. Close and reopen it to use your current setup.";
@@ -47,6 +52,12 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     calculationBlocker = "Choose a recommendation machine type.";
   else if (conflict)
     calculationBlocker = conflict;
+  else if (collection.busy)
+    calculationBlocker = "Your collection update is still being saved. Wait before calculating.";
+  else if (collection.status !== "ready")
+    calculationBlocker = "Load your collection successfully before calculating a recommendation.";
+  else if (ownershipGuidance.blocker)
+    calculationBlocker = ownershipGuidance.blocker;
   else if (gadgetGuidance.blocker)
     calculationBlocker = gadgetGuidance.blocker;
   else if (!validPriorities(priorities))
@@ -55,5 +66,5 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     calculationBlocker = "Enter a maximum sacrifice from 0 to less than 100 for each active stat, or choose Ignore.";
   return { machineType, setMachineType, priorities, setPriorities, mode, setMode, gadgetScope, setGadgetScope, ignored, setIgnored,
     losses, setLosses, reference, referenceVersion, referenceIdentity, passiveReference, referenceValues,
-    activePriorities, identity, calculationBlocker, gadgetGuidance };
+    activePriorities, identity, calculationBlocker, gadgetGuidance, ownershipGuidance };
 }

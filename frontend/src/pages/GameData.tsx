@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CollectionStatus, OwnershipCheckbox, useCollection } from "../features/collection/Collection";
+import { CollectionStatus, OwnershipCheckbox, useCollection, isExcluded } from "../features/collection/Collection";
 import { Link } from "react-router-dom";
 import type { ReactNode } from "react";
 import { MapThumbnail } from "../features/maps/MapRecommendations";
@@ -20,6 +20,8 @@ import { GadgetRuleDetails } from "../features/stats/PassiveStats";
 import type { GadgetRulesCatalog } from "../shared/types";
 import type { ScenarioRulesCatalog } from "../shared/types";
 import { GadgetMetadata, GadgetMetadataLegend, GadgetAcquisitionDetails } from "../features/gadgets/GadgetMetadata";
+import { unsupportedGadgetsLast } from "../features/gadgets/gadgetPresentation";
+import { OwnershipStatusBadge } from "../features/collection/OwnershipStatusBadge";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -60,12 +62,14 @@ function RacerCard({ racer, ownership }: { racer: Racer; ownership?: ReactNode }
 }
 
 function GadgetCard({ gadget, rules, scenarios, ownership }: { gadget: Gadget; rules?: GadgetRulesCatalog; scenarios?: ScenarioRulesCatalog; ownership?: ReactNode }) {
+  const collection = useCollection();
   return (
     <article className="panel collection-item gadget-collection-item">
       <Artwork item={gadget} compact />
       <div className="collection-copy">
         <h2>{gadget.name}</h2>
         <div className="gadget-collection-badges">
+          <OwnershipStatusBadge notOwned={collection.status === "ready" && isExcluded(collection.data, "GADGET", gadget.id)} />
           {gadget.slotCost !== null && (
             <span className="gadget-slot-cost">
               {gadget.slotCost} {gadget.slotCost === 1 ? "slot" : "slots"}
@@ -128,7 +132,10 @@ export function GameData() {
   const latestVersion = newestGameVersion(versions.data);
   const stats = useLoad<StatsCatalog>(latestVersion ? `/stats/catalog?gameVersionId=${latestVersion.id}` : "");
   const searchLabel = collections.find(collection => collection.key === tab)!.label.toLowerCase();
-  const visibleItems = items.data?.filter(item => ("version" in item ? item.version : item.name)
+  const orderedItems = tab === "gadgets" && items.data
+    ? unsupportedGadgetsLast(items.data.filter((item): item is Gadget => "slotCost" in item), rules.data)
+    : items.data;
+  const visibleItems = orderedItems?.filter(item => ("version" in item ? item.version : item.name)
     .toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
   return (
     <>
@@ -180,7 +187,7 @@ export function GameData() {
             error={versions.error || machineParts.error || stats.error}
             ownership={(tab === "racers" || tab === "machines" || tab === "gadgets") && "name" in item
               ? <OwnershipCheckbox category={tab === "racers" ? "RACER" : tab === "machines" ? "MACHINE" : "GADGET"}
-                id={item.id} name={item.name} /> : undefined} />
+                id={item.id} name={item.name} showNotOwnedStatus={tab !== "gadgets"} /> : undefined} />
           {"racingType" in item && <>
             {versions.loading || stats.loading ? <p role="status">Loading base stats…</p>
               : !versions.error && !stats.error && <StatsBlock

@@ -93,10 +93,13 @@ it("keeps reviewed values visible when a selected gadget is not active for the c
   expect(screen.getByText("Stat adjustment inactive · type does not match")).toBeTruthy();
   expect(screen.getByTitle("Not met: requires Acceleration racer").classList.contains("gadget-condition-unmet")).toBe(true);
   expect(screen.getByText("Acceleration +7").closest(".gadget-condition-unmet")).toBeTruthy();
+  expect(screen.getByText("Acceleration +7").classList.contains("stat-acceleration")).toBe(true);
+  expect(screen.getByText("Acceleration +7").getAttribute("title")).toMatch(/^Inactive/);
   rerender(<><GadgetCatalogTypeLabels gadgetId="g1" catalog={catalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} />
     <GadgetCatalogAdjustmentBadges gadgetId="g1" catalog={catalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} /></>);
   expect(screen.getByTitle("Met: requires Acceleration racer").classList.contains("gadget-condition-unmet")).toBe(false);
   expect(screen.getByText("Acceleration +7").closest(".gadget-condition-unmet")).toBeNull();
+  expect(screen.getByText("Acceleration +7").getAttribute("title")).not.toMatch(/^Inactive/);
   const machineCatalog = {...catalog,gadgets:[{...catalog.gadgets[0],effects:[{...catalog.gadgets[0].effects[0],subject:"MACHINE" as const}]}]};
   rerender(<GadgetCatalogTypeLabels gadgetId="g1" catalog={machineCatalog} selection={{racerType:"ACCELERATION",machineType:"HANDLING"}} />);
   expect(screen.getByTitle("Not met: requires Acceleration machine")).toBeTruthy();

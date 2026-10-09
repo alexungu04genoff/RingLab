@@ -70,7 +70,7 @@ export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog, selection }: 
     {groups.map(({ effect, adjustments, inactive, condition }) => adjustments.length > 0 && <span className={`gadget-adjustment-group${inactive ? " gadget-condition-unmet" : ""}`} key={effect.effectId}>
       {adjustments.map(({ name, points }) => <span key={name}
         className={`gadget-adjustment stat-row stat-${name} ${points! > 0 ? "bonus" : "penalty"}`}
-        title={`Reviewed passive effect${condition}; inclusion depends on the selected combination.`}>
+        title={`${inactive ? "Inactive · " : ""}Reviewed passive effect${condition}; inclusion depends on the selected combination.`}>
         {name[0].toUpperCase() + name.slice(1)} {signedPoints(points)}
       </span>)}
     </span>)}

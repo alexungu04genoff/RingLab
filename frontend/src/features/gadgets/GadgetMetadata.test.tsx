@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import { GadgetMetadata, GadgetMetadataLegend, GadgetAcquisitionDetails } from "./GadgetMetadata";
-import { acquisitionDescription, gadgetEffectKinds, unsupportedGadgetGuidance } from "./gadgetPresentation";
+import { acquisitionDescription, gadgetEffectKinds, unsupportedGadgetGuidance, unsupportedGadgetsLast } from "./gadgetPresentation";
 import type { Gadget, GadgetRulesCatalog } from "../../shared/types";
 
 afterEach(cleanup);
@@ -47,10 +47,26 @@ it("shows acquisition history and event tooltip without claiming permanent exclu
   expect(acquisitionDescription({ ...festival, acquisitionLabel: null })).toContain("festival reward");
 });
 
+it("places reviewed effects before acquisition and unsupported uncertainty last", () => {
+  const festival: Gadget = { ...gadget, acquisitionKind: "FESTIVAL_REWARD" };
+  const { container, rerender } = render(<GadgetMetadata gadget={festival}
+    rules={rules(["UNSUPPORTED", "NON_STAT", "CONDITIONAL", "PASSIVE"])}
+    scenarios={{ supportedVersion: "1.4.1", controls: [{ gadgetId: "kit", field: "LAP", statEffect: true }] }} />);
+  const labels = () => Array.from(container.querySelectorAll(".gadget-effect-badge")).map(chip => chip.textContent);
+  expect(labels()).toEqual(["Passive stats", "Race condition", "Scenario modeled", "Utility", "Festival reward", "Effect unsupported"]);
+  rerender(<GadgetMetadata gadget={festival} rules={rules(["UNSUPPORTED"])} />);
+  expect(labels()).toEqual(["Festival reward", "Effect unsupported"]);
+  rerender(<GadgetMetadata gadget={festival} rules={rules(["CONDITIONAL"])}
+    scenarios={{ supportedVersion: "1.4.1", controls: [{ gadgetId: "kit", field: "LAP", statEffect: true }] }} />);
+  expect(labels()).toEqual(["Race condition", "Scenario modeled", "Festival reward"]);
+});
+
 it.each(["STANDARD_UNLOCK", "UNKNOWN"] as const)("keeps %s acquisition out of the card badges", kind => {
   const item = { ...gadget, acquisitionKind: kind };
   render(<><GadgetMetadata gadget={item} /><GadgetAcquisitionDetails gadget={item} /></>);
   expect(screen.queryByText("Festival reward")).toBeNull();
+  expect(screen.queryByText("Unknown", { exact: true })).toBeNull();
+  expect(screen.getByText(acquisitionDescription(item))).toBeTruthy();
   expect(acquisitionDescription(item)).toBe(kind === "UNKNOWN" ? "Acquisition has not been reviewed." : "Standard in-game unlock.");
   expect(acquisitionDescription({ ...gadget, acquisitionKind: "STANDARD_UNLOCK", acquisitionLabel: "Race reward" })).toBe("Race reward");
 });
@@ -74,4 +90,19 @@ it("names every unsupported gadget and responds to scope, locks, and selection c
 
 it("leaves eligibility to the backend while rule metadata is unavailable", () => {
   expect(unsupportedGadgetGuidance(["kit"], [], "KEEP_CURRENT", [gadget]).blocker).toBe("");
+});
+
+it("moves unsupported and mixed-effect gadgets last without mutating catalog order", () => {
+  const mixed = { ...gadget, id: "mixed" };
+  const reviewed = { ...gadget, id: "reviewed" };
+  const missing = { ...gadget, id: "missing" };
+  const catalog = [gadget, reviewed, mixed, missing];
+  const metadata: GadgetRulesCatalog = { ...rules(["UNSUPPORTED"]), gadgets: [
+    ...rules(["UNSUPPORTED"]).gadgets,
+    { ...rules(["PASSIVE", "UNSUPPORTED"]).gadgets[0], gadgetId: mixed.id },
+    { ...rules(["PASSIVE"]).gadgets[0], gadgetId: reviewed.id },
+  ] };
+  expect(unsupportedGadgetsLast(catalog, metadata)).toEqual([reviewed, missing, gadget, mixed]);
+  expect(catalog).toEqual([gadget, reviewed, mixed, missing]);
+  expect(unsupportedGadgetsLast(catalog)).toEqual(catalog);
 });

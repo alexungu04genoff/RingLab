@@ -132,7 +132,7 @@ export function BuildEditor() {
               <GadgetSelectionSection draft={draft} gadgets={gadgets.data} gadgetRules={gadgetRules.data}
                 scenarioRules={scenarioRules.data}
                 passiveStats={draftStats.data?.passive} gadgetTypeSelection={gadgetTypeSelection}
-                locks={locks} setLocks={setLocks} ownershipLabel={ownershipLabel}
+                locks={locks} setLocks={setLocks}
                 onChange={ids => field("gadgetIds", ids)} draftContext={draftContext} />
               <MapRecommendationPicker maps={maps.data ?? []} loading={maps.loading} error={maps.error}
                 mode={draft.mapRecommendationMode} selectedIds={draft.recommendedMapIds}

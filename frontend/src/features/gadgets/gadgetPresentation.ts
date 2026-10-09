@@ -39,6 +39,15 @@ export function acquisitionDescription(gadget: Gadget) {
   return "Acquisition has not been reviewed.";
 }
 
+export function unsupportedGadgetsLast(gadgets: readonly Gadget[], rules?: GadgetRulesCatalog): Gadget[] {
+  const otherGadgets: Gadget[] = [];
+  const unsupported: Gadget[] = [];
+  for (const gadget of gadgets) {
+    (gadgetEffectKinds(gadget.id, rules).includes("UNSUPPORTED") ? unsupported : otherGadgets).push(gadget);
+  }
+  return [...otherGadgets, ...unsupported];
+}
+
 /** Guidance only: eligibility and complete passive evaluation remain authoritative on the server. */
 export function unsupportedGadgetGuidance(selected: string[], locked: string[], scope: "KEEP_CURRENT" | "OPTIMIZE_UNLOCKED",
   gadgets: Gadget[], rules?: GadgetRulesCatalog) {

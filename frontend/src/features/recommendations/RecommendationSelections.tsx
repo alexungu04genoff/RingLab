@@ -1,4 +1,6 @@
 import { CollectionArtwork as Artwork } from "../collection/CollectionArtwork";
+import { OwnershipStatusBadge } from "../collection/OwnershipStatusBadge";
+import { isExcluded, useCollection } from "../collection/Collection";
 import { RacingTypeBadge } from "../../shared/ui/RacingTypeBadge";
 import { GadgetAdjustmentBadges } from "../stats/PassiveStats";
 import { GadgetMetadata } from "../gadgets/GadgetMetadata";
@@ -9,6 +11,7 @@ import type { BuildDraft, BuildStatsResult } from "../../shared/types";
 export function SelectionItem({ id, slot, catalog, showType = false }: {
   id: string | null; slot?: ComponentKey; catalog: RecommendationCatalog; showType?: boolean;
 }) {
+  const collection = useCollection();
   const racer = slot === "racerId" ? catalog.racers.find(item => item.id === id) : undefined;
   const part = slot && slot !== "racerId" ? catalog.parts.find(item => item.id === id) : undefined;
   const gadget = !slot ? catalog.gadgets.find(item => item.id === id) : undefined;
@@ -16,6 +19,8 @@ export function SelectionItem({ id, slot, catalog, showType = false }: {
   return <span className={`recommendation-item${gadget ? " recommendation-gadget-item" : ""}`}>{item && <Artwork item={item} category={racer ? "RACER" : gadget ? "GADGET" : "MACHINE"} compact />}
     <span className={showType ? "recommendation-item-copy" : undefined}>
       <span>{item?.name ?? (id ? "Unknown selection" : "Not selected")}</span>
+      {item && <OwnershipStatusBadge notOwned={collection.status === "ready"
+        && isExcluded(collection.data, racer ? "RACER" : gadget ? "GADGET" : "MACHINE", item.id)} />}
       {gadget && <GadgetMetadata gadget={gadget} rules={catalog.gadgetRules} scenarios={catalog.scenarioRules} />}
       {showType && (racer || part) && <RacingTypeBadge kind={racer ? "racer" : "machine"}
         type={racer?.racingType ?? part?.racingType ?? null} />}

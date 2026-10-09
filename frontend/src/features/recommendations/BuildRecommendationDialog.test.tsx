@@ -73,6 +73,7 @@ it("Cancel or unmount during Apply's collection check never writes the draft", a
 });
 beforeEach(() => {
   collection.status = "ready"; collection.busy = false; collection.revision = 0; collection.identity = "account";
+  collection.data = { racers: [], machines: [], gadgets: [] };
   collection.refresh.mockResolvedValue({ data: { racers: [], machines: [], gadgets: [] }, revision: 0, identity: "account" });
   vi.clearAllMocks(); vi.mocked(api).mockResolvedValue(result);
   Object.defineProperty(HTMLDialogElement.prototype, "showModal", { configurable: true, value: function(this: HTMLDialogElement) { this.open = true; } });
@@ -92,6 +93,68 @@ function Harness({ patch = "1.4.1", locked = false, initial = draft, versionLoad
 }
 function open() { fireEvent.click(screen.getByRole("button", { name: "Recommend" })); }
 function calculate() { fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" })); }
+
+it("keeps named ownership blockers across unrelated settings and allows unlocked optimization", () => {
+  collection.data.gadgets = ["a"];
+  render(<Harness />); open();
+  const blocker = "Gadget A is marked Not owned. Remove it or choose Optimize unlocked gadgets.";
+  const calculateButton = () => screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement;
+  expect(screen.getByText(blocker)).toBeTruthy();
+  expect(calculateButton().disabled).toBe(true);
+  expect(within(screen.getByRole("region", { name: "Starting gadgets" })).getByText("Not owned")).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  fireEvent.click(screen.getByRole("button", { name: "Move Speed down" }));
+  fireEvent.change(screen.getByRole("combobox", { name: "Recommendation machine type" }), { target: { value: "ACCELERATION" } });
+  expect(screen.getByText(blocker)).toBeTruthy();
+  expect(calculateButton().disabled).toBe(true);
+  calculate(); expect(api).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect(screen.queryByText(blocker)).toBeNull();
+  expect(calculateButton().disabled).toBe(false);
+  expect(screen.getByText(/The optimizer may remove unlocked unowned gadgets/)).toBeTruthy();
+  fireEvent.click(screen.getByRole("radio", { name: "Keep current" }));
+  expect(screen.getByText(blocker)).toBeTruthy();
+});
+
+it("keeps locked unowned gadgets blocked during optimization", () => {
+  collection.data.gadgets = ["a"];
+  render(<Harness locked />); open();
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect(screen.getByText("Gadget A is marked Not owned. Unlock or remove it before calculating.")).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(api).not.toHaveBeenCalled();
+});
+
+it("names all unowned gadgets and recomputes safely when ownership changes while open", () => {
+  collection.data.gadgets = ["a", "second"];
+  const second = { ...catalog.gadgets[0], id: "second", name: "Gadget B" };
+  const renderDialog = () => <BuildRecommendationDialog draft={{ ...draft, gadgetIds: ["a", "second"] }}
+    locks={emptyLocks()} context="ownership" catalog={{ ...catalog, gadgets: [...catalog.gadgets, second] }}
+    version={{ id: "patch", version: "1.4.1", releasedAt: "2026-01-01" }} returnFocus={null}
+    onClose={vi.fn()} onApply={applied} />;
+  const { rerender } = render(renderDialog());
+  const calculateButton = () => screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement;
+  expect(screen.getByText("Gadget A and Gadget B are marked Not owned. Remove them or choose Optimize unlocked gadgets.")).toBeTruthy();
+  collection.busy = true; rerender(renderDialog());
+  expect(calculateButton().disabled).toBe(true);
+  expect(screen.getByText(/still being saved. Wait before calculating/)).toBeTruthy();
+  collection.busy = false; collection.status = "loading"; rerender(renderDialog());
+  expect(calculateButton().disabled).toBe(true);
+  collection.status = "ready"; collection.data.gadgets = ["second"]; collection.revision++;
+  rerender(renderDialog());
+  expect(screen.getByText("Gadget B is marked Not owned. Remove it or choose Optimize unlocked gadgets.")).toBeTruthy();
+  collection.data.gadgets = []; collection.revision++; rerender(renderDialog());
+  expect(calculateButton().disabled).toBe(false);
+  expect(screen.queryByText("Not owned")).toBeNull();
+});
+
+it("still clears transient server errors when recommendation settings change", async () => {
+  vi.mocked(api).mockRejectedValueOnce(new Error("Temporary server failure"));
+  render(<Harness />); open(); calculate();
+  await screen.findByText("Temporary server failure");
+  fireEvent.click(screen.getByRole("button", { name: "Balanced" }));
+  expect(screen.queryByText("Temporary server failure")).toBeNull();
+});
 
 it("updates named unsupported guidance when gadget scope changes and keeps locked effects blocked", () => {
   const gadgetRules: RecommendationCatalog["gadgetRules"] = { ruleset: "reviewed", supportedVersion: "1.4.1", note: "",
