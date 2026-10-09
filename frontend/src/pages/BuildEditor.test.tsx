@@ -205,7 +205,9 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
   expect(screen.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Handling +3");
   selectLatestPatch();
   fireEvent.click(checkbox);
-  const picker = checkbox.closest(".gadget-option")!;
+  const selectedCheckbox = within(screen.getByRole("region", { name: "Selected gadgets" }))
+    .getByRole("checkbox", { name: /Drift Charge Kit/ });
+  const picker = selectedCheckbox.closest(".gadget-option")!;
   await waitFor(()=>expect(within(picker as HTMLElement).getByLabelText("Applied gadget adjustments")).toBeTruthy());
   expect(within(picker as HTMLElement).getByLabelText("Applied gadget adjustments").textContent).toContain("Handling +3");
   const meta = picker.querySelector(".gadget-option-meta")!;
@@ -213,8 +215,10 @@ it.each(["/builds/new", "/builds/A/edit"])("shows applied gadget feedback in the
   expect(within(meta as HTMLElement).queryByLabelText("Applied gadget adjustments")).toBeNull();
   expect(screen.getByRole("button",{name:"Handling gadget adjustment +3"})).toBeTruthy();
   expect(vi.mocked(api).mock.calls.filter(([path])=>path.includes("gadgetId=drift"))).toHaveLength(1);
-  fireEvent.click(checkbox);
+  fireEvent.click(selectedCheckbox);
   expect(screen.queryByLabelText("Applied gadget adjustments")).toBeNull();
+  const available = within(screen.getByRole("region", { name: "Available gadgets" }));
+  expect(available.getByLabelText("Reviewed gadget stat adjustments").textContent).toContain("Handling +3");
 });
 async function openA() {
   let navigate!: ReturnType<typeof useNavigate>;
