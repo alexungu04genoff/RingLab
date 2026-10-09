@@ -48,6 +48,7 @@ def main():
 <p>{html.escape(entry["attribution"])}</p><p>{html.escape(entry["sourcePage"])}</p></details></div></article>''')
     sections = "".join(f'<section><h2>{name} · {len(cards)}</h2><div class="cards">{"".join(cards)}</div></section>' for name, cards in groups.items())
     shared_css = (ROOT / "frontend/src/styles/gadget-metadata.css").read_text(encoding="utf-8")
+    comparison_link = '<a href="source-comparison.html" style="color:#79ccff">Compare the eight-gadget source sample</a>.' if (OUTPUT.parent / "source-comparison.html").is_file() else ""
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT.write_text(f'''<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>RingLab · 117 gadget artwork review</title><style>{shared_css}
@@ -57,7 +58,8 @@ main{{max-width:1440px;margin:auto}}h1{{font-size:30px}}p,small{{color:#aab8cc}}
 article img{{width:80px;height:80px;object-fit:contain}}h3{{margin:0 0 10px;font-size:16px}}article small,article p{{overflow-wrap:anywhere;font-size:12px}}details{{font-size:12px;margin-top:10px}}section{{margin-top:32px}}[hidden]{{display:none}}
 @media(max-width:480px){{body{{padding:14px}}article{{grid-template-columns:56px minmax(0,1fr)}}article img{{width:56px;height:56px}}}}
 </style><main><h1>Gadget clarity & artwork review</h1><p>117 / 117 canonical local icons · 18 festival rewards · reviewed 2026-10-09</p>
-<p>Each gadget appears once. Unsupported effects take grouping priority, followed by festival history; all applicable badges remain visible. Icons retain source bytes and proportions.</p>
+<p>All 117 icons use the Sonic Wiki transparent 576 × 512 set. Source bytes and proportions are preserved. {comparison_link}</p>
+<p>Each gadget appears once. Unsupported effects take grouping priority, followed by festival history; all applicable badges remain visible.</p>
 <label>Find a gadget <input id="search" type="search" placeholder="Name…"></label>{sections}</main>
 <script>document.querySelector('#search').addEventListener('input',e=>{{for(const card of document.querySelectorAll('article'))card.hidden=!card.dataset.name.includes(e.target.value.trim().toLowerCase());}});</script></html>''', encoding="utf-8")
     print(OUTPUT)

@@ -4,6 +4,9 @@ Reviewed 2026-10-09 against main `d0bc85b7dfe52ad33edef2aa3608d234cb9944be`.
 This changes presentation and acquisition metadata, not recommendation mathematics,
 costs, numerical snapshots, rule classifications or compatibility.
 
+The artwork-completion results below describe the first pass. The subsequent
+[uniform artwork pass](#uniform-artwork-pass) supersedes its mixed-source image set.
+
 ## Reproduction and guidance
 
 `Phase5bCatalogTest` reproduces 130 Ring Limit + 200 Ring Limit + 4th Stage Charge
@@ -180,3 +183,53 @@ The artifact and logs are ignored; no generated screenshot is committed.
 Production requires later explicit visual approval and deployment. Deploying
 this revision runs V36 but still requires the separately reviewed importer
 PLAN/APPLY for acquisition/artwork presentation content.
+
+## Uniform artwork pass
+
+On 2026-10-09, compared Starting Boost Bounty, Air Trick Bounty, 200 Ring Limit,
+Speed Tuner 1, Power Machine Kit, Power Character Kit, Perfect Charge Kit and
+4th Stage Charge Kit across existing assets, Sonic Wiki, the Japanese wiki
+where indexed, and SRCW Gadget Builder. The Japanese images include pale
+backgrounds and slot-count tabs. Sonic Wiki and the builder provide isolated
+transparent icons. Sonic Wiki was selected to retain the established project
+source policy and avoid unnecessary dependence on another asset host.
+
+The live Sonic Wiki gadget table supplied **117/117 exact image matches**,
+including all newer festival kits. Its name `Inventory Plus` maps to RingLab's
+existing `Item Stock Plus` identity; no catalog names or effects were changed.
+All 117 retrieved originals decode as **576 × 512 RGBA WebP**, with actual
+transparent pixels. Fandom serves WebP bytes even for PNG-named source URLs.
+The downloaded bytes are preserved without cropping, resizing, background
+removal or generated artwork; the shared canvas and existing `object-fit: contain`
+give consistent display framing.
+
+**106 local WebP assets were added and 11 byte-identical existing assets reused.**
+The canonical CSV changes only 106 `image_path` values. No exceptions or missing
+icons remain. The inventory records the exact source URL, source name, retrieval
+date, checksum and previous path for each gadget. Older PNG/JPEG files remain
+available for databases and saved responses still using the previous paths;
+they are not used by the newly imported canonical catalog.
+
+The offline artwork guard checks all catalog-to-file identities and hashes,
+distinct paths/bytes, source attribution, and the reviewed transparent WebP
+canvas. The local review sheet is regenerated with all 117 icons. The ignored
+eight-gadget comparison is `.tools/gadget-clarity/source-comparison.html`.
+
+This remains presentation-only. Database consumers need an explicit importer
+PLAN/APPLY for the new paths; restarting alone does not update them. Production
+deployment and its importer APPLY remain pending visual approval.
+
+Verification for this pass: all 117 source images decoded with real transparency;
+the browser loaded all 117 review images at the expected dimensions. The frontend
+build and `git diff --check` passed. Local importer validation passed; PLAN/APPLY
+changed exactly 106 image paths with no inserts/deletes, and a second PLAN was a
+no-op. The frontend and proxied gadget API responded successfully, and all 117
+served asset checksums matched the ledger.
+
+The targeted `GadgetArtworkInventoryTest` invocation was blocked before tests ran:
+the offline `.tools/m2` cache lacks `maven-resources-plugin:3.4.0` selected by the
+installed Maven. No dependency downloads, retries or broader backend tests were
+attempted. Run that class in IntelliJ, or from the repository root run
+`mvn -f backend/pom.xml -Dtest=GadgetArtworkInventoryTest test` with the normal
+configured Maven cache. Full backend/frontend test suites were not rerun for
+this artwork-only pass.

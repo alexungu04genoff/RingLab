@@ -23,6 +23,9 @@ The subsequent [gadget clarity pass](../docs/gadget-clarity-review.md) adds V36
 acquisition columns and explicitly imports presentation metadata: 117 gadget
 updates, including 49 newly canonical artwork paths. After that apply, PLAN is
 again a no-op. Restarting or deploying alone does not apply those CSV changes.
+The subsequent uniform-artwork pass changes only 106 gadget image paths to the
+reviewed Sonic Wiki WebP set; the other 11 paths already match. Import these
+presentation changes explicitly through PLAN/APPLY as well.
 The initial-export counts below describe the historical baseline, not current data.
 
 ## Baseline and evidence

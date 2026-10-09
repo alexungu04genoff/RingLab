@@ -71,6 +71,12 @@ names a first-party asset. Images are local PNG or WebP downloads, never hotlink
 restyling was used. V12 supplies isolated Wiki artwork for the 36 machines added by V10, so every
 remaining released machine has a local image path.
 
+The 2026-10-09 [uniform gadget artwork pass](gadget-clarity-review.md#uniform-artwork-pass)
+restores this policy across all 117 current gadgets after the temporary mixed-source
+completion pass. The [current image ledger](../game-data/review/gadget-artwork.json)
+records exact Sonic Wiki source URLs and checksums. Every canonical icon is a
+transparent 576 × 512 WebP original; older files are retained for previous catalog paths.
+
 ## V10 Sonic Wiki fact audit
 
 The owner explicitly requested the Sonic Wiki as the source for filling current catalog gaps. The
