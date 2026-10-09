@@ -117,6 +117,18 @@ public final class BuildRecommendationSolver {
   }
 
   private RecommendationResult result(RecommendationResult.Outcome outcome, String reason) {
+    if (outcome == UNAVAILABLE && PassiveGadgetRules.VERSION.equals(catalog.version().version())) {
+      var required = request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT
+          ? request.current().gadgetIds() : request.locked().gadgetIds();
+      var unsupported = required.stream().filter(id -> catalog.rules().forGadget(id).stream()
+          .anyMatch(rule -> rule.kind() == GadgetEffectRule.Kind.UNSUPPORTED))
+          .map(id -> catalog.gadgets().get(id).name()).toList();
+      if (!unsupported.isEmpty()) reason = String.join(", ", unsupported)
+          + (unsupported.size() == 1 ? " has an effect" : " have effects") + " RingLab cannot evaluate yet. "
+          + (request.gadgetScope() == GadgetRecommendationScope.KEEP_CURRENT
+              ? "Remove the listed gadgets or choose Optimize unlocked gadgets."
+              : "Unlock or remove the listed gadgets before calculating again.");
+    }
     var best = order.best();
     return new RecommendationResult(outcome, best == null ? null : best.selection(), currentStats,
         best == null ? null : best.stats(), outcome == ESTABLISHED && best != null && best.selection().equals(request.current()),

@@ -1,6 +1,7 @@
 package dev.ringlab.adapter.out.db.gamedata;
 
 import jakarta.persistence.*;
+import dev.ringlab.domain.gamedata.GadgetAcquisitionKind;
 import java.util.UUID;
 
 @Entity
@@ -19,4 +20,11 @@ public class GadgetDbEntity {
 
   @Column(name = "image_path")
   public String imagePath;
+
+  @Enumerated(EnumType.STRING)
+  @Column(name = "acquisition_kind", nullable = false, length = 30)
+  public GadgetAcquisitionKind acquisitionKind = GadgetAcquisitionKind.UNKNOWN;
+
+  @Column(name = "acquisition_label")
+  public String acquisitionLabel;
 }

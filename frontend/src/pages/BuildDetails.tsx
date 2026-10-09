@@ -20,7 +20,7 @@ import { formatBuildForSharing } from "../features/builds/buildSharing";
 import { persistedStatsPath } from "../features/stats/stats";
 import { RecommendedMapList } from "../features/maps/MapRecommendations";
 import { useLoad } from "../shared/hooks/useLoad";
-import type { Build, BuildStatsResult, CommentPage, GameVersion, Vote } from "../shared/types";
+import type { Build, BuildStatsResult, CommentPage, GadgetRulesCatalog, ScenarioRulesCatalog, GameVersion, Vote } from "../shared/types";
 
 
 export function BuildDetails() {
@@ -43,6 +43,8 @@ function BuildDetailsContent() {
   const build = useLoad<Build>(`/builds/${id}`);
   const stats = useLoad<BuildStatsResult>(build.data ? persistedStatsPath(build.data) : "");
   const versions = useLoad<GameVersion[]>("/game-versions");
+  const gadgetRules = useLoad<GadgetRulesCatalog>("/stats/gadget-rules");
+  const scenarioRules = useLoad<ScenarioRulesCatalog>("/stats/scenario-rules");
   const [revision, setRevision] = useState(0);
   const [page, setPage] = useState(0);
   const comments = useLoad<CommentPage>(
@@ -271,7 +273,8 @@ function BuildDetailsContent() {
                       <div className="eyebrow">GADGETS</div>
                       <div className="tags">
                         {b.gadgets.map((g, i) => (
-                          <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} passive={stats.data?.passive} />
+                          <BuildGadgetIcon key={`${g.id}-${i}`} gadget={g} passive={stats.data?.passive}
+                            rules={gadgetRules.data} scenarios={scenarioRules.data} />
                         ))}
                         {b.gadgets.length === 0 && <span>No gadgets</span>}
                       </div>

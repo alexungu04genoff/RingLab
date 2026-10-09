@@ -34,7 +34,9 @@ beforeEach(() => {
   currentUser = { id: "remixer" };
   vi.mocked(useLoad).mockImplementation((path: string) => ({
     data: path.includes("comments") ? { items: [], total: 0, page: 0, size: 20 }
-      : path === "/game-versions" ? [source.gameVersion] : source,
+      : path === "/game-versions" ? [source.gameVersion]
+      : path === "/stats/gadget-rules" ? { gadgets: [] }
+      : path === "/stats/scenario-rules" ? { controls: [] } : source,
     error: "", loading: false,
   }));
 });
@@ -66,7 +68,9 @@ it("offers authenticated remix action and links provenance to its source", () =>
   const remix = { ...source, id: "remix", mapRecommendations: { mode: "ALL", maps: [] }, remixedFrom: { id: "source", title: "Original route" } };
   vi.mocked(useLoad).mockImplementation((path: string) => ({
     data: path.includes("comments") ? { items: [], total: 0, page: 0, size: 20 }
-      : path === "/game-versions" ? [source.gameVersion] : remix,
+      : path === "/game-versions" ? [source.gameVersion]
+      : path === "/stats/gadget-rules" ? { gadgets: [] }
+      : path === "/stats/scenario-rules" ? { controls: [] } : remix,
     error: "", loading: false,
   }));
   const html = renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>);

@@ -1,7 +1,23 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { expect, it } from "vitest";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, expect, it } from "vitest";
 import { CollectionArtwork as Artwork } from "./CollectionArtwork";
 import type { Gadget, Machine, Racer } from "../../shared/types";
+afterEach(cleanup);
+
+it("renders canonical icons including previously unwired assets and safely falls back on load errors", () => {
+  const gadget: Gadget = { id: "84000000-0000-4000-8000-000000000037", name: "Air Trick Action Kit",
+    description: null, slotCost: 3, imagePath: "/assets/gadgets/air-trick-action-kit.png" };
+  render(<Artwork item={gadget} />);
+  expect(screen.getByAltText(gadget.name).getAttribute("src")).toBe(gadget.imagePath);
+  fireEvent.error(screen.getByAltText(gadget.name));
+  expect(screen.queryByRole("img")).toBeNull(); expect(screen.getByText("AT")).toBeTruthy();
+});
+
+it("does not hotlink unreviewed external artwork", () => {
+  render(<Artwork item={{ id: "unknown", name: "Unknown Gadget", slotCost: 1, description: null, imagePath: "https://example.com/icon.png" }} />);
+  expect(screen.queryByRole("img")).toBeNull(); expect(screen.getByText("UG")).toBeTruthy();
+});
 
 it("uses existing initials for Phase 5B identities without reviewed artwork", () => {
   const identities: Array<Racer | Machine | Gadget> = [

@@ -64,9 +64,10 @@ public final class GameDataImportDbAdapter implements GameDataImportRepository {
         r -> new Machine(uuid(r, "id"), r.getString("name"), racingType(r), r.getString("image_path")));
     var parts = query(c, "machine_parts", "SELECT id,source_machine_id,part_type FROM machine_parts ORDER BY id",
         r -> new MachinePart(uuid(r, "id"), uuid(r, "source_machine_id"), MachinePartType.valueOf(r.getString("part_type"))));
-    var gadgets = query(c, "gadgets", "SELECT id,name,description,slot_cost,image_path FROM gadgets ORDER BY id",
+    var gadgets = query(c, "gadgets", "SELECT id,name,description,slot_cost,image_path,acquisition_kind,acquisition_label FROM gadgets ORDER BY id",
         r -> new Gadget(uuid(r, "id"), r.getString("name"), r.getString("description"),
-            r.getObject("slot_cost", Integer.class), r.getString("image_path")));
+            r.getObject("slot_cost", Integer.class), r.getString("image_path"),
+            GadgetAcquisitionKind.valueOf(r.getString("acquisition_kind")), r.getString("acquisition_label")));
     var maps = query(c, "race_maps", "SELECT id,name,category,content_pack,image_path,catalog_order FROM race_maps ORDER BY id",
         r -> new RaceMap(uuid(r, "id"), r.getString("name"), RaceMap.Category.valueOf(r.getString("category")),
             r.getString("content_pack"), r.getString("image_path"), r.getInt("catalog_order")));
@@ -109,7 +110,8 @@ public final class GameDataImportDbAdapter implements GameDataImportRepository {
     }
     for (var row : d.gadgets()) {
       var g = row.value();
-      execute(c, "INSERT INTO gadgets(id,name,description,slot_cost,image_path) VALUES (?,?,?,?,?)", g.id(), g.name(), g.description(), g.slotCost(), g.imagePath());
+      execute(c, "INSERT INTO gadgets(id,name,description,slot_cost,image_path,acquisition_kind,acquisition_label) VALUES (?,?,?,?,?,?,?)",
+          g.id(), g.name(), g.description(), g.slotCost(), g.imagePath(), g.acquisitionKind(), g.acquisitionLabel());
     }
     for (var row : d.maps()) {
       var m = row.value();
@@ -146,7 +148,8 @@ public final class GameDataImportDbAdapter implements GameDataImportRepository {
     }
     for (var row : d.gadgets()) {
       var g = row.value();
-      execute(c, "UPDATE gadgets SET name=?,description=?,image_path=? WHERE id=?", g.name(), g.description(), g.imagePath(), g.id());
+      execute(c, "UPDATE gadgets SET name=?,description=?,image_path=?,acquisition_kind=?,acquisition_label=? WHERE id=?",
+          g.name(), g.description(), g.imagePath(), g.acquisitionKind(), g.acquisitionLabel(), g.id());
     }
     for (var row : d.maps()) {
       var m = row.value();

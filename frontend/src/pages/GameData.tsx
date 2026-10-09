@@ -19,7 +19,7 @@ import { StockMachineCard } from "../features/collection/StockMachineCard";
 import { GadgetRuleDetails } from "../features/stats/PassiveStats";
 import type { GadgetRulesCatalog } from "../shared/types";
 import type { ScenarioRulesCatalog } from "../shared/types";
-import { ScenarioBadge } from "../features/stats/ScenarioBadge";
+import { GadgetMetadata, GadgetMetadataLegend, GadgetAcquisitionDetails } from "../features/gadgets/GadgetMetadata";
 
 const collections = [
   { key: "racers", label: "Racers", Icon: RacerIcon },
@@ -71,11 +71,12 @@ function GadgetCard({ gadget, rules, scenarios, ownership }: { gadget: Gadget; r
               {gadget.slotCost} {gadget.slotCost === 1 ? "slot" : "slots"}
             </span>
           )}
-          <ScenarioBadge gadgetId={gadget.id} catalog={scenarios} />
+          <GadgetMetadata gadget={gadget} rules={rules} scenarios={scenarios} />
         </div>
       </div>
       {gadget.description && <p className="gadget-collection-description">{gadget.description}</p>}
       <GadgetRuleDetails id={gadget.id} catalog={rules} />
+      <GadgetAcquisitionDetails gadget={gadget} />
       {ownership}
     </article>
   );
@@ -163,6 +164,7 @@ export function GameData() {
         <Link className="button" to="/login" state={{ from: "/game-data" }}>Log in</Link></aside>}
       {collection.status === "ready" && <aside className="collection-explanation"><p>Everything is owned by default. Uncheck items you don't own to exclude them from recommendations. <Link to="/guide#your-collection">Collection guide →</Link></p></aside>}
       <CollectionStatus />
+      {tab === "gadgets" && <GadgetMetadataLegend />}
       <ErrorNotice message={items.error} />
       <ErrorNotice message={versions.error || stats.error || machineParts.error} />
       {items.loading && <p role="status">Loading collection…</p>}

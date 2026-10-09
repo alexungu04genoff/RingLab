@@ -34,7 +34,7 @@ remain in `pages`; their imports were updated.
 | `RacingTypeBadge.tsx` | `shared/ui/RacingTypeBadge.tsx` |
 | `SavedBuilds.test.tsx` | `features/saved-builds/SavedBuilds.test.tsx` |
 | `SavedBuilds.tsx` | `features/saved-builds/SavedBuilds.tsx` |
-| `ScenarioBadge.tsx` | `features/stats/ScenarioBadge.tsx` |
+| Gadget effect/acquisition badges | `features/gadgets/GadgetMetadata.tsx` |
 | `ScenarioPreview.test.tsx` | `features/stats/ScenarioPreview.test.tsx` |
 | `ScenarioPreview.tsx` | `features/stats/ScenarioPreview.tsx` |
 | `SearchableFilter.test.tsx` | `shared/ui/SearchableFilter.test.tsx` |
@@ -162,7 +162,6 @@ The standalone `frontend/tests/voting.tsx` harness imports the moved auth/API mo
 │       ├── PageCardStats.test.tsx
 │       ├── PassiveStats.test.tsx
 │       ├── PassiveStats.tsx
-│       ├── ScenarioBadge.tsx
 │       ├── ScenarioPreview.test.tsx
 │       ├── ScenarioPreview.tsx
 │       └── stats.ts
@@ -289,7 +288,7 @@ sections more aggressively would be a separate cascade refactor.
 - App owns shell/routes, while main mounts the existing providers in their original order.
 
 There are no production runtime dependency cycles or unresolved relative imports.
-No alias or barrel exports were needed. ScenarioBadge stays in stats; StatBar,
+No alias or barrel exports were needed. Shared gadget metadata lives in gadgets; StatBar,
 StatLegend, and InfoPopover retain their existing implementations under shared UI.
 
 ## Verification

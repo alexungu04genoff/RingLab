@@ -1,5 +1,13 @@
 # Sonic Racing: CrossWorlds catalog ledger
 
+The [2026-10-09 gadget clarity review](gadget-clarity-review.md) completes local
+artwork for all 117 gadgets and audits acquisition history. Its
+[artwork inventory](../game-data/review/gadget-artwork.json) records exact source
+pages, attachment URLs, attribution, dates and checksums for 36 newly downloaded
+Japanese wiki icons, plus the 81 reused assets. The
+[acquisition ledger](../game-data/review/gadget-acquisition.csv) covers all 117
+identities. In-game artwork remains credited to SEGA and respective rights holders.
+
 Original ledger cutoff: **2026-09-12** (Europe/Bucharest). The approved
 [Phase 5B supplement](game-data-phase5b.md), checked **2026-10-03**, adds Amigo,
 Locomotive de Amigo and 38 released gadgets, with claim-specific evidence labels.

@@ -30,14 +30,16 @@ class GameDataCsvReaderTest {
     assertTrue(error.getMessage().contains("broken.csv:1 field=csv"));
   }
 
-  @Test void currentFilesPreserveCountsIdentitiesDecimalsAndNullArtwork() {
+  @Test void currentFilesPreserveCountsIdentitiesDecimalsAndReviewedArtwork() {
     var d = new GameDataCsvReader().read(Path.of("../game-data"));
     assertEquals(53, d.racers().size()); assertEquals(63, d.machines().size());
     assertEquals(177, d.parts().size()); assertEquals(117, d.gadgets().size());
     assertEquals(44, d.maps().size()); assertEquals(4, d.versions().size());
     assertEquals(209, d.snapshots().stream().mapToInt(s -> s.racers().size()).sum());
     assertEquals(696, d.snapshots().stream().mapToInt(s -> s.parts().size()).sum());
-    assertEquals(49, d.gadgets().stream().filter(r -> r.value().imagePath() == null).count());
+    assertEquals(0, d.gadgets().stream().filter(r -> r.value().imagePath() == null).count());
+    assertEquals(18, d.gadgets().stream().filter(r -> r.value().acquisitionKind()
+        == dev.ringlab.domain.gamedata.GadgetAcquisitionKind.FESTIVAL_REWARD).count());
     assertTrue(d.snapshots().stream().flatMap(s -> s.parts().stream()).anyMatch(r -> r.value().stats().acceleration().scale() > 0));
   }
 
@@ -82,7 +84,8 @@ class GameDataCsvReaderTest {
   @ParameterizedTest @ValueSource(strings = {
       "catalog/machines.csv|racing_type|SPEED|BAD", "catalog/machine-parts.csv|part_type|FRONT|WING",
       "catalog/maps.csv|category|MAIN_COURSE|ROAD", "catalog/maps.csv|catalog_order|1|2147483648",
-      "catalog/gadgets.csv|slot_cost|1|1.5", "catalog/game-versions.csv|released_at|2025-12-03|2025-02-30",
+      "catalog/gadgets.csv|slot_cost|1|1.5", "catalog/gadgets.csv|acquisition_kind|STANDARD_UNLOCK|EXCLUSIVE",
+      "catalog/game-versions.csv|released_at|2025-12-03|2025-02-30",
       "catalog/game-versions.csv|version|1.2.0|../outside"})
   void typedColumnsRejectBadValues(String spec) throws Exception {
     copyDataset(); var parts = spec.split("\\|");

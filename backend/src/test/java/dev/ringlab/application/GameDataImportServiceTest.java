@@ -30,6 +30,21 @@ class GameDataImportServiceTest {
     assertEquals(0, repository.reads); assertFalse(repository.wrote);
   }
 
+  @Test void acquisitionAndArtworkAreReviewablePresentationUpdatesWithAnIdempotentApply() {
+    var edit = new Edit(sample());
+    var gadget = new Gadget(id(6), "Gadget", null, 1, "/assets/gadgets/reviewed.png",
+        GadgetAcquisitionKind.FESTIVAL_REWARD, "Samba de Amigo Festival");
+    edit.gadgets.set(0, row(gadget));
+    var plan = service.plan(edit.build());
+    assertTrue(plan.safe()); assertEquals(1, plan.updateCount()); assertEquals(0, plan.inserts());
+    assertTrue(plan.changes().stream().anyMatch(change -> change.contains("acquisition_kind")));
+    assertTrue(plan.changes().stream().anyMatch(change -> change.contains("acquisition_label")));
+    service.apply(edit.build(), plan.approvalToken());
+    repository.current = edit.build(); // The recording fake does not implement database writes.
+    assertEquals(0, service.plan(edit.build()).updateCount());
+    assertEquals(gadget, repository.read().gadgets().getFirst().value());
+  }
+
   static Stream<Consumer<Edit>> invalidDatasets() {
     return Stream.of(
         e -> e.racers.add(e.racers.getFirst()),
@@ -43,6 +58,10 @@ class GameDataImportServiceTest {
         e -> e.machines.set(0, row(new Machine(id(2), "Machine", null, null))),
         e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 4, null))),
         e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 0, null))),
+        e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 1, null, null, null))),
+        e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 1, null, GadgetAcquisitionKind.FESTIVAL_REWARD, null))),
+        e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 1, null, GadgetAcquisitionKind.FESTIVAL_REWARD, " "))),
+        e -> e.gadgets.set(0, row(new Gadget(id(6), "Gadget", null, 1, null, GadgetAcquisitionKind.UNKNOWN, "Unreviewed event"))),
         e -> e.gadgets.add(e.gadgets.getFirst()),
         e -> e.maps.add(row(new RaceMap(id(90), "Another map", RaceMap.Category.CROSSWORLD, null, null, 1))),
         e -> e.maps.add(e.maps.getFirst()),

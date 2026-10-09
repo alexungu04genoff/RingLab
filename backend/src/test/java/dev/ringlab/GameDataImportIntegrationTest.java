@@ -55,6 +55,11 @@ class GameDataImportIntegrationTest {
     repository = new GameDataImportDbAdapter(isolated);
     importer = new GameDataImportService(repository);
     canonical = new GameDataCsvReader().read(Path.of("../game-data"));
+    if (!Set.of("phase5bMigrationPreservesAnInvalidatedLegacyPlate", "presentationImportUpdatesOnlyReviewedGadgetMetadata")
+        .contains(test.getTestMethod().orElseThrow().getName())) {
+      var initial = importer.plan(canonical);
+      importer.apply(canonical, initial.approvalToken());
+    }
   }
 
   @AfterEach void cleanup() throws Exception {
@@ -89,10 +94,36 @@ class GameDataImportIntegrationTest {
       assertFalse(dev.ringlab.domain.build.GadgetPlate.canFit(costs));
     }
     var plan = importer.plan(canonical);
-    assertTrue(plan.safe(),plan.unsafeChanges().toString()); assertEquals(0,plan.inserts()); assertEquals(0,plan.updateCount());
+    assertTrue(plan.safe(),plan.unsafeChanges().toString()); assertEquals(0,plan.inserts()); assertEquals(117,plan.updateCount());
   }
 
-  @Test void canonicalFilesExactlyMatchFinalMigrationsAndReimportWritesNothing() {
+  @Test void presentationImportUpdatesOnlyReviewedGadgetMetadata() throws Exception {
+    var before = repository.read();
+    var plan = importer.plan(canonical);
+    assertTrue(plan.safe(), plan.unsafeChanges().toString());
+    assertEquals(0, plan.inserts()); assertEquals(117, plan.updateCount());
+    assertEquals(117, plan.updates().gadgets().size());
+    var old = before.gadgets().stream().collect(java.util.stream.Collectors.toMap(r -> r.value().id(), CatalogRow::value));
+    for (var row : plan.updates().gadgets()) {
+      var prior = old.get(row.value().id()); var next = row.value();
+      assertEquals(prior.name(), next.name()); assertEquals(prior.description(), next.description());
+      assertEquals(prior.slotCost(), next.slotCost());
+    }
+    importer.apply(canonical, plan.approvalToken());
+    var second = importer.plan(canonical);
+    assertTrue(second.safe()); assertEquals(0, second.inserts()); assertEquals(0, second.updateCount());
+    var after = repository.read();
+    assertEquals(before.snapshots(), after.snapshots()); assertEquals(before.ruleSets(), after.ruleSets());
+    assertEquals(before.racers(), after.racers()); assertEquals(before.parts(), after.parts());
+    assertEquals(before.machines(), after.machines()); assertEquals(before.maps(), after.maps());
+    assertEquals(before.versions(), after.versions());
+    try (var connection = isolated.getConnection(); var query = connection.createStatement();
+        var rows = query.executeQuery("SELECT count(*) FROM gadgets WHERE acquisition_kind='FESTIVAL_REWARD' AND acquisition_label IS NOT NULL")) {
+      assertTrue(rows.next()); assertEquals(18, rows.getInt(1));
+    }
+  }
+
+  @Test void canonicalFilesMatchImportedPresentationAndReimportWritesNothing() {
     var plan = importer.plan(canonical);
     assertTrue(plan.safe(), plan.unsafeChanges().toString());
     assertEquals(0, plan.inserts()); assertEquals(0, plan.updateCount());

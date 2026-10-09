@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { CollectionArtwork as Artwork } from "../../collection/CollectionArtwork";
 import { GadgetAdjustmentBadges, GadgetCatalogAdjustmentBadges, GadgetCatalogTypeLabels } from "../../stats/PassiveStats";
 import { SelectionLock } from "../../recommendations/SelectionLock";
+import { GadgetMetadata, GadgetMetadataLegend } from "../../gadgets/GadgetMetadata";
 import type { RecommendationSelection } from "../../recommendations/recommendation";
 import { filterGadgets, toggleGadget } from "../buildForm";
-import type { BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, RacingType } from "../../../shared/types";
+import type { BuildDraft, BuildStatsResult, Gadget, GadgetRulesCatalog, ScenarioRulesCatalog, RacingType } from "../../../shared/types";
 
-export function GadgetSelectionSection({ draft, gadgets, gadgetRules, passiveStats, gadgetTypeSelection,
+export function GadgetSelectionSection({ draft, gadgets, gadgetRules, scenarioRules, passiveStats, gadgetTypeSelection,
   locks, setLocks, ownershipLabel, onChange, draftContext }: {
   draft: BuildDraft; gadgets?: Gadget[]; gadgetRules?: GadgetRulesCatalog;
+  scenarioRules?: ScenarioRulesCatalog;
   passiveStats?: BuildStatsResult["passive"];
   gadgetTypeSelection: { racerType: RacingType | null; machineType: RacingType | null };
   locks: RecommendationSelection; setLocks: (locks: RecommendationSelection) => void;
@@ -24,6 +26,7 @@ export function GadgetSelectionSection({ draft, gadgets, gadgetRules, passiveSta
         <span className="muted">optional</span>
       </h2>
       <p>Select gadgets in the order you want them displayed.</p>
+      <GadgetMetadataLegend />
       <label className="gadget-search">
         <span className="sr-only">Search gadgets</span>
         <input type="search" value={gadgetSearch} onChange={(e) => setGadgetSearch(e.target.value)}
@@ -49,6 +52,7 @@ export function GadgetSelectionSection({ draft, gadgets, gadgetRules, passiveSta
             <span className="gadget-option-copy"><strong>{g.name}{ownershipLabel("gadgets", g.id)}</strong>
               <span className="gadget-option-meta">
                 <small className="gadget-slot-badge">{g.slotCost === null ? "Cost unknown" : `${g.slotCost} ${g.slotCost === 1 ? "slot" : "slots"}`}</small>
+                <GadgetMetadata gadget={g} rules={gadgetRules} scenarios={scenarioRules} />
                 <GadgetCatalogTypeLabels gadgetId={g.id} catalog={gadgetRules} selection={gadgetTypeSelection} />
               </span>
               {g.description && <span>{g.description}</span>}

@@ -18,7 +18,11 @@ records: 1,899. The closed 23-effect additive policy remains unchanged.
 See [Phase 5B evidence and migration safety](../docs/game-data-phase5b.md) for all
 38 gadget classifications, the Substitute Item cost correction and the exact
 forward migration. Against V34, PLAN rejects these published corrections; after
-V35, PLAN/APPLY is an exact no-op. Importer permissions have not been weakened.
+V35, the original Phase 5B PLAN/APPLY was an exact no-op. Importer permissions have not been weakened.
+The subsequent [gadget clarity pass](../docs/gadget-clarity-review.md) adds V36
+acquisition columns and explicitly imports presentation metadata: 117 gadget
+updates, including 49 newly canonical artwork paths. After that apply, PLAN is
+again a no-op. Restarting or deploying alone does not apply those CSV changes.
 The initial-export counts below describe the historical baseline, not current data.
 
 ## Baseline and evidence
@@ -46,10 +50,9 @@ evidence that the values were unchanged in those patches. This extraction
 preserves the current runtime result. See [the historical audit](../docs/stats-1.3.1-audit.md),
 [catalog sources](../docs/game-data-sources.md) and [map sources](../docs/map-catalog-sources.md).
 
-Forty-nine gadget `image_path` cells intentionally remain blank: eleven existing
-IDs use `gadgetArtwork.ts`; the 38 additions use the existing initials fallback.
-Amigo and Locomotive also use initials. No new artwork was downloaded, and the
-API retains explicit null image paths.
+All 117 gadget `image_path` cells now point to reviewed local assets. The artwork
+inventory and acquisition evidence live in `review/`; these ledgers are review
+evidence, not runtime importer inputs. Amigo and Locomotive artwork is unchanged.
 
 ## Editing in Excel
 
@@ -78,7 +81,7 @@ review the Git diff. Regional semicolon delimiters and decimal commas are reject
 | `catalog/racers.csv` | `id,name,racing_type,image_path` |
 | `catalog/machines.csv` | `id,name,racing_type,image_path` |
 | `catalog/machine-parts.csv` | `id,source_machine_id,part_type` |
-| `catalog/gadgets.csv` | `id,name,description,slot_cost,image_path` |
+| `catalog/gadgets.csv` | `id,name,description,slot_cost,image_path,acquisition_kind,acquisition_label` |
 | `catalog/maps.csv` | `id,name,category,content_pack,image_path,catalog_order` |
 | `catalog/game-versions.csv` | `id,version,released_at` |
 | `versions/<version>/racer-stats.csv` | `racer_id,speed,acceleration,handling,power,boost` |
@@ -94,6 +97,12 @@ Machine composition reuses Java `MachineComposition`: BOOST requires front/rear;
 other known types require all three parts. An unknown machine type cannot be
 imported as a complete setup. Racer type and gadget cost can remain unknown;
 a known gadget cost must be 1–3.
+
+Gadget acquisition kinds are `STANDARD_UNLOCK`, `FESTIVAL_REWARD`, and `UNKNOWN`.
+A festival reward requires a nonblank event label; UNKNOWN must have no label.
+Standard labels are optional. Festival history does not imply permanent exclusivity.
+Acquisition fields and local artwork paths are mutable presentation metadata;
+published numerical data and rule bundles retain their existing protections.
 
 ## Supported changes
 

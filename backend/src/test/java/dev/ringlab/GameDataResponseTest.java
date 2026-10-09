@@ -14,6 +14,13 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class GameDataResponseTest {
+  @Test void acquisitionHistoryIsExposedWithoutInventingExclusivity() {
+    var gadget = new dev.ringlab.domain.gamedata.Gadget(UUID.randomUUID(), "4th Stage Charge Kit", null, 3, null,
+        dev.ringlab.domain.gamedata.GadgetAcquisitionKind.FESTIVAL_REWARD, "Samba de Amigo Festival");
+    var response = dev.ringlab.adapter.in.rest.gamedata.response.GadgetResponse.from(gadget);
+    assertEquals(gadget.acquisitionKind(), response.acquisitionKind());
+    assertEquals("Samba de Amigo Festival", response.acquisitionLabel());
+  }
   @Test
   void unverifiedTypesRemainNullWithoutPreventingCatalogResponses() {
     var racer = new Racer(UUID.randomUUID(), "Sample Racer", null, "/assets/racers/sample-racer.png");

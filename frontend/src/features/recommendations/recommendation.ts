@@ -1,4 +1,4 @@
-import type { BaseStats, BuildDraft, Gadget, MachinePart, Racer, RacingType } from "../../shared/types";
+import type { BaseStats, BuildDraft, Gadget, GadgetRulesCatalog, ScenarioRulesCatalog, MachinePart, Racer, RacingType } from "../../shared/types";
 import { gadgetPlateStatus, machineSetupError } from "../builds/buildForm";
 
 export const defaultPriorities: RacingType[] = ["ACCELERATION", "SPEED", "HANDLING", "BOOST", "POWER"];
@@ -30,7 +30,8 @@ export interface BalancedStage {
   stat: RacingType; lossPercent: number; best: number; threshold: number;
   candidatesBefore: number; candidatesAfter: number;
 }
-export interface RecommendationCatalog { racers: Racer[]; parts: MachinePart[]; gadgets: Gadget[] }
+export interface RecommendationCatalog { racers: Racer[]; parts: MachinePart[]; gadgets: Gadget[];
+  gadgetRules?: GadgetRulesCatalog; scenarioRules?: ScenarioRulesCatalog }
 
 export function draftSelection(draft: BuildDraft): RecommendationSelection {
   return { racerId: draft.racerId || null, frontPartId: draft.frontPartId || null,

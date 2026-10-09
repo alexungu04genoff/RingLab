@@ -1,5 +1,5 @@
-// Reviewed local wiki artwork for catalog entries whose imagePath is still null.
-// Stable catalog IDs also cover gadgets embedded in saved builds and drafts.
+// Transitional support for older API responses/drafts before the explicit catalog import.
+// Current canonical CSV image paths include all of these icons; do not expand this map.
 // Source files and attribution: docs/game-data-sources.md.
 export const gadgetArtworkById: Readonly<Record<string, string>> = {
   "70000000-0000-4000-8000-000000000052": "/assets/gadgets/speed-tuner-1.webp",

@@ -40,6 +40,14 @@ final class GameDataSetValidator {
       }
     }
     for (var row : data.gadgets()) {
+      var gadget = row.value();
+      if (gadget.acquisitionKind() == null)
+        errors.add(row.problem("acquisition_kind", null, "Reviewed acquisition kind is required; use UNKNOWN when unresolved"));
+      if (gadget.acquisitionKind() == GadgetAcquisitionKind.FESTIVAL_REWARD
+          && (gadget.acquisitionLabel() == null || gadget.acquisitionLabel().isBlank()))
+        errors.add(row.problem("acquisition_label", gadget.acquisitionLabel(), "Festival reward requires its reviewed event label"));
+      if (gadget.acquisitionKind() == GadgetAcquisitionKind.UNKNOWN && gadget.acquisitionLabel() != null)
+        errors.add(row.problem("acquisition_label", gadget.acquisitionLabel(), "Unknown acquisition must not claim an event"));
       Integer cost = row.value().slotCost();
       if (cost != null && !GadgetPlate.canFit(List.of(cost)))
         errors.add(row.problem("slot_cost", cost, "Known gadget cost must fit a Gadget Plate row (1–3)"));

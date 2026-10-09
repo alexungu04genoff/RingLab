@@ -10,6 +10,11 @@ the original catalog/build foreign keys remain intact. V35 makes the bounded
 Catalog identity does not require a stat snapshot row: Locomotive de Amigo uses
 that existing distinction to preserve unavailable facts.
 
+V36 adds `gadgets.acquisition_kind` (string enum, default UNKNOWN) and nullable
+`acquisition_label`. Constraints require a known enum value, a nonblank festival
+label and no label for UNKNOWN. Canonical presentation content is loaded through
+the explicit importer, not by rewriting earlier migrations.
+
 V28's private `saved_builds` relation cascades on both user and source-build deletion.
 Its composite primary key preserves one bookmark per user/build; database-generated
 timestamps and a chronology index support private saved-order pagination. See
@@ -78,6 +83,8 @@ erDiagram
         text description "nullable"
         integer slot_cost "nullable"
         varchar image_path "nullable"
+        varchar acquisition_kind "STANDARD_UNLOCK, FESTIVAL_REWARD, UNKNOWN"
+        varchar acquisition_label "nullable; required for festival history"
     }
     GAME_VERSIONS {
         uuid id PK

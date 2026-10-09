@@ -522,7 +522,10 @@ the responsibility they exercise; route-level interaction tests remain in pages.
 `src/shared` contains API contracts (`types.ts`), the API client, loading hooks,
 generic formatting, and reusable UI. Shared code does not import features or
 pages. Features may reuse other feature responsibilities without runtime cycles;
-pages compose them and the app mounts them. `ScenarioBadge` remains in stats.
+pages compose them and the app mounts them. `features/gadgets/GadgetMetadata`
+shares effect badges, acquisition history and the expandable legend. Its
+presentation helper reads reviewed passive-rule kinds and actual scenario
+controls; conditional effects alone never imply Scenario Preview support.
 `CollectionArtwork` supplies catalog fallbacks and ownership to the generic
 `shared/ui/Artwork`; the latter does not read collection state or call the API.
 
@@ -640,6 +643,14 @@ community-backed policy separately from the immutable imported fact ruleset.
 Maps never affect these calculations.
 
 ## Build recommendations
+
+Unsupported kept or locked gadgets produce named guidance in the editor and in
+the solver's unavailable explanation. Unlocked unsupported gadgets may be removed
+by optimization. These messages do not change eligibility or search mathematics.
+Gadget acquisition is explicit domain/catalog metadata (`GadgetAcquisitionKind`
+and optional event label), persisted as strings by V36 and updated through the
+existing importer. See [gadget clarity review](gadget-clarity-review.md) for the
+117-item artwork/acquisition audit and unresolved ring-capacity compatibility.
 
 `domain/build/recommendation` owns immutable request/catalog/result types, strict
 lexicographic stat comparison, exact `BalancedStage` thresholds, and a bounded deterministic solver. It reuses

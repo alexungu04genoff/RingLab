@@ -25,7 +25,7 @@ export function SiteFooter() {
             RingLab&apos;s catalog and artwork references include the <a href={sonicFandomCrossWorldsUrl} target="_blank" rel="noreferrer">Sonic Fandom Wiki — Sonic Racing: CrossWorlds</a>.
           </p>
           <p>
-            Community reference: <a href={japaneseCrossWorldsWikiUrl} target="_blank" rel="noreferrer">Japanese Sonic Racing: CrossWorlds Wiki</a>.
+            Community data and gadget artwork: <a href={japaneseCrossWorldsWikiUrl} target="_blank" rel="noreferrer">Japanese Sonic Racing: CrossWorlds Wiki</a>. Game artwork belongs to SEGA and the respective rights holders.
           </p>
         </div>
       </details>

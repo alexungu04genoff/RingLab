@@ -33,9 +33,10 @@ it("badges only catalog-supported scenarios, including descriptive events and co
   fireEvent.click(screen.getByRole("button", { name: "Gadgets" }));
   ["Lap", "Water", "Flight", "Form", "Rings", "Event", "Event", null, null, "Lap / Rings"].forEach((label, i) => {
     const card = screen.getByRole("heading", { name: names[i] }).closest("article")!;
-    if (label) expect(within(card).getByText(`Scenario · ${label}`)).toBeTruthy();
-    else expect(within(card).queryByText(/Scenario ·/)).toBeNull();
-    expect(card.querySelectorAll(".scenario-badge").length).toBe(label ? 1 : 0);
+    if (label) expect(within(card).getByText("Scenario modeled")).toBeTruthy();
+    else expect(within(card).queryByText("Scenario modeled")).toBeNull();
+    expect(within(card).getByText("Race condition")).toBeTruthy();
+    expect(card.querySelectorAll(".gadget-effect-scenario").length).toBe(label ? 1 : 0);
   });
   expect(useLoad).toHaveBeenCalledWith("/stats/scenario-rules");
 });
@@ -48,7 +49,7 @@ it("does not claim scenario support when the scenario catalog is unavailable", (
   render(<MemoryRouter><GameData /></MemoryRouter>);
   fireEvent.click(screen.getByRole("button", { name: "Gadgets" }));
   expect(screen.getByRole("heading", { name: "Quick Starter" })).toBeTruthy();
-  expect(screen.queryByText(/Scenario ·/)).toBeNull();
+  expect(screen.getByRole("heading", { name: "Quick Starter" }).closest("article")!.querySelector(".gadget-effect-scenario")).toBeNull();
 });
 
 it("searches every collection tab and links maps to explicit recommendations", () => {
@@ -59,6 +60,7 @@ it("searches every collection tab and links maps to explicit recommendations", (
   const patch = { id: "v", version: "1.4.1", releasedAt: "2026-06-23" };
   vi.mocked(useLoad).mockImplementation(path => ({ loading: false, error: "", data:
     path === "/stats/gadget-rules" ? { ruleset: "test", supportedVersion: "1.4.1", note: "Reviewed subset", gadgets: [] }
+      : path === "/stats/scenario-rules" ? { supportedVersion: "1.4.1", controls: [] }
       : path === "/racers" ? [racer] : path === "/machines" ? [machine] : path === "/gadgets" ? [gadget]
       : path === "/maps" ? [map] : path === "/game-versions" ? [patch] : path === "/machine-parts" ? []
         : { gameVersionId: "v", racers: {}, machines: {}, machineParts: {} },

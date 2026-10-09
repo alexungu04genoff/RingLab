@@ -94,6 +94,7 @@ export function BuildRecommendationDialog({ draft, locks, context, catalog, vers
           ? "Recommend the racer and machine around the gadgets already selected."
           : "May add, remove or replace unlocked gadgets to improve modeled passive stats. Utility, scenario effects and race strategy are not valued."}</p>
       </fieldset>
+      {configuration.gadgetGuidance.notice && <p role="status">{configuration.gadgetGuidance.notice}</p>}
       <RecommendationReference reference={reference} catalog={catalog} passiveReference={passiveReference} hasResult={!!result} />
       {recommendation.busy && <p className="recommendation-activity" role="status">{result ? "Checking your collection before applying…" : "Calculating recommendation…"}</p>}
       {!result ? <RecommendationPriorityControls configuration={configuration} headingId={headingId} />

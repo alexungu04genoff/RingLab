@@ -1,6 +1,7 @@
 import { CollectionArtwork as Artwork } from "../collection/CollectionArtwork";
 import { RacingTypeBadge } from "../../shared/ui/RacingTypeBadge";
 import { GadgetAdjustmentBadges } from "../stats/PassiveStats";
+import { GadgetMetadata } from "../gadgets/GadgetMetadata";
 import { draftSelection, recommendationSlots as slots } from "./recommendation";
 import type { ComponentKey, RecommendationCatalog } from "./recommendation";
 import type { BuildDraft, BuildStatsResult } from "../../shared/types";
@@ -15,6 +16,7 @@ export function SelectionItem({ id, slot, catalog, showType = false }: {
   return <span className={`recommendation-item${gadget ? " recommendation-gadget-item" : ""}`}>{item && <Artwork item={item} category={racer ? "RACER" : gadget ? "GADGET" : "MACHINE"} compact />}
     <span className={showType ? "recommendation-item-copy" : undefined}>
       <span>{item?.name ?? (id ? "Unknown selection" : "Not selected")}</span>
+      {gadget && <GadgetMetadata gadget={gadget} rules={catalog.gadgetRules} scenarios={catalog.scenarioRules} />}
       {showType && (racer || part) && <RacingTypeBadge kind={racer ? "racer" : "machine"}
         type={racer?.racingType ?? part?.racingType ?? null} />}
     </span>

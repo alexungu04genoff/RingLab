@@ -18,7 +18,8 @@ final class CatalogFields {
     return fields("id", p.id(), "source_machine_id", p.sourceMachineId(), "part_type", p.type());
   }
   static Map<String, Object> gadget(Gadget g) {
-    return fields("id", g.id(), "name", g.name(), "description", g.description(), "slot_cost", g.slotCost(), "image_path", g.imagePath());
+    return fields("id", g.id(), "name", g.name(), "description", g.description(), "slot_cost", g.slotCost(), "image_path", g.imagePath(),
+        "acquisition_kind", g.acquisitionKind(), "acquisition_label", g.acquisitionLabel());
   }
   static Map<String, Object> map(RaceMap m) {
     return fields("id", m.id(), "name", m.name(), "category", m.category(), "content_pack", m.contentPack(), "image_path", m.imagePath(), "catalog_order", m.catalogOrder());

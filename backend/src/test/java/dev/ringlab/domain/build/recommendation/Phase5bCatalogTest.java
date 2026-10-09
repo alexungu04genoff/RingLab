@@ -76,7 +76,6 @@ class Phase5bCatalogTest {
       var fields = entry.split("\\|"); var gadget = names.get(fields[0]);
       assertEquals(Integer.valueOf(fields[1]), gadget.slotCost(), gadget.name());
       assertTrue(GadgetPlate.canFit(List.of(gadget.slotCost())));
-      assertNull(gadget.imagePath());
       assertTrue(CollectionExclusions.NONE.gadgetAvailable(gadget.id()));
       var rule = RuleFixtures.snapshot().forGadget(gadget.id()).getFirst();
       assertEquals(fields[2],rule.kind().name(),gadget.name());
@@ -177,6 +176,29 @@ class Phase5bCatalogTest {
     }
   }
 
+  @Test void reportedRingLimitAndFourthChargeSetupRequiresRemovingOrUnlockingUnsupportedKit() {
+    var catalog = catalog();
+    var ids = List.of("130 Ring Limit", "200 Ring Limit", "4th Stage Charge Kit").stream()
+        .map(name -> DATA.gadgets().stream().map(CatalogRow::value)
+            .filter(g -> g.name().equals(name)).findFirst().orElseThrow().id()).toList();
+    var current = new BuildSelection(null, null, null, null, ids);
+    var locked = new BuildSelection(null, null, null, null, List.of(ids.getLast()));
+    assertTrue(GadgetPlate.canFit(ids.stream().map(id -> catalog.gadgets().get(id).slotCost()).toList()));
+    for (var mode : RecommendationMode.values()) {
+      var kept = solve(catalog, request(mode, current, EMPTY, GadgetRecommendationScope.KEEP_CURRENT), CollectionExclusions.NONE);
+      var optimized = solve(catalog, request(mode, current, EMPTY, GadgetRecommendationScope.OPTIMIZE_UNLOCKED), CollectionExclusions.NONE);
+      var required = solve(catalog, request(mode, current, locked, GadgetRecommendationScope.OPTIMIZE_UNLOCKED), CollectionExclusions.NONE);
+      assertEquals(UNAVAILABLE, kept.outcome());
+      assertTrue(kept.reason().contains("4th Stage Charge Kit has an effect RingLab cannot evaluate yet"));
+      assertTrue(kept.reason().contains("Optimize unlocked gadgets"));
+      assertEquals(ESTABLISHED, optimized.outcome());
+      assertFalse(optimized.selection().gadgetIds().contains(ids.getLast()));
+      assertEquals(UNAVAILABLE, required.outcome());
+      assertTrue(required.reason().contains("4th Stage Charge Kit"));
+      assertTrue(required.reason().contains("Unlock or remove"));
+    }
+  }
+
   private static RecommendationCatalog catalog() {
     var version = RuleFixtures.snapshot().version();
     var snapshot = DATA.snapshots().stream().filter(s -> s.versionId().equals(version.id())).findFirst().orElseThrow();
@@ -188,6 +210,7 @@ class Phase5bCatalogTest {
         DATA.racers().stream().map(CatalogRow::value).filter(r -> r.id().equals(AMIGO)).collect(Collectors.toMap(Racer::id,Function.identity())),
         machines,DATA.parts().stream().map(CatalogRow::value).filter(p -> machines.containsKey(p.sourceMachineId())).collect(Collectors.toMap(MachinePart::id,Function.identity())),
         DATA.gadgets().stream().map(CatalogRow::value).filter(g -> g.id().toString().startsWith("84000000-")
+            || g.name().equals("130 Ring Limit")
             || Set.of(SUBSTITUTE,PassiveGadgetRules.id(52),PassiveGadgetRules.id(54)).contains(g.id())).collect(Collectors.toMap(Gadget::id,Function.identity())),
         snapshot.racers().stream().map(CatalogRow::value).collect(Collectors.toMap(GameDataSet.StatRow::itemId,GameDataSet.StatRow::stats)),
         snapshot.parts().stream().map(CatalogRow::value).collect(Collectors.toMap(GameDataSet.StatRow::itemId,GameDataSet.StatRow::stats)),RuleFixtures.snapshot());

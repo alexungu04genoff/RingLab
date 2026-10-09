@@ -80,17 +80,46 @@ beforeEach(() => {
 });
 afterEach(() => { cleanup(); Reflect.deleteProperty(HTMLDialogElement.prototype, "showModal"); Reflect.deleteProperty(HTMLDialogElement.prototype, "close"); });
 const applied = vi.fn();
-function Harness({ patch = "1.4.1", locked = false, initial = draft, versionLoaded = true, referenceStats }: {
+function Harness({ patch = "1.4.1", locked = false, initial = draft, versionLoaded = true, referenceStats, gadgetRules }: {
   patch?: string; locked?: boolean; initial?: BuildDraft; versionLoaded?: boolean; referenceStats?: BuildStatsResult | null;
+  gadgetRules?: RecommendationCatalog["gadgetRules"];
 }) {
   const [open, setOpen] = useState(false); const trigger = useRef<HTMLButtonElement>(null);
   return <><button ref={trigger} onClick={() => setOpen(true)}>Recommend</button>{open && <BuildRecommendationDialog draft={initial}
     locks={locked ? { ...emptyLocks(), racerId: "r", tirePartId: "t", gadgetIds: ["a"] } : emptyLocks()} context="editor"
-    catalog={catalog} version={versionLoaded ? { id: "patch", version: patch, releasedAt: "2026-01-01" } : null} returnFocus={trigger.current}
+    catalog={{ ...catalog, gadgetRules }} version={versionLoaded ? { id: "patch", version: patch, releasedAt: "2026-01-01" } : null} returnFocus={trigger.current}
     referenceStats={referenceStats} onClose={() => setOpen(false)} onApply={applied} />}</>;
 }
 function open() { fireEvent.click(screen.getByRole("button", { name: "Recommend" })); }
 function calculate() { fireEvent.click(screen.getByRole("button", { name: "Calculate recommendation" })); }
+
+it("updates named unsupported guidance when gadget scope changes and keeps locked effects blocked", () => {
+  const gadgetRules: RecommendationCatalog["gadgetRules"] = { ruleset: "reviewed", supportedVersion: "1.4.1", note: "",
+    gadgets: [{ gadgetId: "a", effects: [{ effectId: "unknown", kind: "UNSUPPORTED", label: "Unreviewed effect",
+      subject: "ANY", requiredType: null, matching: zeroStats, nonMatching: zeroStats, explanation: "Not reviewed", sources: [], stackingGroup: null }] }] };
+  const unsupported: BuildStatsResult = { ...loadedStats, passive: { ...loadedStats.passive!, coverage: "PARTIAL", effects: [{
+    gadgetId: "a", gadgetName: "Gadget A", effectId: "unknown", label: "Unreviewed effect", status: "UNSUPPORTED",
+    adjustment: zeroStats, explanation: "Not reviewed", sources: [],
+  }] } };
+  const view = render(<Harness referenceStats={unsupported} gadgetRules={gadgetRules} />); open();
+  expect(screen.getByText(/Gadget A has an effect RingLab cannot evaluate yet. Remove it/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect(screen.queryByText(/Remove it or choose/)).toBeNull();
+  expect(screen.getByText(/optimizer may remove these unlocked gadgets/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+  fireEvent.click(screen.getByRole("radio", { name: "Keep current" }));
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
+  view.unmount(); render(<Harness locked referenceStats={unsupported} gadgetRules={gadgetRules} />); open();
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect(screen.getByText(/Gadget A has an effect RingLab cannot evaluate yet. Unlock or remove/)).toBeTruthy();
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(true);
+  expect(api).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button", { name: "Close recommendation" }));
+  cleanup(); render(<Harness referenceStats={unsupported} gadgetRules={gadgetRules} />); open();
+  fireEvent.click(screen.getByRole("radio", { name: "Optimize unlocked gadgets" }));
+  expect((screen.getByRole("button", { name: "Calculate recommendation" }) as HTMLButtonElement).disabled).toBe(false);
+});
 
 it.each([
   ["ESTABLISHED", "Recommended setup", "proved this choice", true],

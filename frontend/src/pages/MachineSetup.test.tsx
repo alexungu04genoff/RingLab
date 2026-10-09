@@ -37,6 +37,8 @@ beforeEach(() => {
           part("REAR", "Speedster Lightning"), part("TIRE", "Speedster Lightning")]
       : path === "/racers" ? [stock.racer]
       : path === "/gadgets" ? stock.gadgets
+      : path === "/stats/gadget-rules" ? { gadgets: [] }
+      : path === "/stats/scenario-rules" ? { controls: [] }
       : path === "/maps" ? []
       : path === "/game-versions" ? [{ id: "version", version: "1.4.1", releasedAt: "2026-06-23" }]
       : path.includes("/comments") ? { items: [], total: 0, page: 0, size: 20 }
@@ -233,10 +235,11 @@ it("renders accessible older, latest-known, and unspecified patch card states", 
 it("warns on older build details but not latest-known or unspecified versions", () => {
   const latest = { id: "version", version: "1.4.1", releasedAt: "2026-06-23" };
   const older = { id: "older", version: "1.3.1", releasedAt: "2026-03-18" };
+  const defaultLoad = vi.mocked(useLoad).getMockImplementation()!;
   vi.mocked(useLoad).mockImplementation((path: string) => {
     if (path === "/game-versions") return { data: [latest, older], error: "", loading: false };
     if (path.includes("/comments")) return { data: { items: [], total: 0, page: 0, size: 20 }, error: "", loading: false };
-    return { data: build, error: "", loading: false };
+    return defaultLoad(path);
   });
   build = { ...stock, gameVersion: older };
   expect(renderToStaticMarkup(<MemoryRouter><BuildDetails /></MemoryRouter>))

@@ -16,6 +16,7 @@ vi.mock("../../shared/hooks/useLoad", () => ({ useLoad: (path: string) => ({ loa
   : path === "/gadgets" ? [{ id: "g", name: "Demo gadget", description: "A useful gadget.", slotCost: 1, imagePath: null }]
   : path === "/game-versions" ? [{ id: "v", version: "1.4.1", releasedAt: "2026-06-23" }]
   : path.startsWith("/stats/catalog") ? { gameVersionId: "v", racers: {}, machines: {}, machineParts: {} }
+  : path === "/stats/scenario-rules" ? { controls: [] }
   : path === "/stats/gadget-rules" ? { ruleset: "test", supportedVersion: "1.4.1", note: "Test", gadgets: [] } : [] }) }));
 const empty: CollectionExclusions = { racers: [], machines: [], gadgets: [] };
 const racer = { id: "r", name: "Demo racer", racingType: "SPEED" as const, imagePath: "/assets/racers/demo.png" };

@@ -77,6 +77,8 @@ export interface Gadget {
   description: string | null;
   slotCost: number | null;
   imagePath: string | null;
+  acquisitionKind?: "STANDARD_UNLOCK" | "FESTIVAL_REWARD" | "UNKNOWN";
+  acquisitionLabel?: string | null;
 }
 export interface RaceMap {
   id: string;

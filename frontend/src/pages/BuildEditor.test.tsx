@@ -36,6 +36,8 @@ beforeEach(() => {
     if (path === "/machine-parts") return [buildA.frontPart, buildA.rearPart, buildA.tirePart];
     if (path === "/game-versions") return [latestVersion];
     if (path === "/maps") return [map];
+    if (path === "/stats/gadget-rules") return { ruleset: "test", supportedVersion: "1.4.1", note: "Reviewed effects", gadgets: [] };
+    if (path === "/stats/scenario-rules") return { supportedVersion: "1.4.1", controls: [] };
     return [];
   });
 });

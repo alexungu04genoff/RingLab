@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { unsupportedGadgetGuidance } from "../gadgets/gadgetPresentation";
 import { defaultPriorities, lockTypeConflict, validPriorities, validBalanced, recommendationIdentity } from "./recommendation";
 import type { RecommendationSelection, RecommendationCatalog } from "./recommendation";
 import type { BaseStats, BuildDraft, BuildStatsResult, GameVersion, RacingType } from "../../shared/types";
@@ -31,6 +32,8 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
   const activePriorities = mode === "BALANCED" ? priorities.filter(priority => !ignored.includes(priority)) : priorities;
   const identity = JSON.stringify([mode, machineType, priorities, ignored, losses, gadgetScope]);
   const conflict = lockTypeConflict(machineType, locks, catalog.parts);
+  const gadgetGuidance = unsupportedGadgetGuidance(reference.gadgetIds, locks.gadgetIds, gadgetScope,
+    catalog.gadgets, catalog.gadgetRules);
   let calculationBlocker = "";
   if (referenceIdentity !== recommendationIdentity(draft, locks))
     calculationBlocker = "Your draft or locks changed after this popup opened. Close and reopen it to use your current setup.";
@@ -44,11 +47,13 @@ export function useRecommendationConfiguration(draft: BuildDraft, locks: Recomme
     calculationBlocker = "Choose a recommendation machine type.";
   else if (conflict)
     calculationBlocker = conflict;
+  else if (gadgetGuidance.blocker)
+    calculationBlocker = gadgetGuidance.blocker;
   else if (!validPriorities(priorities))
     calculationBlocker = "Rank all five stats before calculating.";
   else if (mode === "BALANCED" && !validBalanced(activePriorities, ignored, losses))
     calculationBlocker = "Enter a maximum sacrifice from 0 to less than 100 for each active stat, or choose Ignore.";
   return { machineType, setMachineType, priorities, setPriorities, mode, setMode, gadgetScope, setGadgetScope, ignored, setIgnored,
     losses, setLosses, reference, referenceVersion, referenceIdentity, passiveReference, referenceValues,
-    activePriorities, identity, calculationBlocker };
+    activePriorities, identity, calculationBlocker, gadgetGuidance };
 }

@@ -12,7 +12,8 @@ import { browseOrigin } from "./buildNavigation";
 import { CompareToggle } from "./BuildComparison";
 import { SaveBuildButton } from "../saved-builds/SavedBuilds";
 import { MapRecommendationControl } from "../maps/MapRecommendations";
-import type { Build, BuildStatsResult, Gadget, GameVersion, MachinePart, PassiveStatsResult } from "../../shared/types";
+import { GadgetMetadata } from "../gadgets/GadgetMetadata";
+import type { Build, BuildStatsResult, Gadget, GadgetRulesCatalog, ScenarioRulesCatalog, GameVersion, MachinePart, PassiveStatsResult } from "../../shared/types";
 
 export type PatchAge = "latest" | "older" | "unspecified" | "unknown";
 const CARD_GADGET_LIMIT = 6;
@@ -45,7 +46,9 @@ function BuildPartIcon({ part, label, abbreviation }: {
   );
 }
 
-export function BuildGadgetIcon({ gadget, passive }: { gadget: Gadget; passive?: PassiveStatsResult }) {
+export function BuildGadgetIcon({ gadget, passive, rules, scenarios }: {
+  gadget: Gadget; passive?: PassiveStatsResult; rules?: GadgetRulesCatalog; scenarios?: ScenarioRulesCatalog;
+}) {
   const supported = passive && !["UNSUPPORTED_VERSION", "INVALID_LOADOUT"].includes(passive.coverage);
   const applied = supported ? passive.effects.filter(effect => effect.gadgetId === gadget.id && effect.status === "APPLIED") : [];
   const appliedText = applied.map(effect => adjustmentSummary(effect.adjustment)).join("; ");
@@ -55,6 +58,7 @@ export function BuildGadgetIcon({ gadget, passive }: { gadget: Gadget; passive?:
       <Artwork item={gadget} compact />
       <span role="tooltip">
         <strong>{gadget.name}</strong>
+        <GadgetMetadata gadget={gadget} rules={rules} scenarios={scenarios} />
         {applied.length > 0 && <><span>Applied to this setup</span><GadgetAdjustmentBadges gadgetId={gadget.id} value={passive} /></>}
         {passive && (!supported || passive.coverage === "PARTIAL") && <span>{coverageLabel(passive)}</span>}
         {gadget.description && <span>{gadget.description}</span>}

@@ -26,9 +26,10 @@ public final class GameDataCsvReader {
             r.text("image_path", 255, true)), errors);
     var parts = rows(root, "catalog/machine-parts.csv", "id,source_machine_id,part_type", r ->
         new MachinePart(r.uuid("id"), r.uuid("source_machine_id"), r.type("part_type", MachinePartType.class, false)), errors);
-    var gadgets = rows(root, "catalog/gadgets.csv", "id,name,description,slot_cost,image_path", r ->
+    var gadgets = rows(root, "catalog/gadgets.csv", "id,name,description,slot_cost,image_path,acquisition_kind,acquisition_label", r ->
         new Gadget(r.uuid("id"), r.text("name", 100, false), r.text("description", Integer.MAX_VALUE, true),
-            r.integer("slot_cost", true), r.text("image_path", 255, true)), errors);
+            r.integer("slot_cost", true), r.text("image_path", 255, true),
+            r.type("acquisition_kind", GadgetAcquisitionKind.class, false), r.text("acquisition_label", 255, true)), errors);
     var maps = rows(root, "catalog/maps.csv", "id,name,category,content_pack,image_path,catalog_order", r ->
         new RaceMap(r.uuid("id"), r.text("name", 120, false), r.type("category", RaceMap.Category.class, false),
             r.text("content_pack", 120, true), r.text("image_path", 255, true), r.integer("catalog_order", false)), errors);
