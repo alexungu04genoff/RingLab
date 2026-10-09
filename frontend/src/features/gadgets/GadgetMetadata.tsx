@@ -1,18 +1,19 @@
 import type { Gadget, GadgetRulesCatalog, ScenarioRulesCatalog } from "../../shared/types";
-import { acquisitionDescription, effectBadges, gadgetEffectKinds } from "./gadgetPresentation";
+import { acquisitionDescription, effectBadges, gadgetPresentation } from "./gadgetPresentation";
 import "../../styles/gadget-metadata.css";
 
 export function GadgetMetadata({ gadget, rules, scenarios }: {
   gadget: Gadget; rules?: GadgetRulesCatalog; scenarios?: ScenarioRulesCatalog;
 }) {
-  const kinds = gadgetEffectKinds(gadget.id, rules, scenarios);
-  if (kinds.length === 0 && gadget.acquisitionKind !== "FESTIVAL_REWARD") return null;
+  const metadata = gadgetPresentation(gadget, rules, scenarios);
+  const kinds = metadata.effectKinds;
+  if (kinds.length === 0 && metadata.acquisitionKind !== "FESTIVAL_REWARD") return null;
   return <span className="gadget-metadata">
     {kinds.map(kind => <span key={kind}
       className={`gadget-effect-badge gadget-effect-${kind.toLowerCase()}`} title={effectBadges[kind].explanation}>
       {effectBadges[kind].label}
     </span>)}
-    {gadget.acquisitionKind === "FESTIVAL_REWARD" && <span className="gadget-effect-badge gadget-festival-badge"
+    {metadata.acquisitionKind === "FESTIVAL_REWARD" && <span className="gadget-effect-badge gadget-festival-badge"
       title={acquisitionDescription(gadget)} aria-label={`Festival reward. ${acquisitionDescription(gadget)}`}>Festival reward</span>}
   </span>;
 }

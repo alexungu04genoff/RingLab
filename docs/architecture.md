@@ -726,6 +726,15 @@ error handling. Its feature-scoped catalog hook wraps the existing independent
 `useLoad` calls. Essentials, machine setup, gadget selection and preview components
 live in `features/builds/editor`; gadget search and reorder drag state stay with their
 sections. The existing map picker and stats/scenario components are reused.
+The gadget selector keeps text search and structured filters locally: OR within
+slot/effect/type/acquisition groups, AND between groups and search. Shared gadget
+presentation metadata derives effect kinds, actual scenario controls and explicit
+type requirements from reviewed rules. Selected gadgets remain visible in draft
+order outside the filtered available results; the displayed count includes both
+groups. Clear filters preserves search, selections and locks. Any leaves racing
+types unrestricted; unknown acquisition is a separate option. The filter disclosure
+starts open on desktop/tablet and collapsed on mobile. No filter state is persisted
+or sent to a backend endpoint.
 `ExploreFiltersSection` presents controlled filters while Explore owns URL state,
 preferences and requests. `BuildCommentsSection` owns comment composition and
 presentation; BuildDetails retains concurrent reads, pagination state and the shared

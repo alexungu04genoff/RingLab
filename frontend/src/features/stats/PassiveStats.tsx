@@ -3,6 +3,7 @@ import type { BaseStats, GadgetRulesCatalog, PassiveStatsResult, RacingType } fr
 import { statNames, type StatName } from "./stats";
 import { StatBar, StatLegend } from "../../shared/ui/StatBar";
 import { InfoPopover } from "../../shared/ui/InfoPopover";
+import { gadgetTypeConditions } from "../gadgets/gadgetPresentation";
 
 
 export function signedPoints(value: number | null) { return value == null ? "Unknown" : `${value >= 0 ? "+" : "−"}${Math.abs(value)}`; }
@@ -79,8 +80,8 @@ export function GadgetCatalogAdjustmentBadges({ gadgetId, catalog, selection }: 
 export function GadgetCatalogTypeLabels({ gadgetId, catalog, selection }: {
   gadgetId: string; catalog?: GadgetRulesCatalog; selection?: GadgetTypeSelection;
 }) {
-  const labels = (catalog?.gadgets ?? []).find(gadget => gadget.gadgetId === gadgetId)?.effects
-    .filter(effect => effect.kind === "PASSIVE" && effect.subject !== "ANY" && effect.requiredType)
+  const labels = gadgetTypeConditions(gadgetId, catalog)
+    .filter(effect => effect.kind === "PASSIVE")
     .map(effect => ({ type: effect.requiredType!, unmet: unmetTypeCondition(effect, selection), label: `${effect.requiredType![0] + effect.requiredType!.slice(1).toLowerCase()} ${effect.subject.toLowerCase()}` }))
     .filter((entry, index, entries) => entries.findIndex(candidate => candidate.label === entry.label) === index) ?? [];
   return labels.length > 0 ? <span className="gadget-type-labels" aria-label="Gadget type conditions">

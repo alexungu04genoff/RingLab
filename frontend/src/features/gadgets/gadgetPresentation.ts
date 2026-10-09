@@ -1,4 +1,4 @@
-import type { Gadget, GadgetRulesCatalog, ScenarioRulesCatalog } from "../../shared/types";
+import type { Gadget, GadgetRulesCatalog, RacingType, ScenarioRulesCatalog } from "../../shared/types";
 
 export const effectBadges = {
   PASSIVE: { label: "Passive stats", explanation: "Counted by recommendations when supported." },
@@ -7,6 +7,24 @@ export const effectBadges = {
   UNSUPPORTED: { label: "Effect unsupported", explanation: "The gadget exists, but RingLab does not yet claim its complete effect." },
   SCENARIO: { label: "Scenario modeled", explanation: "Can be inspected with Scenario Preview." },
 } as const;
+
+export type GadgetEffectKind = keyof typeof effectBadges;
+
+export function gadgetTypeConditions(id: string, rules?: GadgetRulesCatalog) {
+  return (rules?.gadgets.find(gadget => gadget.gadgetId === id)?.effects ?? [])
+    .filter(effect => effect.subject !== "ANY" && effect.requiredType !== null);
+}
+
+export function gadgetPresentation(gadget: Gadget, rules?: GadgetRulesCatalog, scenarios?: ScenarioRulesCatalog) {
+  const effectKinds = gadgetEffectKinds(gadget.id, rules, scenarios);
+  return {
+    slotCost: gadget.slotCost,
+    effectKinds,
+    appliesTo: [...new Set(gadgetTypeConditions(gadget.id, rules).map(effect => effect.requiredType as RacingType))],
+    acquisitionKind: gadget.acquisitionKind ?? "UNKNOWN",
+    acquisitionLabel: gadget.acquisitionLabel ?? null,
+  };
+}
 
 export function gadgetEffectKinds(id: string, rules?: GadgetRulesCatalog, scenarios?: ScenarioRulesCatalog) {
   const kinds = new Set<keyof typeof effectBadges>(rules?.gadgets.find(gadget => gadget.gadgetId === id)?.effects.map(effect => effect.kind));
