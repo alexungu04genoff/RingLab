@@ -107,7 +107,8 @@
 .gadget-adjustment.bonus { background:color-mix(in srgb, var(--stat-color) 12%, transparent);
   box-shadow:0 0 6px color-mix(in srgb, var(--stat-color) 25%, transparent); }
 .gadget-adjustment.penalty { border-style:dashed; }
-.gadget-condition-unmet { filter:saturate(.1); }
+.gadget-condition-unmet { opacity:.72; }
+.gadget-condition-unmet .gadget-adjustment { box-shadow:none; background:transparent; }
 .gadget-adjustment.unresolved { border-color:#a97a31; color:#f5d487; background:#2f281a; box-shadow:none; }
 .gadget-selection-feedback { align-items:center; }
 .gadget-selection-feedback > .gadget-adjustments { margin-top:0; }
