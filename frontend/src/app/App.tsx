@@ -32,14 +32,15 @@ export function App() {
             <NavLink to="/" end>
               <CompassIcon /> Explore
             </NavLink>
-            <NavLink to="/game-data" aria-label="Game Collection"><LibraryIcon /> Game<span className="mobile-optional"> Collection</span></NavLink>
+            <NavLink to="/game-data" aria-label="Game Collection"><LibraryIcon /><span>Game<span className="mobile-optional"> Collection</span></span></NavLink>
             <NavLink className="nav-guide" to="/guide"><GuideIcon /> Guide</NavLink>
             <NavLink to="/my-builds"><HammerIcon /> My Builds</NavLink>
-            <NavLink to="/saved-builds" aria-label="Saved Builds"><BookmarkIcon /> Saved<span className="mobile-optional"> Builds</span></NavLink>
+            <NavLink to="/saved-builds" aria-label="Saved Builds"><BookmarkIcon /><span>Saved<span className="mobile-optional"> Builds</span></span></NavLink>
           </nav>
           <div className="account">
             <Link className="button primary" to="/builds/new" aria-label="Create build">
-              ＋ Create<span className="mobile-optional"> build</span>
+              <span aria-hidden="true">＋</span>
+              <span>Create<span className="mobile-optional"> build</span></span>
             </Link>
             {loading ? (
               <span>Loading…</span>
@@ -54,7 +55,7 @@ export function App() {
               <>
                 <Link className="account-login" to="/login">Log in</Link>
                 <Link className="button primary" to="/register" aria-label="Join the grid">
-                  Join<span className="mobile-optional"> the grid</span>
+                  <span>Join<span className="mobile-optional"> the grid</span></span>
                 </Link>
               </>
             )}
