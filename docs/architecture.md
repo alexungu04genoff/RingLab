@@ -39,6 +39,17 @@ queries retain `GameDataRepository`/`BaseStatsRepository` and PostgreSQL. The
 canonical files, conservative update policy, approval token and operation commands
 are documented in [game-data/README.md](../game-data/README.md).
 
+Phase D adds a separate, explicitly invoked `RegistryComparisonMain`. Its inbound
+command calls `CompareRegistryUseCase`/`RegistryComparisonService`, which depend on
+the read-only `RegistryPublicationSource` and `GameDataSnapshotReader` output ports.
+`adapter/out/registry` verifies the frozen HTTP contract before returning lossless
+JDK publication records. A separate projection reuses the import validator/planner;
+the existing JDBC read operation supplies a repeatable-read snapshot and rolls back.
+The report retains provenance and explicit gaps that PostgreSQL cannot represent.
+There is no APPLY capability, startup hook, normal-request dependency, activation,
+schema migration or calculation permission change. See
+[Registry comparison](registry-comparison.md) for commands, digest meanings and gaps.
+
 Rule facts use the same importer and transaction through `GameDataRuleSet` rows.
 The bounded [V35 correction](game-data-phase5b.md) mirrors approved canonical
 changes without widening ordinary import permissions. Catalog identities may

@@ -1,0 +1,3 @@
+# Frozen Registry artifacts must retain their upstream bytes on every platform.
+backend/src/main/resources/registry/v1/*.json text eol=lf
+backend/src/test/resources/registry/*.json -text

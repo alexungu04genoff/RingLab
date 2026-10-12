@@ -135,6 +135,11 @@ rules or recommendations for that patch; reviewed-version permissions remain Jav
 
 ## Local commands (PowerShell, repository root)
 
+For Phase D's separate, strictly read-only HTTP consumer, see
+[Registry comparison](../docs/registry-comparison.md). It validates and compares a
+published Registry revision against PostgreSQL; it never invokes this importer's
+APPLY operation and does not supply an approval token.
+
 Build the backend artifact after changing Java:
 
 ```powershell

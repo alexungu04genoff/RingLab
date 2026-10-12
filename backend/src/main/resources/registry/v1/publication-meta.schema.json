@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ringlabgarage.com/contracts/game-data/v1/publication-meta.schema.json",
+  "title": "Publication metadata v1",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "revision": {
+      "$ref": "./publication.schema.json#/$defs/revision"
+    },
+    "parentRevision": {
+      "anyOf": [
+        {
+          "$ref": "./publication.schema.json#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "publishedAt": {
+      "$ref": "./publication.schema.json#/$defs/timestamp"
+    },
+    "publishedBy": {
+      "$ref": "./publication.schema.json#/$defs/publisher"
+    },
+    "changeSummary": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "checksum": {
+      "$ref": "./publication.schema.json#/$defs/sha256"
+    },
+    "datasetFingerprint": {
+      "$ref": "./publication.schema.json#/$defs/sha256"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "revision",
+    "parentRevision",
+    "publishedAt",
+    "publishedBy",
+    "changeSummary",
+    "checksum",
+    "datasetFingerprint"
+  ],
+  "additionalProperties": false
+}

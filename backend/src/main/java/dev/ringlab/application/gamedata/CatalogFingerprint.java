@@ -9,6 +9,15 @@ import java.util.*;
 import java.util.function.Function;
 
 final class CatalogFingerprint {
+  /** Comparison-only digest, deliberately domain-separated from the PLAN/APPLY approval token. */
+  static String snapshot(GameDataSet data) {
+    try {
+      var digest = MessageDigest.getInstance("SHA-256");
+      value(digest, "ringlab-comparison-snapshot-v1");
+      dataset(digest, data);
+      return HexFormat.of().formatHex(digest.digest());
+    } catch (NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
+  }
   static String approval(GameDataSet current, GameDataSet desired) {
     try {
       var digest = MessageDigest.getInstance("SHA-256");

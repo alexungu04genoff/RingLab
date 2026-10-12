@@ -1,0 +1,1045 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ringlabgarage.com/contracts/game-data/v1/publication.schema.json",
+  "title": "RingLab Game Data Publication v1",
+  "description": "Offline Phase B contract. The $id is a stable identifier, not a deployed URL. See contract.md for normative semantic validation.",
+  "type": "object",
+  "properties": {
+    "schemaVersion": {
+      "const": "1.0.0"
+    },
+    "revision": {
+      "$ref": "#/$defs/revision"
+    },
+    "parentRevision": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/revision"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "publishedAt": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "publishedBy": {
+      "$ref": "#/$defs/publisher"
+    },
+    "changeSummary": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "checksum": {
+      "$ref": "#/$defs/sha256"
+    },
+    "dataset": {
+      "$ref": "#/$defs/dataset"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "revision",
+    "parentRevision",
+    "publishedAt",
+    "publishedBy",
+    "changeSummary",
+    "checksum",
+    "dataset"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(?![\\s\\S])",
+      "format": "uuid"
+    },
+    "decimal": {
+      "type": "string",
+      "pattern": "^(?!-0(?![\\s\\S]))-?(0|[1-9][0-9]*)(\\.[0-9]*[1-9])?(?![\\s\\S])",
+      "description": "Exact stat points in normalized plain decimal notation; never a JSON number."
+    },
+    "assetPath": {
+      "type": "string",
+      "pattern": "^/assets/[A-Za-z0-9/_-]+\\.(png|webp|jpg|jpeg|svg)(?![\\s\\S])"
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "pattern": "^https?://"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}(?![\\s\\S])"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z(?![\\s\\S])"
+    },
+    "status": {
+      "enum": [
+        "REVIEWED_SOURCE",
+        "ASSUMED",
+        "DERIVED",
+        "HISTORICAL_PLACEHOLDER",
+        "CONFLICTING",
+        "UNKNOWN"
+      ]
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "url": {
+          "$ref": "#/$defs/url"
+        },
+        "kind": {
+          "enum": [
+            "OFFICIAL",
+            "COMMUNITY",
+            "REVIEW_LEDGER"
+          ]
+        },
+        "locator": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "url",
+        "kind",
+        "locator"
+      ],
+      "additionalProperties": false
+    },
+    "claim": {
+      "type": "object",
+      "properties": {
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "\\S"
+          },
+          "minItems": 1
+        },
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/evidence"
+          },
+          "minItems": 0
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "fields",
+        "status",
+        "evidence",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/status"
+        },
+        "mapping": {
+          "enum": [
+            "COMPLETE",
+            "INCOMPLETE"
+          ]
+        },
+        "claims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/claim"
+          },
+          "minItems": 0
+        },
+        "note": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "status",
+        "mapping",
+        "claims",
+        "note"
+      ],
+      "additionalProperties": false
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceleration": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "handling": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "power": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "boost": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/decimal"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "speed",
+        "acceleration",
+        "handling",
+        "power",
+        "boost"
+      ],
+      "additionalProperties": false
+    },
+    "knownStats": {
+      "type": "object",
+      "properties": {
+        "speed": {
+          "$ref": "#/$defs/decimal"
+        },
+        "acceleration": {
+          "$ref": "#/$defs/decimal"
+        },
+        "handling": {
+          "$ref": "#/$defs/decimal"
+        },
+        "power": {
+          "$ref": "#/$defs/decimal"
+        },
+        "boost": {
+          "$ref": "#/$defs/decimal"
+        }
+      },
+      "required": [
+        "speed",
+        "acceleration",
+        "handling",
+        "power",
+        "boost"
+      ],
+      "additionalProperties": false
+    },
+    "racer": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "racingType": {
+          "anyOf": [
+            {
+              "enum": [
+                "SPEED",
+                "ACCELERATION",
+                "HANDLING",
+                "POWER",
+                "BOOST"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imagePath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/assetPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "racingType",
+        "imagePath",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "machine": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "racingType": {
+          "enum": [
+            "SPEED",
+            "ACCELERATION",
+            "HANDLING",
+            "POWER",
+            "BOOST"
+          ]
+        },
+        "imagePath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/assetPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "racingType",
+        "imagePath",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "machinePart": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "sourceMachineId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "partType": {
+          "enum": [
+            "FRONT",
+            "REAR",
+            "TIRE"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "sourceMachineId",
+        "partType",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "gadget": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "description": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "slotCost": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imagePath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/assetPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acquisitionKind": {
+          "enum": [
+            "STANDARD_UNLOCK",
+            "FESTIVAL_REWARD",
+            "UNKNOWN"
+          ]
+        },
+        "acquisitionLabel": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "description",
+        "slotCost",
+        "imagePath",
+        "acquisitionKind",
+        "acquisitionLabel",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "map": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "category": {
+          "enum": [
+            "MAIN_COURSE",
+            "CROSSWORLD"
+          ]
+        },
+        "contentPack": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "imagePath": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/assetPath"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "catalogOrder": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "category",
+        "contentPack",
+        "imagePath",
+        "catalogOrder",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "gameVersion": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*(?![\\s\\S])",
+          "maxLength": 32
+        },
+        "releasedAt": {
+          "type": "string",
+          "format": "date",
+          "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}(?![\\s\\S])"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "releasedAt",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "racerStats": {
+      "type": "object",
+      "properties": {
+        "racerId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "stats": {
+          "$ref": "#/$defs/stats"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "racerId",
+        "stats",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "machinePartStats": {
+      "type": "object",
+      "properties": {
+        "machinePartId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "stats": {
+          "$ref": "#/$defs/stats"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "machinePartId",
+        "stats",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "missingRacer": {
+      "type": "object",
+      "properties": {
+        "racerId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "racerId",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "missingMachinePart": {
+      "type": "object",
+      "properties": {
+        "machinePartId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "machinePartId",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "statSnapshot": {
+      "type": "object",
+      "properties": {
+        "gameVersionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "racers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/racerStats"
+          },
+          "minItems": 0
+        },
+        "machineParts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/machinePartStats"
+          },
+          "minItems": 0
+        },
+        "missingRacers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/missingRacer"
+          },
+          "minItems": 0
+        },
+        "missingMachineParts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/missingMachinePart"
+          },
+          "minItems": 0
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "gameVersionId",
+        "racers",
+        "machineParts",
+        "missingRacers",
+        "missingMachineParts",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "effectId": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9-]*(?![\\s\\S])",
+      "maxLength": 80
+    },
+    "passiveRule": {
+      "type": "object",
+      "properties": {
+        "gadgetId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "effectId": {
+          "$ref": "#/$defs/effectId"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "kind": {
+          "enum": [
+            "PASSIVE",
+            "CONDITIONAL",
+            "NON_STAT",
+            "UNSUPPORTED"
+          ]
+        },
+        "subject": {
+          "enum": [
+            "ANY",
+            "MACHINE",
+            "RACER"
+          ]
+        },
+        "requiredRacingType": {
+          "anyOf": [
+            {
+              "enum": [
+                "SPEED",
+                "ACCELERATION",
+                "HANDLING",
+                "POWER",
+                "BOOST"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "matching": {
+          "$ref": "#/$defs/knownStats"
+        },
+        "nonMatching": {
+          "$ref": "#/$defs/knownStats"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "stackingGroup": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "pattern": "\\S"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "scenarioStatPotential": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "gadgetId",
+        "effectId",
+        "position",
+        "kind",
+        "subject",
+        "requiredRacingType",
+        "matching",
+        "nonMatching",
+        "label",
+        "explanation",
+        "stackingGroup",
+        "scenarioStatPotential",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "scenarioRule": {
+      "type": "object",
+      "properties": {
+        "gadgetId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "effectId": {
+          "$ref": "#/$defs/effectId"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "condition": {
+          "enum": [
+            "LAP_ONE",
+            "LAP_THREE",
+            "WATER",
+            "FLIGHT",
+            "TRANSFORMED",
+            "HAS_RINGS",
+            "LANDING_BOOST",
+            "FINISH_ZONE"
+          ]
+        },
+        "adjustment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/knownStats"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "explanation": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "gadgetId",
+        "effectId",
+        "position",
+        "condition",
+        "adjustment",
+        "label",
+        "explanation",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "ruleSource": {
+      "type": "object",
+      "properties": {
+        "effectType": {
+          "enum": [
+            "PASSIVE",
+            "SCENARIO"
+          ]
+        },
+        "gadgetId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "effectId": {
+          "$ref": "#/$defs/effectId"
+        },
+        "position": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "url": {
+          "$ref": "#/$defs/url"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "effectType",
+        "gadgetId",
+        "effectId",
+        "position",
+        "url",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "ruleSet": {
+      "type": "object",
+      "properties": {
+        "gameVersionId": {
+          "$ref": "#/$defs/uuid"
+        },
+        "passiveRuleset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "scenarioRuleset": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        },
+        "passiveRules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/passiveRule"
+          },
+          "minItems": 1
+        },
+        "scenarioRules": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/scenarioRule"
+          },
+          "minItems": 0
+        },
+        "ruleSources": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ruleSource"
+          },
+          "minItems": 0
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "gameVersionId",
+        "passiveRuleset",
+        "scenarioRuleset",
+        "passiveRules",
+        "scenarioRules",
+        "ruleSources",
+        "provenance"
+      ],
+      "additionalProperties": false
+    },
+    "dataset": {
+      "type": "object",
+      "properties": {
+        "racers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/racer"
+          },
+          "minItems": 0
+        },
+        "machines": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/machine"
+          },
+          "minItems": 0
+        },
+        "machineParts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/machinePart"
+          },
+          "minItems": 0
+        },
+        "gadgets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gadget"
+          },
+          "minItems": 0
+        },
+        "maps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/map"
+          },
+          "minItems": 0
+        },
+        "gameVersions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/gameVersion"
+          },
+          "minItems": 0
+        },
+        "statSnapshots": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statSnapshot"
+          },
+          "minItems": 0
+        },
+        "ruleSets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ruleSet"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "racers",
+        "machines",
+        "machineParts",
+        "gadgets",
+        "maps",
+        "gameVersions",
+        "statSnapshots",
+        "ruleSets"
+      ],
+      "additionalProperties": false
+    },
+    "publisher": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\S"
+        }
+      },
+      "required": [
+        "id",
+        "displayName"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

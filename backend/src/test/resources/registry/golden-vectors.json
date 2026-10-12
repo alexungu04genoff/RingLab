@@ -1,0 +1,80 @@
+[
+  {
+    "name": "empty-object",
+    "value": {},
+    "canonical": "{}",
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "name": "key-order-and-literals",
+    "value": {
+      "z": null,
+      "b": false,
+      "a": true,
+      "count": 9007199254740991
+    },
+    "canonical": "{\"a\":true,\"b\":false,\"count\":9007199254740991,\"z\":null}",
+    "sha256": "4acebd80327dd5ed556e50adc0fd8f2844d4e9d6fe48a6a508a36ddd621c0bf5"
+  },
+  {
+    "name": "utf16-key-order",
+    "value": {
+      "1": "one",
+      "€": "euro",
+      "😀": "emoji",
+      "דּ": "hebrew",
+      "\r": "control",
+      "ö": "umlaut",
+      "": "control-80"
+    },
+    "canonical": "{\"\\r\":\"control\",\"1\":\"one\",\"\":\"control-80\",\"ö\":\"umlaut\",\"€\":\"euro\",\"😀\":\"emoji\",\"דּ\":\"hebrew\"}",
+    "sha256": "d1936a7f2a908c24f8c4e2b8dea00747232fe6b019027b570b0938bc0c95a321"
+  },
+  {
+    "name": "escaping-and-unicode",
+    "value": {
+      "text": "€$\u000f\nA'B\"\\/\b\t\f\r",
+      "composed": "é",
+      "decomposed": "é"
+    },
+    "canonical": "{\"composed\":\"é\",\"decomposed\":\"é\",\"text\":\"€$\\u000f\\nA'B\\\"\\\\/\\b\\t\\f\\r\"}",
+    "sha256": "6ac19d9e3acb2b7976e535c543c4fc8f04facf85092d1702e6d726c78799a763"
+  },
+  {
+    "name": "exact-decimals-and-unknown",
+    "value": {
+      "unknown": null,
+      "zero": "0",
+      "fraction": "17.5",
+      "negative": "-0.125",
+      "precise": "12345678901234567890.123456789012345678901"
+    },
+    "canonical": "{\"fraction\":\"17.5\",\"negative\":\"-0.125\",\"precise\":\"12345678901234567890.123456789012345678901\",\"unknown\":null,\"zero\":\"0\"}",
+    "sha256": "1eeec75b481f9c4d4c361db5b0e7191b877a33bce87ecf0bc8c1ff87bf82120d"
+  },
+  {
+    "name": "semantic-array-order",
+    "value": [
+      {
+        "position": 0,
+        "url": "https://example.org/b"
+      },
+      {
+        "position": 1,
+        "url": "https://example.org/a"
+      }
+    ],
+    "canonical": "[{\"position\":0,\"url\":\"https://example.org/b\"},{\"position\":1,\"url\":\"https://example.org/a\"}]",
+    "sha256": "3adc88257b69a7905bd77c53d10b3fe2d678f3ad9b618bebf604ea92d232b113"
+  },
+  {
+    "name": "integer-looking-keys",
+    "value": {
+      "0": "zero",
+      "2": "two",
+      "10": "ten"
+    },
+    "canonical": "{\"0\":\"zero\",\"10\":\"ten\",\"2\":\"two\"}",
+    "sha256": "7d7806c0acf13cab05395c7beecdeba30ad4e9ee915190e086d423f779094a19"
+  }
+]

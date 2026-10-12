@@ -4,6 +4,7 @@ import dev.ringlab.domain.gamedata.*;
 import dev.ringlab.domain.gamedata.importing.*;
 import dev.ringlab.domain.gamedata.importing.GameDataSet.*;
 import dev.ringlab.port.out.GameDataImportRepository;
+import dev.ringlab.port.out.GameDataSnapshotReader;
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.*;
@@ -11,7 +12,7 @@ import java.util.function.Function;
 import javax.sql.DataSource;
 
 /** A short-lived JDBC command session, independent of Quarkus/Flyway startup. */
-public final class GameDataImportDbAdapter implements GameDataImportRepository {
+public final class GameDataImportDbAdapter implements GameDataImportRepository, GameDataSnapshotReader {
   private final DataSource dataSource;
 
   public GameDataImportDbAdapter(DataSource dataSource) { this.dataSource = dataSource; }
